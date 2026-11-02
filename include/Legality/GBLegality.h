@@ -30,6 +30,14 @@ namespace Legality::GB {
     /// Crystal); International is any other non-Japanese language.
     enum class Language : uint8_t { Unknown, Japanese, International, Korean };
 
+    /// Where the validated source save kept the record. Unknown is a standalone file, a
+    /// bank entry or any caller that does not own the slot: the Day Care exceptions to the
+    /// level/EXP rule then stay open (a Warning). PartyOrBox is a party or PC box slot of
+    /// that save: nothing there leaves EXP ahead of the stored level, so those exceptions
+    /// close (an Invalid). DayCare is the Day Care's own deposited slot, where EXP grows a
+    /// step at a time while the stored level stays what it was on deposit.
+    enum class Storage : uint8_t { Unknown, PartyOrBox, DayCare };
+
     /// The fields of a native PK1 that the origin search reads.
     struct Entity1 {
         uint8_t species = 0;                // National Dex number
@@ -47,6 +55,23 @@ namespace Legality::GB {
         std::string otName;                 // decoded; compared against event OTs
         std::string nickname;               // decoded; compared against trade nicknames
         Language language = Language::Unknown;
+        Storage storage = Storage::Unknown;
+        // The party struct's stored stats, when the record is a party struct (box structs
+        // store none). partyStats false: not known, and the party stat rule is skipped.
+        // stats: Attack, Defense, Speed, Special (the fifth entry is unused).
+        bool partyStats = false;
+        uint16_t maxHP = 0;
+        std::array<uint16_t, 5> stats{};
+        // The stored current HP (party and box structs both keep it in Gen I), when the
+        // caller has the struct's bytes. hpKnown false: the current-HP rule is skipped.
+        bool hpKnown = false;
+        uint16_t currentHP = 0;
+        // The stored status condition byte (party and box structs), and a party struct's
+        // box-level byte (0x03), under the same condition. Unknown: the rules are skipped.
+        bool statusKnown = false;
+        uint8_t status = 0;
+        bool boxLevelKnown = false;
+        uint8_t boxLevel = 0;
         // The name fields as stored (11 bytes, 6 in Japanese), when the caller has them.
         // Empty means "not available": the byte-level rules (the trade marker's terminator,
         // glyphless bytes, a Korean Gold/Silver name on a Western record) are then skipped.
@@ -74,6 +99,14 @@ namespace Legality::GB {
         std::string otName;
         std::string nickname;
         Language language = Language::Unknown;
+        Storage storage = Storage::Unknown; // see Entity1
+        bool partyStats = false;            // see Entity1
+        uint16_t maxHP = 0;
+        std::array<uint16_t, 5> stats{};    // Attack, Defense, Speed, Special Attack, Special Defense
+        bool hpKnown = false;               // party structs only (a Gen II box struct has no HP)
+        uint16_t currentHP = 0;
+        bool statusKnown = false;           // party structs only, as for hpKnown
+        uint8_t status = 0;
         std::vector<uint8_t> otRaw;         // as stored, when available (see Entity1)
         std::vector<uint8_t> nickRaw;
     };
@@ -129,7 +162,7 @@ namespace Legality::GB {
     Result checkGen2(const Entity2& pk);
 
     /// The rules that hold whatever the origin and whatever else is wrong with the record
-    /// (stat experience, Pokerus, level against EXP, an empty nickname). checkGen1/checkGen2
+    /// (stat experience, Pokerus, level against EXP, a party struct's stats, current HP, an empty nickname). checkGen1/checkGen2
     /// already include them; this is for callers that cannot run the origin search on a
     /// malformed record.
     std::vector<Problem> formatProblems(const Entity1& pk);

@@ -71,11 +71,13 @@ class Context:
     Gen I internal species index, and PKHeX's font tables (`nul[format]["EN"|"JP"]` marks the
     bytes with no character; `jp[format]` is the Japanese table itself)."""
 
-    def __init__(self, growth, internal_to_national, nul=None, jp=None):
+    def __init__(self, growth, internal_to_national, nul=None, jp=None, base_stats=None):
         self.growth = growth
         self.internal_to_national = internal_to_national
         self.nul = nul
         self.jp = jp
+        # base_stats[format][species]: HP ATK DEF SPE SPC (format 1) or HP ATK DEF SPE SPA SPD.
+        self.base_stats = base_stats
 
     @staticmethod
     def load(pkhex, pokered):
@@ -84,12 +86,15 @@ class Context:
         import gb_text
         personal = gen.read_personal2(pkhex / "PKHeX.Core/Resources/byte/personal/personal_c")
         growth = {s: personal[s]["growth"] for s in range(1, 252)}
+        personal1 = gen.read_personal1(pkhex / "PKHeX.Core/Resources/byte/personal/personal_rb")
+        base_stats = {1: {s: personal1[s]["stats"] for s in range(1, 152)},
+                      2: {s: personal[s]["stats"] for s in range(1, 252)}}
         pret = ver.Pret(pokered)
         by_internal = {v: k for k, v in pret.internal.items()}
         internal = {idx: pret.dex[name] for idx, name in by_internal.items() if name in pret.dex}
         nul = {g: {t: gb_text.read_nul_mask(pkhex, g, f"Table{t}") for t in ("EN", "JP")} for g in (1, 2)}
         jp = {g: gb_text.read_table(pkhex, g, "TableJP") for g in (1, 2)}
-        return Context(growth, internal, nul, jp)
+        return Context(growth, internal, nul, jp, base_stats)
 
 
 def parse_corpus_line(line, lineno, ctx):
@@ -382,7 +387,90 @@ DELIBERATE = (
     # look for another, so it is INVALID (Trainer:G1CharOT) while the Gen II origin is legal.
     ("jp-ot-mark-gen1-pick", "INVALID", "VALID",
      lambda r, ctx, pk, pb: jp_ot_mark(r, ctx) and set(pkhex_codes(pk[1])) == {"Trainer:G1CharOT"}),
+    # A party struct's stat that no stat experience up to the stored one gives at its level
+    # (pokered CalcStat / pokecrystal CalcMonStatC; GBLegality.cpp partyStatProblems), or a
+    # current HP above the stored max HP (currentHpProblem). PKHeX does not compare stored
+    # party stats or current HP. Recomputed here from PKHeX's own base stats.
+    ("party-stats", "VALID", "INVALID", lambda r, ctx, pk, pb: party_stats(r, ctx, pb)),
+    # A status byte holding two conditions or bit 7 (GBLegality.cpp statusProblem: every game
+    # writer stores one condition), or a PK1 party struct's box-level byte above its party
+    # level (pokered _AddPartyMon/_MoveMon write 0 or the level at deposit). PKHeX checks
+    # neither for PK1/PK2.
+    ("status-byte", "VALID", "INVALID", lambda r, ctx, pk, pb: status_byte(r, pb)),
+    ("box-level", "VALID", "INVALID", lambda r, ctx, pk, pb: box_level(r, pb)),
+    # Crystal never writes met data to an unhatched egg (SetEggMonCaughtData runs at hatch),
+    # and Kenya and the Mania Shuckle carry a male OT bit (GBLegality.cpp); PKHeX checks neither.
+    ("egg-met-data", "VALID", "INVALID", lambda r, ctx, pk, pb: only_problems(pb, "An unhatched Day Care")),
+    ("gift-ot-gender", "VALID", "INVALID", lambda r, ctx, pk, pb: only_problems(pb, "This in-game gift records a ")),
 )
+
+
+def only_problems(pb, prefix):
+    problems = pokebank_problems(pb[1])
+    return bool(problems) and all(p.startswith(prefix) for p in problems)
+
+
+def game_root(stat_exp):
+    b = 0
+    while True:
+        b += 1
+        if b == 255 or b * b >= stat_exp:
+            return b
+
+
+PARTY_STAT_NAMES = {1: ("Max HP", "Attack", "Defense", "Speed", "Special"),
+                    2: ("Max HP", "Attack", "Defense", "Speed", "Special Attack", "Special Defense")}
+
+
+def party_stat_problem(text):
+    if text.startswith("Current HP ") and " is above " in text:
+        return True
+    return " is not what level " in text and any(text.startswith(n + " ") for n in PARTY_STAT_NAMES[1] + PARTY_STAT_NAMES[2])
+
+
+def party_stats(r, ctx, pb):
+    """True when PokeBank's only problems are party stats and at least one stored stat is
+    out of the formula's reach for every stat experience up to the stored one."""
+    if r.egg or not ctx.base_stats or not 1 <= r.level <= 100 or r.species not in ctx.base_stats[r.format]:
+        return False
+    problems = pokebank_problems(pb[1])
+    if not problems or not all(party_stat_problem(p) for p in problems):
+        return False
+    b = r.body
+    if r.format == 1:
+        dv_at, exp_at, stat_at = 0x1B, 0x11, 0x22
+    else:
+        dv_at, exp_at, stat_at = 21, 11, 36
+    atk, df, spe, spc = b[dv_at] >> 4, b[dv_at] & 15, b[dv_at + 1] >> 4, b[dv_at + 1] & 15
+    hp_dv = ((atk & 1) << 3) | ((df & 1) << 2) | ((spe & 1) << 1) | (spc & 1)
+    dvs = (hp_dv, atk, df, spe, spc, spc)
+    exp_slot = (0, 1, 2, 3, 4, 4)
+    stored = [int.from_bytes(b[stat_at + i * 2:stat_at + i * 2 + 2], "big") for i in range(len(PARTY_STAT_NAMES[r.format]))]
+    if stored[0] == 0:
+        return False
+    bases = ctx.base_stats[r.format][r.species]
+    current = int.from_bytes(b[1:3] if r.format == 1 else b[34:36], "big")
+    bad = current > stored[0]
+    for i, value in enumerate(stored):
+        stat_exp = int.from_bytes(b[exp_at + exp_slot[i] * 2:exp_at + exp_slot[i] * 2 + 2], "big")
+        extra = r.level + 10 if i == 0 else 5
+        reach = {min(999, ((bases[i] + dvs[i]) * 2 + game_root(s) // 4) * r.level // 100 + extra)
+                 for s in range(stat_exp + 1)}
+        bad = bad or value not in reach
+    return bad
+
+
+def status_byte(r, pb):
+    s = r.body[4] if r.format == 1 else r.body[32]
+    problems = pokebank_problems(pb[1])
+    return (s > 7 and s not in (0x08, 0x10, 0x20, 0x40) and problems and
+            all(p.startswith("Status byte ") for p in problems))
+
+
+def box_level(r, pb):
+    problems = pokebank_problems(pb[1])
+    return (r.format == 1 and r.body[3] > r.body[0x21] and problems and
+            all(p.startswith("Box-level byte ") for p in problems))
 
 
 def korean_pk1_origin(r, ctx, pk, pb):
