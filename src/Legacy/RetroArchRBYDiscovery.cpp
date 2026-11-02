@@ -359,4 +359,26 @@ RBYDiscoveryResult discoverConfiguredRetroArchRBYSaves(
     return result;
 }
 
+RBYSource inspectRBYSaveFile(const std::string& path, std::string_view exactGameId) {
+    // An explicit manual assignment names the exact release, exactly as a filename hint does in
+    // discovery; strict Gen I parsing still decides whether the bytes are a valid save.
+    const IdentityHint hint = exactGameId == "red_gb" ? IdentityHint::Red
+        : exactGameId == "blue_gb" ? IdentityHint::Blue
+        : exactGameId == "yellow_gb" ? IdentityHint::Yellow : IdentityHint::None;
+    struct stat metadata{};
+    if (hint == IdentityHint::None || !isRegularFile(path, &metadata)) {
+        RBYSource source;
+        source.path = path;
+        source.normalizedPath = normalizedPath(path);
+        source.sourceIdentity = sourceIdentity(path);
+        source.status = hint == IdentityHint::None ? RBYSourceStatus::InvalidSave : RBYSourceStatus::ReadError;
+        source.detail = hint == IdentityHint::None ? "not a Red / Blue / Yellow game card"
+                                                   : "the file could not be opened";
+        return source;
+    }
+    RBYSource source = inspectFile(path, metadata, hint);
+    source.canonicalPath = filesystemIdentity(path);
+    return source;
+}
+
 } // namespace PokeVault::Legacy

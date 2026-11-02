@@ -314,3 +314,22 @@ $(HOST_UI_SAVE_GATE_TEST): $(HOST_UI_SAVE_GATE_INPUTS) $(HOST_UI_ARCHIVE)
 $(HOST_UI_SAVE_GATE_SANITIZE): $(HOST_UI_SAVE_GATE_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_save_open_gate_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+# Round 15 (owner decisions Nov 2): one Save Instances experience for Gen I-V (Gen I-III cards without
+# a save, manual SD browser assignment through the shared provider) and the initialized-save rule,
+# through the real SaveSelectScreen.
+HOST_UI_SAVE_INSTANCES_TEST := $(HOST_BUILD)/test_ui_save_instances_gen15_host
+HOST_UI_SAVE_INSTANCES_SANITIZE := $(HOST_BUILD)/test_ui_save_instances_gen15_host_sanitize
+HOST_UI_SAVE_INSTANCES_INPUTS := tests/test_ui_save_instances_gen15_host.cpp tests/host-ui/HostUi.h \
+	tests/fixtures/gsc_pokemon_fixture.h include/UI/SaveOpenGate.h include/Source/SaveInitialization.h \
+	tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_SAVE_INSTANCES_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_SAVE_INSTANCES_SANITIZE)
+host-test: $(HOST_UI_SAVE_INSTANCES_TEST)
+host-sanitize: $(HOST_UI_SAVE_INSTANCES_SANITIZE)
+$(HOST_UI_SAVE_INSTANCES_TEST): $(HOST_UI_SAVE_INSTANCES_INPUTS) $(HOST_UI_ARCHIVE) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_save_instances_gen15_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_SAVE_INSTANCES_SANITIZE): $(HOST_UI_SAVE_INSTANCES_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_save_instances_gen15_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@

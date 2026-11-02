@@ -32,7 +32,9 @@ namespace PokeBank::UIModel::SaveOpenGate {
 
 enum class Source : uint8_t { ConsoleManaged, DiscoveredFile, AssignedFile };
 enum class Assignment : uint8_t { None, Ready, Missing, Unreadable, Ambiguous };
-enum class Validation : uint8_t { NotChecked, Valid, Invalid };
+// Uninitialized (Round 15): structurally valid, but the game never wrote a trainer
+// (Source/SaveInitialization.h) -- an emulator-created file, not an editable save.
+enum class Validation : uint8_t { NotChecked, Valid, Invalid, Uninitialized };
 enum class Action : uint8_t { OpenWorkspace, ChooseSave };
 
 struct Input {
@@ -67,15 +69,19 @@ struct Decision {
         case Assignment::Ready:
             break;
     }
+    if (in.validation == Validation::Uninitialized)
+        return {Action::ChooseSave, "The file for " + name +
+                " is not an initialized save (the game was never saved). Choose a save file."};
     if (in.validation != Validation::Valid)
         return {Action::ChooseSave, "The save for " + name + " did not pass validation. Choose a save file."};
     return {Action::OpenWorkspace, {}};
 }
 
-// The save-file browser lists folders and only files a battery-save reader can inspect: raw
-// .sav / .srm and footer-declared .dsv containers. Savestates (.dss, .state, .st0...) are never
-// saves and are not offered. Case-insensitive.
-[[nodiscard]] inline bool saveFileNameOffered(std::string_view name) noexcept {
+// The save-file browser lists folders and only files the generation's battery-save providers
+// read: Gen I-III raw .sav / .srm (the extensions RetroArch / mGBA / Tico discovery accepts);
+// Gen IV / V raw .sav / .srm and footer-declared .dsv containers. Savestates (.dss, .state,
+// .st0, .ss1 ...) are never saves and are not offered. Case-insensitive. generation 0 = any DS.
+[[nodiscard]] inline bool saveFileNameOffered(std::string_view name, int generation = 0) noexcept {
     const auto dot = name.find_last_of('.');
     if (dot == std::string_view::npos || name.size() - dot != 4) return false;
     char ext[3];
@@ -85,7 +91,8 @@ struct Decision {
         ext[i] = c;
     }
     const std::string_view e(ext, 3);
-    return e == "sav" || e == "srm" || e == "dsv";
+    if (e == "sav" || e == "srm") return true;
+    return e == "dsv" && (generation == 0 || generation >= 4);
 }
 
 } // namespace PokeBank::UIModel::SaveOpenGate

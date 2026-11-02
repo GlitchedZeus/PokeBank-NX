@@ -43,6 +43,8 @@
 #include "Integration/Common/HomePartyPreview.h"
 #include "Source/HomeCardSnapshot.h"
 #include "Source/SaveProviderIdentity.h"
+#include "Source/SaveInitialization.h"
+#include "Integration/Gen5/Gen5Trainer.h"
 #include "Utils/Keyboard.h"
 #include "Utils/Logger.h"
 #include "Utils/PokeBankPaths.h"
@@ -213,6 +215,31 @@ namespace UI {
                 summary += providers[i];
             }
             return summary;
+        }
+
+        // Round 15 (owner: an emulator-created file is not an editable save). One rule for every
+        // generation (Source/SaveInitialization.h); Gen I-III apply it in discovery / manual
+        // inspection, Gen IV / V here on the strictly validated save.
+        bool gen5SaveInitialized(const PokeVault::Integration::Gen5::Gen5ReadOnlySave& save) {
+            namespace Init = PokeVault::Source::SaveInitialization;
+            const auto t = PokeVault::Integration::Gen5::decodeTrainer5(save);
+            return t && Init::initialized(Init::dsFacts(t->rawName.size(), t->tid, t->sid,
+                                                        t->hours, t->minutes, t->seconds));
+        }
+        bool gen4SaveInitialized(const PokeVault::Integration::Gen4::Gen4ReadOnlySave& save) {
+            namespace Init = PokeVault::Source::SaveInitialization;
+            const auto& t = save.trainer();
+            return Init::initialized(Init::dsFacts(t.name.size(), t.tid, t.sid,
+                                                   t.playedHours, t.playedMinutes, t.playedSeconds));
+        }
+        // The exact Gen I-III battery-save card ids (Games/GameIdentity.cpp): every one gets a card,
+        // with or without a save, so a missing save opens the chooser like Gen IV / V.
+        bool classicBatteryGame(const PokeVault::Games::GameDescriptor& game) {
+            return game.dataGeneration >= 1 && game.dataGeneration <= 3 &&
+                   game.support == PokeVault::Games::SourceSupport::ReadOnly &&
+                   (game.platform == PokeVault::Games::Platform::GameBoy ||
+                    game.platform == PokeVault::Games::Platform::GameBoyColor ||
+                    game.platform == PokeVault::Games::Platform::GameBoyAdvance);
         }
 
         int preferredLegacySourceIndex(
@@ -924,8 +951,38 @@ namespace UI {
         overlay = Overlay::OpenFailure;
     }
 
+    void SaveSelectScreen::mergeRememberedLegacyFiles() {
+        // Round 15: a Gen I-III save the user assigned manually (outside the discovery roots) is
+        // re-inspected strictly on every load and joins the shared catalog for its exact game.
+        // A missing / changed / uninitialized file simply does not join: the card then has no
+        // save and A opens the chooser with the reason. Never substitutes another save.
+        if (!legacyCatalog || !legacyBindings) return;
+        const auto physical = [](const PokeVault::Legacy::FRLGSource& s) -> const std::string& {
+            return s.canonicalPath.empty() ? s.normalizedPath : s.canonicalPath;
+        };
+        for (const auto& user : users) {
+            const std::string profile = profileIdentity(user.uid);
+            for (const auto& game : PokeVault::Games::allGameDescriptors()) {
+                if (!classicBatteryGame(game)) continue;
+                const auto assigned = legacyBindings->resolveFileForGame(profile, game.id);
+                if (assigned.status != PokeVault::Legacy::AssignedFileStatus::Ready ||
+                    assigned.binding.sourcePath.empty()) continue;
+                auto source = PokeVault::Legacy::inspectLegacySaveFile(
+                    assigned.binding.sourcePath, game.id,
+                    assigned.binding.sourceType.empty() ? "Manual" : assigned.binding.sourceType);
+                if (!source.ready() || source.sourceIdentity != assigned.sourceIdentity) continue;
+                auto& sources = legacyCatalog->sources;
+                const auto existing = std::find_if(sources.begin(), sources.end(),
+                    [&](const auto& s) { return physical(s) == physical(source); });
+                if (existing == sources.end()) sources.push_back(std::move(source));
+                else if (!existing->ready()) *existing = std::move(source);
+            }
+        }
+    }
+
     void SaveSelectScreen::loadLegacySources(
         const PokeVault::Legacy::FRLGDiscoveryResult& legacySources) {
+        if (&legacySources == legacyCatalog) mergeRememberedLegacyFiles();
         for (auto& user : users) {
             user.titles.erase(std::remove_if(user.titles.begin(), user.titles.end(),
                 [](const auto& title) {
@@ -1019,6 +1076,27 @@ namespace UI {
                         }
                     }
                 }
+                user.titles.push_back(std::move(entry));
+            }
+
+            // Round 15: every Gen I-III battery game has a card even with no save, so A / + /
+            // Items reach the shared save chooser (never an empty workspace).
+            for (const auto& game : PokeVault::Games::allGameDescriptors()) {
+                if (!classicBatteryGame(game)) continue;
+                const bool present = std::any_of(user.titles.begin(), user.titles.end(),
+                    [&](const auto& title) {
+                        return title.sourceKind == SelectedSourceKind::RetroArchFRLG &&
+                               title.gameId == game.id;
+                    });
+                if (present) continue;
+                TitleEntry entry;
+                entry.name = "Pokemon " + std::string(game.title);
+                entry.label = std::string(game.title);
+                entry.gameId = std::string(game.id);
+                entry.platformLabel = std::string(PokeVault::Games::platformName(game.platform));
+                entry.sourceLabel = "CHOOSE SAVE";
+                entry.artworkKey = entry.gameId;
+                entry.sourceKind = SelectedSourceKind::RetroArchFRLG;
                 user.titles.push_back(std::move(entry));
             }
         }
@@ -2019,7 +2097,7 @@ namespace UI {
                 dirs.push_back({name, path, true});
             else if (S_ISREG(st.st_mode) &&
                      (launchFilePurpose == FilePickerPurpose::SaveFile
-                          ? PokeBank::UIModel::SaveOpenGate::saveFileNameOffered(name)
+                          ? PokeBank::UIModel::SaveOpenGate::saveFileNameOffered(name, launchSaveGeneration)
                           : gameLaunchContentSupported(launchLinkGameId, path)))
                 files.push_back({name, path, false});
         }
@@ -2052,9 +2130,9 @@ namespace UI {
             // Assign: the exact file is strictly validated for this exact game and profile before
             // anything is remembered; a valid save then opens through the normal gated path.
             std::string failure;
-            const bool assigned = launchSaveGeneration == 5
-                ? assignGen5ManualPath(selected.path, failure)
-                : assignGen4ManualPath(selected.path, failure);
+            const bool assigned = launchSaveGeneration == 5 ? assignGen5ManualPath(selected.path, failure)
+                : launchSaveGeneration == 4 ? assignGen4ManualPath(selected.path, failure)
+                : assignLegacyManualPath(selected.path, failure);
             if (!assigned) {
                 launchFileNotice = failure.empty() ? "That file is not a valid save for this game." : failure;
                 if (overlay != Overlay::Gen5Candidates) overlay = Overlay::GameFilePicker;
@@ -2347,6 +2425,24 @@ namespace UI {
             return false;
         const std::string profile = currentProfileIdentity();
         if (profile.empty()) return false;
+        {
+            // Round 15: refuse an uninitialized (never saved) file before remembering it.
+            const auto payload = PokeVault::Integration::Gen4::readSourcePayloadReadOnly(candidate.path);
+            if (payload.ready()) {
+                for (auto layout : {PokeVault::Integration::Gen4::Layout::DiamondPearl,
+                                    PokeVault::Integration::Gen4::Layout::Platinum,
+                                    PokeVault::Integration::Gen4::Layout::HeartGoldSoulSilver}) {
+                    const auto parsed = PokeVault::Integration::Gen4::Gen4ReadOnlySave::parse(
+                        payload.bytes, layout, gen4TargetGameId);
+                    if (parsed && !gen4SaveInitialized(*parsed)) {
+                        gen4Notice = "That file is " +
+                            std::string(PokeVault::Source::SaveInitialization::kNotInitializedReason) + ".";
+                        overlay = Overlay::Gen4Setup;
+                        return false;
+                    }
+                }
+            }
+        }
         const auto fresh = PokeVault::Integration::Gen4::inspectSourceFile(
             candidate.path, candidate.sourceType, gen4TargetGameId);
         const auto shownInstance = PokeVault::Integration::Gen4::toSaveInstance(candidate, gen4TargetGameId);
@@ -2632,6 +2728,7 @@ namespace UI {
                     : opened.diagnostic;
             return false;
         }
+        if (!gen5SaveInitialized(*opened.save)) return false;   // Round 15: never editable
         selectedUserUid = user.uid;
         selectedTitleId = 0;
         selectedTitleName = title.name;
@@ -2647,6 +2744,17 @@ namespace UI {
         const PokeVault::Source::SaveInstance& chosen) {
         if(!legacyBindings)return false;
         const auto profile=currentProfileIdentity();
+        {
+            // Round 15: an emulator-created file whose trainer was never written is refused
+            // before anything is remembered (Source/SaveInitialization.h).
+            const auto probe=PokeVault::Integration::Gen5::reopenValidatedSource(
+                chosen,gen5CopyForVariant(chosen.sourceVariant));
+            if(probe.ready() && !gen5SaveInitialized(*probe.save)) {
+                gen5Notice="That file is "+std::string(PokeVault::Source::SaveInitialization::kNotInitializedReason)+".";
+                overlay=Overlay::Gen5Setup;
+                return false;
+            }
+        }
         const auto assigned=PokeVault::Integration::Gen5::assignValidatedSource(
             *legacyBindings,chosen,profile,gen5TargetGameId);
         if(!assigned.success) {
@@ -2763,17 +2871,27 @@ namespace UI {
             case PokeVault::Legacy::AssignedFileStatus::Ready: in.assignment = Gate::Assignment::Ready; break;
         }
         if (in.assignment != Gate::Assignment::Ready) return Gate::decide(in);
-        bool valid = false;
+        bool valid = false, initialized = false;
         if (title.sourceKind == SelectedSourceKind::Gen5AssignedFile) {
             const auto opened = PokeVault::Integration::Gen5::openAssignedSource(
                 *legacyBindings, profile, title.gameId);
             valid = opened.ready() && opened.instance.gameId == title.gameId;
+            initialized = valid && gen5SaveInitialized(*opened.save);
+            // Gen V strict validation already refuses a copy with no trainer data (blank or initial
+            // copy, Gen5SaveDiagnostics CopyState5); the shared card classifier names that state.
+            if (!valid && PokeVault::Integration::Gen5::classifyCardFailure(opened.diagnostic) ==
+                              PokeVault::Integration::Gen5::CardFailure::NoTrainerData) {
+                in.validation = Gate::Validation::Uninitialized;
+                return Gate::decide(in);
+            }
         } else {
             const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
                 *legacyBindings, profile, title.gameId);
             valid = opened.status == PokeVault::Integration::Gen4::OpenStatus::Ready && opened.save;
+            initialized = valid && gen4SaveInitialized(*opened.save);
         }
-        in.validation = valid ? Gate::Validation::Valid : Gate::Validation::Invalid;
+        in.validation = !valid ? Gate::Validation::Invalid
+                      : !initialized ? Gate::Validation::Uninitialized : Gate::Validation::Valid;
         return Gate::decide(in);
     }
 
@@ -2811,6 +2929,13 @@ namespace UI {
             overlay = Overlay::LegacyAssignment;
             return;
         }
+        // Round 15 (owner: "All generations should have the same Save Instances experience"):
+        // nothing discovered for this exact game -> the same SD save-file browser as Gen IV / V.
+        const auto* saveGameIdentity = PokeVault::Games::findGame(saveGame);
+        if (saveGameIdentity && classicBatteryGame(*saveGameIdentity) && legacyBindings && legacyCatalog) {
+            openSaveFilePicker(saveGame, saveGameIdentity->dataGeneration, notice);
+            return;
+        }
         overlay = Overlay::None;
         hubNotice = "No save accessible for " +
             PokeBank::UIModel::SaveOpenGate::gameName(title.label) + ". No workspace was opened.";
@@ -2834,11 +2959,17 @@ namespace UI {
         struct stat info{};
         if (start.empty() || ::stat(start.c_str(), &info) != 0 || !S_ISDIR(info.st_mode)) {
             start.clear();
-            for (const char* root : {"sdmc:/switch/drastic/user/backup", "sdmc:/switch/drastic/backup",
-                                     "sdmc:/switch/melonds", "sdmc:/melonds",
-                                     "sdmc:/retroarch/cores/savefiles"}) {
-                if (::stat(root, &info) == 0 && S_ISDIR(info.st_mode)) { start = root; break; }
-            }
+            static constexpr const char* dsRoots[] = {
+                "sdmc:/switch/drastic/user/backup", "sdmc:/switch/drastic/backup",
+                "sdmc:/switch/melonds", "sdmc:/melonds", "sdmc:/retroarch/cores/savefiles"};
+            static constexpr const char* classicRoots[] = {
+                "sdmc:/retroarch/cores/savefiles", "sdmc:/mGBA", "sdmc:/tico/saves"};
+            const auto pick = [&](const auto& roots) {
+                for (const char* root : roots)
+                    if (::stat(root, &info) == 0 && S_ISDIR(info.st_mode)) { start = root; return; }
+            };
+            if (generation >= 4) pick(dsRoots);
+            else pick(classicRoots);
         }
         if (start.empty()) start = "sdmc:/";
         launchBrowseRoot = start;
@@ -2849,6 +2980,63 @@ namespace UI {
         refreshGameFilePicker();
         if (!notice.empty()) launchFileNotice = std::move(notice);
         overlay = Overlay::GameFilePicker;
+    }
+
+    // Round 15: manual Save Instance for an exact Gen I-III card through the shared provider path.
+    // Strict per-generation parsing + the shared initialization rule decide (inspectLegacySaveFile);
+    // the exact file is remembered for this profile/game (assignClassicFileAndSave) and joins the
+    // shared catalog, so the card lists it like a discovered save. The source is only ever read.
+    bool SaveSelectScreen::assignLegacyManualPath(const std::string& path, std::string& failure) {
+        const std::string game = launchLinkGameId;
+        const auto* identity = PokeVault::Games::findGame(game);
+        if (!legacyBindings || !legacyCatalog || !identity || !classicBatteryGame(*identity)) {
+            failure = "Profile assignments unavailable; no save was opened.";
+            return false;
+        }
+        auto source = PokeVault::Legacy::inspectLegacySaveFile(path, game, "Manual");
+        if (!source.ready()) {
+            failure = source.detail.empty() ? std::string("That file is not a valid save for this game.")
+                                            : "Not a usable save: " + source.detail + ".";
+            return false;
+        }
+        const std::string profile = currentProfileIdentity();
+        PokeVault::Legacy::BindingRecord binding;
+        binding.profileIdentity = profile;
+        binding.gameIdentity = game;
+        binding.sourcePath = source.path;
+        binding.sourceType = "Manual";
+        binding.expectedRawFamily = identity->dataGeneration == 1 ? "GB"
+                                  : identity->dataGeneration == 2 ? "GBC" : "GBA";
+        if (!legacyBindings->assignClassicFileAndSave(source.sourceIdentity, binding)) {
+            failure = legacyBindings->lastError().find("conflict") != std::string::npos
+                ? "That save is already linked to another profile or game."
+                : "The save assignment could not be stored safely.";
+            return false;
+        }
+        const auto physical = [](const PokeVault::Legacy::FRLGSource& s) -> const std::string& {
+            return s.canonicalPath.empty() ? s.normalizedPath : s.canonicalPath;
+        };
+        auto& sources = legacyCatalog->sources;
+        const auto existing = std::find_if(sources.begin(), sources.end(),
+            [&](const auto& s) { return physical(s) == physical(source); });
+        if (existing != sources.end()) *existing = std::move(source);
+        else sources.push_back(std::move(source));
+        const std::string focusGame = [&] {
+            const UserEntry* u = currentUser();
+            return u && titleIndex >= 0 && titleIndex < static_cast<int>(u->titles.size())
+                ? u->titles[static_cast<size_t>(titleIndex)].gameId : game;
+        }();
+        loadLegacySources(*legacyCatalog);
+        if (const UserEntry* u = currentUser())
+            for (size_t i = 0; i < u->titles.size(); ++i)
+                if (u->titles[i].gameId == focusGame) { titleIndex = static_cast<int>(i); break; }
+        scrollSelectionIntoView();
+        refreshHubPreview();
+        launchFilePurpose = FilePickerPurpose::GameFile;
+        overlay = Overlay::None;
+        hubNotice = "Save assigned to Pokémon " + std::string(identity->title) + ". Source unchanged.";
+        selectCurrentTitle();   // opened by A: open it now through the same gate
+        return true;
     }
 
     bool SaveSelectScreen::assignGen4ManualPath(const std::string& path, std::string& failure) {
@@ -3027,7 +3215,8 @@ namespace UI {
             }
             const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
                 *legacyBindings, profile, selectedGameId);
-            if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save) {
+            if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save ||
+                !gen4SaveInitialized(*opened.save)) {
                 openSaveChooserForTitle(selected, saveGateForTitle(selected).message);
                 return;
             }
@@ -3101,7 +3290,8 @@ namespace UI {
             }
             const auto opened = PokeVault::Integration::Gen4::openAssignedSource(
                 *legacyBindings, currentProfileIdentity(), title.gameId);
-            if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save) {
+            if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save ||
+                !gen4SaveInitialized(*opened.save)) {
                 hubNotice = "The remembered save no longer validates. Re-link it from Source / Game File.";
                 return;
             }
@@ -3272,6 +3462,11 @@ namespace UI {
                 legacyAssignmentScroll = 0;
                 legacyNotice = "Choose a validated save to assign to this profile.";
                 overlay = Overlay::LegacyAssignment;
+            } else if (game.legacyInstances.empty()) {
+                // Round 15: nothing discovered -> the same save-file browser as Gen IV / V.
+                const auto* identity = PokeVault::Games::findGame(game.gameId);
+                openSaveFilePicker(game.gameId, identity ? identity->dataGeneration : 3,
+                                   "Choose the save file. It is checked before it is remembered.");
             } else {
                 legacyInstanceIndex = 0;
                 legacyInstanceScroll = 0;
@@ -4497,6 +4692,16 @@ namespace UI {
                 legacyInstanceTouchScroll.stop();
                 overlay = Overlay::None;
                 launchLegacyMode = false;
+                return;
+            }
+            if (kDown & HidNpadButton_Plus) {
+                // Round 15: manual assignment beside the discovered Save Instances (all gens).
+                legacyInstanceTouchScroll.stop();
+                const std::string gameId = u->titles[titleIndex].gameId;
+                const auto* identity = PokeVault::Games::findGame(gameId);
+                launchLegacyMode = false;
+                openSaveFilePicker(gameId, identity ? identity->dataGeneration : 3,
+                                   "Choose the save file. It is checked before it is remembered.");
                 return;
             }
             if (kDown & HidNpadButton_X) {
@@ -5954,7 +6159,8 @@ namespace UI {
                                   TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"},
                             {"A", launchLegacyMode ? "Launch / Link" : "Open Read Only"},
-                            {"Y", "Source Details"}, {"X", "Refresh Saves"}, {"B", "Back"}});
+                            {"Y", "Source Details"}, {"X", "Refresh Saves"}, {"+", "Choose File"},
+                            {"B", "Back"}});
         } else if (overlay == Overlay::LegacyAssignment && u) {
             constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;

@@ -37,6 +37,8 @@
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
 #include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
+#include "Integration/Gen5/Gen5Trainer.h"
+#include "Source/SaveInitialization.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
 
 using namespace Utils;
@@ -842,6 +844,17 @@ namespace UI {
                 : opened.diagnostic;
             return false;
         }
+        {
+            // Round 15 (defense in depth; Product Home already refuses): an emulator-created file
+            // whose trainer was never written is not an editable save.
+            namespace Init = PokeVault::Source::SaveInitialization;
+            const auto t = PokeVault::Integration::Gen5::decodeTrainer5(*opened.save);
+            if (!t || !Init::initialized(Init::dsFacts(t->rawName.size(), t->tid, t->sid,
+                                                       t->hours, t->minutes, t->seconds))) {
+                error = "This file is " + std::string(Init::kNotInitializedReason) + ".";
+                return false;
+            }
+        }
         auto trainer=PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*opened.save,gameId,error);
         if (!trainer) {
             if (error.empty())error="Generation V read-only presentation failed";
@@ -904,6 +917,16 @@ namespace UI {
                 ? "Generation IV assigned source failed strict validation"
                 : opened.diagnostic;
             return false;
+        }
+        {
+            // Round 15 (defense in depth): never open an uninitialized (never saved) file.
+            namespace Init = PokeVault::Source::SaveInitialization;
+            const auto& t = opened.save->trainer();
+            if (!Init::initialized(Init::dsFacts(t.name.size(), t.tid, t.sid, t.playedHours,
+                                                 t.playedMinutes, t.playedSeconds))) {
+                error = "This file is " + std::string(Init::kNotInitializedReason) + ".";
+                return false;
+            }
         }
 
         auto trainer = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(

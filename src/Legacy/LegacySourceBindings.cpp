@@ -353,6 +353,16 @@ namespace PokeVault::Legacy {
 
     bool LegacySourceBindings::replaceFileAssignmentAndSave(
         std::string_view sourceIdentity, BindingRecord binding) {
+        return replaceFileAssignment(sourceIdentity, std::move(binding), false);
+    }
+
+    bool LegacySourceBindings::assignClassicFileAndSave(
+        std::string_view sourceIdentity, BindingRecord binding) {
+        return replaceFileAssignment(sourceIdentity, std::move(binding), true);
+    }
+
+    bool LegacySourceBindings::replaceFileAssignment(
+        std::string_view sourceIdentity, BindingRecord binding, bool keepCatalogClaims) {
         const auto safe = [](std::string_view value) {
             return !value.empty() && value.find('\0') == std::string_view::npos;
         };
@@ -374,7 +384,10 @@ namespace PokeVault::Legacy {
             errno = EEXIST; return fail("replace-file-assignment-conflict");
         }
         const auto existing = owners_.find(std::string(sourceIdentity));
-        if (existing != owners_.end() &&
+        const bool ownCatalogClaim = keepCatalogClaims && existing != owners_.end() &&
+            existing->second.sourcePath.empty() &&
+            existing->second.profileIdentity == binding.profileIdentity;
+        if (existing != owners_.end() && !ownCatalogClaim &&
             (existing->second.profileIdentity != binding.profileIdentity ||
              existing->second.gameIdentity != binding.gameIdentity)) {
             errno = EEXIST;
@@ -399,10 +412,19 @@ namespace PokeVault::Legacy {
         const auto before = owners_;
         for (auto it = owners_.begin(); it != owners_.end();) {
             if (it->second.profileIdentity == binding.profileIdentity &&
-                it->second.gameIdentity == binding.gameIdentity)
-                it = owners_.erase(it);
-            else
+                it->second.gameIdentity == binding.gameIdentity) {
+                // A Gen I-III catalog preference keeps its profile claim (the other discovered
+                // save stays private to this profile); only its game preference moves to the file.
+                if (keepCatalogClaims && it->second.sourcePath.empty() &&
+                    it->first != sourceIdentity) {
+                    it->second.gameIdentity.clear();
+                    ++it;
+                } else {
+                    it = owners_.erase(it);
+                }
+            } else {
                 ++it;
+            }
         }
         owners_[std::string(sourceIdentity)] = std::move(binding);
         if (save()) return true;
