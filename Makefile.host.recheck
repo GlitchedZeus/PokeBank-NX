@@ -1,0 +1,41 @@
+# Round 13 recheck regressions (docs/qa/RECHECK_REGRESSIONS.md): Hardware Accepted behaviour whose
+# code changed after its accepted candidate, re-asserted on the changed code paths. Tests only.
+
+# PBX-MET-003 / PBX-MET-004 (every row of the R12 default and unverified Met Location lists is a
+# readable name) and PBX-LNG-009 (Language only where the format stores it).
+RECHECK_MET_LANGUAGE_TEST := $(HOST_BUILD)/test_recheck_met_language
+RECHECK_MET_LANGUAGE_SANITIZE := $(HOST_BUILD)/test_recheck_met_language_sanitize
+RECHECK_MET_LANGUAGE_SOURCES := tests/test_recheck_met_language.cpp src/Names/LocationNames.cpp src/Names/SpeciesNames.cpp
+RECHECK_MET_LANGUAGE_INPUTS := $(RECHECK_MET_LANGUAGE_SOURCES) include/UI/Gen3EncounterPickerModel.h \
+	include/UI/Gen2PokemonPickerModel.h include/UI/ExactGameMetLocations.h include/UI/SharedPokemonEditorContract.h \
+	include/Integration/Encounter/MetLocationPolicy.h include/Integration/Encounter/EncounterGuardrails.h \
+	include/Integration/Encounter/EncounterGuardrailsData.inc include/Names/LocationDisplayNames.h
+HOST_TESTS += $(RECHECK_MET_LANGUAGE_TEST)
+HOST_SANITIZE_TESTS += $(RECHECK_MET_LANGUAGE_SANITIZE)
+host-test: $(RECHECK_MET_LANGUAGE_TEST)
+host-sanitize: $(RECHECK_MET_LANGUAGE_SANITIZE)
+$(RECHECK_MET_LANGUAGE_TEST): $(RECHECK_MET_LANGUAGE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(RECHECK_MET_LANGUAGE_SOURCES) -o $@
+$(RECHECK_MET_LANGUAGE_SANITIZE): $(RECHECK_MET_LANGUAGE_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(RECHECK_MET_LANGUAGE_SOURCES) -o $@
+
+# PBX-CRT-001 / 003 / 005 / 012 / 017 and PBX-LNG-009 through the REAL TrainerViewScreen (Gen II
+# Create -> Keep / Add: concise toast drawn over the box, no Actions sheet, DVs 0, source unchanged).
+ifneq ($(HOST_UI_COMPILER_IS_CLANG),yes)
+HOST_UI_RECHECK_TEST := $(HOST_BUILD)/test_ui_recheck_regressions_host
+HOST_UI_RECHECK_SANITIZE := $(HOST_BUILD)/test_ui_recheck_regressions_host_sanitize
+HOST_UI_RECHECK_INPUTS := tests/test_ui_recheck_regressions_host.cpp tests/host-ui/HostUi.h \
+	tests/fixtures/gsc_pokemon_fixture.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_RECHECK_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_RECHECK_SANITIZE)
+host-test: $(HOST_UI_RECHECK_TEST)
+host-sanitize: $(HOST_UI_RECHECK_SANITIZE)
+$(HOST_UI_RECHECK_TEST): $(HOST_UI_RECHECK_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_recheck_regressions_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_RECHECK_SANITIZE): $(HOST_UI_RECHECK_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_recheck_regressions_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+endif
