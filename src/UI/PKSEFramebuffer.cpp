@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <vector>
 
+#include <switch.h>   // pl: the console shared font (Japanese fallback)
+
 #include <glad/glad.h>
 #include <SDL2/SDL.h>
 
@@ -89,6 +91,22 @@ namespace UI {
         if (fontSans >= 0 && fontSym  >= 0) nvgAddFallbackFontId(vg, fontSans, fontSym);
         if (fontSans >= 0 && fontSym2 >= 0) nvgAddFallbackFontId(vg, fontSans, fontSym2);
 
+        // Japanese text (kana in Japanese Gen I-V names, the kana keyboard): the console's own
+        // "Standard" shared font covers Japanese, and every Switch carries it, so nothing is bundled.
+        // It is the LAST fallback, so Nunito and the symbol fonts keep drawing everything they did.
+        // The font memory belongs to the system (freeData = 0). If the service is unavailable the
+        // app draws exactly as before; kana then show as missing glyphs, never as a crash.
+        if (fontSans >= 0 && R_SUCCEEDED(plInitialize(PlServiceType_User))) {
+            plStarted = true;
+            PlFontData standard{};
+            if (R_SUCCEEDED(plGetSharedFontByType(&standard, PlSharedFontType_Standard)) && standard.address) {
+                fontJapanese = nvgCreateFontMem(vg, "jp", static_cast<unsigned char*>(standard.address),
+                                                static_cast<int>(standard.size), 0);
+                if (fontJapanese >= 0) nvgAddFallbackFontId(vg, fontSans, fontJapanese);
+                else logErrorToFile("nvgCreateFontMem shared Standard font failed");
+            }
+        }
+
         s_activeFramebuffer = this;
         SpriteManager::setEvictCallback(&PKSEFramebuffer::onSpriteEvicted);
     }
@@ -116,6 +134,7 @@ namespace UI {
         }
         if (glContext) SDL_GL_DeleteContext(glContext);
         if (window) SDL_DestroyWindow(window);
+        if (plStarted) plExit();   // after nvgDeleteGL3: the font memory it mapped is released last
     }
 
     // Begin a NanoVG frame if one isn't active yet (safety for draws before clear()).

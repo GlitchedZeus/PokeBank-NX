@@ -13,6 +13,15 @@ namespace PokeVault::Integration::Gen5 {
 // units in the validated Trainer block. Malformed/unsupported code units
 // return no label, rather than inventing a trainer identity or emitting
 // invalid UTF-8 into the Save Instances UI.
+// A freshly initialized new-game save: the game has not yet written a
+// trainer (no name, TID=SID=0, play time 0:00:00). Conservative: all four
+// must hold. Its gender byte (0) is NOT a gender and must never be shown
+// as "Male"; the trainer is presented as "no trainer yet".
+[[nodiscard]] constexpr bool newGameNoTrainer5(size_t nameLength, uint16_t tid, uint16_t sid,
+                                               uint16_t hours, uint8_t minutes,
+                                               uint8_t seconds) noexcept {
+    return nameLength == 0 && tid == 0 && sid == 0 && hours == 0 && minutes == 0 && seconds == 0;
+}
 [[nodiscard]] inline std::optional<std::string> displayTrainerName(
     std::u16string_view raw) {
     if(raw.empty() || raw.size()>7)return std::nullopt;

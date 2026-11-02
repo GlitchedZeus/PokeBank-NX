@@ -25,6 +25,8 @@
 #include "Dialogs/SaveConfirmDialog.h"
 #include "Dialogs/StatEditDialog.h"
 #include "Dialogs/PickerDialog.h"
+// Before the update/draw macros below: it calls SHA256::update (classicSourceSnapshot).
+#include "Source/ImmutableSourceSnapshot.h"
 
 #define update(...) updateLegacyBase(__VA_ARGS__); void updateGSCOverlay(__VA_ARGS__); void update(__VA_ARGS__)
 #define draw(...) drawLegacyBase(__VA_ARGS__); void drawGSCOverlay(__VA_ARGS__); void draw(__VA_ARGS__)

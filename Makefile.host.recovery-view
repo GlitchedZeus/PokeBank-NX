@@ -1,0 +1,33 @@
+# Owner item #10: recovery management (Save Backups -> X "Recovery files"). The pure safety policy
+# (include/UI/RecoveryManagementModel.h) and the file-system layer (include/UI/RecoveryManagementFs.h)
+# on a private mkdtemp tree. The real-screen test lives in Makefile.host.host-ui (GCC-only block).
+RECOVERY_VIEW_MODEL_TEST := $(HOST_BUILD)/test_recovery_management_model
+RECOVERY_VIEW_MODEL_SANITIZE := $(HOST_BUILD)/test_recovery_management_model_sanitize
+RECOVERY_VIEW_MODEL_INPUTS := tests/test_recovery_management_model.cpp include/UI/RecoveryManagementModel.h
+RECOVERY_VIEW_FS_TEST := $(HOST_BUILD)/test_recovery_management_fs
+RECOVERY_VIEW_FS_SANITIZE := $(HOST_BUILD)/test_recovery_management_fs_sanitize
+RECOVERY_VIEW_FS_SOURCES := tests/test_recovery_management_fs.cpp src/Utils/SHA256.cpp
+RECOVERY_VIEW_FS_INPUTS := $(RECOVERY_VIEW_FS_SOURCES) include/UI/RecoveryManagementModel.h \
+	include/UI/RecoveryManagementFs.h include/UI/SourceBackupClassification.h \
+	include/Source/ImmutableSourceSnapshot.h
+
+HOST_TESTS += $(RECOVERY_VIEW_MODEL_TEST) $(RECOVERY_VIEW_FS_TEST)
+HOST_SANITIZE_TESTS += $(RECOVERY_VIEW_MODEL_SANITIZE) $(RECOVERY_VIEW_FS_SANITIZE)
+host-test: $(RECOVERY_VIEW_MODEL_TEST) $(RECOVERY_VIEW_FS_TEST)
+host-sanitize: $(RECOVERY_VIEW_MODEL_SANITIZE) $(RECOVERY_VIEW_FS_SANITIZE)
+
+$(RECOVERY_VIEW_MODEL_TEST): $(RECOVERY_VIEW_MODEL_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_recovery_management_model.cpp -o $@
+
+$(RECOVERY_VIEW_MODEL_SANITIZE): $(RECOVERY_VIEW_MODEL_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_recovery_management_model.cpp -o $@
+
+$(RECOVERY_VIEW_FS_TEST): $(RECOVERY_VIEW_FS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(RECOVERY_VIEW_FS_SOURCES) -o $@
+
+$(RECOVERY_VIEW_FS_SANITIZE): $(RECOVERY_VIEW_FS_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(RECOVERY_VIEW_FS_SOURCES) -o $@

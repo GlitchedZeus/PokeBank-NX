@@ -37,8 +37,14 @@ int main() {
         assert(has(game, ClassicPocket::Balls, 5));
         assert(displayItemName(game, ClassicPocket::Balls, 5) == "Poké Ball");
         assert(displayItemName(game, ClassicPocket::PCItems, 5) == "Poké Ball");
-        assert(displayItemName(game, ClassicPocket::KeyItems, 115) == "GS BALL");
-        assert(displayItemName(game, ClassicPocket::PCItems, 115) == "GS BALL");
+        assert(displayItemName(game, ClassicPocket::KeyItems, 115) == "GS Ball");
+        assert(displayItemName(game, ClassicPocket::PCItems, 115) == "GS Ball");
+    }
+
+    // Gen I id 50 is the unused duplicate PP Up; only the real PP Up (79) is addable.
+    for (auto game : {ClassicGame::Red, ClassicGame::Blue, ClassicGame::Yellow}) {
+        assert(!has(game, ClassicPocket::Medicines, 50));
+        assert(has(game, ClassicPocket::Medicines, 79));
     }
 
     assert(has(ClassicGame::Gold, ClassicPocket::KeyItems, 54));

@@ -17,7 +17,7 @@ jobs:
     env:
       ASAN_OPTIONS: detect_leaks=1
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -84,7 +84,7 @@ jobs:
         run: make -f Makefile.host host-clean
 
       - name: Run host tests
-        run: make -f Makefile.host host-test
+        run: make -f Makefile.host -j"$(nproc)" host-test
 
       - name: Focused RSE save-open bridge regression
         run: |
@@ -97,8 +97,8 @@ jobs:
             src/Names/NatureNames.cpp src/Names/AbilityNames.cpp src/Utils/StringHelpers.cpp \
             src/Utils/HelperUtilities.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp \
             src/Integration/Gen3/Gen3StagedInventoryEditor.cpp src/Integration/Gen3/Gen3StagedPokemonEditor.cpp \
-            src/Inventory/ClassicInventoryCatalog.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp \
-            src/Integration/Gen2/Gen2ReadOnlyInventory.cpp"
+            src/Inventory/ClassicInventoryCatalog.cpp src/Names/MoveNames.cpp src/Names/MoveInfo.cpp src/Names/LocationNames.cpp \
+            src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Inventory/ItemQuantityPolicy.cpp"
           g++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Wno-unused-parameter -O2 \
             -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $SOURCES \
             -o build-host/test_rse_open_regression
@@ -110,4 +110,4 @@ jobs:
           ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0}" ./build-host/test_rse_open_regression_sanitize
 
       - name: Run ASan and UBSan tests
-        run: make -f Makefile.host host-sanitize
+        run: make -f Makefile.host -j"$(nproc)" host-sanitize

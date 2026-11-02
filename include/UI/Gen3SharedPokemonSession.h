@@ -3,7 +3,9 @@
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/PersonalInfoTable.h"
+#include "Names/MoveInfo.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/SpeciesChangeMoves.h"
 #include "UI/PokemonEditorExitGuard.h"
 
 #include <algorithm>
@@ -24,6 +26,18 @@ inline std::vector<uint16_t> nativeAbilitySlots(uint16_t species) {
     const auto& personal = Pokemon::getPersonalInfoG3(species);
     const bool secondSlot = personal.ability2 != 0 && personal.ability2 != personal.ability1;
     return secondSlot ? std::vector<uint16_t>{1, 2} : std::vector<uint16_t>{1};
+}
+
+// Gen III shininess: (TID ^ SID ^ PID-high ^ PID-low) < 8.
+// pret/pokeemerald src/pokemon.c IsShinyOtIdPersonality (SHINY_ODDS 8, include/constants/pokemon.h).
+constexpr bool shinyFor(uint16_t tid, uint16_t sid, uint32_t pid) noexcept {
+    return (static_cast<uint32_t>(tid) ^ sid ^ (pid >> 16) ^ (pid & 0xFFFFu)) < 8u;
+}
+
+inline bool genderRepresentable(uint16_t species, uint8_t form, uint8_t value) noexcept {
+    const auto ratio = Pokemon::getPersonalInfo(species, form).genderRatio;
+    return !((ratio == 255 && value != 2) || (ratio == 254 && value != 1) ||
+             (ratio == 0 && value != 0) || (ratio > 0 && ratio < 254 && value > 1));
 }
 
 inline bool sameEditableRecord(const Gen3::StagedPokemonRecord& a,
@@ -49,7 +63,8 @@ inline bool sameEditableRecord(const Gen3::StagedPokemonRecord& a,
            a.nature == b.nature &&
            a.gender == b.gender &&
            a.shiny == b.shiny &&
-           a.abilityNumber == b.abilityNumber;
+           a.abilityNumber == b.abilityNumber &&
+           a.form == b.form;
 }
 
 struct Session {
@@ -62,6 +77,7 @@ struct Session {
     std::optional<uint8_t> requestedGender;
     std::optional<bool> requestedShiny;
     std::optional<uint8_t> requestedAbilityNumber;
+    std::optional<uint8_t> requestedForm; // Unown letter (PID-derived)
 
     void begin(const Gen3::StagedPokemonRecord& record, Mode next) {
         baseline = working = record;
@@ -71,6 +87,7 @@ struct Session {
         requestedGender.reset();
         requestedShiny.reset();
         requestedAbilityNumber.reset();
+        requestedForm.reset();
         progression = next == Mode::Create ? ProgressionSource::Level
                                            : ProgressionSource::Unchanged;
     }
@@ -98,7 +115,70 @@ struct Session {
         if (!editable() || species == 0 || species > 386) return false;
         if (species == working.species) return true;
         working.species = species;
-        return setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species));
+        // A gender or second-ability request made for the previous species may be impossible for
+        // this one; keeping it would make every Keep/Add fail with no editable row to clear it.
+        // The displayed values are then re-derived from the exact preview (adoptPreview).
+        if (requestedGender && !genderRepresentable(species, working.form, *requestedGender))
+            requestedGender.reset();
+        if (requestedAbilityNumber && *requestedAbilityNumber == 2 && nativeAbilitySlots(species).size() < 2)
+            requestedAbilityNumber.reset();
+        if (species != 201) requestedForm.reset();
+        normalizeRequests();
+        if (!setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species))) return false;
+        // R2-BUG-004: the new species' native default moveset at the new level for this exact
+        // game (pret pokeruby / pokeemerald / pokefirered GiveMonInitialMoveset; FireRed and
+        // LeafGreen differ), base PP, no PP Ups. The editing game comes from the source id; a
+        // draft with none uses its own origin game. No game: the slots are cleared.
+        SpeciesMoveDefaults::refreshArrays(::PokeBank::Moves::levelUpTableForGen3Version(
+                SpeciesMoveDefaults::gen3VersionForSourceId(sourceGameId, working.originGame)),
+            species, 0, working.level,
+            [](uint16_t move) { return ::Names::getMoveBasePP(move, ::Enums::GameVersion::FRLG); },
+            working.moves, working.pp, working.ppUps);
+        return true;
+    }
+
+    // Trainer ID is part of the Gen III shiny check. Changing it alone must not silently flip
+    // shininess: when the new TID would flip it, the current shininess becomes an explicit request
+    // so the backend rerolls the PID to keep it (or refuses the combination).
+    bool setTid(uint16_t tid) noexcept {
+        if (!editable()) return false;
+        working.tid = tid;
+        if (mode == Mode::Edit && !requestedShiny &&
+            shinyFor(tid, baseline.sid, baseline.pid) != working.shiny)
+            requestedShiny = working.shiny;
+        normalizeRequests();
+        return true;
+    }
+
+    // Edit only: a PID-linked request equal to the record's own value (with nothing else that
+    // would change that value) is dropped, so confirming an unchanged choice never rerolls the
+    // PID. Create keeps every explicit choice because its starting PID is not the user's.
+    void normalizeRequests() noexcept {
+        if (mode != Mode::Edit) return;
+        const bool sameSpecies = working.species == baseline.species;
+        if (requestedNature && *requestedNature == baseline.nature) requestedNature.reset();
+        if (requestedGender && sameSpecies && *requestedGender == baseline.gender) requestedGender.reset();
+        if (requestedAbilityNumber && sameSpecies && *requestedAbilityNumber == baseline.abilityNumber)
+            requestedAbilityNumber.reset();
+        if (requestedForm && sameSpecies && *requestedForm == baseline.form) requestedForm.reset();
+        if (requestedShiny && *requestedShiny == baseline.shiny &&
+            shinyFor(working.tid, baseline.sid, baseline.pid) == baseline.shiny)
+            requestedShiny.reset();
+    }
+
+    // After a successful exact preview, unrequested PID-linked values shown to the user are the
+    // ones that will be staged; mirror them so the Gender/Shiny/Ability toggles start from what is
+    // displayed rather than from a stale pre-species/pre-TID value.
+    void adoptPreview(const Gen3::StagedPokemonRecord& preview) noexcept {
+        if (!editable() || preview.species != working.species) return;
+        if (!requestedNature) working.nature = preview.nature;
+        if (!requestedGender) working.gender = preview.gender;
+        if (!requestedShiny) working.shiny = preview.shiny;
+        if (!requestedForm) working.form = preview.form;
+        if (!requestedAbilityNumber) {
+            working.abilityNumber = preview.abilityNumber;
+            working.ability = preview.ability;
+        }
     }
 
     bool setLevel(uint8_t level) noexcept {
@@ -135,19 +215,16 @@ struct Session {
         if (!editable() || value >= 25) return false;
         working.nature = value;
         requestedNature = value;
+        normalizeRequests();
         return true;
     }
 
     bool setGender(uint8_t value) noexcept {
         if (!editable() || working.species == 0 || value > 2) return false;
-        const auto ratio = Pokemon::getPersonalInfo(working.species, working.form).genderRatio;
-        if ((ratio == 255 && value != 2) ||
-            (ratio == 254 && value != 1) ||
-            (ratio == 0 && value != 0) ||
-            (ratio > 0 && ratio < 254 && value > 1))
-            return false;
+        if (!genderRepresentable(working.species, working.form, value)) return false;
         working.gender = value;
         requestedGender = value;
+        normalizeRequests();
         return true;
     }
 
@@ -162,6 +239,7 @@ struct Session {
         if (!editable()) return false;
         working.shiny = value;
         requestedShiny = value;
+        normalizeRequests();
         return true;
     }
 
@@ -172,6 +250,16 @@ struct Session {
         working.abilityNumber = value;
         working.ability = value == 2 ? personal.ability2 : personal.ability1;
         requestedAbilityNumber = value;
+        normalizeRequests();
+        return true;
+    }
+
+    // Unown (201) letter 0..27; the staged editor re-rolls the PID keeping Nature / Shiny.
+    bool setUnownLetter(uint8_t letter) noexcept {
+        if (!editable() || working.species != 201 || letter >= 28) return false;
+        working.form = letter;
+        requestedForm = letter;
+        normalizeRequests();
         return true;
     }
 
@@ -201,6 +289,7 @@ struct Session {
         edit.gender = requestedGender;
         edit.shiny = requestedShiny;
         edit.abilityNumber = requestedAbilityNumber;
+        if (working.species == 201) edit.form = requestedForm;
         return edit;
     }
 
@@ -228,16 +317,18 @@ struct Session {
         create.gender = requestedGender;
         create.shiny = requestedShiny;
         create.abilityNumber = requestedAbilityNumber;
+        if (working.species == 201) create.form = requestedForm;
         return create;
     }
 
     bool keep(Gen3::StagedPokemonEditor& editor, std::size_t box, std::size_t slot,
-              std::string& error) {
+              std::string& error,bool party=false) {
         if (mode != Mode::Edit) {
             error = "Generation III Keep is only available for an edit draft";
             return false;
         }
-        if (!editor.stageBoxPokemonEdit(box, slot, editRequest(), error)) return false;
+        if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
+                    editor.stageBoxPokemonEdit(box, slot, editRequest(), error))) return false;
         mode = Mode::None;
         confirmExit = false;
         return true;

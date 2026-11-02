@@ -96,9 +96,9 @@ int main() {
 
     // Met-location names use the exact native origin byte. A valid Create origin must
     // never turn known Gen III IDs into Unknown merely because originGame was left zero.
-    assert(std::string_view(Names::getMetLocationName(1, 57)) == "Safari Zone (RSE)");
-    assert(std::string_view(Names::getMetLocationName(2, 57)) == "Safari Zone (RSE)");
-    assert(std::string_view(Names::getMetLocationName(3, 57)) == "Safari Zone (RSE)");
+    assert(std::string_view(Names::getMetLocationName(1, 57)) == "Safari Zone (Hoenn)");
+    assert(std::string_view(Names::getMetLocationName(2, 57)) == "Safari Zone (Hoenn)");
+    assert(std::string_view(Names::getMetLocationName(3, 57)) == "Safari Zone (Hoenn)");
     assert(std::string_view(Names::getMetLocationName(4, 88)) == "Pallet Town");
     assert(std::string_view(Names::getMetLocationName(5, 88)) == "Pallet Town");
     assert(std::string_view(Names::getMetLocationName(0, 57)).empty());

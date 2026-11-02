@@ -11,16 +11,17 @@ const auto* g3=Names::getMoveBattleStats(202,GameVersion::FRLG);const auto* g4=N
 const auto* hypDP=Names::getMoveBattleStats(95,GameVersion::DP);const auto* hypD=Names::getMoveBattleStats(95,GameVersion::D);const auto* hypP=Names::getMoveBattleStats(95,GameVersion::P);const auto* hypPt=Names::getMoveBattleStats(95,GameVersion::PT);const auto* hypHG=Names::getMoveBattleStats(95,GameVersion::HGSS);assert(hypDP&&hypD&&hypP&&hypPt&&hypHG&&hypDP->accuracy==70&&hypD->accuracy==70&&hypP->accuracy==70&&hypPt->accuracy==60&&hypHG->accuracy==60);
 assert(M::numberedName(33)=="033 - Tackle");assert(M::numberedName(0)=="000 - Empty move slot");assert(M::statsLabel(33,GameVersion::RBY)=="Acc 95  |  Pwr 35  |  PP 35");assert(M::statsLabel(117,GameVersion::RBY)=="Acc 100  |  Pwr --  |  PP 10");assert(M::statsLabel(117,GameVersion::PT)=="Acc --  |  Pwr 1  |  PP 10");
 assert(Names::getMoveBattleStats(166,GameVersion::RBY)==nullptr);assert(Names::getMoveBattleStats(252,GameVersion::GSC)==nullptr);assert(Names::getMoveBattleStats(355,GameVersion::FRLG)==nullptr);assert(Names::getMoveBattleStats(468,GameVersion::PT)==nullptr);
-const auto compact=M::compactPickerLayout();assert(compact.width==760&&compact.height==520&&compact.visibleRows==9&&compact.rowStart==86&&compact.rowStep==42&&compact.highlightHeight==38);
+const auto compact=M::compactPickerLayout();assert(compact.width==760&&compact.height==520&&compact.visibleRows==10&&compact.rowStart==86&&compact.rowStep==42&&compact.highlightHeight==38);
 // The active Gen I-IV picker path now uses one shared, aligned text renderer.
 // Gen II's normal editor is hosted in Gen2HardwarePickerFix.inc; the older
 // picker overlay still supplies fallback routing, not final displayed rows.
+// Gen I-V all use the shared compact Move chooser row (UI/SharedMovesPanel.h).
 for(const char* p:{"src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
                    "src/UI/Gen2HardwarePickerFix.inc",
                    "src/UI/Gen3SharedPokemonSurface.inc",
-                   "src/UI/Gen4SharedPokemonSurface.inc"}){
+                   "src/UI/SharedPokemonEditorSurface.inc"}){
     const auto s=read(p);
-    assert(s.find("MovePickerRowUI::draw(")!=std::string::npos);
+    assert(s.find("SharedMovesPanel::drawChooserRow(")!=std::string::npos);
 }
 const auto ui=read("include/UI/MovePickerRowUI.h");
 assert(ui.find("Presentation::numberedName(move)")!=std::string::npos);

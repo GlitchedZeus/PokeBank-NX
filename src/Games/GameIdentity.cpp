@@ -7,7 +7,7 @@ namespace PokeVault::Games {
         using enum Platform;
         using enum SourceSupport;
 
-        constexpr std::array<GameDescriptor, 32> kGames{{
+        constexpr std::array<GameDescriptor, 42> kGames{{
             {"red_gb",                       "Red",               GameBoy,        1, 0, ReadOnly},
             {"blue_gb",                      "Blue",              GameBoy,        1, 0, ReadOnly},
             {"yellow_gb",                    "Yellow",            GameBoy,        1, 0, ReadOnly},
@@ -34,6 +34,20 @@ namespace PokeVault::Games {
             {"white2_nds",                    "White 2",           NintendoDS,     5, 0, Planned},
             {"firered_switch",               "FireRed",           NintendoSwitch, 3, 0x0100554023408000ULL, NativeSwitch},
             {"leafgreen_switch",             "LeafGreen",         NintendoSwitch, 3, 0x010034D02340E000ULL, NativeSwitch},
+            // Q04 (independent QA 2026-10-27): every localized FireRed/LeafGreen Switch release is its
+            // own title, so each keeps its own identity and backup namespace (exactGameBackupsRoot keys on
+            // the id). Title ids: upstream PKSE include/Enums/GameVersion.h:163-174 at a79fe61a. The
+            // English pair above keeps its original id so existing backups stay where they are.
+            {"firered_switch_jpn",           "FireRed (JPN)",     NintendoSwitch, 3, 0x01006FA0233F8000ULL, NativeSwitch},
+            {"firered_switch_fra",           "FireRed (FRA)",     NintendoSwitch, 3, 0x01004B3023412000ULL, NativeSwitch},
+            {"firered_switch_ita",           "FireRed (ITA)",     NintendoSwitch, 3, 0x010092302342A000ULL, NativeSwitch},
+            {"firered_switch_deu",           "FireRed (DEU)",     NintendoSwitch, 3, 0x01007F8023416000ULL, NativeSwitch},
+            {"firered_switch_esp",           "FireRed (ESP)",     NintendoSwitch, 3, 0x0100EB702342C000ULL, NativeSwitch},
+            {"leafgreen_switch_jpn",         "LeafGreen (JPN)",   NintendoSwitch, 3, 0x0100F1E0233FA000ULL, NativeSwitch},
+            {"leafgreen_switch_fra",         "LeafGreen (FRA)",   NintendoSwitch, 3, 0x010087C02342E000ULL, NativeSwitch},
+            {"leafgreen_switch_ita",         "LeafGreen (ITA)",   NintendoSwitch, 3, 0x01005C7023432000ULL, NativeSwitch},
+            {"leafgreen_switch_deu",         "LeafGreen (DEU)",   NintendoSwitch, 3, 0x0100FD6023430000ULL, NativeSwitch},
+            {"leafgreen_switch_esp",         "LeafGreen (ESP)",   NintendoSwitch, 3, 0x01002B5023434000ULL, NativeSwitch},
             {"letsgo_pikachu_switch",        "Let's Go Pikachu",  NintendoSwitch, 7, 0x010003F003A34000ULL, NativeSwitch},
             {"letsgo_eevee_switch",          "Let's Go Eevee",    NintendoSwitch, 7, 0x0100187003A36000ULL, NativeSwitch},
             {"sword_switch",                 "Sword",             NintendoSwitch, 8, 0x0100ABF008968000ULL, NativeSwitch},
@@ -59,6 +73,24 @@ namespace PokeVault::Games {
         for (const auto& game : kGames)
             if (game.switchTitleId == titleId) return &game;
         return nullptr;
+    }
+
+    std::string_view switchReleaseFamily(std::string_view id) noexcept {
+        if (id.rfind("firered_switch", 0) == 0 && findGame(id)) return "firered_switch";
+        if (id.rfind("leafgreen_switch", 0) == 0 && findGame(id)) return "leafgreen_switch";
+        return id;
+    }
+
+    uint8_t switchReleaseLanguage(std::string_view id) noexcept {
+        // PKHeX LanguageID values, as upstream PKSE's title table records them.
+        if (switchReleaseFamily(id) == id && id != "firered_switch" && id != "leafgreen_switch") return 0;
+        const std::string_view suffix = id.substr(id.find_last_of('_') + 1);
+        if (suffix == "jpn") return 1;
+        if (suffix == "fra") return 3;
+        if (suffix == "ita") return 4;
+        if (suffix == "deu") return 5;
+        if (suffix == "esp") return 7;
+        return 2;  // the original English releases
     }
 
     std::string_view platformName(Platform platform) noexcept {
@@ -109,7 +141,8 @@ namespace PokeVault::Games {
         return {};
     }
 
-    std::string_view gameRegionBackdropKey(std::string_view id) noexcept {
+    std::string_view gameRegionBackdropKey(std::string_view exactId) noexcept {
+        const std::string_view id = switchReleaseFamily(exactId);
         if (id == "red_gb" || id == "blue_gb" || id == "yellow_gb" ||
             id == "firered_gba" || id == "leafgreen_gba" ||
             id == "firered_switch" || id == "leafgreen_switch" ||

@@ -1,16 +1,25 @@
+#include "UI/ClassicSourceGuard.h"
 #include "UI/ClassicInventoryOverlay.h"
+#include "UI/SharedBoxedRows.h"   // R2-BUG-012: Add Item picker rows use the shared boxed style
 
 #include "Integration/Common/ClassicStrictValidators.h"
+#include "Integration/Common/JapaneseEditingGate.h"
 #include "Integration/Common/VerifiedStagedExport.h"
 #include "Integration/Gen1/Gen1StagedInventoryEditor.h"
 #include "Integration/Gen2/Gen2StagedEditor.h"
 #include "Integration/Gen3/Gen3StagedInventoryEditor.h"
+#include "Inventory/BulkItemAdaptersClassic.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Legacy/GSCReadOnlyTrainer.h"
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "Trainer/Trainer.h"
 #include "UI/ClassicInventoryUIModel.h"
+#include "UI/InventoryHelp.h"
+#include "UI/ClassicGenericUiGuard.h"
+#include "UI/SharedBagAddFlow.h"
+#include "UI/SharedBagAddPicker.h"
+#include "UI/SharedBagTopUp.h"
 #include "UI/InventoryUIContract.h"
 #include "UI/Common.h"
 #include "UI/ScreenChrome.h"
@@ -56,21 +65,20 @@ enum class SourceKind : uint8_t { None, Gen1, Gen2, Gen3 };
 
 struct OverlayState {
     const TrainerViewScreen* owner = nullptr;
+    uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
     bool presentationInitialized = false;
     bool pickerActive = false;
     bool optionsActive = false;
-    bool reviewActive = false;
     bool helpActive = false;
     bool warningActive = false;
     bool discardConfirmActive = false;
+    bool removeConfirmActive = false;
     int pickerRow = 0;
     int optionsRow = 0;
-    int reviewRow = 0;
     TouchScrollState pickerScroll;
     TouchPickerViewport pickerViewport;
-    TouchScrollState reviewScroll;
-    TouchPickerViewport reviewViewport;
+    SharedScrollbar::State pickerScrollbar;   // R2-SCROLLBAR: draggable thumb on the Add Item list
     ClassicPocket pendingPocket = ClassicPocket::Items;
     uint16_t pendingItem = 0;
     uint16_t pendingQuantity = 0;
@@ -78,13 +86,14 @@ struct OverlayState {
     std::vector<uint16_t> pickerNativeItems;
     ItemPickerSort::Mode pickerSort = ItemPickerSort::Mode::Native;
     std::string lastExportDirectory;
+    UI::SharedBagTopUp::Ui topUp;   // Top Up / Add Missing (owner Oct 28, Feature B)
 };
 
 OverlayState& stateFor(const TrainerViewScreen& screen) {
     static OverlayState state;
-    if (state.owner != &screen || state.sourceGameId != screen.sourceGameId) {
+    if ((state.owner != &screen || state.ownerSerial != screen.instanceSerial) || state.sourceGameId != screen.sourceGameId) {
         state = {};
-        state.owner = &screen;
+        state.owner = &screen; state.ownerSerial = screen.instanceSerial;
         state.sourceGameId = screen.sourceGameId;
     }
     return state;
@@ -387,6 +396,9 @@ std::string exportStagedCopy(TrainerViewScreen& screen, std::string& error) {
         error = "No pending changes to export";
         return {};
     }
+    // Round 6 (7E G5): the source must be the bytes opened (ClassicSourceGuard.h).
+    if (!PokeBank::UIModel::ClassicSourceGuard::unchangedSinceOpen(screen.classicSourceSnapshot, error))
+        return {};
     auto edited = finalizedBytes(screen, error);
     if (edited.empty()) {
         if (error.empty()) error = "Staged save finalization failed";
@@ -439,6 +451,20 @@ bool currentPocket(TrainerViewScreen& screen, ClassicGame& game, ClassicPocket& 
     game = *g;
     pocket = *p;
     return true;
+}
+
+// R2-BUG-006: the classic Add picker is the shared compact grid (UI/SharedItemGridPicker.h).
+// Input and draw build it from the SAME native labels, so the cell a tap / D-pad / scrollbar
+// lands on is the cell drawn.
+UI::SharedItemGridPicker::Grid classicPickerGrid(const TrainerViewScreen& screen, const OverlayState& state) {
+    const auto game = exactGame(screen);
+    const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)
+                             : std::optional<ClassicPocket>{};
+    return UI::SharedBagAddPicker::pickerGrid(static_cast<int>(state.pickerItems.size()), [&](int index) {
+        return game && pocket
+            ? PokeVault::Inventory::displayItemName(*game, *pocket, state.pickerItems[static_cast<std::size_t>(index)])
+            : std::string();
+    });
 }
 
 bool currentItem(TrainerViewScreen& screen, uint16_t& itemId, uint16_t& quantity) {
@@ -526,28 +552,207 @@ bool selectPickerItem(TrainerViewScreen& screen) {
     ClassicPocket pocket{};
     if (!currentPocket(screen, game, pocket) || state.pickerItems.empty()) return false;
     const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(state.pickerRow)];
-    const uint16_t existing = stagedQuantity(screen, pocket, itemId);
-    if (existing != 0) {
-        state.pickerActive = false;
-        refreshPresentation(screen);
-        focusItem(screen, itemId);
-        screen.postStatus("Already in this category; focused the existing item", 240);
-        return true;
-    }
-
-    const auto rule = PokeVault::Inventory::quantityRule(game, pocket, itemId);
-    uint16_t quantity = rule.minimum;
-    if (rule.editable) {
-        const auto result = Utils::promptNumber(
-            "Add " + PokeVault::Inventory::displayItemName(game, pocket, itemId),
-            static_cast<int>(rule.minimum), static_cast<int>(rule.minimum),
-            static_cast<int>(rule.maximum));
-        if (!result.accepted) return true;
-        quantity = static_cast<uint16_t>(result.value);
+    // The shared Gen I-V Add decision (UI/SharedBagAddFlow.h): an existing stack is focused,
+    // a new item is staged at quantity 1 with NO numpad; A on its row edits the quantity later.
+    // Capacity is left to the staged writer, whose refusal names the exact full pocket.
+    PokeBank::UIModel::BagAdd::PocketState pocketState{};
+    pocketState.heldInPocket = stagedQuantity(screen, pocket, itemId);
+    const PokeVault::Inventory::QuantityPolicy::ItemQuantityRule rule =
+        PokeBank::UIModel::classicItemQuantityRule(game, pocket, itemId);
+    const auto decision = PokeBank::UIModel::BagAdd::decidePick(rule, pocketState);
+    using PokeBank::UIModel::BagAdd::PickOutcome;
+    switch (decision.outcome) {
+        case PickOutcome::NotAllowed:
+            screen.postStatus(decision.message, 240);
+            return true;
+        case PickOutcome::FocusExisting:
+            state.pickerActive = false;
+            refreshPresentation(screen);
+            focusItem(screen, itemId);
+            screen.postStatus(decision.message, 240);
+            return true;
+        case PickOutcome::PocketFull:
+            state.pickerActive = false;
+            screen.postStatus(decision.message, 300);
+            return true;
+        case PickOutcome::StageNew:
+            break;
     }
     state.pickerActive = false;
-    queueMutationWithWarning(screen, game, pocket, itemId, quantity);
+    queueMutationWithWarning(screen, game, pocket, itemId, decision.quantity);
     return true;
+}
+
+// ---- Top Up / Add Missing (owner Oct 28, Feature B) -----------------------------------------
+// ZR on the Bag (or Inventory Options) opens the shared flow (UI/SharedBagTopUp.h). The plan is
+// built from the staged editor through the generation's adapter (Inventory/BulkItemAdaptersClassic.h)
+// with the Add picker's own item list; A in the preview stages it all or nothing; B stages nothing.
+// Only a source with a staged editor gets here (backendAvailable): a Japanese Gen I / II save, read-
+// only while Integration/Common/JapaneseEditingGate.h is false, has none and is never offered it.
+namespace BI = PokeVault::Inventory::BulkItems;
+constexpr int kTopUpTouchBase = 9400;
+
+std::vector<BI::PocketState> topUpPockets(TrainerViewScreen& screen, BI::Game& game, std::string& error) {
+    switch (sourceKind(screen.sourceGameId)) {
+        case SourceKind::Gen1: {
+            const auto* e = rbyTrainer(screen)->stagedInventory();
+            if (!e) break;
+            game = BI::Gen1Bag::game(*e);
+            return BI::Gen1Bag::pockets(*e, error);
+        }
+        case SourceKind::Gen2: {
+            const auto* e = gscTrainer(screen)->stagedEditor();
+            if (!e) break;
+            game = BI::Gen2Bag::game(*e);
+            return BI::Gen2Bag::pockets(*e, error);
+        }
+        case SourceKind::Gen3: {
+            const auto* e = gen3Trainer(screen)->stagedInventory();
+            if (!e) break;
+            game = BI::Gen3Bag::game(*e);
+            return BI::Gen3Bag::pockets(*e, error);
+        }
+        case SourceKind::None:
+            break;
+    }
+    if (error.empty()) error = "Staged classic inventory editing is unavailable; source remains read-only";
+    return {};
+}
+
+BI::ApplyResult applyTopUp(TrainerViewScreen& screen, const BI::Plan& plan) {
+    switch (sourceKind(screen.sourceGameId)) {
+        case SourceKind::Gen1:
+            if (auto* e = rbyTrainer(screen)->stagedInventory()) return BI::apply(*e, plan, BI::Gen1Bag::Adapter(*e));
+            break;
+        case SourceKind::Gen2:
+            if (auto* e = gscTrainer(screen)->stagedEditor()) return BI::apply(*e, plan, BI::Gen2Bag::Adapter{});
+            break;
+        case SourceKind::Gen3:
+            if (auto* e = gen3Trainer(screen)->stagedInventory()) return BI::apply(*e, plan, BI::Gen3Bag::Adapter{});
+            break;
+        case SourceKind::None:
+            break;
+    }
+    BI::ApplyResult refused;
+    refused.error = "Staged classic inventory editing is unavailable; source remains read-only";
+    return refused;
+}
+
+std::string topUpItemName(ClassicGame game, BI::Pocket pocket, uint16_t itemId) {
+    const auto classic = BI::classicPocketFor(game, pocket);
+    return classic ? PokeVault::Inventory::displayItemName(game, *classic, itemId) : std::to_string(itemId);
+}
+std::string topUpPocketName(ClassicGame game, BI::Pocket pocket) {
+    const auto classic = BI::classicPocketFor(game, pocket);
+    return classic ? std::string(PokeVault::Inventory::pocketName(*classic)) : std::string("Bag");
+}
+
+// A Japanese Gen I / II save stays read-only while the gate is closed: Top Up is never offered there,
+// even where an older path still builds a staged Bag editor for it (the Gen I inventory editor).
+bool japaneseReadOnly(TrainerViewScreen& screen) noexcept {
+    if (Common::kJapaneseClassicEditingEnabled) return false;
+    switch (sourceKind(screen.sourceGameId)) {
+        case SourceKind::Gen1: {
+            const auto* e = rbyTrainer(screen)->stagedInventory();
+            return !e || e->region() == PokeVault::Integration::Gen1::RegionLayout::Japanese;
+        }
+        case SourceKind::Gen2: {
+            const auto* e = gscTrainer(screen)->stagedEditor();
+            return !e || e->metadata().region == PokeVault::Integration::Gen2::RegionLayout::Japanese;
+        }
+        case SourceKind::Gen3:
+        case SourceKind::None:
+            return false;
+    }
+    return false;
+}
+
+void openTopUp(TrainerViewScreen& screen) {
+    std::string error;
+    ClassicGame game{};
+    ClassicPocket pocket{};
+    if (!backendAvailable(screen, error)) { screen.postStatus(error, 360); return; }
+    if (japaneseReadOnly(screen)) {
+        screen.postStatus("Japanese Generation I / II saves are read-only; Top Up is not offered", 360);
+        return;
+    }
+    if (!currentPocket(screen, game, pocket)) {
+        screen.postStatus("This inventory category is not supported by the selected classic game", 300);
+        return;
+    }
+    PokeBank::UIModel::BagTopUp::open(stateFor(screen).topUp.model);
+}
+
+// Builds the exact plan for the SETUP choices; `out` receives it with the pockets it covers.
+bool planTopUp(TrainerViewScreen& screen, BI::Plan& out, std::vector<BI::Pocket>& covered, std::string& error) {
+    auto& ui = stateFor(screen).topUp;
+    ClassicGame game{};
+    ClassicPocket pocket{};
+    if (!currentPocket(screen, game, pocket)) { error = "This inventory category is not supported"; return false; }
+    BI::Game policyGame{};
+    const auto pockets = topUpPockets(screen, policyGame, error);
+    if (pockets.empty()) return false;
+    const auto request = PokeBank::UIModel::BagTopUp::request(
+        ui.model, PokeVault::Inventory::quantityPolicyPocket(pocket), BI::bagPockets(pockets));
+    covered = request.pockets;
+    out = BI::plan(policyGame, request, pockets);
+    return true;
+}
+
+void handleTopUpInput(TrainerViewScreen& screen, uint64_t down, int touchId, const TouchInput& touch) {
+    namespace Model = PokeBank::UIModel::BagTopUp;
+    auto& ui = stateFor(screen).topUp;
+    const auto action = UI::SharedBagTopUp::handleInput(ui, down, touchId, kTopUpTouchBase, touch);
+    switch (action) {
+        case Model::Action::None:
+        case Model::Action::Close:
+            return;
+        case Model::Action::PromptAmount:
+            (void)UI::SharedBagTopUp::promptAmount(ui);
+            return;
+        case Model::Action::BuildPreview: {
+            BI::Plan plan;
+            std::vector<BI::Pocket> covered;
+            std::string error;
+            ClassicGame game{};
+            ClassicPocket pocket{};
+            if (!currentPocket(screen, game, pocket) || !planTopUp(screen, plan, covered, error)) {
+                screen.postStatus(error.empty() ? "Top Up / Add Missing is unavailable here" : error, 360);
+                return;
+            }
+            Model::showPreview(ui.model, std::move(plan), covered,
+                [&](BI::Pocket p, uint16_t id) { return topUpItemName(game, p, id); },
+                [&](BI::Pocket p) { return topUpPocketName(game, p); });
+            return;
+        }
+        case Model::Action::Confirm: {
+            // Re-plan against the editor as it is now; stage only the exact plan the preview showed.
+            BI::Plan again;
+            std::vector<BI::Pocket> covered;
+            std::string error;
+            if (!planTopUp(screen, again, covered, error) || !Model::samePlan(again, ui.model.plan)) {
+                screen.postStatus(error.empty() ? "The Bag changed; preview again" : error, 360);
+                Model::close(ui.model);
+                return;
+            }
+            const auto result = applyTopUp(screen, ui.model.plan);
+            Model::close(ui.model);
+            ui.scrollbar.reset();
+            if (!result.applied) {
+                screen.postStatus("Nothing staged: " + result.error, 420);
+                return;
+            }
+            if (!refreshPresentation(screen)) {
+                screen.postStatus("Changes staged, but the inventory presentation could not refresh", 360);
+                return;
+            }
+            const auto visible = screen.visibleItemIndices();
+            if (screen.selectedItemIndex >= static_cast<int>(visible.size()))
+                screen.selectedItemIndex = std::max(0, static_cast<int>(visible.size()) - 1);
+            screen.postStatus(Model::appliedStatus(result.toppedUp, result.added), 420);
+            return;
+        }
+    }
 }
 
 void drawRow(PKSEFramebuffer& fb, int x, int y, int width, const std::string& text,
@@ -570,6 +775,10 @@ bool stagedEditingAvailable(TrainerViewScreen& screen) {
     if (!isClassicSource(screen)) return false;
     std::string error;
     return backendAvailable(screen, error);
+}
+
+bool topUpAvailable(TrainerViewScreen& screen) {
+    return stagedEditingAvailable(screen) && !japaneseReadOnly(screen);
 }
 
 bool refreshPresentation(TrainerViewScreen& screen) {
@@ -610,6 +819,33 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         screen.currentPage = 0;
     }
 
+    if (state.topUp.active()) {
+        // Top Up / Add Missing owns every input while it is open (SETUP or PREVIEW).
+        handleTopUpInput(screen, down, touchId, touch);
+        return true;
+    }
+
+    if (state.removeConfirmActive) {
+        // The explicit Remove question owns every input: A confirms, B cancels.
+        switch (PokeBank::UIModel::classicRemoveConfirmStep((down & HidNpadButton_A) != 0,
+                                                            (down & HidNpadButton_B) != 0)) {
+            case PokeBank::UIModel::ClassicRemoveConfirm::Cancel:
+                state.removeConfirmActive = false;
+                break;
+            case PokeBank::UIModel::ClassicRemoveConfirm::Remove: {
+                state.removeConfirmActive = false;
+                ClassicGame game{};
+                ClassicPocket pocket{};
+                if (currentPocket(screen, game, pocket))
+                    queueMutationWithWarning(screen, game, state.pendingPocket, state.pendingItem, 0);
+                break;
+            }
+            case PokeBank::UIModel::ClassicRemoveConfirm::None:
+                break;
+        }
+        return true;
+    }
+
     if (state.warningActive) {
         if (down & HidNpadButton_B) { state.warningActive = false; return true; }
         if (down & HidNpadButton_A) {
@@ -635,24 +871,30 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
 
     if (state.pickerActive) {
         const int count = static_cast<int>(state.pickerItems.size());
-        constexpr int width = PokeBank::UIModel::ClassicAddItemPickerLayout::Width;
-        const int marginY = PokeBank::UIModel::ClassicAddItemPickerLayout::panelY(720);
-        constexpr int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
-        const int x = (1280 - width) / 2;
-        constexpr int height = PokeBank::UIModel::ClassicAddItemPickerLayout::Height;
-        const int listTop = marginY + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
-        const int listBottom = marginY + height - PokeBank::UIModel::ClassicAddItemPickerLayout::BottomInset;
-        const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
-        state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
-        const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
-        if (maxFirstRow > 0) {
+        // The shared Gen I-V compact grid (R2-BUG-006, UI/SharedItemGridPicker.h): the same cells
+        // the picker draws and publishes as touch targets; the viewport scrolls by grid rows.
+        namespace AddGrid = UI::SharedItemGridPicker;
+        const auto geometry = classicPickerGrid(screen, state);
+        const int rowH = AddGrid::kRule.rowHeight;
+        const int visibleRows = std::max(1, geometry.visibleRows);
+        const int columns = geometry.columns;
+        state.pickerViewport.ensure(state.pickerRow, count, visibleRows, columns);
+        const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows, columns);
+        // Shared scrollbar first: a held thumb moves the window, not the row, and owns the touch.
+        const auto pickerBar = SharedScrollbar::handleTouch(state.pickerScrollbar, SharedScrollbar::sample(touch),
+            AddGrid::scrollModel(geometry, state.pickerViewport.firstRow));
+        if (pickerBar.changed) {
+            state.pickerViewport.firstRow = pickerBar.scroll;
+            state.pickerScroll.stop();
+        }
+        if (maxFirstRow > 0 && !pickerBar.consumed) {
             state.pickerScroll.updateVertical(
-                touch, x + 12, listTop, width - 24, listBottom - listTop,
+                touch, geometry.list.x, geometry.list.y, geometry.list.w, geometry.list.h,
                 rowH, state.pickerViewport.firstRow, maxFirstRow + 1);
         } else {
             state.pickerScroll.stop();
         }
-        if (touchId >= 0 && touchId < count) {
+        if (!pickerBar.consumed && touchId >= 0 && touchId < count) {
             state.pickerScroll.stop();
             state.pickerRow = touchId;
             down |= HidNpadButton_A;
@@ -671,30 +913,28 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
                     });
                 state.pickerScroll.stop();
                 state.pickerViewport.reset();
-                state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+                state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
             }
             return true;
         }
-        if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
-                    HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
+        const AddGrid::Keys gridKeys{
+            (down & HidNpadButton_Up) != 0, (down & HidNpadButton_Down) != 0,
+            (down & HidNpadButton_Left) != 0, (down & HidNpadButton_Right) != 0,
+            (down & HidNpadButton_L) != 0, (down & HidNpadButton_R) != 0,
+            (down & HidNpadButton_ZL) != 0, (down & HidNpadButton_ZR) != 0};
+        if (gridKeys.any()) {
+            // Grid navigation: D-pad cell to cell, L/R one screen of rows, ZL/ZR five.
+            // Use the visible touchscreen viewport for controller page steps.
+            const int page = visibleRows;
             state.pickerScroll.stop();
-        if (down & HidNpadButton_Up) state.pickerRow = (state.pickerRow - 1 + count) % count;
-        if (down & HidNpadButton_Down) state.pickerRow = (state.pickerRow + 1) % count;
-        // Use the visible touchscreen viewport for controller page steps, not the older
-        // pre-footer 11-row page constant.
-        const int page = visibleRows;
-        if (down & (HidNpadButton_L | HidNpadButton_Left))
-            state.pickerRow = std::max(0, state.pickerRow - page);
-        if (down & (HidNpadButton_R | HidNpadButton_Right))
-            state.pickerRow = std::min(count - 1, state.pickerRow + page);
-        if (down & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left |
-                    HidNpadButton_Right | HidNpadButton_L | HidNpadButton_R))
-            state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+            state.pickerRow = AddGrid::navigate(geometry, state.pickerRow, gridKeys, page);
+            state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
+        }
         if (down & HidNpadButton_B) { state.pickerScroll.stop(); state.pickerActive = false; return true; }
         if (down & HidNpadButton_A) {
-            if (!state.pickerViewport.containsSelection(state.pickerRow, count, visibleRows)) {
+            if (!state.pickerViewport.containsSelection(state.pickerRow, count, visibleRows, columns)) {
                 state.pickerScroll.stop();
-                state.pickerViewport.reveal(state.pickerRow, count, visibleRows);
+                state.pickerViewport.reveal(state.pickerRow, count, visibleRows, columns);
                 screen.postStatus("Focused item brought into view; press A again or tap a visible row", 220);
                 return true;
             }
@@ -710,40 +950,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         return true;
     }
 
-    if (state.reviewActive) {
-        const auto lines = pendingLines(screen);
-        const int count = static_cast<int>(lines.size());
-        constexpr int width = 900, y = 66, rowStep = 57, visibleRows = 7;
-        const int x = (1280 - width) / 2;
-        state.reviewViewport.ensure(state.reviewRow, count, visibleRows);
-        const int maxFirstRow = TouchPickerViewport::maxFirst(count, visibleRows);
-        if (maxFirstRow > 0) {
-            state.reviewScroll.updateVertical(
-                touch, x + 30, y + 94, width - 60, visibleRows * rowStep,
-                rowStep, state.reviewViewport.firstRow, maxFirstRow + 1);
-        } else {
-            state.reviewScroll.stop();
-        }
-        if (touchId >= 0 && touchId < count) {
-            state.reviewScroll.stop();
-            state.reviewRow = touchId;
-        }
-        if (down & (HidNpadButton_Up | HidNpadButton_Down))
-            state.reviewScroll.stop();
-        if (count > 0 && (down & HidNpadButton_Up)) state.reviewRow = (state.reviewRow - 1 + count) % count;
-        if (count > 0 && (down & HidNpadButton_Down)) state.reviewRow = (state.reviewRow + 1) % count;
-        if (down & (HidNpadButton_Up | HidNpadButton_Down))
-            state.reviewViewport.reveal(state.reviewRow, count, visibleRows);
-        if (down & HidNpadButton_B) {
-            state.reviewScroll.stop();
-            state.reviewActive = false;
-            state.optionsActive = true;
-        }
-        return true;
-    }
-
     if (state.optionsActive) {
-        constexpr int optionCount = 4;
+        constexpr int optionCount = 5;
         if (touchId >= 0 && touchId < optionCount) { state.optionsRow = touchId; down |= HidNpadButton_A; }
         if (down & HidNpadButton_Up) state.optionsRow = (state.optionsRow - 1 + optionCount) % optionCount;
         if (down & HidNpadButton_Down) state.optionsRow = (state.optionsRow + 1) % optionCount;
@@ -751,13 +959,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         if (!(down & HidNpadButton_A)) return true;
         switch (state.optionsRow) {
             case 0:
+                // Round 5: the Bag opens the ONE shared paged Review of this generation (named
+                // Bag, Pokemon and Trainer rows, X Export Copy, Y Discard All), as Gen IV's Bag
+                // does, not a separate list. B there returns to this Items view.
                 state.optionsActive = false;
-                state.reviewActive = true;
-                state.reviewRow = 0;
-                state.reviewScroll.reset();
-                state.reviewViewport.reset();
-                state.reviewViewport.ensure(
-                    state.reviewRow, static_cast<int>(pendingLines(screen).size()), 7);
+                if (!screen.openStagedReview(false))
+                    screen.postStatus("This source has no staged Review workspace", 300);
                 break;
             case 1: {
                 std::string error;
@@ -774,6 +981,11 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
                 else state.discardConfirmActive = true;
                 break;
             case 3:
+                // Top Up / Add Missing, the same flow ZR opens on the Bag.
+                state.optionsActive = false;
+                openTopUp(screen);
+                break;
+            case 4:
                 state.optionsActive = false;
                 break;
         }
@@ -794,6 +1006,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     using CategoryTouch = PokeBank::UIModel::InventoryCategoryTouch;
     if (touchId == CategoryTouch::PreviousId) down |= HidNpadButton_L;
     if (touchId == CategoryTouch::NextId) down |= HidNpadButton_R;
+
+    // ZR: Top Up / Add Missing (owner Oct 28, Feature B), offered only with a staged editor.
+    if (down & HidNpadButton_ZR) {
+        openTopUp(screen);
+        return true;
+    }
 
     std::optional<PokeBank::UIModel::ClassicInventoryInput> input;
     if (down & HidNpadButton_A) input = PokeBank::UIModel::ClassicInventoryInput::A;
@@ -831,6 +1049,13 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         return true;
     }
 
+    // Round 6 (B08): + opens the shared Review directly, as in Gen IV/V, so the Bag's Review is no
+    // longer buried in a menu. Its Export Copy and Discard All are X and Y there, Bag changes
+    // included. Review needs no Bag backend, so it opens even when this pocket cannot stage.
+    if (action == PokeBank::UIModel::ClassicInventoryAction::Options) {
+        if (screen.openStagedReview(false)) return true;
+    }
+
     std::string availabilityError;
     if (!backendAvailable(screen, availabilityError)) {
         screen.postStatus(availabilityError, 360);
@@ -838,6 +1063,8 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
     }
 
     if (action == PokeBank::UIModel::ClassicInventoryAction::Options) {
+        // Only a source with no staged Review workspace falls back to the Bag's own Options
+        // (Export / Discard of the staged Bag), so nothing becomes unreachable.
         state.optionsActive = true;
         state.optionsRow = 0;
         return true;
@@ -856,7 +1083,12 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
         return true;
     }
     if (action == PokeBank::UIModel::ClassicInventoryAction::RemoveItem) {
-        if (availability.removeItem) queueMutationWithWarning(screen, game, pocket, itemId, 0);
+        if (availability.removeItem) {
+            state.pendingPocket = pocket;
+            state.pendingItem = itemId;
+            state.pendingQuantity = 0;
+            state.removeConfirmActive = true;
+        }
         return true;
     }
     if (action == PokeBank::UIModel::ClassicInventoryAction::EditAmount) {
@@ -865,10 +1097,16 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
             else screen.postStatus("This item has a fixed/presence-only quantity", 240);
             return true;
         }
-        const auto rule = PokeVault::Inventory::quantityRule(game, pocket, itemId);
+        const PokeVault::Inventory::QuantityPolicy::ItemQuantityRule rule =
+            PokeBank::UIModel::classicItemQuantityRule(game, pocket, itemId);
+        const auto row = PokeBank::UIModel::BagAdd::decideRow(rule, quantity);
+        if (row.outcome != PokeBank::UIModel::BagAdd::RowOutcome::EditQuantity) {
+            screen.postStatus(row.message, 240);
+            return true;
+        }
         const auto result = Utils::promptNumber(
             "Edit " + PokeVault::Inventory::displayItemName(game, pocket, itemId),
-            static_cast<int>(quantity), static_cast<int>(rule.minimum), static_cast<int>(rule.maximum));
+            static_cast<int>(row.current), static_cast<int>(row.minimum), static_cast<int>(row.maximum));
         if (result.accepted)
             applyMutation(screen, pocket, itemId, static_cast<uint16_t>(result.value));
         return true;
@@ -879,14 +1117,58 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
 void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     if (!isClassicSource(screen)) return;
     auto& state = stateFor(screen);
-    if (!state.pickerActive && !state.optionsActive && !state.reviewActive && !state.helpActive &&
-        !state.warningActive && !state.discardConfirmActive) return;
+    if (!state.pickerActive && !state.optionsActive && !state.helpActive &&
+        !state.warningActive && !state.discardConfirmActive && !state.removeConfirmActive &&
+        !state.topUp.active()) return;
 
     screen.touchButtons.clear();
+    if (state.topUp.active()) {
+        const auto game = exactGame(screen);
+        const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)
+                                 : std::optional<ClassicPocket>{};
+        const int gen = generation(screen);
+        UI::SharedBagTopUp::drawTopUpModal(fb, screen.touchButtons, state.topUp, kTopUpTouchBase,
+            pocket ? std::string(PokeVault::Inventory::pocketName(*pocket)) : std::string("Bag"),
+            gen == 1 ? "Gen I Bag" : gen == 2 ? "Gen II Bag" : "Gen III Bag");
+        return;
+    }
+    // Bag confirmations draw through the shared Gen I-V presentation (UI/SharedBagAddPicker.h:
+    // SharedMenuGeometry RemoveConfirm / KeyItemWarning), the same as Gen IV/V.
+    if (state.removeConfirmActive || state.warningActive) {
+        SharedEditorChrome::beginModal(screen.touchButtons);
+        const auto confirmGame = exactGame(screen);
+        const std::string name = confirmGame
+            ? PokeVault::Inventory::displayItemName(*confirmGame, state.pendingPocket, state.pendingItem)
+            : std::string("this item");
+        const auto group = !confirmGame ? Enums::GameVersion::FRLG
+            : *confirmGame <= ClassicGame::Yellow ? Enums::GameVersion::RBY
+            : *confirmGame <= ClassicGame::Crystal ? Enums::GameVersion::GSC : Enums::GameVersion::FRLG;
+        if (state.removeConfirmActive) {
+            UI::SharedBagAddPicker::drawRemoveConfirm(fb, screen.touchButtons, group, "Remove " + name + "?",
+                state.pendingItem, name, stagedQuantity(screen, state.pendingPocket, state.pendingItem),
+                "Staged copy only; the original source save stays unchanged.");
+        } else {
+            UI::SharedBagAddPicker::drawKeyItemWarning(fb, screen.touchButtons, group, state.pendingItem,
+                                                       name, PokeVault::Inventory::pocketName(state.pendingPocket),
+                                                       state.pendingQuantity == 0);
+        }
+        return;
+    }
+
+    if (state.helpActive && !state.pickerActive && !state.discardConfirmActive) {
+        // Owner Oct 28 (Bag Help #2): the Gen I-III Bag Help is the same content-sized modal as the
+        // Gen IV / V Bag (ScreenChrome::drawInfoOverlay), not a full 900 x 610 panel of its own.
+        namespace InvHelp = PokeBank::UIModel::InventoryHelp;
+        const int generation = PokeBank::UIModel::ClassicGenericUi::classicGeneration(screen.sourceGameId);
+        drawInfoOverlay(fb, InvHelp::kTitle, InvHelp::lines(generation));
+        return;
+    }
+
     const bool compactPicker = state.pickerActive;
-    const int width = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::Width : 900;
-    const int y = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::panelY(fb.getHeight()) : 66;
-    const int height = compactPicker ? PokeBank::UIModel::ClassicAddItemPickerLayout::Height : 610;
+    const auto pickerGeometry = classicPickerGrid(screen, state);
+    const int width = compactPicker ? pickerGeometry.frame.w : 900;
+    const int y = compactPicker ? pickerGeometry.frame.y : 66;
+    const int height = compactPicker ? pickerGeometry.frame.h : 610;
     const int x = (fb.getWidth() - width) / 2;
     const int radius = compactPicker ? 16 : 18;
     if (compactPicker) {
@@ -904,16 +1186,6 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto pocket = game ? PokeBank::UIModel::classicInventoryPocketAt(*game, screen.selectedCategory)
                              : std::optional<ClassicPocket>{};
 
-    if (state.warningActive) {
-        fb.drawText(x + 30, y + 24, "Key Item Warning", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 100, "This Key Item may depend on story/event state.", Colors::Text, TextStyle::Body);
-        fb.drawText(x + 30, y + 142, "Changing inventory does not reproduce or reverse the associated story event.",
-                    Colors::TextDim, TextStyle::Body);
-        fb.drawText(x + 30, y + 196, "No unrelated event flags will be modified.", Colors::TextDim, TextStyle::Body);
-        drawNavBar(fb, {{"A", "Confirm"}, {"B", "Cancel"}});
-        return;
-    }
-
     if (state.discardConfirmActive) {
         fb.drawText(x + 30, y + 24, "Discard Staged Changes?", Colors::Text, TextStyle::Heading);
         fb.drawText(x + 30, y + 104, "This discards the shared staged classic-save transaction.", Colors::Text, TextStyle::Body);
@@ -923,97 +1195,75 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     }
 
     if (state.pickerActive && game && pocket) {
-        constexpr int pad = PokeBank::UIModel::ClassicAddItemPickerLayout::HorizontalPadding;
-        fb.drawText(x + pad, y + 16, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
-                    Colors::Text, TextStyle::Heading);
+        // Same shared compact grid as Gen IV/V (R2-BUG-006, UI/SharedItemGridPicker.h): sprite,
+        // name and held quantity per cell; one rectangle is the highlight and the touch target.
+        namespace AddGrid = UI::SharedItemGridPicker;
+        const auto& g = pickerGeometry;
+        const int pad = AddGrid::kRule.padX;
         const int count = static_cast<int>(state.pickerItems.size());
-        std::string pos = std::to_string(state.pickerRow + 1) + " / " + std::to_string(count);
-        int posW = 0, posH = 0;
-        fb.measureText(pos, posW, posH, TextStyle::Caption);
-        fb.drawText(x + width - pad - posW, y + 22, pos, Colors::TextDim, TextStyle::Caption);
-        fb.drawText(x + pad, y + 54,
-                    std::string("Supported native items | Sort: ") + ItemPickerSort::label(state.pickerSort),
+        fb.drawText(x + pad, y + 8, "Add Item to " + std::string(PokeVault::Inventory::pocketName(*pocket)),
+                    Colors::Text, TextStyle::Heading);
+        fb.drawText(x + pad, y + 40,
+                    std::string("Supported native items | Sort: ") + ItemPickerSort::label(state.pickerSort) +
+                        "  |  " + std::to_string(state.pickerRow + 1) + " / " + std::to_string(count),
                     Colors::TextSecondary, TextStyle::Caption);
-        fb.drawHDivider(x + pad, y + 76, width - pad * 2);
+        // The exact classic game group, so a TM/HM's detail and art use this generation's table.
+        const auto group = *game <= ClassicGame::Yellow
+            ? Enums::GameVersion::RBY
+            : *game <= ClassicGame::Crystal ? Enums::GameVersion::GSC : Enums::GameVersion::FRLG;
+        if (state.pickerRow >= 0 && state.pickerRow < count)
+            AddGrid::drawMachineDetail(fb, x + pad, y + AddGrid::kDetailTop, g.frame.w - 2 * pad, group,
+                PokeVault::Inventory::classicMachineMove(*game, state.pickerItems[static_cast<std::size_t>(state.pickerRow)]));
 
-        const int rowH = PokeBank::UIModel::ClassicAddItemPickerLayout::RowHeight;
-        const int listTop = y + PokeBank::UIModel::ClassicAddItemPickerLayout::ClassicListTopOffset;
-        // Controls live in the shared bottom glyph bar now, so the modal can use the old footer space.
-        const int listBottom = y + height - PokeBank::UIModel::ClassicAddItemPickerLayout::BottomInset;
-        const int visibleRows = std::max(1, (listBottom - listTop) / rowH);
-        state.pickerViewport.ensure(state.pickerRow, count, visibleRows);
-        const int start = state.pickerViewport.firstRow;
-        const int drawFirst = std::max(0, start - 1);
-        const int drawLast = std::min(count, start + visibleRows + 1);
-        const int liveOffset = state.pickerScroll.offset();
-        fb.setClipRect(x + 12, listTop, width - 24, listBottom - listTop);
-        for (int i = drawFirst; i < drawLast; ++i) {
-            const int rowY = listTop + (i - start) * rowH + liveOffset;
+        const int visibleRows = std::max(1, g.visibleRows);
+        state.pickerViewport.ensure(state.pickerRow, count, visibleRows, g.columns);
+        const int start = state.pickerViewport.firstRow;   // ensure() above clamps it to the grid
+        const auto label = [&](int i) {
             const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
             const std::string artName = PokeVault::Inventory::displayItemName(*game, *pocket, itemId);
             std::string label = artName;
-            if (stagedQuantity(screen, *pocket, itemId) != 0) label += "  (Already in pouch)";
-            // Gen IV visual parity: only focused row has the highlight. The
-            // old full-width blue row cards obscured the foreground contrast.
-            if (i == state.pickerRow)
-                fb.drawSelectionHighlight(x + 18, rowY, width - 36, rowH - 5);
-            fb.drawText(x + 32, rowY + 9, label, Colors::Text, TextStyle::Body);
-            // Native IDs are never interchangeable across generations.
-            // A label like TM43 cannot select art without its actual GBA/GBC
-            // taught move. PC Items uses the same discs as the TM/HM pocket.
-            std::string spriteKey = artName;
-            if (PokeVault::Inventory::classicMachineMove(*game, itemId) != 0) {
-                const auto group = *game <= ClassicGame::Yellow
-                    ? Enums::GameVersion::RBY
-                    : *game <= ClassicGame::Crystal
-                        ? Enums::GameVersion::GSC : Enums::GameVersion::FRLG;
-                spriteKey = ClassicMachineArtwork::artKey(group, itemId);
-            } else if (*game > ClassicGame::Yellow &&
-                       *game <= ClassicGame::Crystal) {
-                const std::string slug = ItemSpriteKey::slug(artName);
-                if (ItemSpriteKey::isGen2Mail(slug))
-                    spriteKey = "gsc-mail-icon-" + slug;
-            }
-            ItemPickerArtwork::draw(fb, x + width - 31, rowY + 3, 32, spriteKey);
-            if (rowY + rowH > listTop && rowY < listBottom)
-                appendClippedTouchButton(screen.touchButtons, i,
-                    x + 12, rowY, width - 24, rowH - 4,
-                    x + 12, listTop, width - 24, listBottom - listTop);
+            return label;
+        };
+        AddGrid::drawCells(fb, g, state.pickerRow, start, state.pickerScroll.offset(),
+            [&](const PokeBank::UIModel::SharedMenuGeometry::Rect& cell, int i, bool focused) {
+                // R2-BUG-012 boxed cell (the box IS the published touch rect), as drawMenuCell does.
+                SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cell.x, cell.y, cell.w, cell.h), {focused});
+                SharedBoxedRows::publish(screen.touchButtons, i, cell, {focused});
+            },
+            label,
+            [&](PKSEFramebuffer& fb, const PokeBank::UIModel::SharedMenuGeometry::Rect& sprite, int i) {
+                const uint16_t itemId = state.pickerItems[static_cast<std::size_t>(i)];
+                const std::string artName = label(i);
+                // Native IDs are never interchangeable across generations.
+                // A label like TM43 cannot select art without its actual GBA/GBC
+                // taught move. PC Items uses the same discs as the TM/HM pocket.
+                std::string spriteKey = artName;
+                if (PokeVault::Inventory::classicMachineMove(*game, itemId) != 0) {
+                    spriteKey = ClassicMachineArtwork::artKey(group, itemId);
+                } else if (*game > ClassicGame::Yellow &&
+                           *game <= ClassicGame::Crystal) {
+                    const std::string slug = ItemSpriteKey::slug(artName);
+                    if (ItemSpriteKey::isGen2Mail(slug))
+                        spriteKey = "gsc-mail-icon-" + slug;
+                }
+                ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w, spriteKey);
+            },
+            [&](int i) { return stagedQuantity(screen, *pocket, state.pickerItems[static_cast<std::size_t>(i)]); });
+        {
+            const auto track = AddGrid::scrollbarTrack(g, SharedScrollbar::kTrackWidth);
+            SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, track.x, track.y,
+                SharedScrollbar::kTrackWidth, track.h, AddGrid::scrollModel(g, start));
         }
-        fb.clearClip();
-        fb.drawText(x + pad, y + height - 38,
-            std::to_string(state.pickerRow + 1) + " / " + std::to_string(count) +
-            "  |  Choose exact native item (quantity confirmed afterward)",
-            Colors::Accent, TextStyle::Caption);
         drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
                         {"B", "Cancel"}, {"L/R", "Page"}, {"X", "Sort"}});
         return;
     }
 
-    if (state.helpActive) {
-        fb.drawText(x + 30, y + 20, "Inventory Help", Colors::Text, TextStyle::Heading);
-        const std::vector<std::string> lines{
-            "A   Edit amount (only when this item has an editable quantity)",
-            "X   Add item from the exact-game, exact-category catalog",
-            "Y   Remove the highlighted item",
-            "L / R   Previous / next supported inventory category",
-            "D-pad / Left Stick   Navigate (hold to repeat)",
-            "+   Inventory Options     -   Help     B   Back / Cancel",
-            "Empty valid categories show (None); X Add remains available.",
-            "Key Items may depend on story flags; warnings do not alter unrelated flags.",
-            "All edits are staged. Export creates an edited copy; the source save is not overwritten.",
-        };
-        int rowY = y + 78;
-        for (const auto& line : lines) { fb.drawText(x + 34, rowY, line, Colors::TextDim, TextStyle::Body); rowY += 48; }
-        drawNavBar(fb, {{"B", "Close Help"}});
-        return;
-    }
-
     if (state.optionsActive) {
         fb.drawText(x + 30, y + 20, "Inventory Options", Colors::Text, TextStyle::Heading);
-        const std::array<std::string, 4> rows{{
+        const std::array<std::string, 5> rows{{
             "Review Pending Changes (" + std::to_string(pendingLines(screen).size()) + ")",
-            "Export Staged Save", "Discard Staged Changes", "Cancel",
+            "Export Staged Save", "Discard Staged Changes", "Top Up / Add Missing", "Cancel",
         }};
         int rowY = y + 94;
         for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
@@ -1025,40 +1275,6 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return;
     }
 
-    if (state.reviewActive) {
-        const auto lines = pendingLines(screen);
-        fb.drawText(x + 30, y + 20, "Pending Classic Save Changes", Colors::Text, TextStyle::Heading);
-        fb.drawText(x + 30, y + 56, "Review only — use Inventory Options for Export or Discard.",
-                    Colors::TextDim, TextStyle::Caption);
-        if (lines.empty()) {
-            fb.drawText(x + 34, y + 116, "No pending changes.", Colors::TextDim, TextStyle::Body);
-        } else {
-            constexpr int visibleRows = 7;
-            const int count = static_cast<int>(lines.size());
-            state.reviewViewport.ensure(state.reviewRow, count, visibleRows);
-            const int start = state.reviewViewport.firstRow;
-            const int drawFirst = std::max(0, start - 1);
-            const int drawLast = std::min(count, start + visibleRows + 1);
-            const int liveOffset = state.reviewScroll.offset();
-            const int listTop = y + 94;
-            constexpr int rowStep = 57;
-            fb.setClipRect(x + 30, listTop, width - 60, visibleRows * rowStep);
-            for (int i = drawFirst; i < drawLast; ++i) {
-                const int rowY = listTop + (i - start) * rowStep + liveOffset;
-                drawRow(fb, x + 30, rowY, width - 60,
-                        lines[static_cast<std::size_t>(i)], i == state.reviewRow);
-                if (rowY + 48 > listTop && rowY < listTop + visibleRows * rowStep)
-                    appendClippedTouchButton(screen.touchButtons, i,
-                        x + 30, rowY, width - 60, 48,
-                        x + 30, listTop, width - 60, visibleRows * rowStep);
-            }
-            fb.clearClip();
-        }
-        drawNavBar(fb, {{"Up/Down", "Browse"}, {"B", "Back to Options"}});
-        if (!state.lastExportDirectory.empty())
-            fb.drawText(x + 30, y + height - 40, "Last export: " + state.lastExportDirectory,
-                        Colors::TextDim, TextStyle::Caption);
-    }
 }
 
 } // namespace UI::ClassicInventory

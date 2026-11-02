@@ -52,6 +52,7 @@ debug.log
 tools/__pycache__/
 # PKHeX source/resource files the gen_*.py scripts fetch from GitHub (tools/pkhex_source.py)
 tools/.pkhex_cache/
+tools/.pret_cache/
 
 # Return host build outputs (built by make into romfs/runtime)
 /runtime/return_host/build/
@@ -60,3 +61,4 @@ tools/.pkhex_cache/
 /runtime/return_host/*.nro
 /romfs/runtime/
 /romfs/game_cards/
+__pycache__/

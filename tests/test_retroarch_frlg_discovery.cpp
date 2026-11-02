@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -78,7 +79,8 @@ int main() {
     const fs::path core = saves / "mGBA";
     fs::create_directories(core);
 
-    const auto fixture = readFile("build-host/frlg_fixture.sav");
+    const char* fixturePath = std::getenv("POKEBANK_QA_GEN3_FIXTURE");
+    const auto fixture = readFile(fixturePath ? fixturePath : "build-host/frlg_fixture.sav");
     assert(fixture.size() == 0x20000);
     const fs::path fireRedPath = core / "Pokemon FireRed.sav";
     const fs::path leafGreenPath = saves / "Pokemon LeafGreen.srm";
@@ -344,6 +346,49 @@ int main() {
     assert(std::none_of(removed.sources.begin(), removed.sources.end(), [&](const auto& source) {
         return source.normalizedPath == fireRedPath.string();
     }));
+
+    // QA-F6 (ported from audit/app-qa-20261014 test_qa_known_failures): the exact release comes
+    // only from an isolated token of the save's own stem or immediate folder. A folder whose name
+    // merely contains a release name ("myleafgreenerybackups") or a higher directory never decides
+    // identity; such hint-less FR/LG saves stay AmbiguousIdentity, like a neutral folder.
+    {
+        const fs::path qa = temp / "qa-f6";
+        struct Case { fs::path path; const char* expectedGameId; };
+        const std::vector<Case> cases{
+            {qa / "myleafgreenerybackups" / "game.sav", nullptr},
+            {qa / "plain" / "game.sav", nullptr},
+            {qa / "leafgreen" / "archive" / "game.sav", nullptr},
+            {qa / "fireredding" / "notes.sav", nullptr},
+            {qa / "both" / "FireRed LeafGreen.sav", nullptr},
+            {qa / "leafgreen" / "game.sav", "leafgreen_gba"},
+            {qa / "a" / "Pokemon - LeafGreen Version (USA, Europe).sav", "leafgreen_gba"},
+            {qa / "b" / "PokemonLeafGreenVersion.srm", "leafgreen_gba"},
+            {qa / "c" / "Pokemon Leaf Green.sav", "leafgreen_gba"},
+            {qa / "d" / "pokemon_firered_rev1.sav", "firered_gba"},
+            {qa / "FireRed" / "slot.srm", "firered_gba"},
+        };
+        for (const auto& c : cases) {
+            fs::create_directories(c.path.parent_path());
+            writeFile(c.path, fixture);
+        }
+        const std::vector<std::string> qaRoots{qa.string()};
+        const auto scanned = PokeVault::Legacy::discoverFRLGSaves(qaRoots);
+        for (const auto& c : cases) {
+            const auto it = std::find_if(scanned.sources.begin(), scanned.sources.end(),
+                [&](const auto& source) { return source.path == c.path.string(); });
+            if (it == scanned.sources.end()) std::cerr << "QA-F6 missing: " << c.path << '\n';
+            assert(it != scanned.sources.end());
+            if (c.expectedGameId == nullptr) {
+                if (it->status != PokeVault::Legacy::LegacySourceStatus::AmbiguousIdentity)
+                    std::cerr << "QA-F6 guessed identity for " << c.path << ": " << it->gameId << '\n';
+                assert(it->status == PokeVault::Legacy::LegacySourceStatus::AmbiguousIdentity);
+            } else {
+                if (!it->ready() || it->gameId != c.expectedGameId)
+                    std::cerr << "QA-F6 lost true positive " << c.path << ": " << it->gameId << '\n';
+                assert(it->ready() && it->gameId == c.expectedGameId);
+            }
+        }
+    }
 
     fs::remove_all(temp);
     std::cout << "RetroArch FRLG read-only discovery tests passed\n";

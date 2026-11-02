@@ -2,6 +2,7 @@
 #define POKEBANK_INTEGRATION_GEN3_GEN3_STAGED_POKEMON_EDITOR_H
 
 #include "Integration/Gen3/PKSMGen3Adapter.h"
+#include "PokemonFile/NativePokemonFile.h"
 
 #include <array>
 #include <cstddef>
@@ -69,6 +70,7 @@ struct BoxPokemonEdit {
     std::optional<uint8_t> gender;
     std::optional<bool> shiny;
     std::optional<uint8_t> abilityNumber;
+    std::optional<uint8_t> form; // Unown letter 0..27 (PID-derived); refused for other species
 };
 
 struct BoxPokemonCreate {
@@ -94,6 +96,7 @@ struct BoxPokemonCreate {
     std::optional<uint8_t> gender;
     std::optional<bool> shiny;
     std::optional<uint8_t> abilityNumber;
+    std::optional<uint8_t> form; // Unown letter 0..27 (PID-derived); refused for other species
 };
 
 struct StagedPokemonChange {
@@ -102,6 +105,8 @@ struct StagedPokemonChange {
     std::string label;
     std::string beforeValue;
     std::string afterValue;
+    bool party = false;
+    bool createdDetail = false;   // CG74: one value of a created Pokemon; there is no "before"
 };
 
 class StagedPokemonEditor {
@@ -125,6 +130,9 @@ public:
 
     [[nodiscard]] std::optional<StagedPokemonRecord> boxedPokemon(
         std::size_t box, std::size_t slot, std::string& error) const;
+    [[nodiscard]] std::optional<StagedPokemonRecord> partyPokemon(std::size_t slot,std::string& error) const;
+    bool stagePartyPokemonEdit(std::size_t slot,const BoxPokemonEdit&,std::string& error);
+    std::optional<StagedPokemonRecord> previewPartyEdit(std::size_t slot,const BoxPokemonEdit&,std::string& error) const;
 
     static std::optional<StagedPokemonRecord> decodeRecord(
         const std::array<uint8_t,80>& raw, std::string& error);
@@ -141,6 +149,23 @@ public:
                               std::size_t destinationBox, std::size_t destinationSlot,
                               std::string& error);
     bool stageReleaseBoxPokemon(std::size_t box, std::size_t slot, std::string& error);
+
+    // Feature A (standalone files). Import places a decoded .pk3/.ek3 record (PokemonFile::decode)
+    // into an EMPTY box slot of the staged workspace, byte for byte: a box slot holds the 80-byte
+    // BoxPokemon, so a 100-byte party file contributes its first 80 bytes (pret pokeemerald /
+    // pokefirered include/pokemon.h struct Pokemon { struct BoxPokemon box; ... }, and
+    // include/pokemon_storage_system.h boxes[][] of struct BoxPokemon). Nothing is rerolled,
+    // repaired or converted; a record the editor's own field validators reject is refused.
+    bool stageImportBoxPokemon(std::size_t box, std::size_t slot,
+                               const PokeBank::PokemonFile::Decoded& file, std::string& error);
+    // Non-mutating export of the record as the open workspace holds it, in PKHeX plaintext PK3
+    // layout (decrypted, substructures in canonical Growth/Attacks/EVs/Misc order): 80 bytes for a
+    // box slot, 100 for a party slot with the party-only tail exactly as stored (Gen III never
+    // encrypts it: PKHeX PK3.EncryptParty is a no-op).
+    [[nodiscard]] std::optional<std::vector<uint8_t>> exportBoxPokemonFile(
+        std::size_t box, std::size_t slot, std::string& error) const;
+    [[nodiscard]] std::optional<std::vector<uint8_t>> exportPartyPokemonFile(
+        std::size_t slot, std::string& error) const;
 
     // Sparse carry is transactional: exact slots only, no compaction or overwrite.
     bool beginSparseMove(std::size_t box, const std::vector<std::size_t>& slots, std::string& error);
@@ -160,10 +185,15 @@ private:
                         TrainerRecord trainer);
 
     bool validateStaged(std::string& error) const;
+    std::vector<uint8_t> readPartyRaw(std::size_t slot,std::string& error) const;
+    bool stageRecordEdit(bool party,std::size_t box,std::size_t slot,const BoxPokemonEdit&,std::string& error);
     bool writeBoxRaw(std::size_t box, std::size_t slot, std::span<const uint8_t> raw,
                      std::string& error);
     [[nodiscard]] std::array<uint8_t, 80> readBoxRaw(
         std::size_t box, std::size_t slot, bool& ok) const noexcept;
+    // True when the slot holds a nonzero species index that boxedPokemon cannot read (an internal
+    // index with no National Dex number): such bytes are not an empty slot and are never overwritten.
+    [[nodiscard]] bool holdsUnreadableRecord(std::size_t box, std::size_t slot) const;
 
     std::vector<std::size_t> carrySlots_;
     std::vector<std::array<uint8_t, 80>> carryRecords_;

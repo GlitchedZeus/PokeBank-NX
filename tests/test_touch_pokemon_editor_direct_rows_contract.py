@@ -3,11 +3,25 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
+# The shared editor workspace lives in src/UI/SharedPokemonEditorSurface.inc,
+# which a generation surface includes textually. Expand that one include so a
+# surface's contract covers the shared code it compiles.
+def _expand_surface_includes(text: str) -> str:
+    import re as _re
+    def inline(match):
+        name = match.group(1)
+        nested = ROOT / "src/UI" / name
+        return match.group(0) + ("\n" + _expand_surface_includes(nested.read_text(encoding="utf-8"))
+                                 if nested.is_file() else "")
+    return _re.sub(r'#include "(SharedPokemonEditorSurface\.inc)"', inline, text)
+
+
 def read(rel: str) -> str:
     path = ROOT / rel
     if not path.is_file():
         raise AssertionError(f"missing touch contract source: {rel}")
-    return path.read_text(encoding="utf-8")
+    return _expand_surface_includes(path.read_text(encoding="utf-8"))
 
 def require(text: str, rel: str, *needles: str) -> None:
     for needle in needles:
@@ -41,15 +55,17 @@ assert "focusId(tapped, true);" in gen1_foundation
 
 classic_actions = read("src/UI/ClassicReleaseActionFix.inc")
 narrow_gen1 = read("include/UI/NarrowPokemonActionMenu.h")
+# One shared action order for every generation; no greyed placeholders.
 for needle in (
-    "constexpr Model gen1(", 'result.append("Add to Master Vault");',
-    'result.append("Add to Bank...");', 'result.append("Transfer to Game...");',
-    'result.append("Make Shiny");', 'result.append("Release", index(A::Remove));',
-    'result.append("Review Pending Changes", review);',
+    "constexpr Model gen1(", 'case A::Remove: return "Release";',
+    'case A::ReviewPendingChanges: return "Review Pending Changes";',
+    'inline constexpr const char* kOriginLegalityLabel = "Origin & Legality";',
 ):
     assert needle in narrow_gen1, f"Gen I narrow menu: {needle}"
-assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::gen1(' in classic_actions
-assert 'const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(' in classic_actions
+for gone in ('"Make Shiny"', '"Add to Master Vault"', '"Add to Bank..."', '"Transfer to Game..."'):
+    assert "append(" + gone not in narrow_gen1, f"Gen I narrow menu still lists {gone}"
+assert 'const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromGen1(actions);' in classic_actions
+assert 'const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);' in classic_actions
 assert 'screen.legacyProviderLabel() + " GB SOURCE / READ ONLY", 300' in classic_actions
 assert 'screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 500' in classic_actions
 assert "const int w = pokemon ? 650 : 560;" not in classic_actions
@@ -95,24 +111,31 @@ assert "std::clamp(touchTap - 2000, 1, 251);" not in gen2
 
 gen2_item = read("src/UI/Gen2PokemonEditorFoundation.inc")
 require(gen2_item, "src/UI/Gen2PokemonEditorFoundation.inc",
-        "screen.touchedButtonId(touch)",
-        "state.itemChoiceIndex = touchTap - 3000;",
-        "state.itemScroll.updateVertical(",
+        "SharedHeldItemInput::update(touch, state.itemScroll, state.itemViewport,",
+        "state.itemChoiceIndex, count, state.heldItemSearch.open(), px, py,",
         "state.itemScroll.offset()",
         "TouchPickerViewport itemViewport;",
-        "state.itemViewport.firstRow, maxFirstRow + 1",
-        "state.itemViewport.reveal(state.itemChoiceIndex, count, Model::rows, Model::columns)",
-        "state.itemViewport.containsSelection(",
         "const int firstRow = state.itemViewport.firstRow;",
         "appendClippedTouchButton(screen.touchButtons, 3000 + i")
+# Round 6 L06: the Gen II / III / IV-V Held Item grids share one input step. Its tap is
+# release-confirmed (justTapped, never a contact), scrolls the viewport only, and a hidden
+# focus is revealed before A commits (behaviour: tests/test_held_item_input.cpp).
+held_step = read("include/UI/SharedHeldItemInput.h")
+require(held_step, "include/UI/SharedHeldItemInput.h",
+        "if (!touch.justTapped() || !inside(viewport(modalX, modalY, searchOpen), touch.startX(), touch.startY()))",
+        "scroll.updateVertical(touch, v.x, v.y, v.w, v.h, Grid::rowPitch, view.firstRow, maxFirst + 1);",
+        "view.reveal(selected, count, Grid::rows, columns);",
+        "if (!view.containsSelection(selected, count, Grid::rows, columns)) {")
+assert "touchedButtonDownId" not in held_step and "justTouchedDown" not in held_step
 
 # A provisional contact in the Gen II held-item grid must not move the
 # choice, even if the finger began on an item and later turned into a swipe.
 gen2_contact = gen2_item.split("bool handleItemPicker(", 1)[1].split(
     "bool handleConfirm(", 1)[0]
 assert "touchedButtonDownId(touch)" not in gen2_contact
-assert "state.itemChoiceIndex = touchTap - 3000;" in gen2_contact
-assert "state.itemScroll.updateVertical(" in gen2_contact
+assert "SharedHeldItemInput::update(touch, state.itemScroll, state.itemViewport," in gen2_contact
+assert "state.itemChoiceIndex =" not in gen2_contact.split("SharedHeldItemInput::update(", 1)[0].split(
+    "if (down & HidNpadButton_X) {", 1)[0]
 
 gen3 = read("src/UI/Gen3SharedPokemonSurface.inc")
 for token in (
@@ -128,9 +151,9 @@ require(gen3, "src/UI/Gen3SharedPokemonSurface.inc",
         "screen.touchButtons.push_back({31500 + speciesStart + i",
         "actionTap >= 31600 && actionTap < 31600 + static_cast<int>(actions.count)",
         "drawNarrowPokemonActions(fb, screen.touchButtons, model, state.actionRow",
-        "state.reviewScroll = std::clamp",
-        "state.reviewTouchScroll.updateVertical(",
-        "state.reviewTouchScroll.offset()",
+        "SharedEditorChrome::drawReviewPanel",
+        "Review::move(state.reviewScroll",
+        "drawDiscardAllConfirm(screen,fb",
         "state.detailsTouchScroll.updateVertical(",
         "appendClippedTouchButton(screen.touchButtons, 31000 + row",
         "detailPixelOffset, firstDetailRow")
@@ -142,8 +165,7 @@ gen1_mode = read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").split(
 assert "touchedButtonDownId(touch)" not in gen1_mode
 for rel, snippets in (
     ("src/UI/Gen2PokemonEditorFoundation.inc", (
-        "const int touchTap = screen.touchedButtonId(touch);",
-        "state.itemChoiceIndex = touchTap - 3000;",
+        "SharedHeldItemInput::update(touch, state.itemScroll, state.itemViewport,",
     )),
     ("src/UI/Gen3SharedPokemonSurface.inc", (
         "const int touchTap = screen.touchedButtonId(touch);",
@@ -216,8 +238,8 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
         raise AssertionError(f"{rel}: picker move/item/value touch targets must be clipped")
     for expected in (
         "x + 24, viewportTop, w - 48, visible * moveLayout.rowStep",
-        "gridX, gridY - 3, w - 44, HeldItemGrid::rows * cellHeight",
-        "x + 22, viewportTop - 4, w - 44, visible * rowStep",
+        "gridX, gridY - 3, HeldItemGrid::gridWidth(state.heldItemSearch.open()), HeldItemGrid::rows * cellHeight",
+        "x + 22, viewportTop - 4, rowW, visible * rowStep",   # NEW-08: rowW = w - 44 minus the scrollbar gutter
     ):
         assert expected in src, f"{rel}: picker hitbox viewport mismatch: {expected}"
 
@@ -275,7 +297,8 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
     assert '{{"Y", "Confirm Release"}, {"B", "Cancel"}}' in relsrc
 gen3_review = read("src/UI/Gen3SharedPokemonSurface.inc").split(
     "bool handleReview(", 1)[1].split("bool handleReleaseConfirm(", 1)[0]
-assert gen3_review.count("state.actions = true;") == 2
+assert gen3_review.count("state.actions = screen.selectedMode != TrainerViewScreen::ViewMode::Trainer;") == 2
+assert "inventory->discard();" in gen3_review and "ClassicInventory::refreshPresentation(screen)" in gen3_review
 # B exit, Discard-All arm, Discard-All cancel and confirmed discard each reset repeat state.
 assert gen3_review.count("screen.controllerNavigation.reset();") == 4
 # Review -> Discard All is two-step for Gen III and IV: the first Y only arms a
@@ -286,7 +309,12 @@ for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurf
     arm = review.index("state.confirmDiscardAll = true;")
     assert review.index("staged->discard();") < arm or "if (state.confirmDiscardAll" in review[:review.index("staged->discard();")], \
         f"{rel}: discard() must be reachable only from the confirmed state"
-    assert '{{"Y", "Discard All"}, {"B", "Keep Changes"}}' in read(rel), f"{rel}: confirm legend missing"
+    presenter=read(rel).split("void drawDiscardAllConfirm(",1)[1].split("\n}",1)[0]
+    if "SharedEditorChrome::drawReviewDiscardConfirm(fb,screen.touchButtons)" in presenter:
+        legend=read("include/UI/SharedEditorChrome.h")
+        assert '{{"Y","Discard All"},{"B","Keep Changes"}}' in legend, f"{rel}: shared confirm legend missing"
+    else:
+        assert '{{"Y", "Discard All"}, {"B", "Keep Changes"}}' in read(rel), f"{rel}: confirm legend missing"
 
 # Cancelling Release restores the original focused action in Gen I/III
 # (matching Gen II/IV); B cannot leak into the restored popup.

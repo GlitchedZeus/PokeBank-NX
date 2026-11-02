@@ -42,16 +42,25 @@ enum class Action : uint8_t {
     Review,
     Close, // internal close/cancel semantic; product copy is always "Cancel".
     None,
+    Move, // box-to-empty-box move (Gen IV/V shared box vocabulary)
+    // Feature A (owner Oct 28): standalone Pokemon files (UI/PokemonFileDialog.h). Appended so every
+    // existing action keeps its value.
+    ImportFile, // empty box slot: stage one .pkN / .ekN file from the SD card (never writes there)
+    ExportFile, // occupied slot: write a NEW .pkN under the app's pokemon folder (never the save)
 };
 
 struct ActionCapabilities {
     bool canClone = true;
     bool canRemove = false;
     bool hasLegalityProvenance = false;
+    // Feature A: only a surface whose session can stage an import (a validated staged editor) sets
+    // canImportFile; canExportFile needs the same editor's non-mutating file export.
+    bool canImportFile = false;
+    bool canExportFile = false;
 };
 
 struct ActionSet {
-    std::array<Action, 8> values{};
+    std::array<Action, 10> values{};
     std::size_t count = 0;
 
     constexpr Action operator[](std::size_t index) const noexcept {
@@ -68,6 +77,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
 
     if (!occupied) {
         append(Action::Add);
+        if (capabilities.canImportFile) append(Action::ImportFile);
         if (hasPendingChanges) append(Action::Review);
         append(Action::Close);
         return result;
@@ -78,9 +88,23 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     if (capabilities.canClone) append(Action::Clone);
     if (capabilities.canRemove) append(Action::Remove);
     if (capabilities.hasLegalityProvenance) append(Action::LegalityProvenance);
+    if (capabilities.canExportFile) append(Action::ExportFile);
     if (hasPendingChanges) append(Action::Review);
     append(Action::Close);
     return result;
+}
+
+// Inserts one action just before the trailing Review / Cancel rows of an existing set (the shared
+// order puts Import after Add and Export after Origin & Legality). Used where a fixed base sheet is
+// kept verbatim (the Gen I-III Party sheet) and the file action is an addition to it.
+constexpr ActionSet withAction(ActionSet set, Action action) noexcept {
+    if (set.count >= set.values.size()) return set;
+    std::size_t at = set.count;
+    while (at > 0 && (set.values[at - 1] == Action::Close || set.values[at - 1] == Action::Review)) --at;
+    for (std::size_t i = set.count; i > at; --i) set.values[i] = set.values[i - 1];
+    set.values[at] = action;
+    ++set.count;
+    return set;
 }
 
 constexpr const char* actionLabel(Action action) noexcept {
@@ -89,11 +113,14 @@ constexpr const char* actionLabel(Action action) noexcept {
         case Action::Edit: return "Edit";
         case Action::Clone: return "Clone";
         case Action::Remove: return "Remove";
-        case Action::LegalityProvenance: return "Legality & Provenance";
+        case Action::LegalityProvenance: return "Origin & Legality";
         case Action::Add: return "Add Pokemon";
         case Action::Review: return "Review Pending Changes";
         case Action::Close: return "Cancel";
         case Action::None: return "";
+        case Action::Move: return "Move Pokemon";
+        case Action::ImportFile: return "Import from file";
+        case Action::ExportFile: return "Export to file";
     }
     return "";
 }
@@ -112,6 +139,9 @@ constexpr Surface surfaceForAction(Action action) noexcept {
         case Action::Add: return Surface::CreateDraft;
         case Action::Review: return Surface::Review;
         case Action::Clone:
+        case Action::Move:
+        case Action::ImportFile:
+        case Action::ExportFile:
         case Action::Remove:
         case Action::LegalityProvenance:
         case Action::Close:
@@ -230,6 +260,9 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::StatExperience:
             case FieldIdentity::OriginalTrainer:
             case FieldIdentity::TrainerId:
+            case FieldIdentity::Move:       // contextual Move editor (move, PP, PP Ups)
+            case FieldIdentity::MovePP:
+            case FieldIdentity::MovePPUps:
                 return FieldAccess::Editable;
             case FieldIdentity::Shiny:
                 return FieldAccess::Derived;
@@ -256,6 +289,9 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Pokerus:
             case FieldIdentity::OriginalTrainer:
             case FieldIdentity::TrainerId:
+            case FieldIdentity::Move:
+            case FieldIdentity::MovePP:
+            case FieldIdentity::MovePPUps:
                 return FieldAccess::Editable;
             case FieldIdentity::Gender:
             case FieldIdentity::Shiny:
@@ -275,32 +311,37 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
         }
     }
     if (generation == Generation::Gen3) {
-        // First Gen III editor milestone deliberately keeps every PID-correlated
-        // presentation field read-only. Nature, gender, shiny and ability share
-        // PID/ability-slot constraints and must not silently rewrite one another.
+        // Nature, gender, shiny, ability slot and the Unown letter are all PID-derived in PK3,
+        // exactly as in Gen IV. The staged Gen III editor edits them through a PID re-roll that
+        // keeps the other locked traits (Pokemon3FRLG setNature/setGender/setShiny/
+        // setAbilityNumber/setUnownLetter) and refuses an unrepresentable combination.
+        // Form is editable only for Unown; Deoxys' form follows the game, not the record.
         switch (field) {
             case FieldIdentity::Species:
             case FieldIdentity::Nickname:
+            case FieldIdentity::Form:
+            case FieldIdentity::Gender:
+            case FieldIdentity::Shiny:
             case FieldIdentity::Language:
             case FieldIdentity::Level:
             case FieldIdentity::Experience:
             case FieldIdentity::Friendship:
             case FieldIdentity::IV:
             case FieldIdentity::EV:
+            case FieldIdentity::Nature:
+            case FieldIdentity::Ability:
             case FieldIdentity::HeldItem:
             case FieldIdentity::Pokerus:
             case FieldIdentity::OriginalTrainer:
+            case FieldIdentity::TrainerId:
             case FieldIdentity::Ball:
             case FieldIdentity::MetLevel:
             case FieldIdentity::MetLocation:
+            case FieldIdentity::Move:
+            case FieldIdentity::MovePP:
+            case FieldIdentity::MovePPUps:
                 return FieldAccess::Editable;
-            case FieldIdentity::Form:
-            case FieldIdentity::Gender:
-            case FieldIdentity::Shiny:
-            case FieldIdentity::Nature:
-            case FieldIdentity::Ability:
             case FieldIdentity::CalculatedStats:
-            case FieldIdentity::TrainerId:
             case FieldIdentity::SecretId:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:
@@ -337,6 +378,9 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Form:
             case FieldIdentity::OriginalTrainer:
             case FieldIdentity::TrainerId:
+            case FieldIdentity::Move:
+            case FieldIdentity::MovePP:
+            case FieldIdentity::MovePPUps:
                 return FieldAccess::Editable;
             case FieldIdentity::SecretId:
             case FieldIdentity::PersonalityId:
@@ -384,12 +428,21 @@ constexpr FieldAccess fieldAccessForGeneration(Generation generation, FieldIdent
             case FieldIdentity::Pokerus:
             case FieldIdentity::MetLocation:
             case FieldIdentity::FatefulEncounter:
-                return FieldAccess::Editable;
-            case FieldIdentity::Shiny:
+            // Native PK5 byte 0x17; independent replay preserves OT/nickname text.
             case FieldIdentity::Language:
+            // PID shiny rule (Gen5PidCoordination withShiny5): keeps the low PID half, the
+            // ability bit, the hidden-ability flag (0x42) and N's flag untouched.
+            case FieldIdentity::Shiny:
+                return FieldAccess::Editable;
             case FieldIdentity::CalculatedStats:
             case FieldIdentity::PersonalityId:
             case FieldIdentity::OriginGame:
+            // Gen IV parity: origin dates, egg flag and egg location are
+            // shown read-only from the cited PK5 layout; never edited.
+            case FieldIdentity::MetDate:
+            case FieldIdentity::Egg:
+            case FieldIdentity::EggLocation:
+            case FieldIdentity::EggDate:
             case FieldIdentity::MoveCompatibility:
             case FieldIdentity::EncounterLegality:
             case FieldIdentity::Provenance:
@@ -460,9 +513,12 @@ constexpr Layout layoutFor(Generation generation, bool crystal = false) noexcept
     if (generation == Generation::Gen2)
         return {/*details*/static_cast<uint8_t>(crystal ? 13 : 9), /*values*/7, /*moves*/4, /*stat rows*/5, /*columns*/3};
     if (generation == Generation::Gen3)
-        return {/*details*/15, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
+        return {/*details*/16, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3}; // + Form (Unown letter)
     if (generation == Generation::Gen4)
         return {/*details*/16, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
+    // Gen V: the Gen IV rows in the same order, plus OT Gender and Fateful.
+    if (generation == Generation::Gen5)
+        return {/*details*/18, /*values*/11, /*moves*/4, /*stat rows*/6, /*columns*/3};
     return {/*details*/6, /*values*/6, /*moves*/4, /*stat rows*/5, /*columns*/3};
 }
 
@@ -614,9 +670,10 @@ constexpr CellFocus cellFocus(Focus focus) noexcept {
     return focus.column == 1 ? CellFocus{180, 90} : CellFocus{278, 98};
 }
 constexpr CellFocus cellFocusFor(Generation generation, Focus focus) noexcept {
-    // Gen III and Gen IV both expose six IV/EV stat rows. Earlier generations use the five-row
+    // Gen III, IV and V all expose six IV/EV stat rows. Earlier generations use the five-row
     // fallback where row 5 is a derived/full-width row instead of an editable IV/EV cell pair.
-    if (generation != Generation::Gen3 && generation != Generation::Gen4)
+    if (generation != Generation::Gen3 && generation != Generation::Gen4 &&
+        generation != Generation::Gen5)
         return cellFocus(focus);
     if (focus.panel == Panel::Details) return {104, 186};
     if (focus.panel == Panel::Moves) {
@@ -681,7 +738,7 @@ constexpr bool gen2ExternalPassiveViewUsesSharedSurface() noexcept { return true
 // (fixed-gender and genderless species remain non-toggleable).
 constexpr bool genderUsesInlineToggle(Generation generation) noexcept {
     return generation == Generation::Gen2 || generation == Generation::Gen3 ||
-           generation == Generation::Gen4;
+           generation == Generation::Gen4 || generation == Generation::Gen5;
 }
 constexpr bool genderOpensDedicatedPicker(Generation) noexcept { return false; }
 

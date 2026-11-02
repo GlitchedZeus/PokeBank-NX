@@ -1,12 +1,14 @@
 #ifndef POKEBANK_GEN5_STAGED_RECORD_H
 #define POKEBANK_GEN5_STAGED_RECORD_H
 
+#include "Names/DefaultSpeciesName.h"
 #include "Pokemon/Pokemon5ReadOnly.h"
 #include "Integration/Gen5/Gen5MovePP.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
 #include "Integration/Gen5/Gen5PersonalData.h"
 #include "Integration/Gen5/Gen5Progression.h"
 #include "Integration/Gen5/Gen5NativeText.h"
+#include "Integration/Gen5/Gen5PidCoordination.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -26,7 +28,8 @@ class StagedPokemon5Record {
 public:
     enum class Field : uint8_t { Nature, Friendship, IV, EV, HeldItem, Ball, MetLevel,
                                 Move, MovePP, MovePPUps, TrainerId, SecretId, OriginalTrainerGender,
-                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience, NicknameText, OriginalTrainerText, Species, CloneBox, RemoveBox, CreateBox };
+                                Pokerus, MetLocation, FatefulEncounter, Form, AbilitySlot, Gender, Level, Experience, NicknameText, OriginalTrainerText, Species, CloneBox, RemoveBox, CreateBox,
+                                Shiny, Personality, Language, ImportBox };
 
     static std::optional<StagedPokemon5Record> create(
         std::span<const uint8_t> source, std::string* error = nullptr,
@@ -41,6 +44,12 @@ public:
                                     black2White2);
     }
 
+    // Round 6 L06: an editor draft opened on an already-staged slot is a NEW record whose own
+    // original is the staged byte, while Keep and Review replay Pokerus on the workspace record,
+    // whose baseline is the SOURCE byte. The draft takes that same restore baseline, so both make
+    // the identical choice (restore the exact source strain/days, or keep / introduce strain 1)
+    // and Keep's byte-exact check cannot refuse a cycle through None.
+    void setPokerusRestoreBaseline(uint8_t sourceByte) noexcept { pokerusBaseline_=sourceByte; }
     [[nodiscard]] std::span<const uint8_t> originalBytes() const noexcept { return original_; }
     [[nodiscard]] std::span<const uint8_t> stagedBytes() const noexcept { return staged_; }
     [[nodiscard]] bool dirty() const noexcept { return staged_ != original_; }
@@ -117,6 +126,14 @@ public:
                 const auto gender=static_cast<uint8_t>((candidate[0x40]>>1)&3);
                 if(!genderAllowed5(target.info->genderRatio,gender))
                     return fail("Gen V target species cannot preserve this Pokémon gender");
+                // The PID is kept, and Gen V reads gender from its low byte against the
+                // species' ratio (PKSE 620c5f6: never a PID that contradicts stored gender).
+                // Refuse a change that would create that contradiction; a record that
+                // already carries one is left as found, never silently "repaired".
+                const uint32_t pid=Crypto::read32(candidate,0);
+                if(genderFromPid5(pid,personal.info->genderRatio)==gender &&
+                   genderFromPid5(pid,target.info->genderRatio)!=gender)
+                    return fail("Gen V target species would read this PID as the other gender");
                 const uint8_t slot=(candidate[0x42]&1)?2:
                     static_cast<uint8_t>((Crypto::read32(candidate,0)>>16)&1);
                 const uint8_t ability=abilityForSlot5(*target.info,slot);
@@ -167,8 +184,13 @@ public:
                 if(ability==0)
                     return fail("Gen V selected ability slot is not present for this form");
                 const uint32_t beforePID=Crypto::read32(candidate,0);
-                const uint32_t newPID=value==2?beforePID:
-                    ((beforePID&~(1u<<16))|(value<<16));
+                const uint8_t beforeSlot=(candidate[0x42]&1)?2:
+                    static_cast<uint8_t>(abilityBit5(beforePID));
+                // Gen III/IV origins keep their ability in PID bit 0 (PKHeX
+                // PKM.PIDAbility); only a Gen V origin may move PID bit 16.
+                if(value!=beforeSlot && earlierGenerationOrigin5(candidate[0x5F]))
+                    return fail("The ability of a Pokemon from an earlier generation is fixed by its original PID");
+                const uint32_t newPID=value==2?beforePID:withAbilityBit5(beforePID,value);
                 // Changing the PID ability bit must not silently change shiny
                 // status or hidden/coupled game metadata.
                 const uint16_t tid=Crypto::read16(candidate,0x0C);
@@ -190,8 +212,60 @@ public:
                 if(stat!=0 || value>2 || !personal ||
                    !genderAllowed5(personal.info->genderRatio,value))
                     return fail("Gen V gender is incompatible with this form's native ratio");
+                const uint8_t storedGender=static_cast<uint8_t>((candidate[0x40]>>1)&3);
+                if(value!=storedGender && variableGenderRatio5(personal.info->genderRatio)) {
+                    // Gen V gender is derived from the PID low byte (PKHeX
+                    // EntityGender.GetFromPID); stored bits never diverge from it.
+                    if(earlierGenerationOrigin5(candidate[0x5F]))
+                        return fail("The gender of a Pokemon from an earlier generation is fixed by its original PID");
+                    const auto pid=withGender5(Crypto::read32(candidate,0),personal.info->genderRatio,
+                        static_cast<uint8_t>(value),Crypto::read16(candidate,0x0C),
+                        Crypto::read16(candidate,0x0E));
+                    if(!pid)return fail("Gen V gender could not be matched to a native PID");
+                    Crypto::write16(candidate,0,static_cast<uint16_t>(*pid));
+                    Crypto::write16(candidate,2,static_cast<uint16_t>(*pid>>16));
+                }
                 candidate[0x40]=static_cast<uint8_t>(
                     (candidate[0x40]&~uint8_t{6}) | (value<<1));
+                break;
+            }
+            case Field::Shiny: {
+                if(stat!=0 || value>1)
+                    return fail("Gen V shiny state must be off/on");
+                const uint32_t pid=Crypto::read32(candidate,0);
+                const uint16_t tid=Crypto::read16(candidate,0x0C),sid=Crypto::read16(candidate,0x0E);
+                if(shinyPid5(pid,tid,sid)==(value!=0))break;
+                if(earlierGenerationOrigin5(candidate[0x5F]))
+                    return fail("Shiny state of a Pokemon from an earlier generation is fixed by its original PID");
+                const uint32_t next=withShiny5(pid,tid,sid,value!=0);
+                Crypto::write16(candidate,0,static_cast<uint16_t>(next));
+                Crypto::write16(candidate,2,static_cast<uint16_t>(next>>16));
+                break;
+            }
+            case Field::Personality: {
+                // Exact PID replay of a draft built by the coordinated procedures
+                // above. Only a Gen V origin, and a PID that keeps the native
+                // gender / ability links whenever the record already had them.
+                if(stat!=0 || earlierGenerationOrigin5(candidate[0x5F]) || !personal)
+                    return fail("Gen V PID replay requires a native Gen V origin");
+                // Each link is checked on its own: every link that held before
+                // the replay must still hold after it (a broken ability link
+                // never removes the gender link's protection, or vice versa).
+                const auto genderLinked=[&](const std::vector<uint8_t>& bytes,uint32_t pid) {
+                    const uint8_t gender=static_cast<uint8_t>((bytes[0x40]>>1)&3);
+                    return genderFromPid5(pid,personal.info->genderRatio)==gender;
+                };
+                const auto abilityLinked=[&](const std::vector<uint8_t>& bytes,uint32_t pid) {
+                    return (bytes[0x42]&1)!=0 ||
+                        abilityForSlot5(*personal.info,abilityBit5(pid))==bytes[0x15];
+                };
+                const uint32_t before=Crypto::read32(previous,0);
+                if(genderLinked(previous,before) && !genderLinked(candidate,value))
+                    return fail("Gen V PID would break the native gender link");
+                if(abilityLinked(previous,before) && !abilityLinked(candidate,value))
+                    return fail("Gen V PID would break the native ability link");
+                Crypto::write16(candidate,0,static_cast<uint16_t>(value));
+                Crypto::write16(candidate,2,static_cast<uint16_t>(value>>16));
                 break;
             }
             case Field::Level: {
@@ -220,12 +294,34 @@ public:
             case Field::Nature:
                 if (stat != 0 || value > 24)
                     return fail("Gen V nature index must be in [0,24]");
+                // Gen V stores nature at 0x41; Gen III/IV origins keep PID % 25.
+                if (value != candidate[0x41] && earlierGenerationOrigin5(candidate[0x5F]))
+                    return fail("The nature of a Pokemon from an earlier generation is fixed by its original PID");
                 candidate[0x41] = static_cast<uint8_t>(value);
                 break;
             case Field::Friendship:
                 if (stat != 0 || value > 255)
                     return fail("Gen V friendship must be in [0,255]");
                 candidate[0x14] = static_cast<uint8_t>(value);
+                break;
+            case Field::Language:
+                // PKHeX 6501f0ab PK5.Language: byte 0x17. Gen V supports Japanese, English,
+                // French, Italian, German, Spanish and Korean; 0/6 and later IDs are not choices.
+                if (stat != 0 || !(value == 1 || value == 2 || value == 3 || value == 4 ||
+                                   value == 5 || value == 7 || value == 8))
+                    return fail("Gen V language must be a supported native language ID");
+                if (value != candidate[0x17]) {
+                    const uint32_t iv32=Crypto::read32(candidate,0x38);
+                    // M1 D3: an un-nicknamed (and not egg) record stores its species name in its own
+                    // language, so the name follows the language (PKHeX GetSpeciesNameGeneration, 5).
+                    if ((iv32 & 0x80000000u) == 0 && (iv32 & 0x40000000u) == 0) {
+                        const auto name=Names::defaultSpeciesName(
+                            Crypto::read16(candidate,0x08),static_cast<uint8_t>(value),5);
+                        if (!writeUnicodeName5(candidate,true,name,static_cast<uint8_t>(value)))
+                            return fail("Gen V default name for this language does not fit the nickname field");
+                    }
+                }
+                candidate[0x17] = static_cast<uint8_t>(value);
                 break;
             case Field::IV: {
                 if (stat >= 6 || value > 31)
@@ -300,7 +396,7 @@ public:
                     return fail("Gen V Pokerus mode must be None/Cured/Infected");
                 const uint8_t old=candidate[0x82];
                 const auto originalDecoded=Crypto::decrypt(original_);
-                const uint8_t baseline=originalDecoded[0x82];
+                const uint8_t baseline=pokerusBaseline_?*pokerusBaseline_:originalDecoded[0x82];
                 const uint8_t baselineMode=baseline==0?0:((baseline&0x0F)?2:1);
                 const uint8_t mode=old==0?0:((old&0x0F)?2:1);
                 // If a user toggles back to the original mode, restore the
@@ -313,7 +409,10 @@ public:
                     else {
                         // Preserve existing strain; brand-new infections
                         // receive strain 1, days=1 (within native maximum).
-                        const uint8_t strain=(old&0xF0)?(old&0xF0):0x10;
+                        // A strain passed through None comes back from the baseline, so
+                        // the result never depends on the toggle path (Keep replays the final
+                        // mode in one step and must reach the same byte).
+                        const uint8_t strain=(old&0xF0)?(old&0xF0):(baseline&0xF0)?(baseline&0xF0):0x10;
                         candidate[0x82]=static_cast<uint8_t>(
                             strain | (value==2?1:0));
                     }
@@ -398,6 +497,7 @@ private:
     std::vector<uint8_t> original_;
     std::vector<uint8_t> staged_;
     bool black2White2_=false;
+    std::optional<uint8_t> pokerusBaseline_;
 };
 
 } // namespace PokeVault::Integration::Gen5

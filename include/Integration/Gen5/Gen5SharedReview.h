@@ -2,6 +2,8 @@
 #define POKEBANK_GEN5_SHARED_REVIEW_H
 
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
+#include "Integration/Gen5/Gen5BlankSlot.h"
+#include "Integration/Gen5/Gen5ImportRecord.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -26,6 +28,9 @@ struct VerifiedFieldChange {
 struct VerifiedSlotReview {
     Gen5StagedPokemonWorkspace::Slot location;
     std::vector<VerifiedFieldChange> fields;
+    // CG74 (owner Oct 25 P3): for a created Pokemon, the values of the certified staged record
+    // (after = value, before unused), read only for Review. `fields` stays the verified edit list.
+    std::vector<VerifiedFieldChange> created;
 };
 
 [[nodiscard]] inline std::optional<VerifiedSlotReview> verifyStagedReview(
@@ -52,33 +57,74 @@ struct VerifiedSlotReview {
         const Pokemon5ReadOnly afterBox(std::span<const uint8_t>(change.after));
         VerifiedSlotReview result;
         result.location=change.location;
-        if(change.kind==Kind::CreateBox) {
-            if(!change.createRequest ||
-               !change.cloneSourceOriginal.empty() ||
-               !beforeBox.valid() || !beforeBox.empty() ||
-               !std::all_of(change.before.begin(),change.before.end(),
-                    [](uint8_t byte){return byte==0;}) ||
-               !afterBox.valid() || afterBox.empty() || afterBox.partyRecord())
-                return fail("Gen V Create needs an empty original and explicit native request");
-            const auto rebuilt=createNative5(*change.createRequest);
-            if(!rebuilt || rebuilt.encrypted!=change.replacementOriginal ||
-               afterBox.originVersion()!=static_cast<uint32_t>(change.createRequest->game))
-                return fail("Gen V Create certificate disagrees with the native PK5 baseline");
-            result.fields.push_back({Field::CreateBox,0,0,afterBox.species()});
+        // Only an Import carries an imported record; it never rides along with another kind.
+        if(change.kind!=Kind::ImportBox && !change.importedRecord.empty())
+            return fail("Gen V box operation carried an unrelated imported record");
+        if(change.kind==Kind::CreateBox || change.kind==Kind::ImportBox) {
+            if(change.kind==Kind::CreateBox) {
+                if(!change.createRequest ||
+                   !change.cloneSourceOriginal.empty() ||
+                   !beforeBox.valid() || !beforeBox.empty() ||
+                   !nativeBlankSlot5(change.before) ||
+                   !afterBox.valid() || afterBox.empty() || afterBox.partyRecord())
+                    return fail("Gen V Create needs an empty original and explicit native request");
+                const auto rebuilt=createNative5(*change.createRequest);
+                if(!rebuilt || rebuilt.encrypted!=change.replacementOriginal ||
+                   afterBox.originVersion()!=static_cast<uint32_t>(change.createRequest->game))
+                    return fail("Gen V Create certificate disagrees with the native PK5 baseline");
+            } else {
+                // Feature A Import: the slot was a native blank, and the baseline is exactly the
+                // imported file's stored record re-encrypted, byte for byte (decrypting it gives the
+                // file's plaintext back). The record is re-judged against the title here, independently
+                // of the workspace that staged it.
+                if(change.createRequest || !change.cloneSourceOriginal.empty() ||
+                   !beforeBox.valid() || !beforeBox.empty() ||
+                   !nativeBlankSlot5(change.before) ||
+                   !afterBox.valid() || afterBox.empty() || afterBox.partyRecord())
+                    return fail("Gen V Import needs an empty original slot and only its imported record");
+                if(change.importedRecord.size()!=Crypto::StoredSize ||
+                   importRecordRefusal5(change.importedRecord,change.black2White2))
+                    return fail("Gen V Import record is not a valid PK5 for this title");
+                if(Crypto::encryptCandidate(change.importedRecord)!=change.replacementOriginal ||
+                   Crypto::decrypt(change.replacementOriginal)!=change.importedRecord)
+                    return fail("Gen V Import baseline differs from the imported record");
+            }
+            result.fields.push_back({change.kind==Kind::ImportBox?Field::ImportBox:Field::CreateBox,
+                                     0,0,afterBox.species()});
+            // Created (or imported) values, one per row: moves, held item and Ball, OT IDs, met data, nature,
+            // gender, ability, language; IVs / EVs / Pokerus / Friendship only when not default.
+            auto& created=result.created;
+            const auto moves=afterBox.moves();
+            for(size_t i=0;i<moves.size();++i)
+                if(moves[i])created.push_back({Field::Move,i,0,moves[i]});
+            if(afterBox.heldItem())created.push_back({Field::HeldItem,0,0,afterBox.heldItem()});
+            created.push_back({Field::Ball,0,0,afterBox.ball()});
+            created.push_back({Field::TrainerId,0,0,afterBox.tid()});
+            created.push_back({Field::SecretId,0,0,afterBox.sid()});
+            created.push_back({Field::MetLocation,0,0,afterBox.metLocation()});
+            created.push_back({Field::MetLevel,0,0,afterBox.metLevel()});
+            created.push_back({Field::Nature,0,0,afterBox.nature()});
+            created.push_back({Field::Gender,0,0,afterBox.gender()});
+            if(afterBox.shiny())created.push_back({Field::Shiny,0,0,1});
+            created.push_back({Field::AbilitySlot,0,0,afterBox.ability()});
+            created.push_back({Field::Language,0,0,afterBox.language()});
+            const auto ivs=afterBox.ivs(),evs=afterBox.evs();
+            for(size_t i=0;i<6;++i)if(ivs[i])created.push_back({Field::IV,i,0,ivs[i]});
+            for(size_t i=0;i<6;++i)if(evs[i])created.push_back({Field::EV,i,0,evs[i]});
+            if(afterBox.pokerusMode())created.push_back({Field::Pokerus,0,0,afterBox.pokerusMode()});
+            if(afterBox.friendship()!=70)created.push_back({Field::Friendship,0,0,afterBox.friendship()});
         } else if(change.kind==Kind::RemoveBox) {
             if(change.createRequest)
                 return fail("Gen V Remove carried an unrelated creation request");
             if(!beforeBox.valid() || beforeBox.empty() ||
                !afterBox.valid() || !afterBox.empty() ||
-               !std::all_of(change.after.begin(),change.after.end(),
-                            [](uint8_t byte){return byte==0;}) ||
+               change.after!=encryptedBlankBoxSlot5() ||
                !change.cloneSourceOriginal.empty())
                 return fail("Gen V removal must blank exactly one occupied box PK5");
             result.fields.push_back({Field::RemoveBox,0,beforeBox.species(),0});
         } else if(change.kind==Kind::CloneBox) {
             if(change.createRequest || !beforeBox.valid() || !beforeBox.empty() ||
-               !std::all_of(change.before.begin(),change.before.end(),
-                            [](uint8_t byte){return byte==0;}) ||
+               !nativeBlankSlot5(change.before) ||
                !afterBox.valid() || afterBox.empty() ||
                !Gen5StagedPokemonWorkspace::canonicalSlot(change.cloneSource) ||
                (change.cloneSource.region==Region::Box &&
@@ -99,7 +145,8 @@ struct VerifiedSlotReview {
         // A newly cloned/created Pokemon can be edited through the SAME
         // shared field model. Keep its immutable origin certificate, then
         // independently replay every additional field from that baseline.
-        if(change.kind==Kind::CreateBox || change.kind==Kind::CloneBox) {
+        if(change.kind==Kind::CreateBox || change.kind==Kind::CloneBox ||
+           change.kind==Kind::ImportBox) {
             if(change.replacementOriginal.size()!=Crypto::StoredSize)
                 return fail("Gen V box operation lacks native baseline");
             if(change.after!=change.replacementOriginal) {
@@ -109,6 +156,7 @@ struct VerifiedSlotReview {
                 fieldsOnly.cloneSourceOriginal.clear();
                 fieldsOnly.createRequest.reset();
                 fieldsOnly.replacementOriginal.clear();
+                fieldsOnly.importedRecord.clear();
                 const auto verified=verifyStagedReview(fieldsOnly,error);
                 if(!verified)
                     return fail("Gen V staged box edits failed independent field replay");
@@ -121,8 +169,8 @@ struct VerifiedSlotReview {
         return result;
     }
     if(change.createRequest || !change.cloneSourceOriginal.empty() ||
-       !change.replacementOriginal.empty())
-        return fail("Gen V field edit contained unrelated Create/Clone evidence");
+       !change.replacementOriginal.empty() || !change.importedRecord.empty())
+        return fail("Gen V field edit contained unrelated Create/Clone/Import evidence");
     const Pokemon5ReadOnly before(std::span<const uint8_t>(change.before));
     const Pokemon5ReadOnly after(std::span<const uint8_t>(change.after));
     if(!before.valid() || before.empty() || !after.valid() || after.empty() ||
@@ -142,8 +190,13 @@ struct VerifiedSlotReview {
         result.fields.push_back({field,stat,from,to});
         return true;
     };
+    // Language first, matching Keep: on an unnicknamed record it also derives the
+    // default name in the new language (M1 D3), which is not a separate name edit.
+    if(!apply(Field::Language,0,before.language(),after.language()))
+        return std::nullopt;
+    const auto base=candidate->current();
     const auto replayName=[&](bool nickname)->bool {
-        const auto oldBytes=before.decodedBytes(),newBytes=after.decodedBytes();
+        const auto oldBytes=base.decodedBytes(),newBytes=after.decodedBytes();
         const bool flagChange=nickname &&
             ((Crypto::read32(oldBytes,0x38)^Crypto::read32(newBytes,0x38))&
              0x80000000u);
@@ -202,6 +255,9 @@ struct VerifiedSlotReview {
             return std::nullopt;
     }
     if(!apply(Field::Gender,0,before.gender(),after.gender()))
+        return std::nullopt;
+    // Coordinated Gender / Shiny / Ability / ID edits end in one exact PID.
+    if(!apply(Field::Personality,0,before.pid(),after.pid()))
         return std::nullopt;
     const auto bi=before.ivs(),ai=after.ivs();
     for(size_t i=0;i<6;++i)

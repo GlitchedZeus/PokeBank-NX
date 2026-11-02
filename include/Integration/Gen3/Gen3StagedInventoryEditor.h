@@ -42,6 +42,10 @@ public:
 
     bool stageInventoryQuantity(InventoryPouch pouch, uint16_t itemId, uint16_t quantity,
                                 std::string& error);
+    // Native slots of the pouch whose item id is ITEM_NONE: where the game's own
+    // BagPocketGetFirstEmptySlot (and this editor) can place a new stack. Top Up / Add Missing plans
+    // new stacks only into these (Inventory/BulkItemAdapters.h). 0 on an unreadable pouch.
+    [[nodiscard]] std::size_t freeSlots(InventoryPouch pouch) const;
     void discard() noexcept;
     [[nodiscard]] std::vector<uint8_t> finalizedBytes(std::string& error) const;
 

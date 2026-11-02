@@ -2,6 +2,12 @@
 #define POKEBANK_GEN5_SHARED_SCREEN_STATE_H
 
 #include "Integration/Gen5/Gen5SharedEditorBridge.h"
+#include "Integration/Gen5/Gen5CreateValidation.h"
+#include "Integration/Gen5/Gen5CreateInputRules.h"
+#include "Integration/Gen5/Gen5TrainerName.h"
+#include "Integration/Gen5/Gen5ReviewRows.h"
+#include "UI/SharedReviewPresentation.h"
+#include "Pokemon/SpeciesMoveDefaults.h"
 
 #include <algorithm>
 #include <array>
@@ -9,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -25,100 +32,19 @@ public:
     using Action=Shared::Action;
     using Field=Shared::FieldIdentity;
     enum class Surface : uint8_t {
-        Browse, Actions, View, Edit, MovePicker, LocationPicker, IdentityPicker, SpeciesPicker, NaturePicker, CloneDestination, ConfirmRemoveBox, ConfirmCreateBox, ConfirmDraft, Review,
-        ConfirmDiscardAll, ConfirmExport, ConfirmExit
+        Browse, Actions, View, Edit, CloneDestination, ConfirmRemoveBox, ConfirmCreateBox, ConfirmDraft, Review,
+        ConfirmDiscardAll, ConfirmExport, ConfirmExit,
+        // Neutral Origin & Legality panel (Round 3 Part 9): read-only, no verdict.
+        Legality
     };
-    struct EditableRow { Field field; size_t stat; const char* label; uint32_t maximum; };
-    static constexpr std::array<EditableRow,43> kEditableRows{{
-        {Field::Nature,0,"Nature",24}, {Field::Friendship,0,"Friendship",255},
-        {Field::HeldItem,0,"Held Item ID",638},
-        {Field::Ball,0,"Ball ID",25},
-        {Field::MetLevel,0,"Met Level",100},
-        {Field::TrainerId,0,"Trainer ID",65535},
-        {Field::SecretId,0,"Secret ID",65535},
-        {Field::OriginalTrainerGender,0,"OT Gender",1},
-        {Field::Pokerus,0,"Pokerus",2},
-        {Field::MetLocation,0,"Met Location",65535},
-        {Field::FatefulEncounter,0,"Fateful",1},
-        {Field::Move,0,"Move 1",MaxNativeMove5},
-        {Field::Move,1,"Move 2",MaxNativeMove5},
-        {Field::Move,2,"Move 3",MaxNativeMove5},
-        {Field::Move,3,"Move 4",MaxNativeMove5},
-        {Field::MovePPUps,0,"PP Ups 1",3},
-        {Field::MovePPUps,1,"PP Ups 2",3},
-        {Field::MovePPUps,2,"PP Ups 3",3},
-        {Field::MovePPUps,3,"PP Ups 4",3},
-        {Field::MovePP,0,"PP 1",64},
-        {Field::MovePP,1,"PP 2",64},
-        {Field::MovePP,2,"PP 3",64},
-        {Field::MovePP,3,"PP 4",64},
-        {Field::IV,0,"IV HP",31}, {Field::IV,1,"IV Atk",31},
-        {Field::IV,2,"IV Def",31}, {Field::IV,3,"IV Spe",31},
-        {Field::IV,4,"IV SpA",31}, {Field::IV,5,"IV SpD",31},
-        {Field::EV,0,"EV HP",255}, {Field::EV,1,"EV Atk",255},
-        {Field::EV,2,"EV Def",255}, {Field::EV,3,"EV Spe",255},
-        {Field::EV,4,"EV SpA",255}, {Field::EV,5,"EV SpD",255},
-        {Field::Ability,0,"Ability Slot",2},
-        {Field::Form,0,"Form",31},
-        {Field::Gender,0,"Gender",2},
-        {Field::Level,0,"Level",100},
-        {Field::Experience,0,"Experience",1640000},
-        {Field::Nickname,0,"Nickname",10},
-        {Field::OriginalTrainer,0,"OT Name",7},
-        {Field::Species,0,"Species Dex ID",649}
-    }};
-
     [[nodiscard]] Surface surface() const noexcept { return surface_; }
     [[nodiscard]] const Slot& target() const noexcept { return target_; }
     [[nodiscard]] int actionRow() const noexcept { return actionRow_; }
-    [[nodiscard]] int fieldRow() const noexcept { return fieldRow_; }
-    [[nodiscard]] uint16_t movePickerSelection() const noexcept { return movePickerSelection_; }
-    // PK5's 25 nature IDs follow the Gen III+ 5x5 battle-stat grid.
-    static constexpr std::array<std::string_view,25> kNatureNames{{
-        "Hardy","Lonely","Brave","Adamant","Naughty",
-        "Bold","Docile","Relaxed","Impish","Lax",
-        "Timid","Hasty","Serious","Jolly","Naive",
-        "Modest","Mild","Quiet","Bashful","Rash",
-        "Calm","Gentle","Sassy","Careful","Quirky"
-    }};
-    [[nodiscard]] uint8_t natureSelection() const noexcept { return natureSelection_; }
-    [[nodiscard]] static constexpr std::string_view natureName(uint32_t id) noexcept {
-        return id<kNatureNames.size()?kNatureNames[id]:std::string_view{};
-    }
-    [[nodiscard]] size_t locationPickerIndex() const noexcept { return locationPickerIndex_; }
-    [[nodiscard]] uint32_t identitySelection() const noexcept { return identitySelection_; }
-    [[nodiscard]] size_t speciesChoiceCount() const noexcept { return speciesCount_; }
-    [[nodiscard]] size_t speciesChoiceIndex() const noexcept { return speciesIndex_; }
-    [[nodiscard]] std::string_view speciesSearch() const noexcept { return speciesSearch_; }
-    [[nodiscard]] uint16_t speciesChoiceId(size_t index) const noexcept {
-        return index<speciesCount_?speciesResults_[index]:0;
-    }
-    [[nodiscard]] uint16_t chosenSpeciesId() const noexcept {
-        return speciesChoiceId(speciesIndex_);
-    }
-    [[nodiscard]] bool speciesChoiceAllowed(uint32_t species) const noexcept {
-        const auto current=draft_.current();
-        if(!current || !current->valid() || current->empty() ||
-           current->form()!=0 || species<1 || species>649)return false;
-        if(species==current->species())return true;
-        if(!draft_.originalBaseFormForSpecies())return false;
-        // Do not carry an unnicknamed old species name into a new
-        // identity: require a user-confirmed nickname edit first.
-        if((Crypto::read32(current->decodedBytes(),0x38)&0x80000000u)==0)
-            return false;
-        const auto source=personal5(current->species(),0,black2White2_);
-        const auto target=personal5(species,0,black2White2_);
-        if(!source || !target || source.info->growthRate>5 ||
-           source.info->growthRate!=target.info->growthRate ||
-           !genderAllowed5(target.info->genderRatio,current->gender()))
-            return false;
-        const uint8_t slot=current->hiddenAbility()?2:
-            static_cast<uint8_t>((current->pid()>>16)&1);
-        return abilityForSlot5(*target.info,slot)!=0;
-    }
     [[nodiscard]] bool black2White2() const noexcept { return black2White2_; }
     [[nodiscard]] size_t reviewPage() const noexcept { return reviewPage_; }
     [[nodiscard]] size_t cloneDestinationIndex() const noexcept { return cloneDestinationIndex_; }
+    // The destination picker is shared by Clone and Move Pokemon.
+    [[nodiscard]] bool moveDestination() const noexcept { return moveDestination_; }
     // The shared Add wizard retains accepted input only in this Trainer
     // session. Rejecting a native field or presentation need not make the
     // player enter all previous PK5 values again.
@@ -139,7 +65,7 @@ public:
             workspace.emptyCloneDestination(cloneDestinationIndex_/30,
                                             cloneDestinationIndex_%30);
     }
-    static constexpr size_t kReviewPageSize = 4;
+    static constexpr size_t kReviewPageSize = PokeBank::UIModel::SharedReview::kPageSize;
     [[nodiscard]] const Gen5SharedPokemonSession& draft() const noexcept { return draft_; }
     [[nodiscard]] bool isEditing() const noexcept { return surface_==Surface::Edit; }
 
@@ -181,11 +107,17 @@ public:
         if(action==Action::Close) {surface_=Surface::Browse;error.clear();return true;}
         if(action==Action::Review) {
             reviewPage_=0;
+            reviewReturn_=Surface::Browse;
             surface_=Surface::Review;
             error.clear();
             return true;
         }
-        if(action==Action::Clone) {
+        if(action==Action::Clone || action==Action::Move) {
+            if(action==Action::Move && target_.region!=Workspace::Region::Box) {
+                error="Gen V Move is available for box slots only";
+                return false;
+            }
+            moveDestination_=action==Action::Move;
             cloneDestinationIndex_=workspace.firstEmptyCloneDestination();
             if(cloneDestinationIndex_>=720) {
                 error="Gen V has no verified empty box destination";
@@ -206,9 +138,14 @@ public:
             error.clear();
             return true;
         }
+        if(action==Action::LegalityProvenance) {
+            surface_=Surface::Legality;
+            error.clear();
+            return true;
+        }
         if(action==Action::Remove) {
             if(target_.region!=Workspace::Region::Box ||
-               !workspace.originalOccupied(target_)) {
+               !(workspace.originalOccupied(target_) || workspace.stagedOperand(target_))) {
                 error="Gen V removal requires an occupied original box slot";
                 return false;
             }
@@ -220,7 +157,6 @@ public:
             if(!openSharedDraft(draft_,workspace,selectedSlot(workspace,target_),action,error))
                 return false;
             surface_=action==Action::View?Surface::View:Surface::Edit;
-            fieldRow_=0;
             black2White2_=workspace.black2White2();
             return true;
         }
@@ -251,8 +187,16 @@ public:
             return false;
         }
         Workspace snapshot=workspace;
-        if(!workspace.cloneToEmptyBox(target_,cloneDestinationIndex_/30,
-                                      cloneDestinationIndex_%30,&error))return false;
+        // Untouched originals use the strict primitives; a Pokemon staged in
+        // this session uses the certificate-preserving companions.
+        const bool original=workspace.originalOccupied(target_);
+        const size_t box=cloneDestinationIndex_/30,slot=cloneDestinationIndex_%30;
+        const bool staged=moveDestination_
+            ? (original ? workspace.moveToEmptyBox(target_,box,slot,&error)
+                        : workspace.moveStagedToEmptyBox(target_,box,slot,&error))
+            : (original ? workspace.cloneToEmptyBox(target_,box,slot,&error)
+                        : workspace.cloneStagedToEmptyBox(target_,box,slot,&error));
+        if(!staged)return false;
         if(!std::forward<Refresh>(refresh)(error)) {
             workspace=std::move(snapshot);
             if(error.empty())error="Gen V clone presentation rejected; stage rolled back";
@@ -271,13 +215,66 @@ public:
             return false;
         }
         Workspace snapshot=workspace;
-        if(!workspace.removeBox(target_.box,target_.slot,&error))return false;
+        const bool released=workspace.originalOccupied(target_)
+            ? workspace.removeBox(target_.box,target_.slot,&error)
+            : workspace.releaseStagedBox(target_.box,target_.slot,&error);
+        if(!released)return false;
         if(!std::forward<Refresh>(refresh)(error)) {
             workspace=std::move(snapshot);
             if(error.empty())error="Gen V remove presentation rejected; stage rolled back";
             return false;
         }
         surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    // Move Pokemon uses the SHARED Gen I-IV carry (ClassicPackedMoveOverlay):
+    // Actions -> Move closes the menu and the overlay picks the Pokemon up;
+    // nothing is staged until Y drops it on a verified empty box slot. B
+    // cancels with nothing to restore. The carry remembers the exact staged
+    // record it picked up and refuses a drop if that record has changed.
+    [[nodiscard]] bool beginMoveCarry(const Workspace& workspace,std::string& error) {
+        const auto allowed=availableActions(workspace);
+        bool listed=false;
+        for(size_t i=0;i<allowed.count;++i)if(allowed[i]==Action::Move)listed=true;
+        if(surface_!=Surface::Actions || !listed ||
+           target_.region!=Workspace::Region::Box) {
+            error="Gen V Move is available for occupied box slots only";
+            return false;
+        }
+        surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    template<class Refresh>
+    [[nodiscard]] bool dropCarriedPokemon(Workspace& workspace,const Slot& from,
+                                          std::span<const uint8_t> pickedUp,
+                                          size_t box,size_t slot,
+                                          Refresh&& refresh,std::string& error) {
+        const auto current=from.region==Workspace::Region::Box
+            ? workspace.viewBox(from.box,from.slot) : std::nullopt;
+        if(surface_!=Surface::Browse || !current || !current->valid() || current->empty() ||
+           !std::equal(current->originalEncryptedBytes().begin(),
+                       current->originalEncryptedBytes().end(),
+                       pickedUp.begin(),pickedUp.end())) {
+            error="Gen V carried Pokemon changed; no move staged";
+            return false;
+        }
+        if(!workspace.emptyCloneDestination(box,slot)) {
+            error="Box "+std::to_string(box+1)+" / Slot "+std::to_string(slot+1)+
+                  " is not an empty verified Gen V box slot";
+            return false;
+        }
+        Workspace snapshot=workspace;
+        const bool staged=workspace.originalOccupied(from)
+            ? workspace.moveToEmptyBox(from,box,slot,&error)
+            : workspace.moveStagedToEmptyBox(from,box,slot,&error);
+        if(!staged)return false;
+        if(!std::forward<Refresh>(refresh)(error)) {
+            workspace=std::move(snapshot);
+            if(error.empty())error="Gen V move presentation rejected; stage rolled back";
+            return false;
+        }
         error.clear();
         return true;
     }
@@ -339,366 +336,298 @@ public:
         error.clear();
         return true;
     }
+    // ---- Shared Create (Gen I-IV parity) --------------------------------
+    // Create opens the SAME Edit draft used by Edit, not a prompt wizard. A
+    // native PK5 is built from the save's own trainer (OT name, TID, SID,
+    // gender, language, exact game) with the caller's PID and date, placed in
+    // the empty slot, and opened for editing on Species. Nothing persists
+    // unless Keep is chosen: B asks Keep/Discard, and Discard undoes the
+    // staged creation so the slot is the original native empty slot again.
+    [[nodiscard]] bool createPending() const noexcept { return createPending_; }
+    // Owner item 4: a new Pokemon's Met Location is the user's choice. The native record needs a
+    // valid location to exist at all, so Create stages a placeholder (kSharedCreateMetLocation),
+    // shows the row as not chosen, and Keep refuses until a location is picked (picking the
+    // placeholder's own value explicitly counts as a choice).
+    [[nodiscard]] bool createNeedsMetLocation() const noexcept { return createPending_ && !createMetLocationChosen_; }
+    void noteCreateMetLocationChosen() noexcept { if(createPending_) createMetLocationChosen_=true; }
+    struct CreateDate5 { uint32_t year=0, month=0, day=0; };
+    [[nodiscard]] static std::optional<CreateRequest5> sharedCreateDefaults(
+        const Workspace& ws, uint32_t pid, std::string_view nickname,
+        CreateDate5 date, std::string& error) {
+        const auto& trainer=ws.sourceSave().trainer();
+        const uint32_t version=trainer.gameVersion;
+        if(version<20 || version>23) {
+            error="Gen V Create needs the validated exact game version";
+            return std::nullopt;
+        }
+        if(newGameNoTrainer5(trainer.rawName.size(),trainer.tid,trainer.sid,trainer.playedHours,
+                             trainer.playedMinutes,trainer.playedSeconds)) {
+            error="New-game save: no trainer yet, so there is no Original Trainer to copy. "
+                  "Play until the game saves, then Create";
+            return std::nullopt;
+        }
+        CreateTrainer5 ot;
+        for(const char16_t ch:trainer.rawName) {
+            if(ch<0x20 || ch>0x7e) {
+                error="Save trainer name is not plain ASCII; Create cannot copy it as OT";
+                return std::nullopt;
+            }
+            ot.name.push_back(static_cast<char>(ch));
+        }
+        if(ot.name.empty() || trainer.gender>1 || !createLanguageAllowed5(trainer.language)) {
+            error="Save trainer identity is incomplete; Create cannot copy it as OT";
+            return std::nullopt;
+        }
+        ot.tid=trainer.tid;
+        ot.sid=trainer.sid;
+        ot.gender=trainer.gender;
+        ot.language=trainer.language;
+        CreateRequest5 r;
+        r.game=static_cast<CreateGame5>(version);
+        r.format=CreateFormat5::Boxed;
+        r.species=kSharedCreateSpecies; r.form=0; r.level=5;
+        r.pid=pid;
+        r.nature=pid%25;
+        const auto personal=personal5(r.species,0,version>=22);
+        if(!personal) {
+            error="Gen V personal data unavailable for the default species";
+            return std::nullopt;
+        }
+        r.gender=createGenderForPID5(personal.info->genderRatio,pid);
+        r.abilitySlot=(pid>>16)&1u;
+        r.friendship=70;
+        r.heldItem=0;
+        r.trainer=ot;
+        r.nickname=std::string(nickname);
+        r.encounter={CreateHistory5::CallerSuppliedNative,kSharedCreateMetLocation,r.level,
+                     kSharedCreateBall,date.year,date.month,date.day};
+        r.ivs={};
+        r.evs={};
+        r.moves[0]={kSharedCreateMove,0,std::nullopt};
+        if(const auto checked=validateCreate5(r);!checked) {
+            error=std::string(checked.message);
+            return std::nullopt;
+        }
+        error.clear();
+        return r;
+    }
+    template<class Refresh>
+    [[nodiscard]] bool beginCreateDraft(Workspace& ws,const CreateRequest5& request,
+                                        Refresh&& refresh,std::string& error) {
+        if(surface_!=Surface::ConfirmCreateBox ||
+           target_.region!=Workspace::Region::Box ||
+           !ws.emptyCloneDestination(target_.box,target_.slot)) {
+            error="Gen V Create requires the original empty native box slot";
+            return false;
+        }
+        Workspace snapshot=ws;
+        if(!ws.createInEmptyBox(request,target_.box,target_.slot,&error))return false;
+        if(!refresh(error)) {
+            ws=std::move(snapshot);
+            std::string restored;
+            (void)refresh(restored);
+            if(error.empty())error="Gen V Create presentation failed; stage rolled back";
+            return false;
+        }
+        if(!openSharedDraft(draft_,ws,selectedSlot(ws,target_),Action::Edit,error)) {
+            ws=std::move(snapshot);
+            std::string restored;
+            (void)refresh(restored);
+            return false;
+        }
+        pendingCreateInput_.reset();
+        black2White2_=ws.black2White2();
+        surface_=Surface::Edit;
+        createPending_=true;
+        createMetLocationChosen_=false;
+        error.clear();
+        return true;
+    }
+    template<class Refresh>
+    [[nodiscard]] bool discardCreateDraft(Workspace& ws,Refresh&& refresh,std::string& error) {
+        if(!createPending_ || (surface_!=Surface::Edit && surface_!=Surface::ConfirmDraft) ||
+           target_.region!=Workspace::Region::Box) {
+            error="No pending Gen V Create to discard";
+            return false;
+        }
+        Workspace snapshot=ws;
+        if(!ws.undoBoxReplacement(target_.box,target_.slot)) {
+            error="Gen V Create was already cleared";
+            return false;
+        }
+        if(!refresh(error)) {
+            ws=std::move(snapshot);
+            if(error.empty())error="Gen V Create discard presentation failed; draft kept";
+            return false;
+        }
+        draft_.discardDraft();
+        createPending_=false;
+        surface_=Surface::Browse;
+        error.clear();
+        return true;
+    }
+    // The shared editor workspace (SharedPokemonEditorSurface.inc) stages
+    // every field through this guarded native draft while View/Edit is open.
+    [[nodiscard]] Gen5SharedPokemonSession& editDraft() noexcept { return draft_; }
+    // Why an occupied Pokemon cannot become `species` without inventing data;
+    // empty when the native identity transaction can preserve it.
+    [[nodiscard]] std::string speciesRefusal(uint32_t species) const {
+        const auto current=draft_.current();
+        if(!current || !current->valid() || current->empty())
+            return "No Generation V Pokemon draft is open";
+        if(species<1 || species>649)
+            return "Black/White and Black 2/White 2 have National Dex species 1-649 only";
+        if(species==current->species())return {};
+        if(current->form()!=0 || !draft_.originalBaseFormForSpecies())
+            return "Species can change only on a base-form Pokemon; set Form to its default first";
+        if((Crypto::read32(current->decodedBytes(),0x38)&0x80000000u)==0)
+            return "Nickname this Pokemon first: an unnicknamed Pokemon's name follows its species";
+        const auto source=personal5(current->species(),0,black2White2_);
+        const auto target=personal5(species,0,black2White2_);
+        if(!source || !target || source.info->growthRate>5 ||
+           source.info->growthRate!=target.info->growthRate)
+            return "That species uses a different EXP growth group; its level would change";
+        if(!genderAllowed5(target.info->genderRatio,current->gender()))
+            return "That species cannot have this Pokemon's gender";
+        if(genderFromPid5(current->pid(),source.info->genderRatio)==current->gender() &&
+           genderFromPid5(current->pid(),target.info->genderRatio)!=current->gender())
+            return "That species would read this Pokemon's PID as the other gender";
+        const uint8_t slot=current->hiddenAbility()?2:
+            static_cast<uint8_t>((current->pid()>>16)&1);
+        if(abilityForSlot5(*target.info,slot)==0)
+            return "That species has no ability in this Pokemon's ability slot";
+        return {};
+    }
+    // A pending Create has no history to preserve, so a species choice rebuilds
+    // the created PK5 natively (validateCreate5) with the draft's own values:
+    // PID (shiny state as requested), nature, level, IVs, EVs, item, met data
+    // and nickname (a default nickname follows the new species). Moves: a real
+    // species change gets the new species' native default moveset at this level
+    // (R2-BUG-004; PKHeX lvlmove_bw / _b2w2, full PP, no PP Ups); the same
+    // species (a shiny-only rebuild) keeps the draft's own moves.
+    template<class Refresh>
+    [[nodiscard]] bool recreateCreateSpecies(Workspace& ws,uint32_t species,bool shiny,
+                                             std::string_view newDefaultName,
+                                             std::string_view oldDefaultName,
+                                             Refresh&& refresh,std::string& error) {
+        const auto p=draft_.current();
+        if(!createPending_ || surface_!=Surface::Edit || !p ||
+           target_.region!=Workspace::Region::Box) {
+            error="Gen V species rebuild requires a pending Create draft";
+            return false;
+        }
+        const auto& trainer=ws.sourceSave().trainer();
+        const auto target=personal5(species,0,trainer.gameVersion>=22);
+        if(species<1 || species>649 || !target) {
+            error="Black/White and Black 2/White 2 have National Dex species 1-649 only";
+            return false;
+        }
+        CreateRequest5 r;
+        r.game=static_cast<CreateGame5>(trainer.gameVersion);
+        r.format=CreateFormat5::Boxed;
+        r.species=species; r.form=0;
+        const auto oldPersonal=personal5(p->species(),p->form(),black2White2_);
+        r.level=p->partyRecord()?p->partyLevel():
+            oldPersonal?levelForExperience5(oldPersonal.info->growthRate,p->experience()):5;
+        if(r.level<1)r.level=1;
+        uint32_t pid=withShiny5(p->pid(),p->tid(),p->sid(),shiny);
+        r.pid=pid;
+        r.nature=p->nature();
+        r.gender=createGenderForPID5(target.info->genderRatio,pid);
+        r.abilitySlot=p->hiddenAbility() && target.info->abilityHidden?2u:((pid>>16)&1u);
+        if(abilityForSlot5(*target.info,r.abilitySlot)==0)r.abilitySlot=(pid>>16)&1u;
+        r.friendship=p->friendship();
+        r.heldItem=p->heldItem();
+        CreateTrainer5 ot;
+        const auto otName=asciiName5(p->decodedBytes(),false);
+        ot.name=otName?*otName:std::string{};
+        ot.tid=p->tid(); ot.sid=p->sid(); ot.gender=p->originalTrainerGender();
+        ot.language=p->language();
+        r.trainer=ot;
+        const auto nickname=asciiName5(p->decodedBytes(),true);
+        r.nickname=nickname && *nickname!=oldDefaultName?*nickname:std::string(newDefaultName);
+        const auto met=p->metDate();
+        r.encounter={CreateHistory5::CallerSuppliedNative,p->metLocation(),
+                     std::min<uint32_t>(std::max<uint32_t>(p->metLevel(),1),r.level),
+                     p->ball(),met.year,met.month,met.day};
+        const auto ivs=p->ivs(); const auto evs=p->evs();
+        for(size_t i=0;i<6;++i){r.ivs[i]=ivs[i];r.evs[i]=evs[i];}
+        if(species!=p->species()) {
+            const auto defaults=PokeBank::Moves::defaultMoves(
+                PokeBank::Moves::levelUpTableForGen45Version(trainer.gameVersion),
+                static_cast<uint16_t>(species),0,static_cast<uint8_t>(r.level));
+            for(size_t i=0;i<4;++i)r.moves[i]={defaults.moves[i],0u,std::nullopt};
+        } else {
+            const auto moves=p->moves(); const auto ups=p->ppUps(); const auto pp=p->pp();
+            for(size_t i=0;i<4;++i)r.moves[i]={moves[i],moves[i]?ups[i]:0u,
+                                               moves[i]?std::optional<uint32_t>(pp[i]):std::nullopt};
+        }
+        if(const auto checked=validateCreate5(r);!checked) {
+            error=std::string(checked.message);
+            return false;
+        }
+        Workspace snapshot=ws;
+        Gen5SharedPokemonSession draftSnapshot=draft_;
+        if(!ws.undoBoxReplacement(target_.box,target_.slot) ||
+           !ws.createInEmptyBox(r,target_.box,target_.slot,&error)) {
+            ws=std::move(snapshot);
+            if(error.empty())error="Gen V Create could not be rebuilt for that species";
+            return false;
+        }
+        draft_.discardDraft();
+        if(!refresh(error) ||
+           !openSharedDraft(draft_,ws,selectedSlot(ws,target_),Action::Edit,error)) {
+            ws=std::move(snapshot);
+            draft_=std::move(draftSnapshot);
+            std::string restored;
+            (void)refresh(restored);
+            if(error.empty())error="Gen V Create presentation failed; previous draft kept";
+            return false;
+        }
+        error.clear();
+        return true;
+    }
     void cancelBoxAction() noexcept {
         if(surface_==Surface::ConfirmCreateBox)pendingCreateInput_.reset();
         if(surface_==Surface::CloneDestination ||
            surface_==Surface::ConfirmRemoveBox ||
            surface_==Surface::ConfirmCreateBox)surface_=Surface::Actions;
     }
-    void moveReviewPage(int delta,const Workspace& workspace) noexcept {
+    void moveReviewPage(int delta,const Workspace& workspace,size_t presentationRows=0) {
         if(surface_!=Surface::Review)return;
-        const size_t records=workspace.changedRecordCount();
-        const size_t pages=std::max(size_t{1},
-            (records+kReviewPageSize-1)/kReviewPageSize);
-        if(delta>0 && reviewPage_+1<pages)++reviewPage_;
-        else if(delta<0 && reviewPage_>0)--reviewPage_;
+        reviewPage_=PokeBank::UIModel::SharedReview::move(reviewPage_,delta,
+            presentationRows?presentationRows:reviewRowCount(workspace));
     }
 
-    void moveField(int delta) noexcept {
-        if(surface_!=Surface::Edit)return;
-        constexpr int count=static_cast<int>(kEditableRows.size());
-        fieldRow_=(fieldRow_+delta%count+count)%count;
+    // Review lists staged PK5 records (a staged Move as ONE row, Gen5ReviewRows.h), then
+    // each verified Bag change, then each verified Trainer field change.
+    [[nodiscard]] static size_t reviewRowCount(const Workspace& workspace) {
+        return reviewRecordRows5(workspace)+workspace.bagReviewChanges().size()+
+               workspace.trainerReviewChanges().size();
     }
-    [[nodiscard]] bool openNaturePicker(std::string& error) {
-        if(surface_!=Surface::Edit || !draft_.editable() ||
-           kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::Nature) {
-            error="Gen V nature picker requires an Edit draft's Nature field";
-            return false;
-        }
-        const auto current=draft_.current();
-        if(!current || !current->valid() || current->nature()>24) {
-            error="Gen V nature picker requires a validated PK5 nature";
-            return false;
-        }
-        natureSelection_=current->nature();
-        surface_=Surface::NaturePicker;
-        error.clear();
+    // The Bag has no Pokemon action menu, so the shared Items panel opens the
+    // same Review surface directly (+). Nothing is staged or exported here.
+    [[nodiscard]] bool openReviewFromBrowse(const Workspace& workspace) noexcept {
+        if(surface_!=Surface::Browse || !workspace.hasChanges())return false;
+        reviewPage_=0;
+        reviewReturn_=Surface::Browse;
+        surface_=Surface::Review;
         return true;
     }
-    void moveNatureCursor(int delta) noexcept {
-        if(surface_!=Surface::NaturePicker)return;
-        natureSelection_=static_cast<uint8_t>(std::clamp(
-            static_cast<int>(natureSelection_)+delta,0,24));
-    }
-    [[nodiscard]] bool acceptNaturePicker(std::string& error) {
-        if(surface_!=Surface::NaturePicker || !draft_.editable() ||
-           !stageSharedField(draft_,Field::Nature,0,natureSelection_,error))
-            return false;
-        surface_=Surface::Edit;
-        error.clear();
+    // Round 6 (P1-RETURN): + in the Create / Edit workspace opens the same Review, and B there
+    // returns to that workspace with its draft (and Create's staged record) intact. Only Browse
+    // and Edit may open it; every other surface is a modal step that must finish first.
+    [[nodiscard]] bool openReviewFrom(const Workspace& workspace) noexcept {
+        if(surface_==Surface::Browse)return openReviewFromBrowse(workspace);
+        if(surface_!=Surface::Edit || !workspace.hasChanges())return false;
+        reviewPage_=0;
+        reviewReturn_=Surface::Edit;
+        surface_=Surface::Review;
         return true;
     }
-    void cancelNaturePicker() noexcept {
-        if(surface_==Surface::NaturePicker)surface_=Surface::Edit;
-    }
-    // The Move Picker is local to the existing shared PK5 draft. It never
-    // stages a selection until A confirms the target. B is lossless and
-    // returns to the previously selected Move row.
-    [[nodiscard]] bool openMovePicker(std::string& error) {
-        if(surface_!=Surface::Edit || !draft_.editable() ||
-           fieldRow_<0 || static_cast<size_t>(fieldRow_)>=kEditableRows.size() ||
-           kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::Move) {
-            error="Gen V move picker requires a selected Move row in Edit";
-            return false;
-        }
-        const auto current=draft_.current();
-        if(!current || !current->valid()) {
-            error="Gen V move picker requires a valid PK5 draft";
-            return false;
-        }
-        const auto id=current->moves()[kEditableRows[static_cast<size_t>(fieldRow_)].stat];
-        movePickerSelection_=validNativeMove5(id)?id:0;
-        surface_=Surface::MovePicker;
-        error.clear();
-        return true;
-    }
-    void movePickerCursor(int delta) noexcept {
-        if(surface_!=Surface::MovePicker)return;
-        const int next=std::clamp(static_cast<int>(movePickerSelection_)+delta,
-                                  0,static_cast<int>(MaxNativeMove5));
-        movePickerSelection_=static_cast<uint16_t>(next);
-    }
-    [[nodiscard]] bool acceptMovePicker(std::string& error) {
-        if(surface_!=Surface::MovePicker || !draft_.editable()) {
-            error="Gen V picker has no active Edit draft";
-            return false;
-        }
-        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
-        if(row.field!=Field::Move ||
-           !stageSharedField(draft_,Field::Move,row.stat,movePickerSelection_,error))
-            return false;
-        surface_=Surface::Edit;
-        error.clear();
-        return true;
-    }
-    void cancelMovePicker() noexcept {
-        if(surface_==Surface::MovePicker)surface_=Surface::Edit;
-    }
-    // Native source-backed encounter-location chooser. Its selection is
-    // inert until explicit A confirmation; unknown original IDs remain
-    // untouched on cancellation and in read-only views.
-    [[nodiscard]] bool openLocationPicker(std::string& error) {
-        if(surface_!=Surface::Edit || !draft_.editable() ||
-           kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::MetLocation) {
-            error="Gen V met-location picker requires its Edit field";
-            return false;
-        }
-        const auto current=draft_.current();
-        if(!current || !current->valid()) {
-            error="Gen V location picker has no validated PK5 draft";
-            return false;
-        }
-        const auto index=locationIndex5(current->metLocation());
-        locationPickerIndex_=index==NativeMetLocations5.size()?0:index;
-        surface_=Surface::LocationPicker;
-        error.clear();
-        return true;
-    }
-    void moveLocationCursor(int delta) noexcept {
-        if(surface_!=Surface::LocationPicker)return;
-        const int next=std::clamp(static_cast<int>(locationPickerIndex_)+delta,
-                                  0,static_cast<int>(NativeMetLocations5.size())-1);
-        locationPickerIndex_=static_cast<size_t>(next);
-    }
-    [[nodiscard]] bool acceptLocationPicker(std::string& error) {
-        if(surface_!=Surface::LocationPicker || !draft_.editable()) {
-            error="Gen V location picker has no active draft";
-            return false;
-        }
-        if(!stageSharedField(draft_,Field::MetLocation,0,
-                             NativeMetLocations5[locationPickerIndex_],error))
-            return false;
-        surface_=Surface::Edit;
-        error.clear();
-        return true;
-    }
-    void cancelLocationPicker() noexcept {
-        if(surface_==Surface::LocationPicker)surface_=Surface::Edit;
-    }
-    // Species chooser is a navigation-only modal until explicit A. The
-    // existing native same-growth/identity transaction is the authority.
-    // Do not conflate a compatible byte-level edit with encounter legality.
-    [[nodiscard]] bool openSpeciesPicker(std::string& error) {
-        if(surface_!=Surface::Edit || !draft_.editable() ||
-           kEditableRows[static_cast<size_t>(fieldRow_)].field!=Field::Species) {
-            error="Gen V species picker requires the Species field in Edit";
-            return false;
-        }
-        const auto current=draft_.current();
-        if(!current || !current->valid() || current->empty()) {
-            error="Gen V species picker requires a valid occupied PK5";
-            return false;
-        }
-        speciesSearch_.clear();
-        speciesCount_=649;
-        for(size_t i=0;i<speciesCount_;++i)
-            speciesResults_[i]=static_cast<uint16_t>(i+1);
-        speciesIndex_=current->species()-1;
-        surface_=Surface::SpeciesPicker;
-        error.clear();
-        return true;
-    }
-    // Search uses a caller-provided species name lookup, so the native
-    // state model stays independent of UI string tables and linking.
-    template<class NameLookup>
-    void filterSpecies(std::string_view query,NameLookup&& lookup) {
-        if(surface_!=Surface::SpeciesPicker)return;
-        if(query.size()>32)return; // bounded search input
-        const uint16_t previous=chosenSpeciesId();
-        speciesSearch_=std::string(query);
-        speciesCount_=0;
-        speciesIndex_=0;
-        for(uint32_t id=1;id<=649;++id) {
-            const char* const name=lookup(static_cast<uint16_t>(id));
-            if(!name || !containsAsciiCaseInsensitive(name,query))continue;
-            speciesResults_[speciesCount_++]=static_cast<uint16_t>(id);
-        }
-        for(size_t i=0;i<speciesCount_;++i)
-            if(speciesResults_[i]==previous) {
-                speciesIndex_=i;
-                break;
-            }
-    }
-    void moveSpeciesCursor(int delta) noexcept {
-        if(surface_!=Surface::SpeciesPicker || speciesCount_==0)return;
-        speciesIndex_=static_cast<size_t>(std::clamp(
-            static_cast<int>(speciesIndex_)+delta,0,
-            static_cast<int>(speciesCount_-1)));
-    }
-    [[nodiscard]] bool acceptSpeciesPicker(std::string& error) {
-        const uint16_t species=chosenSpeciesId();
-        if(surface_!=Surface::SpeciesPicker || !draft_.editable() ||
-           !speciesChoiceAllowed(species)) {
-            error="Gen V species cannot preserve this PK5 identity and growth group";
-            return false;
-        }
-        if(!stageSharedField(draft_,Field::Species,0,species,error))return false;
-        speciesSearch_.clear();
-        surface_=Surface::Edit;
-        error.clear();
-        return true;
-    }
-    void cancelSpeciesPicker() noexcept {
-        if(surface_==Surface::SpeciesPicker) {
-            speciesSearch_.clear();
-            surface_=Surface::Edit;
-        }
-    }
-    [[nodiscard]] bool openIdentityPicker(std::string& error) {
-        if(surface_!=Surface::Edit || !draft_.editable() ||
-           fieldRow_<0 || static_cast<size_t>(fieldRow_)>=kEditableRows.size()) {
-            error="Gen V identity picker requires an Edit draft";
-            return false;
-        }
-        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
-        if(row.field!=Field::Form && row.field!=Field::Ability &&
-           row.field!=Field::Gender) {
-            error="Gen V picker requires Form, Ability or Gender";
-            return false;
-        }
-        const auto current=draft_.current();
-        if(!current || !current->valid() ||
-           !personal5(current->species(),current->form(),black2White2_)) {
-            error="Gen V has no verified native identity for this Pokemon";
-            return false;
-        }
-        identitySelection_=fieldValue(*current,row,black2White2_);
-        surface_=Surface::IdentityPicker;
-        error.clear();
-        return true;
-    }
-    [[nodiscard]] size_t identityChoiceCount() const noexcept {
-        const auto current=draft_.current();
-        if(!current || fieldRow_<0 || static_cast<size_t>(fieldRow_)>=kEditableRows.size())return 0;
-        const auto info=personal5(current->species(),current->form(),black2White2_);
-        if(!info)return 0;
-        const auto field=kEditableRows[static_cast<size_t>(fieldRow_)].field;
-        return field==Field::Form?info.forms:
-               field==Field::Ability?3:field==Field::Gender?3:0;
-    }
-    [[nodiscard]] bool identityChoiceAllowed(uint32_t value) const noexcept {
-        const auto current=draft_.current();
-        if(!current)return false;
-        const auto info=personal5(current->species(),current->form(),black2White2_);
-        if(!info)return false;
-        const auto field=kEditableRows[static_cast<size_t>(fieldRow_)].field;
-        if(field==Field::Form)
-            return value<info.forms &&
-                   static_cast<bool>(personal5(current->species(),value,black2White2_));
-        if(field==Field::Ability)
-            return value<3 && abilityForSlot5(*info.info,value)!=0;
-        if(field==Field::Gender)
-            return genderAllowed5(info.info->genderRatio,value);
-        return false;
-    }
-    void moveIdentityCursor(int delta) noexcept {
-        if(surface_!=Surface::IdentityPicker)return;
-        const auto count=identityChoiceCount();
-        if(!count)return;
-        const int value=std::clamp(static_cast<int>(identitySelection_)+delta,
-                                   0,static_cast<int>(count)-1);
-        identitySelection_=static_cast<uint32_t>(value);
-    }
-    [[nodiscard]] bool acceptIdentityPicker(std::string& error) {
-        if(surface_!=Surface::IdentityPicker || !draft_.editable() ||
-           !identityChoiceAllowed(identitySelection_)) {
-            error="Gen V identity choice is unavailable for this species/form";
-            return false;
-        }
-        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
-        if(!stageSharedField(draft_,row.field,row.stat,identitySelection_,error))
-            return false;
-        surface_=Surface::Edit;
-        error.clear();
-        return true;
-    }
-    void cancelIdentityPicker() noexcept {
-        if(surface_==Surface::IdentityPicker)surface_=Surface::Edit;
-    }
-    [[nodiscard]] bool stageNameValue(std::string_view name,std::string& error) {
-        if(surface_!=Surface::Edit || !draft_.editable()) {
-            error="Gen V has no editable native text draft";
-            return false;
-        }
-        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
-        return stageSharedName(draft_,row.field,name,error);
-    }
-    [[nodiscard]] bool stageFieldValue(uint32_t value,std::string& error) {
-        if(surface_!=Surface::Edit || !draft_.editable()) {
-            error="Gen V has no editable draft";
-            return false;
-        }
-        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
-        if(row.field==Field::Move || row.field==Field::MetLocation ||
-           row.field==Field::Ability || row.field==Field::Form || row.field==Field::Gender ||
-           row.field==Field::Nickname || row.field==Field::OriginalTrainer ||
-           value>row.maximum) {
-            error="Use the verified native picker or remain within this field's range";
-            return false;
-        }
-        return stageSharedField(draft_,row.field,row.stat,value,error);
-    }
-    [[nodiscard]] static uint32_t fieldValue(const Pokemon5ReadOnly& pk,
-                                              const EditableRow& row,
-                                              bool black2White2=false) noexcept {
-        switch(row.field) {
-            case Field::Species:return pk.species();
-            case Field::Level: {
-                const auto info=personal5(pk.species(),pk.form(),black2White2);
-                                return pk.partyRecord()?pk.partyLevel():
-                       info?levelForExperience5(info.info->growthRate,
-                                                pk.experience()):0;
-            }
-            case Field::Experience:return pk.experience();
-            case Field::Nature:return pk.nature();
-            case Field::Friendship:return pk.friendship();
-            case Field::HeldItem:return pk.heldItem();
-            case Field::Ball:return pk.ball();
-            case Field::MetLevel:return pk.metLevel();
-            case Field::TrainerId:return pk.tid();
-            case Field::SecretId:return pk.sid();
-            case Field::OriginalTrainerGender:return pk.originalTrainerGender();
-            case Field::Pokerus:return pk.pokerusMode();
-            case Field::MetLocation:return pk.metLocation();
-            case Field::FatefulEncounter:return pk.fatefulEncounter()?1:0;
-            case Field::Form:return pk.form();
-            case Field::Gender:return pk.gender();
-            case Field::Ability:return pk.hiddenAbility()?2:((pk.pid()>>16)&1);
-            case Field::Move:return pk.moves()[row.stat];
-            case Field::MovePPUps:return pk.ppUps()[row.stat];
-            case Field::MovePP:return pk.pp()[row.stat];
-            case Field::IV:return pk.ivs()[row.stat];
-            case Field::EV:return pk.evs()[row.stat];
-            default:return 0;
-        }
-    }
-    [[nodiscard]] bool adjustField(int delta,std::string& error) {
-        if(surface_!=Surface::Edit) {
-            error="Generation V is not in a verified Edit draft";
-            return false;
-        }
-        const auto current=draft_.current();
-        if(!current || !current->valid()) {
-            error="Generation V PK5 edit draft failed strict validation";
-            return false;
-        }
-        const auto& row=kEditableRows[static_cast<size_t>(fieldRow_)];
-        if(row.field==Field::Move || row.field==Field::MetLocation ||
-           row.field==Field::Ability || row.field==Field::Form || row.field==Field::Gender ||
-           row.field==Field::Nickname || row.field==Field::OriginalTrainer ||
-           row.field==Field::Species) {
-            error="Press A to choose a verified Generation V picker value";
-            return false;
-        }
-        const int64_t value=static_cast<int64_t>(fieldValue(*current,row,black2White2_))+delta;
-        // No modulo wrapping; failed EV totals and range errors preserve
-        // the full draft instead of introducing invalid intermediate states.
-        if(value<0 || value>row.maximum) {
-            error="Generation V value is outside the native field range";
-            return false;
-        }
-        return stageFieldValue(static_cast<uint32_t>(value),error);
-    }
+    // Where B from Review goes: the workspace it was opened from, otherwise Browse.
+    [[nodiscard]] Surface reviewReturn() const noexcept { return reviewReturn_; }
+
     [[nodiscard]] bool keep(Workspace& workspace,std::string& error) {
         // A on the dirty-draft decision is a real Keep, not a dead action.
         // Both states own the SAME active edit draft; View cannot Keep.
@@ -725,11 +654,25 @@ public:
             error="Generation V presentation Keep requires an active Edit draft";
             return false;
         }
+        if(createNeedsMetLocation()) {
+            error="Choose a Met Location before Keep";
+            return false;
+        }
+        if(createPending_ && !draft_.dirty()) {
+            // The created record is already staged and presented; Keep with
+            // no further edits simply finalizes it.
+            draft_.discardDraft();
+            createPending_=false;
+            surface_=Surface::Browse;
+            error.clear();
+            return true;
+        }
         Workspace baselineWorkspace=workspace;
         Gen5SharedPokemonSession baselineDraft=draft_;
         const Surface baselineSurface=surface_;
         if(!keep(workspace,error))return false;
         if(std::forward<Refresh>(refresh)(error)) {
+            createPending_=false;
             error.clear();
             return true;
         }
@@ -741,30 +684,14 @@ public:
     }
     // B never loses a dirty local draft. User must explicitly Keep or Discard.
     [[nodiscard]] bool back() noexcept {
-        if(surface_==Surface::MovePicker) {
-            cancelMovePicker();
-            return false;
-        }
-        if(surface_==Surface::LocationPicker) {
-            cancelLocationPicker();
-            return false;
-        }
-        if(surface_==Surface::IdentityPicker) {
-            cancelIdentityPicker();
-            return false;
-        }
-        if(surface_==Surface::SpeciesPicker) {
-            cancelSpeciesPicker();
-            return false;
-        }
-        if(surface_==Surface::NaturePicker) {
-            cancelNaturePicker();
-            return false;
-        }
         if(surface_==Surface::CloneDestination ||
            surface_==Surface::ConfirmRemoveBox ||
            surface_==Surface::ConfirmCreateBox) {
             cancelBoxAction();
+            return false;
+        }
+        if(surface_==Surface::Edit && createPending_) {
+            surface_=Surface::ConfirmDraft;
             return false;
         }
         if(surface_==Surface::View || surface_==Surface::Edit) {
@@ -772,8 +699,12 @@ public:
             surface_=Surface::ConfirmDraft;
             return false;
         }
-        if(surface_==Surface::Actions || surface_==Surface::Review)
+        if(surface_==Surface::Review) {
+            surface_=reviewReturn_;
+            reviewReturn_=Surface::Browse;
+        } else if(surface_==Surface::Actions)
             surface_=Surface::Browse;
+        else if(surface_==Surface::Legality)surface_=Surface::Actions;
         else if(surface_==Surface::ConfirmDraft)continueEditing();
         else if(surface_==Surface::ConfirmDiscardAll)surface_=Surface::Review;
         else if(surface_==Surface::ConfirmExport)surface_=Surface::Review;
@@ -782,11 +713,12 @@ public:
     }
     void continueEditing() noexcept {
         if(surface_==Surface::ConfirmDraft) {
-            draft_.continueEditing();
+            if(!createPending_)draft_.continueEditing();
             surface_=Surface::Edit;
         }
     }
     void discardDraft() noexcept {
+        if(createPending_)return; // use discardCreateDraft: it undoes the staged record
         if(surface_==Surface::Edit || surface_==Surface::ConfirmDraft ||
            surface_==Surface::View) {
             draft_.discardDraft();
@@ -816,6 +748,14 @@ public:
         if(surface_!=Surface::ConfirmDiscardAll)return false;
         workspace.discardAll();
         surface_=Surface::Browse;
+        if(reviewReturn_!=Surface::Browse) {
+            // Discard All removed what the workspace was editing (a Create's staged record
+            // included): never return into it; the draft goes with the discarded changes.
+            reviewReturn_=Surface::Browse;
+            draft_.discardDraft();
+            createPending_=false;
+            pendingCreateInput_.reset();
+        }
         return true;
     }
 
@@ -830,12 +770,21 @@ public:
             return false;
         }
         Workspace previous=workspace;
+        // A rejected refresh restores everything, including a workspace Review's draft.
+        Gen5SharedPokemonSession previousDraft=draft_;
+        const Surface previousReturn=reviewReturn_;
+        const bool previousCreatePending=createPending_;
+        const auto previousCreateInput=pendingCreateInput_;
         if(!confirmDiscardAll(workspace))return false;
         if(std::forward<Refresh>(refresh)(error)) {
             error.clear();
             return true;
         }
         workspace=std::move(previous);
+        draft_=std::move(previousDraft);
+        reviewReturn_=previousReturn;
+        createPending_=previousCreatePending;
+        pendingCreateInput_=previousCreateInput;
         surface_=Surface::ConfirmDiscardAll;
         if(error.empty())error="Gen V discard refresh rejected; staged changes preserved";
         return false;
@@ -849,47 +798,31 @@ public:
     void reviewFromExit(const Workspace& workspace) noexcept {
         if(surface_==Surface::ConfirmExit && workspace.hasChanges()) {
             reviewPage_=0;
+            reviewReturn_=Surface::Browse;
             surface_=Surface::Review;
         }
     }
 
 private:
-    [[nodiscard]] static bool containsAsciiCaseInsensitive(
-        std::string_view source,std::string_view query) noexcept {
-        if(query.empty())return true;
-        if(query.size()>source.size())return false;
-        const auto lower=[](unsigned char c) {
-            return c>='A' && c<='Z' ? static_cast<unsigned char>(c+32) : c;
-        };
-        for(size_t i=0;i+query.size()<=source.size();++i) {
-            bool equal=true;
-            for(size_t j=0;j<query.size();++j)
-                if(lower(static_cast<unsigned char>(source[i+j]))!=
-                   lower(static_cast<unsigned char>(query[j]))) {
-                    equal=false;
-                    break;
-                }
-            if(equal)return true;
-        }
-        return false;
-    }
     Surface surface_=Surface::Browse;
     Slot target_{};
     int actionRow_=0;
-    int fieldRow_=0;
-    uint16_t movePickerSelection_=0;
-    uint8_t natureSelection_=0;
-    uint32_t identitySelection_=0;
-    std::array<uint16_t,649> speciesResults_{};
-    size_t speciesCount_=0;
-    size_t speciesIndex_=0;
-    std::string speciesSearch_;
     bool black2White2_=false;
-    size_t locationPickerIndex_=0;
     size_t reviewPage_=0;
     size_t cloneDestinationIndex_=0;
+    bool moveDestination_=false;
     Gen5SharedPokemonSession draft_;
     std::optional<CreateRequest5> pendingCreateInput_;
+    bool createPending_=false;
+    bool createMetLocationChosen_=false;
+    Surface reviewReturn_=Surface::Browse;
+public:
+    // Shared Create defaults (not format rules): a native species, move and
+    // met data the Gen V validators accept, all editable before Keep.
+    static constexpr uint32_t kSharedCreateSpecies=25;    // Pikachu
+    static constexpr uint32_t kSharedCreateMove=84;       // Thunder Shock
+    static constexpr uint32_t kSharedCreateMetLocation=1; // native location list entry
+    static constexpr uint32_t kSharedCreateBall=4;        // Poke Ball
 };
 
 } // namespace PokeVault::Integration::Gen5

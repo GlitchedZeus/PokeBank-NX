@@ -293,5 +293,91 @@ int main() {
     assert(!fallback.setLevel(0));
     assert(!fallback.setLevel(101));
 
+    // --- Shared-editor contract points 3/7/9 (Gen III PID-linked rows) ---
+    // Confirming an unchanged Nature/Gender/Shiny/Ability in Edit must not request a PID reroll.
+    {
+        Session same{};
+        same.begin(source, Mode::Edit);
+        assert(same.setNature(source.nature) && same.setGender(source.gender) && same.setShiny(source.shiny));
+        auto r = same.editRequest();
+        assert(!r.nature && !r.gender && !r.shiny && !r.abilityNumber && !same.dirty());
+        // A real change is requested; returning to the record's own value drops it again.
+        assert(same.setNature(static_cast<uint8_t>((source.nature + 1) % 25)) && same.editRequest().nature);
+        assert(same.setNature(source.nature) && !same.editRequest().nature);
+        Session rs{};
+        rs.begin(ralts, Mode::Edit);
+        assert(rs.setAbilityNumber(1) && !rs.editRequest().abilityNumber);
+        // Create keeps every explicit choice (its starting PID is not the user's).
+        Session c{};
+        c.beginCreate(trainer);
+        assert(c.setNature(c.baseline.nature) && c.createRequest().nature == c.baseline.nature);
+    }
+    // A Trainer ID change that would flip shininess requests the current shininess explicitly;
+    // one that would not flip it requests nothing; returning to the original TID drops it.
+    {
+        static_assert(shinyFor(0, 0, 0x00000007) && !shinyFor(0, 0, 0x00000008));
+        Session tid{};
+        tid.begin(source, Mode::Edit);
+        assert(!shinyFor(source.tid, source.sid, source.pid) && !source.shiny);
+        const uint16_t flipping = static_cast<uint16_t>(source.sid ^ (source.pid >> 16) ^ (source.pid & 0xFFFF));
+        assert(shinyFor(flipping, source.sid, source.pid));
+        assert(tid.setTid(flipping));
+        auto r = tid.editRequest();
+        assert(r.tid == flipping && r.shiny && *r.shiny == false);
+        assert(tid.setTid(static_cast<uint16_t>(flipping ^ 0x0100)));
+        assert(!shinyFor(tid.working.tid, source.sid, source.pid));
+        assert(!tid.editRequest().shiny); // would not flip: the PID is kept
+        assert(tid.setTid(source.tid) && !tid.editRequest().shiny && !tid.editRequest().tid);
+        // An explicit Shiny choice is never overridden by a later TID edit.
+        assert(tid.setShiny(true) && tid.setTid(flipping) && tid.editRequest().shiny == true);
+        Gen3::StagedPokemonRecord shinySource = source;
+        shinySource.tid = flipping;
+        shinySource.shiny = true;
+        Session keepShiny{};
+        keepShiny.begin(shinySource, Mode::Edit);
+        assert(keepShiny.setTid(source.tid) && keepShiny.editRequest().shiny == true);
+    }
+    // A species change drops gender/ability requests the new species cannot represent, so
+    // Keep/Add is never stuck behind a row that is no longer editable.
+    {
+        Session g{};
+        g.begin(ralts, Mode::Edit);
+        assert(g.setGender(1) && g.editRequest().gender == 1);
+        assert(g.setAbilityNumber(2) && g.editRequest().abilityNumber == 2);
+        assert(Pokemon::getPersonalInfo(106, 0).genderRatio == 0); // Hitmonlee: male only
+        assert(nativeAbilitySlots(106).size() == 1);
+        assert(g.setSpecies(106, "ruby_gba"));
+        auto r = g.editRequest();
+        assert(!r.gender && !r.abilityNumber && r.species == 106);
+        // Still-representable requests survive a species change.
+        Session k{};
+        k.begin(ralts, Mode::Edit);
+        assert(k.setGender(1) && k.setSpecies(281, "ruby_gba") && k.editRequest().gender == 1);
+        Session c{};
+        c.beginCreate(trainer);
+        assert(c.setGender(1) && c.setSpecies(106, "ruby_gba") && !c.createRequest().gender);
+    }
+    // The exact preview's unrequested PID-linked values become the draft's displayed values, so
+    // Gender/Shiny toggles start from what the user sees; requested values are never overridden.
+    {
+        Session a{};
+        a.begin(ralts, Mode::Edit);
+        assert(a.setNature(3));
+        auto preview = a.working;
+        preview.gender = 1;
+        preview.shiny = true;
+        preview.nature = 9;
+        preview.abilityNumber = 2;
+        preview.ability = Pokemon::getPersonalInfoG3(280).ability2;
+        a.adoptPreview(preview);
+        assert(a.working.gender == 1 && a.working.shiny && a.working.abilityNumber == 2);
+        assert(a.working.nature == 3); // requested
+        assert(a.cycleGender() && a.working.gender == 0 && !a.editRequest().gender);
+        preview.species = 281; // a stale preview for another species is ignored
+        preview.gender = 0;
+        a.adoptPreview(preview);
+        assert(a.working.gender == 0);
+    }
+
     std::cout << "Generation III shared editor draft session: PASS\n";
 }

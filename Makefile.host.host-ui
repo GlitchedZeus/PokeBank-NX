@@ -1,0 +1,235 @@
+# Host UI harness (Round 6 L06): tests that drive the REAL TrainerViewScreen::update / draw on the
+# host with scripted controller and touch input (tests/host-ui). The app's own sources are built
+# into a static archive against the scriptable libnx stub (tests/host-ui/switch.h); the linker pulls
+# only what a test references. Platform-only sources (framebuffer, keyboard applet, account /
+# filesystem utilities, the top-level screens) are replaced by tests/host-ui/HostUiStubs.cpp.
+# Application objects are built with -w: the app's warnings are gated by its own native build; the
+# tests themselves use the full host CXXFLAGS.
+# The application itself is GCC-only (devkitA64): several headers name `Trainer::Trainer` /
+# `Pokemon::...` while a global using-directive is in scope, which Clang reports as ambiguous and
+# GCC accepts. The harness therefore links the app only when the host compiler is GCC; under Clang
+# this file adds no targets and the rest of the host suite is unchanged.
+HOST_UI_COMPILER_IS_CLANG := $(shell $(CXX) --version 2>/dev/null | grep -qi clang && echo yes)
+ifneq ($(HOST_UI_COMPILER_IS_CLANG),yes)
+HOST_UI_EXCLUDED := src/main.cpp src/UI/UI.cpp src/UI/BackupSelectionScreen.cpp \
+	src/UI/PKSEFramebuffer.cpp src/UI/PKSEFramebufferTouchTransform.cpp src/UI/SystemIcons.cpp \
+	src/Utils/FileUtilities.cpp src/Utils/Keyboard.cpp src/Utils/PhysicalMoveAudit.cpp \
+	src/Integration/Gen3/PKSMGen3Adapter.cpp
+HOST_UI_APP_SOURCES := $(filter-out $(HOST_UI_EXCLUDED),$(shell find src -name '*.cpp' | sort))
+HOST_UI_INCLUDES := -Iinclude -Itests/host-ui
+HOST_UI_APP_FLAGS := -std=c++20 -O1 -w -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST
+HOST_UI_DIR := $(HOST_BUILD)/host-ui
+HOST_UI_OBJECTS := $(patsubst src/%.cpp,$(HOST_UI_DIR)/obj/%.o,$(HOST_UI_APP_SOURCES))
+HOST_UI_SANITIZE_OBJECTS := $(patsubst src/%.cpp,$(HOST_UI_DIR)/asan/%.o,$(HOST_UI_APP_SOURCES))
+HOST_UI_ARCHIVE := $(HOST_UI_DIR)/libpokebank-hostui.a
+HOST_UI_SANITIZE_ARCHIVE := $(HOST_UI_DIR)/libpokebank-hostui-asan.a
+HOST_UI_STUBS := tests/host-ui/HostUiStubs.cpp
+
+$(HOST_UI_DIR)/obj/%.o: src/%.cpp tests/host-ui/switch.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(HOST_UI_APP_FLAGS) $(HOST_UI_INCLUDES) -c $< -o $@
+# GCC rejects Gen5PersonalTypes.h's constexpr `info==nullptr` static_asserts whenever UBSan
+# instruments the TU, so the one object that includes it (the composite device UI TU) is built with
+# AddressSanitizer only; every other application object gets the full ASan + UBSan flags.
+HOST_UI_SANITIZE := $(SANITIZE_FLAGS)
+$(HOST_UI_DIR)/asan/UI/TrainerViewScreenCompositeOverlay.o: HOST_UI_SANITIZE := -fsanitize=address -fno-omit-frame-pointer -O1
+$(HOST_UI_DIR)/asan/%.o: src/%.cpp tests/host-ui/switch.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(HOST_UI_APP_FLAGS) $(HOST_UI_SANITIZE) -w $(HOST_UI_INCLUDES) -c $< -o $@
+$(HOST_UI_ARCHIVE): $(HOST_UI_OBJECTS)
+	@rm -f $@
+	ar rcs $@ $^
+$(HOST_UI_SANITIZE_ARCHIVE): $(HOST_UI_SANITIZE_OBJECTS)
+	@rm -f $@
+	ar rcs $@ $^
+
+# L06: Gen III / Gen V Pokérus and Gen III Held Item through the real input path (A and touch).
+HOST_UI_EDITOR_TEST := $(HOST_BUILD)/test_ui_editor_input_host
+HOST_UI_EDITOR_SANITIZE := $(HOST_BUILD)/test_ui_editor_input_host_sanitize
+HOST_TESTS += $(HOST_UI_EDITOR_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_EDITOR_SANITIZE)
+host-test: $(HOST_UI_EDITOR_TEST)
+host-sanitize: $(HOST_UI_EDITOR_SANITIZE)
+$(HOST_UI_EDITOR_TEST): tests/test_ui_editor_input_host.cpp tests/fuzz_synthetic_saves.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_editor_input_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_EDITOR_SANITIZE): tests/test_ui_editor_input_host.cpp tests/fuzz_synthetic_saves.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_editor_input_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+# Round 6 L06 / 7D (lane P): Gen III Held Item tap and A, and outside taps, through the real screen.
+HOST_UI_HELD_TEST := $(HOST_BUILD)/test_ui_held_item_host
+HOST_UI_HELD_SANITIZE := $(HOST_BUILD)/test_ui_held_item_host_sanitize
+HOST_TESTS += $(HOST_UI_HELD_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_HELD_SANITIZE)
+host-test: $(HOST_UI_HELD_TEST)
+host-sanitize: $(HOST_UI_HELD_SANITIZE)
+$(HOST_UI_HELD_TEST): tests/test_ui_held_item_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_held_item_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_HELD_SANITIZE): tests/test_ui_held_item_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_held_item_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+# Round 6 E05 (lane R): Gen I-V Game Browser pages and Help through the real TrainerViewScreen::draw;
+# the HostUi layout recorder asserts one footer and no overlapping visible text.
+HOST_UI_LAYOUT_TEST := $(HOST_BUILD)/test_ui_layout_host
+HOST_UI_LAYOUT_SANITIZE := $(HOST_BUILD)/test_ui_layout_host_sanitize
+HOST_UI_LAYOUT_INPUTS := tests/test_ui_layout_host.cpp tests/host-ui/HostUi.h tests/host-ui/HostUiFixtures.h \
+	tests/fuzz_synthetic_saves.h tests/fixtures/gsc_pokemon_fixture.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_LAYOUT_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_LAYOUT_SANITIZE)
+host-test: $(HOST_UI_LAYOUT_TEST)
+host-sanitize: $(HOST_UI_LAYOUT_SANITIZE)
+$(HOST_UI_LAYOUT_TEST): $(HOST_UI_LAYOUT_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_layout_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_LAYOUT_SANITIZE): $(HOST_UI_LAYOUT_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_layout_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Round 6 7D (lane P): Gen I Species and Gen II Move pickers close on an outside tap, real screen.
+HOST_UI_CLASSIC_DISMISS_TEST := $(HOST_BUILD)/test_ui_classic_picker_dismiss_host
+HOST_UI_CLASSIC_DISMISS_SANITIZE := $(HOST_BUILD)/test_ui_classic_picker_dismiss_host_sanitize
+HOST_UI_CLASSIC_DISMISS_INPUTS := tests/test_ui_classic_picker_dismiss_host.cpp tests/host-ui/HostUi.h \
+	tests/fuzz_synthetic_saves.h tests/fixtures/gsc_pokemon_fixture.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_CLASSIC_DISMISS_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_CLASSIC_DISMISS_SANITIZE)
+host-test: $(HOST_UI_CLASSIC_DISMISS_TEST)
+host-sanitize: $(HOST_UI_CLASSIC_DISMISS_SANITIZE)
+$(HOST_UI_CLASSIC_DISMISS_TEST): $(HOST_UI_CLASSIC_DISMISS_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_classic_picker_dismiss_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_CLASSIC_DISMISS_SANITIZE): $(HOST_UI_CLASSIC_DISMISS_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_classic_picker_dismiss_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+# Round 7 C04 (lane P): Quick Games and Product Home Help close on an outside tap, through the
+# real SaveSelectScreen (Product Home builds on the host with no account or saves, switch.h).
+HOST_UI_QUICK_GAMES_TEST := $(HOST_BUILD)/test_ui_quick_games_host
+HOST_UI_QUICK_GAMES_SANITIZE := $(HOST_BUILD)/test_ui_quick_games_host_sanitize
+HOST_UI_QUICK_GAMES_INPUTS := tests/test_ui_quick_games_host.cpp tests/host-ui/HostUi.h \
+	tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_QUICK_GAMES_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_QUICK_GAMES_SANITIZE)
+host-test: $(HOST_UI_QUICK_GAMES_TEST)
+host-sanitize: $(HOST_UI_QUICK_GAMES_SANITIZE)
+$(HOST_UI_QUICK_GAMES_TEST): $(HOST_UI_QUICK_GAMES_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_quick_games_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_QUICK_GAMES_SANITIZE): $(HOST_UI_QUICK_GAMES_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_quick_games_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+
+# Round 7 B07 / C09 (lane R): Gen II Unown Letter grid, Shiny questions and Reroll through the real
+# TrainerViewScreen input (Silver save with an Unown in Box 2).
+HOST_UI_UNOWN_TEST := $(HOST_BUILD)/test_ui_unown_letter_host
+HOST_UI_UNOWN_SANITIZE := $(HOST_BUILD)/test_ui_unown_letter_host_sanitize
+HOST_UI_UNOWN_INPUTS := tests/test_ui_unown_letter_host.cpp tests/host-ui/HostUi.h tests/fixtures/gsc_pokemon_fixture.h \
+	include/UI/Gen2UnownLetter.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_UNOWN_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_UNOWN_SANITIZE)
+host-test: $(HOST_UI_UNOWN_TEST)
+host-sanitize: $(HOST_UI_UNOWN_SANITIZE)
+$(HOST_UI_UNOWN_TEST): $(HOST_UI_UNOWN_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_unown_letter_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_UNOWN_SANITIZE): $(HOST_UI_UNOWN_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_unown_letter_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+
+# Round 8 automated QA: the real SaveSelectScreen title discovery against a scripted console (one
+# account, synthetic save-data entries for the twelve FireRed/LeafGreen Switch releases plus noise).
+HOST_UI_DISCOVERY_TEST := $(HOST_BUILD)/test_ui_switch_title_discovery_host
+HOST_UI_DISCOVERY_SANITIZE := $(HOST_BUILD)/test_ui_switch_title_discovery_host_sanitize
+HOST_UI_DISCOVERY_INPUTS := tests/test_ui_switch_title_discovery_host.cpp tests/host-ui/HostUi.h \
+	tests/host-ui/switch.h tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_DISCOVERY_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_DISCOVERY_SANITIZE)
+host-test: $(HOST_UI_DISCOVERY_TEST)
+host-sanitize: $(HOST_UI_DISCOVERY_SANITIZE)
+$(HOST_UI_DISCOVERY_TEST): $(HOST_UI_DISCOVERY_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_switch_title_discovery_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_DISCOVERY_SANITIZE): $(HOST_UI_DISCOVERY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_switch_title_discovery_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+# Owner item #10: Recovery files (Backups -> X) through the real SaveSelectScreen: review, select,
+# confirm and remove exactly one older backup in a private mkdtemp sdmc:/ tree (synthetic files).
+HOST_UI_RECOVERY_TEST := $(HOST_BUILD)/test_ui_recovery_files_host
+HOST_UI_RECOVERY_SANITIZE := $(HOST_BUILD)/test_ui_recovery_files_host_sanitize
+HOST_UI_RECOVERY_INPUTS := tests/test_ui_recovery_files_host.cpp tests/host-ui/HostUi.h \
+	tests/host-ui/switch.h tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS) \
+	include/UI/RecoveryManagementModel.h include/UI/RecoveryManagementFs.h
+HOST_TESTS += $(HOST_UI_RECOVERY_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_RECOVERY_SANITIZE)
+host-test: $(HOST_UI_RECOVERY_TEST)
+host-sanitize: $(HOST_UI_RECOVERY_SANITIZE)
+$(HOST_UI_RECOVERY_TEST): $(HOST_UI_RECOVERY_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_recovery_files_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_RECOVERY_SANITIZE): $(HOST_UI_RECOVERY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_recovery_files_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Owner Oct 28: the keyboard's Japanese Gen I / II name pages through the real KeyboardState.
+HOST_UI_KANA_TEST := $(HOST_BUILD)/test_ui_kana_keyboard_host
+HOST_UI_KANA_SANITIZE := $(HOST_BUILD)/test_ui_kana_keyboard_host_sanitize
+HOST_TESTS += $(HOST_UI_KANA_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_KANA_SANITIZE)
+host-test: $(HOST_UI_KANA_TEST)
+host-sanitize: $(HOST_UI_KANA_SANITIZE)
+$(HOST_UI_KANA_TEST): tests/test_ui_kana_keyboard_host.cpp include/Utils/Gen12KanaText.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_kana_keyboard_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_KANA_SANITIZE): tests/test_ui_kana_keyboard_host.cpp include/Utils/Gen12KanaText.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_kana_keyboard_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Owner Oct 28 (Feature B): Top Up / Add Missing through the real Gen III / IV / V Bag screens
+# (ZR -> SETUP -> numpad -> PREVIEW rows inside the modal -> B stages nothing -> A stages -> Review).
+HOST_UI_BAG_TOP_UP_TEST := $(HOST_BUILD)/test_ui_bag_top_up_host
+HOST_UI_BAG_TOP_UP_SANITIZE := $(HOST_BUILD)/test_ui_bag_top_up_host_sanitize
+HOST_UI_BAG_TOP_UP_INPUTS := tests/test_ui_bag_top_up_host.cpp tests/host-ui/HostUi.h tests/host-ui/HostUiFixtures.h \
+	tests/fuzz_synthetic_saves.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_BAG_TOP_UP_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_BAG_TOP_UP_SANITIZE)
+host-test: $(HOST_UI_BAG_TOP_UP_TEST)
+host-sanitize: $(HOST_UI_BAG_TOP_UP_SANITIZE)
+$(HOST_UI_BAG_TOP_UP_TEST): $(HOST_UI_BAG_TOP_UP_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_bag_top_up_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_BAG_TOP_UP_SANITIZE): $(HOST_UI_BAG_TOP_UP_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_bag_top_up_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Feature A UI (owner Oct 28): Pokemon Actions -> Import from file / Export to file, Gen I-V, through
+# the real TrainerViewScreen in a private mkdtemp sdmc:/ tree (synthetic saves and files only).
+HOST_UI_FILE_MENUS_TEST := $(HOST_BUILD)/test_ui_pokemon_file_menus_host
+HOST_UI_FILE_MENUS_SANITIZE := $(HOST_BUILD)/test_ui_pokemon_file_menus_host_sanitize
+HOST_UI_FILE_MENUS_INPUTS := tests/test_ui_pokemon_file_menus_host.cpp tests/host-ui/HostUi.h tests/host-ui/HostUiFixtures.h \
+	tests/fuzz_synthetic_saves.h tests/fixtures/gsc_pokemon_fixture.h include/UI/PokemonFileIo.h \
+	include/UI/PokemonFileDialogModel.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_FILE_MENUS_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_FILE_MENUS_SANITIZE)
+host-test: $(HOST_UI_FILE_MENUS_TEST)
+host-sanitize: $(HOST_UI_FILE_MENUS_SANITIZE)
+$(HOST_UI_FILE_MENUS_TEST): $(HOST_UI_FILE_MENUS_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_pokemon_file_menus_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_FILE_MENUS_SANITIZE): $(HOST_UI_FILE_MENUS_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_pokemon_file_menus_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Owner Oct 28: Japanese Gen I / II name prompts open the kana keyboard; other saves are unchanged.
+HOST_UI_JP_NAMES_TEST := $(HOST_BUILD)/test_ui_japanese_name_prompts_host
+HOST_UI_JP_NAMES_SANITIZE := $(HOST_BUILD)/test_ui_japanese_name_prompts_host_sanitize
+HOST_TESTS += $(HOST_UI_JP_NAMES_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_JP_NAMES_SANITIZE)
+host-test: $(HOST_UI_JP_NAMES_TEST)
+host-sanitize: $(HOST_UI_JP_NAMES_SANITIZE)
+$(HOST_UI_JP_NAMES_TEST): tests/test_ui_japanese_name_prompts_host.cpp include/UI/ClassicJapaneseNames.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_japanese_name_prompts_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_JP_NAMES_SANITIZE): tests/test_ui_japanese_name_prompts_host.cpp include/UI/ClassicJapaneseNames.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_japanese_name_prompts_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+endif

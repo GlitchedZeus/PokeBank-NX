@@ -1,3 +1,6 @@
+#include "UI/SharedPanelHeading.h"
+#include "UI/SharedEditorPresentation.h"
+#include "UI/ClassicStatFieldState.h"
 #include "UI/Modals/Gen2PokemonDetailsModal.h"
 
 #include "Integration/Gen2/Gen2BattleStats.h"
@@ -7,12 +10,14 @@
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "UI/ExactSaveCapabilities.h"
 #include "UI/Gen2NativePresentation.h"
+#include "UI/Gen2WorkspacePresentation.h"
 #include "Names/MoveNames.h"
 #include "Pokemon/Experience.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
+#include "UI/SharedEditorChrome.h"
 #include "UI/TouchScroll.h"
 #include "UI/SpriteManager.h"
 #include "UI/StatsRadar.h"
@@ -115,7 +120,9 @@ std::string heldItemText(uint16_t held) {
 void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
                                  const Pokemon::Pokemon2ReadOnly& p) {
     const int W = fb.getWidth(), H = fb.getHeight();
-    screen.touchButtons.clear();
+    // The details modal owns the frame's touch: the covered layer's footer badges and glyph
+    // buttons are dropped (beginModal also clears screen.touchButtons), and it draws its own footer.
+    UI::SharedEditorChrome::beginModal(screen.touchButtons);
 
     // Passive user-facing summary only: no cursor, no A/Y/L/R actions, no mutation route.
     fb.drawFilledRect(0, 0, W, H, Color(0, 0, 0, 130));
@@ -146,7 +153,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
     // DETAILS
-    fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Accent, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, leftX, contentY, "DETAILS");
     constexpr int renderSize = 174;
     if (auto* sprite = SpriteManager::getSprite(p.speciesID(), p.form(), p.isShiny(0, {})); sprite && sprite->data) {
         fb.drawSpriteStaticContained(leftX + 63, contentY + 34, renderSize, 146,
@@ -189,29 +196,49 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     fb.drawText(midX + 198, contentY + 48, "Stat Exp", Colors::TextDim, TextStyle::Caption);
     fb.drawText(midX + 304, contentY + 48, "Stat", Colors::TextDim, TextStyle::Caption);
     const std::array<const char*,5> labels{"HP", "Attack", "Defense", "Speed", "Special"};
-    const std::array<uint8_t,5> dvs{p.dvHP(), p.dvATK(), p.dvDEF(), p.dvSPE(), p.dvSpecial()};
+    // R2-GOLD: same field-state contract as the editors (UI/ClassicStatFieldState.h): derived HP DV
+    // (always recomputed from the four stored DVs) and calculated Stat are ReadOnly gold.
+    namespace CSF = PokeBank::UIModel::ClassicStatFields;
+    const auto cellColor = [](int row, int column) {
+        return SharedEditorChrome::fieldColor(
+            SharedEditorChrome::FieldState::style(CSF::cellState(row, column), false).value);
+    };
+    const std::array<uint8_t,5> dvs{
+        CSF::derivedHpDv({static_cast<uint8_t>(p.dvATK()), static_cast<uint8_t>(p.dvDEF()),
+                          static_cast<uint8_t>(p.dvSPE()), static_cast<uint8_t>(p.dvSpecial())}),
+        static_cast<uint8_t>(p.dvATK()), static_cast<uint8_t>(p.dvDEF()),
+        static_cast<uint8_t>(p.dvSPE()), static_cast<uint8_t>(p.dvSpecial())};
     const std::array<uint16_t,5> statExp{p.statExpHP(), p.statExpATK(), p.statExpDEF(), p.statExpSPE(), p.statExpSpecial()};
     for (int i = 0; i < 5; ++i) {
         const int y = contentY + 88 + i * 48;
         fb.drawText(midX + 16, y, labels[static_cast<std::size_t>(i)], Colors::TextDim, TextStyle::Caption);
         fb.drawText(midX + 96, y, std::to_string(dvs[static_cast<std::size_t>(i)]) + (i == 0 ? " *" : ""),
-                    Colors::Text, TextStyle::Caption);
-        fb.drawText(midX + 192, y, std::to_string(statExp[static_cast<std::size_t>(i)]), Colors::Text, TextStyle::Caption);
-        const std::string stat = i < 4 ? std::to_string(battleStats[static_cast<std::size_t>(i)])
-                                      : "A" + std::to_string(battleStats[4]) + " / D" + std::to_string(battleStats[5]);
-        fb.drawText(midX + 290, y, stat, Colors::Text, TextStyle::Caption);
+                    cellColor(i, 0), TextStyle::Caption);
+        fb.drawText(midX + 192, y, std::to_string(statExp[static_cast<std::size_t>(i)]), cellColor(i, 1), TextStyle::Caption);
+        // Round 7 (owner A22 / C01, Gen I reference): plain numbers only; the Special row's Stat
+        // cell stays empty and Sp. Atk / Sp. Def get their own line below.
+        if (i < 4)
+            fb.drawText(midX + 290, y, std::to_string(battleStats[static_cast<std::size_t>(i)]), cellColor(i, 2),
+                        TextStyle::Caption);
     }
     fb.drawText(midX + 16, contentY + 322, "* HP DV derived", Colors::TextDim, TextStyle::Caption);
     compactRow(fb, midX + 16, contentY + 356, "Shiny", p.isShiny(0, {}) ? "Yes" : "No", 124);
     compactRow(fb, midX + 16, contentY + 390, "Level", std::to_string(p.level()), 124);
-    fb.drawText(midX + 16, contentY + 426, "One Special DV + Stat Exp feeds SpA and SpD",
-                Colors::TextDim, TextStyle::Caption);
+    {
+        // The calculated Special stats, as Gen I shows its Special (Gen2Workspace::SpecialBlock).
+        using B = PokeBank::UIModel::Gen2Workspace::SpecialBlock;
+        const int bx = midX - 2, by = contentY + 426;
+        fb.drawText(bx + B::kLabelX, by, B::kSpecialAttack, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(bx + B::kSpAValueX, by, std::to_string(battleStats[4]), cellColor(4, 2), TextStyle::Caption);
+        fb.drawText(bx + B::kSpDLabelX, by, B::kSpecialDefense, Colors::TextDim, TextStyle::Caption);
+        fb.drawText(bx + B::kSpDValueX, by, std::to_string(battleStats[5]), cellColor(4, 2), TextStyle::Caption);
+    }
     fb.drawText(midX + 16, contentY + 454,
                 calculatedBoxStats ? "Box battle stats calculated / read-only" : "Party battle stats stored / read-only",
                 Colors::TextDim, TextStyle::Caption);
 
     // MOVES: calculate exact-game compatibility fresh from current source game/species/four moves.
-    fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
+    PokeBank::UIModel::PanelHeading::draw(fb, rightX, contentY, "MOVES");
     std::array<uint8_t, 4> currentMoves{};
     for (int slot = 0; slot < 4; ++slot) {
         const int y = contentY + 50 + slot * 44;
@@ -230,7 +257,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     compactRow(fb, rightX + 18, contentY + 235, "Move compatibility",
                compatible ? "OK" : "Unusual preserved", 300,
                compatible ? Colors::Success : Colors::Warning);
-    compactRow(fb, rightX + 18, contentY + 261, "Encounter legality", "Not checked", 300, Colors::TextDim);
+    compactRow(fb, rightX + 18, contentY + 261, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), 300, Colors::TextDim);
 
     // Native exact-format data + six-axis battle radar.
     constexpr int splitY = contentY + 288, splitH = 216, inset = 12, gap = 10;
@@ -248,12 +275,12 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
         : p.exp();
     const uint32_t expRemaining = nextExp > p.exp() ? nextExp - p.exp() : 0;
 
-    fb.drawText(leftPaneX + 10, splitY + 8, "GEN II DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 8, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
     const int nativeTop = splitY + 28;
     const int nativeBottom = splitY + splitH - 8;
     const int nativeViewH = nativeBottom - nativeTop;
     const auto& liveTouch = latestTouchGesture();
-    const bool liveNativeDrag = liveTouch.down &&
+    const bool liveNativeDrag = !screen.details.leftScrollbar.capturing() && liveTouch.down &&
         liveTouch.startX >= leftPaneX + 1 && liveTouch.startX < leftPaneX + leftPaneW - 1 &&
         liveTouch.startY >= nativeTop && liveTouch.startY < nativeBottom;
     const int nativeScroll = liveNativeDrag
@@ -296,7 +323,7 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
     screen.details.leftScrollMax = nativeMax;
     screen.details.leftScroll = std::clamp(screen.details.leftScroll, 0, nativeMax);
     fb.clearClip();
-    drawScrollbar(fb, leftPaneX + leftPaneW - 6, nativeTop, nativeViewH,
+    drawScrollbar(fb, screen.details.leftScrollbar, leftPaneX + leftPaneW - 9, nativeTop, nativeViewH,
                   nativeContentH, std::clamp(nativeScroll, 0, nativeMax));
 
     fb.drawText(rightPaneX + 10, splitY + 8, "BATTLE STATS", Colors::Accent, TextStyle::Caption);

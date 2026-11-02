@@ -1,125 +1,180 @@
-# NEXT CODEX PROMPT — FINISH GEN II SHARED EDITOR DEVICE CANDIDATE
+# NEXT ENGINEERING PROMPT — CONVERSION FIDELITY / GOLDEN FIXTURE AUDIT
 
-> **HISTORICAL PROMPT — DO NOT EXECUTE AS CURRENT WORK.** The Gen II/PR #68 task below is completed historical context. Current engineering routing lives in `docs/ENGINEERING_AUTHORITY.md`; always re-fetch GitHub first.
+> **HISTORICAL PROMPT — DO NOT EXECUTE AS CURRENT WORK.** This was the 2026-09-24 conversion-fidelity audit prompt (PR #79). The earlier Gen II / PR #68 prompt is archived in `docs/history/NEXT_CODEX_PROMPT_GEN2_PR68_2026-09-14.md`. Current engineering routing lives in `docs/ENGINEERING_AUTHORITY.md`, `README.md` and live GitHub.
 
+Continue PokeBank NX from the exact CURRENT LIVE GitHub state.
 
-Continue PokeBank NX from the existing Gen II work. Do not restart, create a replacement branch, or reset newer commits.
+Repository:
+GlitchedZeus/PokeBank-NX
 
-## Repository state
+Active audit PR:
+#79
 
-```text
-Repository: GlitchedZeus/PokeBank-NX
-Production branch: feature/pokebank-playable
-Production checkpoint: a9fc4521087cdc80078c7db620f1be0107adce58
-Focused branch: feature/gen2-shared-pokemon-editor-20260914
-PR #68: OPEN / DRAFT / NOT MERGED
-Known implementation head: 43b8563d4177b58ae0f341c1ebd58f86e2ee4fdb
-Known implementation tree: e791463ef438b5795da28c636de7bcac1105806f
-```
+Active audit branch:
+audit/full-project-hardening-20260923
 
-First re-fetch PR #68. If it has advanced, preserve the newer head and continue from it.
+Known documentation checkpoint:
+59ced7c81db457ce4e59cd8b15268d6a2296537d
 
-## Accepted milestones — do not reopen without evidence
+Before any write:
 
-- Gen I RBY read-only: DEVICE ACCEPTED
-- Gen II GSC read-only: DEVICE ACCEPTED
-- Gen III GBA read-only: DEVICE ACCEPTED
-- Classic staged Inventory: DEVICE ACCEPTED
-- Gen I boxed staged Pokémon editor: DEVICE ACCEPTED
-- Gen I passive View unification: DEVICE ACCEPTED
+- re-fetch PR #79 and its live head;
+- preserve newer work;
+- never reset/rebase backward;
+- keep PR #79 draft/open;
+- do not merge PR #77 or #79;
+- keep all live-source write locks hard disabled.
 
-Accepted Gen I editor artifact:
+## Completed foundation to preserve
 
-```text
-source 69668bc81629228ef25c1bdada7c7ce1aed9b666
-NRO PokeBank-NX-Gen1-UX4-Retest-69668bc8.nro
-SHA-256 3ab11f7ba6938bbab5f7cbbf192d819532ce94f09bc7788a3bb0d8f6217f3763
-```
+A01 durable Bank persistence
+A02 custody-safe rollback
+A03 immutable original + destination candidate
+A04a durable Move journal/recovery
+A04b Bank ↔ PokeBank-owned workspace transaction integration for supported single-file routes
+A05 recovery evidence preservation
+A06 BDSP malformed-layout guard
+A07 newer/larger Bank write block
+A08 profile/exact-game namespaces
+A09 supported single-file workspace durability
 
-## Current Gen II implementation
+Do not redo those systems unless a new regression proves a defect.
 
-The focused branch already contains the shared Gen II View/Create/Edit work. Do not redo research or regenerate compatibility data unless a failing test proves the existing data is wrong.
+## Primary task
 
-Implemented:
+Perform the exact-current F05–F13 conversion fidelity audit using golden fixtures.
 
-- Gold/Silver vs Crystal exact-game move compatibility;
-- pinned offline compatibility tables derived from PKHeX reference commit `77dcd3a7895bceaafbbff12d25bdf77c1acd8ca5`;
-- passive View live compatibility: green `OK` / orange `Unusual preserved`;
-- encounter legality remains `Not checked`;
-- passive View does not show editor-internal `PKSE three-panel workspace` wording;
-- shared Gen II `DETAILS | VALUES | MOVES` View/Create/Edit;
-- authentic DVs / derived HP DV / Stat Exp;
-- one Special DV feeding split SpA/SpD battle presentation;
-- six-stat and six-axis radar presentation;
-- Held Item picker using the Gen II item domain;
-- Friendship and Pokérus;
-- Crystal-only caught/met data where actually stored;
-- species + Attack-DV gender;
-- DV-derived shiny;
-- local Add/Edit drafts;
-- Y random 0–15 DVs;
-- L/R previous/next panel;
-- Create explicit Stage Add;
-- transactional Edit baseline + Keep/Discard/Continue;
-- discard restores the exact staged state that existed when Edit opened;
-- unrelated edits preserve pre-existing unusual move/PP/PP-Up bytes;
-- Level and EXP use separate applet invocations;
-- permanent compatibility/passive-view/editor-surface host/sanitizer tests.
+Start with N01/F07 because it is already confirmed:
 
-## Non-negotiable safety
+Modern/PK8-layout -> Gen III PID search can exhaust and silently fall back to an incompatible PID while still reporting successful conversion.
 
-```text
+Required behavior:
+if required correlated traits cannot be preserved, conversion must fail explicitly and must not produce a source-retiring true-Move candidate.
+
+## Audit matrix
+
+Reverify:
+
+F05 shiny preservation
+F06 Unown/PID-derived form
+F07 PID-search exhaustion
+F08 ability slot/number mapping
+F09 S/V ↔ Z-A Tera/divergent fields
+F10 Gen III EV 252/253/255 policy
+F11 nickname/language/loss semantics
+F13 profile/account provenance implications
+
+Classify each exact-current item:
+
+CONFIRMED DEFECT
+ALREADY FIXED
+PROVEN CORRECT BY FIXTURE
+NEEDS POLICY
+NEEDS MORE FIXTURES
+UNSUPPORTED / FAIL CLOSED
+
+## Golden fixture contract
+
+For every supported conversion pair under test:
+
+- capture exact source bytes/hash;
+- conversion must not mutate source;
+- serialize destination;
+- reparse destination;
+- verify destination checksum/container;
+- verify species/form;
+- verify shiny;
+- verify PID/EC correlations where applicable;
+- verify gender;
+- verify nature;
+- verify ability slot/number;
+- verify IV/EV/DV/Stat Exp policy;
+- verify moves/PP;
+- verify nickname/language;
+- verify origin/version/met data;
+- verify held item/ball where applicable;
+- verify all declared losses.
+
+No silent fallback.
+
+No silent trait drift.
+
+No claim of legality without evidence.
+
+## F07 fix policy
+
+If PID search cannot satisfy all required Gen III correlated traits within the supported algorithm:
+
+return explicit conversion failure.
+
+Do not:
+- leave the original incompatible PID;
+- silently change nature/gender/shiny/ability slot;
+- allow A04b to retire the source behind that candidate.
+
+Add a permanent regression for forced/exhausted search failure.
+
+## A04b integration gate
+
+Cross-game true Move remains disabled until a conversion route is fixture-proven.
+
+When a route becomes proven, document whether it is eligible for later A04b enablement.
+
+Do not broadly enable all cross-game true Move during this tranche.
+
+Do not change same-game/native-compatible true-Move behavior unless required by a proven bug.
+
+## Source safety
+
 ORIGINAL SOURCE SAVE: IMMUTABLE
 LIVE INSTALLED-GAME WRITE: HARD DISABLED
 LIVE RETROARCH WRITE: HARD DISABLED
 LIVE OTHER-EMULATOR WRITE: HARD DISABLED
-PARTY MUTATION: DEFERRED WHERE NOT SEPARATELY PROVEN
-```
+UNKNOWN SAVE VARIANTS: FAIL CLOSED
 
-## Primary task — freeze and validate one exact candidate
+## Validation
 
-Do not start Gen III editor, Vault, DS/3DS, or another roadmap milestone.
+Run:
 
-On the exact current PR #68 head:
+- new golden conversion tests;
+- existing A01–A09 regressions;
+- A04a transaction tests;
+- A04b production transaction tests;
+- full Host Tests;
+- ASan;
+- UBSan;
+- Audit Hardening Native Validation.
 
-1. run `git diff --check`;
-2. run all focused Gen II staged/editor/compatibility/passive-view tests;
-3. run Gen I accepted editor regressions;
-4. run GSC/RBY/FRLG/RSE/inventory regressions;
-5. run source mutation/immutability gates;
-6. run the full permanent host suite;
-7. run ASan and UBSan;
-8. run device asset preflight;
-9. perform a clean devkitA64 compile and final NRO link;
-10. verify embedded application SHA;
-11. verify complete embedded RomFS;
-12. produce source-addressed artifact packaging with manifest and SHA256SUMS.
+Do not claim DEVICE ACCEPTED from CI.
 
-Earlier CI results from older SHAs are not final-candidate evidence.
+## Documentation
 
-If anything fails, inspect the exact failure, fix only the real regression, commit/push, and restart verification from the new exact SHA.
+Update docs/AUDIT_STATUS_2026-09-23.md with exact-current F05–F13 disposition, fixtures, policies, route gating and exact CI evidence.
 
-## PR metadata
+Update the conversion section of CURRENT_STATUS/roadmap only when the tranche is complete.
 
-Update PR #68 body/status summary so it no longer claims Create/Edit, Held Item, compatibility, or transactional editing are still unimplemented. Keep PR #68 OPEN / DRAFT / NOT MERGED.
+## Stop condition
 
-## Exact hardware handoff
+When the F05–F13 conversion fidelity tranche is complete, STOP.
 
-Once every required gate is green on one frozen SHA, retrieve the CI-produced physical-test artifact and independently verify:
+Do not automatically start:
 
-- application SHA + tree;
-- workflow/run identity;
-- artifact name/id/size/digest;
-- `BUILD_MANIFEST.json`;
-- `SHA256SUMS.txt`;
-- standalone NRO size + SHA-256;
-- packaged ZIP size + SHA-256;
-- ZIP NRO byte-identical to standalone NRO;
-- embedded source identity;
-- complete RomFS count.
+- BDSP multi-file journal;
+- N06 directory transaction;
+- Master Vault;
+- Gen IV;
+- DS/3DS;
+- live source writes.
 
-Then provide the actual downloadable `.nro` and STOP coding.
+Final report must include:
 
-Physical test checklist must cover Gold/Silver/Crystal View/Create/Edit, move compatibility, Held Item, Friendship, Pokérus, Crystal caught/met, six stats/radar, shiny/gender/DVs, L/R/Y controls, transactional discard, invalid Add move blocking, unusual existing move preservation, and unchanged source `.srm`.
-
-Do not merge PR #68 or declare Gen II DEVICE ACCEPTED before the owner reports the physical result.
+- exact final SHA/tree;
+- every conversion pair/fixture tested;
+- F05–F13 disposition table;
+- exact F07 failure behavior;
+- any newly confirmed P0/P1/P2 findings;
+- route-level cross-game true-Move eligibility;
+- Host/ASan/UBSan/native results;
+- remaining conversion limitations;
+- updated A01–A09 status;
+- recommended next tranche.

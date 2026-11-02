@@ -340,12 +340,13 @@ void runSession(const L& layout,SourceGame game) {
 }
 int main(){
  using namespace PokeBank::UIModel;
- assert(Rules::slotActionCount(true)==7 && Rules::slotActionCount(false)==3);
+ // Shiny is edited inside the editor; the sheet has no Make Shiny quick action.
+ assert(Rules::slotActionCount(true)==6 && Rules::slotActionCount(false)==3);
  const std::array expected{Rules::SlotAction::View,Rules::SlotAction::Edit,Rules::SlotAction::Clone,
-  Rules::SlotAction::Shiny,Rules::SlotAction::Add,Rules::SlotAction::Review,Rules::SlotAction::Close};
+  Rules::SlotAction::Add,Rules::SlotAction::Review,Rules::SlotAction::Close};
  for(size_t i=0;i<expected.size();++i) assert(Rules::slotActionAt(true,i)==expected[i]);
  assert(Rules::slotActionAt(false,0)==Rules::SlotAction::Add);
- assert(Rules::slotActionAt(true,7)==Rules::SlotAction::None);
+ assert(Rules::slotActionAt(true,6)==Rules::SlotAction::None);
  assert(passiveViewAction(false)==PassiveViewAction::None);
  assert(passiveViewAction(true)==PassiveViewAction::Back);
  assert(passiveViewAction(false,passiveBackTarget)==PassiveViewAction::Back);

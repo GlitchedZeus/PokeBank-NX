@@ -1,0 +1,34 @@
+# Japanese Gen I save writing (owner Oct 28): the staged Gen I Pokemon editor (8 x 30, kana names,
+# 59-byte .pk1) and the kana Trainer name. The app keeps Japanese saves read-only until the owner opens
+# include/Integration/Common/JapaneseEditingGate.h; this fragment tests the writers themselves.
+# Real-save evidence is opt-in: POKEBANK_JP_FIXTURES=<folder with saves/ and pokemon/> (never committed).
+# Included by Makefile.host after Makefile.host.jp-gen12.
+
+JP_GEN1_WRITER_SOURCES := tests/test_gen1_japanese_writer.cpp $(sort \
+	src/PokemonFile/NativePokemonFile.cpp src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp \
+	src/Integration/Gen1/Gen1StagedPokemonEditor.cpp src/Integration/Gen1/Gen1PackedMove.cpp \
+	src/Integration/Gen1/Gen1BattleStats.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+	src/Integration/Gen1/Gen1StagedInventoryEditor.cpp src/Integration/Gen1/Gen1ReadOnlyInventory.cpp \
+	src/Integration/Gen1/Gen1ExportTransaction.cpp src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Inventory/ClassicInventoryCatalog.cpp \
+	src/Inventory/ItemQuantityPolicy.cpp src/Names/ItemNames.cpp src/Utils/SHA256.cpp \
+	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp)
+JP_GEN1_WRITER_HEADERS := include/Integration/Gen1/Gen1StorageLayout.h include/Integration/Gen1/Gen1StagedPokemonEditor.h \
+	include/Integration/Gen1/Gen1StagedTrainerEditor.h include/Integration/Gen1/Gen12CreateReview.h \
+	include/Integration/Gen1/Gen1ExportTransaction.h include/Integration/Gen1/Gen1StagedInventoryEditor.h \
+	include/Utils/Gen12KanaText.h include/PokemonFile/NativePokemonFile.h src/Integration/Gen1/Gen1PersonalData.inc
+JP_GEN1_HOST_TESTS := $(HOST_BUILD)/test_gen1_japanese_writer
+JP_GEN1_SANITIZE_TESTS := $(HOST_BUILD)/test_gen1_japanese_writer_sanitize
+
+HOST_TESTS += $(JP_GEN1_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(JP_GEN1_SANITIZE_TESTS)
+host-test: $(JP_GEN1_HOST_TESTS)
+host-sanitize: $(JP_GEN1_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_gen1_japanese_writer: $(JP_GEN1_WRITER_SOURCES) $(JP_GEN1_WRITER_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(JP_GEN1_WRITER_SOURCES) -o $@
+$(HOST_BUILD)/test_gen1_japanese_writer_sanitize: $(JP_GEN1_WRITER_SOURCES) $(JP_GEN1_WRITER_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(JP_GEN1_WRITER_SOURCES) -o $@

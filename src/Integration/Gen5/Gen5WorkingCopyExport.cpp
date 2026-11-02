@@ -118,29 +118,45 @@ bool readExact(const std::string& path,size_t expected,
 void cleanTemporary(const std::string& root) noexcept {
     if(root.empty())return;
     ::remove(join(root,"original_backup.sav").c_str());
+    ::remove(join(root,"original_backup.dsv").c_str());
     ::remove(join(root,"edited.sav").c_str());
     ::remove(join(root,"EXPORT_MANIFEST.txt").c_str());
     ::rmdir(root.c_str());
 }
+struct BackupFacts {
+    std::string_view container;
+    std::string_view name;
+    size_t size = 0;
+    std::string_view sha256;
+};
 std::string manifest(const WorkingCopyExportRequest& request,
                      const Gen5StagedSaveCandidate& candidate,
                      std::string_view originalHash,
-                     std::string_view editedHash) {
+                     std::string_view editedHash,
+                     const BackupFacts& backup) {
     std::string out="PokeBank NX Generation V verified working-copy export\n";
     out+="GAME_ID="+candidate.exactGameId+"\n";
     out+="SOURCE_FORMAT=BW_B2W2_NATIVE_SAV5_0x80000\n";
     out+="SOURCE_PATH="+request.sourcePath+"\n";
     out+="SOURCE_SHA256="+std::string(originalHash)+"\n";
+    out+="SOURCE_SHA256_SCOPE=0x80000_SAV5_PAYLOAD\n";
+    out+="SOURCE_CONTAINER="+std::string(backup.container)+"\n";
+    out+="SOURCE_FILE_SIZE="+std::to_string(backup.size)+"\n";
+    out+="SOURCE_FILE_SHA256="+std::string(backup.sha256)+"\n";
     out+="EDITED_SHA256="+std::string(editedHash)+"\n";
     out+="SAVE_COPY="+std::string(candidate.selectedCopyOffset==0?
                               "Primary":"Backup")+"\n";
     out+="SELECTED_COPY_OFFSET="+std::to_string(candidate.selectedCopyOffset)+"\n";
     out+="CHANGED_RECORDS="+std::to_string(candidate.changedRecords)+"\n";
     out+="BAG_CHANGED="+std::string(candidate.bagChanged?"YES":"NO")+"\n";
+    out+="TRAINER_CHANGED="+std::string(candidate.trainerChanged?"YES":"NO")+"\n";
     out+="TIMESTAMP="+request.timestamp+"\n";
     out+="APPLICATION_SHA="+request.applicationSha+"\n";
-    out+="ORIGINAL_BACKUP=original_backup.sav\n";
+    out+="ORIGINAL_BACKUP="+std::string(backup.name)+"\n";
+    out+="ORIGINAL_BACKUP_SHA256="+std::string(backup.sha256)+"\n";
+    out+="ORIGINAL_BACKUP_IS=VERBATIM_SOURCE_FILE\n";
     out+="EDITED_SAVE=edited.sav\n";
+    out+="EDITED_CONTAINER=raw-nds-battery\n";
     out+="WRITE_READBACK=VERIFIED\n";
     out+="FULL_SAV_REPARSE=VERIFIED\n";
     out+="EMULATOR_SAVE_WRITE=DISABLED\n";
@@ -179,6 +195,35 @@ WorkingCopyExportResult publishGen5WorkingCopy(
     out.changedRecords=candidate->changedRecords;
     out.sourceSha256=hash(request.observedSourceBytes);
     out.editedSha256=hash(candidate->bytes);
+
+    // The backup is the source file exactly as found. A provided file must
+    // wrap exactly the validated payload: a raw file IS the payload, a .dsv
+    // starts with it. Anything else is refused before filesystem output.
+    std::span<const uint8_t> backupBytes=request.observedSourceBytes;
+    std::string container="raw-nds-battery";
+    if(!request.observedSourceFile.empty()) {
+        const auto& file=request.observedSourceFile;
+        const bool prefix=file.size()>=request.observedSourceBytes.size() &&
+            std::equal(request.observedSourceBytes.begin(),
+                       request.observedSourceBytes.end(),file.begin());
+        const bool raw=request.sourceContainer=="raw-nds-battery" &&
+            file.size()==request.observedSourceBytes.size();
+        const bool dsv=request.sourceContainer=="dsv-footer" &&
+            file.size()>request.observedSourceBytes.size();
+        if(!prefix || !(raw || dsv)) {
+            out.error="Gen V export source file does not wrap the validated SAV5 payload";
+            return out;
+        }
+        backupBytes=file;
+        container=request.sourceContainer;
+    } else if(!request.sourceContainer.empty() &&
+              request.sourceContainer!="raw-nds-battery") {
+        out.error="Gen V export of a "+request.sourceContainer+
+                  " source needs its verbatim file bytes";
+        return out;
+    }
+    out.backupName=container=="dsv-footer"?"original_backup.dsv":"original_backup.sav";
+    out.backupSha256=hash(backupBytes);
 
     const std::string fixedRoot=PokeBank::Paths::exportsRoot()+"/gen5";
     const std::string root=request.rootDirectory.empty()?
@@ -219,10 +264,10 @@ WorkingCopyExportResult publishGen5WorkingCopy(
         cleanTemporary(temporaryPath);
         return out;
     };
-    const auto backupPath=join(temporaryPath,"original_backup.sav");
+    const auto backupPath=join(temporaryPath,out.backupName);
     const auto editedPath=join(temporaryPath,"edited.sav");
     const auto manifestPath=join(temporaryPath,"EXPORT_MANIFEST.txt");
-    if(!writeSynced(backupPath,workspace.sourceSave().sourceBytes(),ioError))
+    if(!writeSynced(backupPath,backupBytes,ioError))
         return fail(ioError);
     if(request.failurePoint==WorkingCopyFailurePoint::AfterBackup)
         return fail("Injected failure after Gen V backup write");
@@ -232,13 +277,14 @@ WorkingCopyExportResult publishGen5WorkingCopy(
         return fail("Injected failure after Gen V edited write");
 
     std::vector<uint8_t> backupReadback,editedReadback;
-    if(!readExact(backupPath,LayoutInfo::FullSaveSize,backupReadback,ioError) ||
+    if(!readExact(backupPath,backupBytes.size(),backupReadback,ioError) ||
        !readExact(editedPath,LayoutInfo::FullSaveSize,editedReadback,ioError))
         return fail(ioError);
     const auto baseline=workspace.sourceSave().sourceBytes();
-    if(!std::equal(backupReadback.begin(),backupReadback.end(),baseline.begin()) ||
+    if(!std::equal(backupReadback.begin(),backupReadback.end(),backupBytes.begin()) ||
+       !std::equal(baseline.begin(),baseline.end(),backupReadback.begin()) ||
        editedReadback!=candidate->bytes ||
-       hash(backupReadback)!=out.sourceSha256 ||
+       hash(backupReadback)!=out.backupSha256 ||
        hash(editedReadback)!=out.editedSha256)
         return fail("Gen V working-copy read-back SHA-256 or full-byte mismatch");
     const auto selection=workspace.sourceSave().selectedBackupPartition()
@@ -251,16 +297,41 @@ WorkingCopyExportResult publishGen5WorkingCopy(
     if(request.failurePoint==WorkingCopyFailurePoint::AfterReadback)
         return fail("Injected failure after Gen V readback");
 
-    const auto text=manifest(request,*candidate,out.sourceSha256,out.editedSha256);
+    const auto text=manifest(request,*candidate,out.sourceSha256,out.editedSha256,
+        BackupFacts{container,out.backupName,backupBytes.size(),out.backupSha256});
     if(!writeSynced(manifestPath,std::span<const uint8_t>(
         reinterpret_cast<const uint8_t*>(text.data()),text.size()),ioError))
         return fail(ioError);
     if(request.failurePoint==WorkingCopyFailurePoint::AfterManifest)
         return fail("Injected failure after Gen V manifest write");
-    // Publication is the last rename, only inside the app-owned export tree.
-    // An existing destination may never be knowingly replaced.
-    if(exists(finalPath) || ::rename(temporaryPath.c_str(),finalPath.c_str())!=0)
+    if(request.failurePoint==WorkingCopyFailurePoint::DestinationAppears)
+        (void)::mkdir(finalPath.c_str(),0700);
+    // Publication happens only inside the app-owned export tree and never
+    // replaces anything: a directory rename would silently replace an empty
+    // destination, so the destination is claimed with an exclusive mkdir
+    // (EEXIST for any existing directory, file or link) and the verified
+    // files move in, manifest last. Failure returns them and removes only
+    // the directory this call created.
+    if(::mkdir(finalPath.c_str(),0700)!=0)
         return fail("Gen V working-copy publication failed; existing export preserved");
+    const auto publishedBackup=join(finalPath,out.backupName);
+    const auto publishedEdited=join(finalPath,"edited.sav");
+    const auto publishedManifest=join(finalPath,"EXPORT_MANIFEST.txt");
+    const auto unpublish=[&](std::string reason) {
+        (void)::rename(publishedBackup.c_str(),backupPath.c_str());
+        (void)::rename(publishedEdited.c_str(),editedPath.c_str());
+        (void)::rename(publishedManifest.c_str(),manifestPath.c_str());
+        ::rmdir(finalPath.c_str());
+        return fail(std::move(reason));
+    };
+    if(::rename(backupPath.c_str(),publishedBackup.c_str())!=0)
+        return unpublish("Gen V working-copy publication failed");
+    if(request.failurePoint==WorkingCopyFailurePoint::AfterFirstPublishedFile)
+        return unpublish("Injected failure during Gen V publication");
+    if(::rename(editedPath.c_str(),publishedEdited.c_str())!=0 ||
+       ::rename(manifestPath.c_str(),publishedManifest.c_str())!=0)
+        return unpublish("Gen V working-copy publication failed");
+    ::rmdir(temporaryPath.c_str());
     out.success=true;
     out.directory=finalPath;
     out.error.clear();

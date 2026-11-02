@@ -1,12 +1,21 @@
+#include "Integration/Gen3/Gen3HeldItems.h"
+#include "Integration/Gen1/Gen12CreateReview.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 
 #include "Encryption/Encryption3FRLG.h"
 #include "Enums/GameVersion.h"
+#include "Enums/Ball.h"
+#include "Enums/LanguageID.h"
+#include "Names/DefaultSpeciesName.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
 #include "Save/RtcFooter.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "Names/MoveInfo.h"
+#include "Names/MoveNames.h"
 #include "Names/SpeciesNames.h"
+#include "Names/ItemNames.h"
+#include "Names/PokemonNames.h"
+#include "Names/LocationDisplayNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Pokemon/Experience.h"
 #include "Utils/StringHelpers.h"
@@ -79,17 +88,7 @@ void repairChecksums(std::vector<uint8_t>& bytes,
     }
 }
 
-Inventory::ClassicGame classicGame(SourceGame game) noexcept {
-    using Inventory::ClassicGame;
-    switch (game) {
-        case SourceGame::RubyGBA: return ClassicGame::Ruby;
-        case SourceGame::SapphireGBA: return ClassicGame::Sapphire;
-        case SourceGame::EmeraldGBA: return ClassicGame::Emerald;
-        case SourceGame::FireRedGBA: return ClassicGame::FireRed;
-        case SourceGame::LeafGreenGBA: return ClassicGame::LeafGreen;
-    }
-    return ClassicGame::FireRed;
-}
+
 
 uint8_t originVersion(SourceGame game) noexcept {
     switch (game) {
@@ -102,20 +101,50 @@ uint8_t originVersion(SourceGame game) noexcept {
     return 0;
 }
 
+// Name of an un-nicknamed Pokemon, in the record's own language (M1 D2): Japanese as listed, other
+// languages upper case with the French E/I accents stripped (PKHeX GetSpeciesNameGeneration, 3).
+std::string defaultNickname(uint16_t species, uint8_t language) {
+    return Utils::utf16ToUtf8(Names::defaultSpeciesName(species, language, 3));
+}
+
+// A Pokerus byte is strain (high nibble) and days (low nibble); 0 is "never infected". Strain 0
+// with days left is not a state the games produce (pokeemerald pokemon.c infection always sets a
+// non-zero strain), so it is refused instead of being written.
+constexpr bool validPokerus(uint8_t raw) noexcept { return raw == 0 || (raw >> 4) != 0; }
+
+// Japanese PK3 names are 5 characters for both nickname and OT; other languages allow 10 / 7
+// (PKHeX PK3 MaxStringLengthNickname / MaxStringLengthTrainer).
+constexpr std::size_t maxNicknameLength(uint8_t language) noexcept { return language == 1 ? 5 : 10; }
+constexpr std::size_t maxOtLength(uint8_t language) noexcept { return language == 1 ? 5 : 7; }
+
+// Unown (201) is the only Gen III species whose form is stored: its letter is PID-derived
+// (Pokemon3FRLG::form, PKHeX PK3 Form / EntityPID.GetUnownForm3). Deoxys' form follows the game.
+bool applyUnownLetter(Pokemon::Pokemon3FRLG& pokemon, const std::optional<uint8_t>& form,
+                      std::string& error) {
+    if (!form || *form == pokemon.form()) return true;
+    if (pokemon.speciesID() != 201) {
+        error = "Only Unown stores a form (its letter) in a Generation III record";
+        return false;
+    }
+    if (*form >= 28) {
+        error = "Unown letter must be A-Z, ! or ?";
+        return false;
+    }
+    if (!pokemon.setUnownLetter(*form, pokemon.id32())) {
+        error = "No Generation III PID gives that Unown letter with this Nature and Shiny state";
+        return false;
+    }
+    return true;
+}
+
 bool validLanguage(uint8_t language) noexcept {
     // PK3 language ids: Japanese, English, French, Italian, German, Spanish.
     return language == 1 || language == 2 || language == 3 ||
            language == 4 || language == 5 || language == 7;
 }
 
-bool validHeldItem(SourceGame game, uint16_t item) noexcept {
-    if (item == 0) return true;
-    const auto g = classicGame(game);
-    using Inventory::ClassicPocket;
-    return Inventory::isAddableItem(g, ClassicPocket::Items, item) ||
-           Inventory::isAddableItem(g, ClassicPocket::Balls, item) ||
-           Inventory::isAddableItem(g, ClassicPocket::TMHM, item) ||
-           Inventory::isAddableItem(g, ClassicPocket::Berries, item);
+bool validHeldItem(SourceGame, uint16_t item) noexcept {
+    return releasedHeldItem(item);
 }
 
 std::array<uint8_t, 6> ivs(const Pokemon::Pokemon3FRLG& p) noexcept {
@@ -300,6 +329,18 @@ std::array<uint8_t, 80> StagedPokemonEditor::readBoxRaw(
     return raw;
 }
 
+bool StagedPokemonEditor::holdsUnreadableRecord(std::size_t box, std::size_t slot) const {
+    bool ok = false;
+    const auto raw = readBoxRaw(box, slot, ok);
+    if (!ok) return true;
+    // pret ZeroBoxMonData leaves a released slot all zero; any species index in the decrypted
+    // Growth block means a record is there even when it maps to no National Dex number.
+    std::byte* decrypted = Encryption::decryptArray3FRLG(std::as_bytes(std::span<const uint8_t>(raw)));
+    const bool species = decrypted[0x20] != std::byte{0} || decrypted[0x21] != std::byte{0};
+    delete[] decrypted;
+    return species;
+}
+
 std::optional<StagedPokemonRecord> StagedPokemonEditor::boxedPokemon(
     std::size_t box, std::size_t slot, std::string& error) const {
     error.clear();
@@ -332,15 +373,42 @@ bool StagedPokemonEditor::writeBoxRaw(
 bool StagedPokemonEditor::stageBoxPokemonEdit(
     std::size_t box, std::size_t slot, const BoxPokemonEdit& edit,
     std::string& error) {
+    return stageRecordEdit(false,box,slot,edit,error);
+}
+std::vector<uint8_t> StagedPokemonEditor::readPartyRaw(std::size_t slot,std::string& error) const {
+    std::array<uint8_t,1> count{};
+    if(slot>=6 || !readLogical(staged_,sectorOffsets_,1,Detail::partyCountOffset(sourceGame_),count) || slot>=count[0]) {
+        error="Generation III Party slot is empty or out of range";return {};
+    }
+    std::vector<uint8_t> raw(100);
+    if(!readLogical(staged_,sectorOffsets_,1,Detail::partyDataOffset(sourceGame_)+slot*100,raw)) {
+        error="Generation III Party record crossed an invalid sector";return {};
+    }
+    error.clear();return raw;
+}
+std::optional<StagedPokemonRecord> StagedPokemonEditor::partyPokemon(std::size_t slot,std::string& error) const {
+    const auto bytes=readPartyRaw(slot,error);
+    if(bytes.empty()) return {};
+    std::array<uint8_t,80> raw{};
+    std::copy_n(bytes.begin(),80,raw.begin());
+    return parseRaw(raw,error);
+}
+bool StagedPokemonEditor::stagePartyPokemonEdit(std::size_t slot,const BoxPokemonEdit& edit,std::string& error) {
+    return stageRecordEdit(true,0,slot,edit,error);
+}
+bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
+    const BoxPokemonEdit& edit,std::string& error) {
     error.clear();
     if (carryingSparseMove()) { error = "Place or cancel the carried Pokemon first"; return false; }
     bool ok = false;
-    const auto raw = readBoxRaw(box, slot, ok);
+    const auto boxRaw = party?std::array<uint8_t,80>{}:readBoxRaw(box, slot, ok);
+    std::vector<uint8_t> raw=party?readPartyRaw(slot,error):std::vector<uint8_t>(boxRaw.begin(),boxRaw.end());
+    if(party) ok=!raw.empty();
     if (!ok) {
         error = "Generation III box/slot is outside the native 14 x 30 storage";
         return false;
     }
-    auto before = parseRaw(raw, error);
+    auto before = party?partyPokemon(slot,error):parseRaw(boxRaw, error);
     if (!before) {
         if (error.empty()) error = "Selected Generation III box slot is empty";
         return false;
@@ -348,9 +416,25 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
 
     Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+    const uint16_t originalHP=party?static_cast<uint16_t>(raw[0x56]|raw[0x57]<<8):0;
+    const uint16_t originalMax=party?static_cast<uint16_t>(raw[0x58]|raw[0x59]<<8):0;
     const uint32_t originalPid = pokemon.pid();
     const uint16_t originalTid = pokemon.tid16();
     const uint16_t originalSid = pokemon.sid16();
+
+    // An Egg has no name of its own: the games store the Japanese word for egg with language
+    // Japanese until it hatches (PKHeX PK3.Nickname; upstream PKSE 9a9a731). Refuse a change
+    // rather than silently writing something else.
+    if (pokemon.isEgg()) {
+        if (edit.nickname && Utils::utf8ToUtf16(*edit.nickname) != pokemon.nickname()) {
+            error = "An Egg's nickname is fixed by the game until it hatches";
+            return false;
+        }
+        if (edit.language && *edit.language != pokemon.language()) {
+            error = "An Egg's language is fixed by the game until it hatches";
+            return false;
+        }
+    }
 
     if (edit.species) {
         if (*edit.species == 0 || *edit.species > 386) {
@@ -359,6 +443,33 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         }
         pokemon.setSpecies(*edit.species);
     }
+    // M1 D1: the nickname is stored in the table of the record's language, so a language change is
+    // applied first and the name is then written in the NEW language. A language-only change keeps
+    // the visible name: an un-nicknamed (default) name becomes the new language's default; a custom
+    // name is re-stored unchanged, or the edit is refused when that language cannot hold it.
+    if (edit.language && *edit.language != pokemon.language()) {
+        if (!validLanguage(*edit.language)) {
+            error = "Unsupported Generation III language id";
+            return false;
+        }
+        const std::u16string shown = pokemon.nickname();
+        const bool wasDefault =
+            Utils::utf16ToUtf8(shown) == defaultNickname(pokemon.speciesID(), pokemon.language());
+        pokemon.setLanguage(*edit.language);
+        if (!edit.nickname) {
+            const std::u16string kept = wasDefault
+                ? Utils::utf8ToUtf16(defaultNickname(pokemon.speciesID(), *edit.language)) : shown;
+            if (!pokemon.canStoreNickname(kept)) {
+                error = "This nickname cannot be written in the new language; change the nickname too";
+                return false;
+            }
+            pokemon.setNickname(kept);
+            if (pokemon.nickname() != kept) {
+                error = "This nickname cannot be kept unchanged in the new language; change the nickname too";
+                return false;
+            }
+        }
+    }
     if (edit.nickname) {
         const auto value = Utils::utf8ToUtf16(*edit.nickname);
         if (value.size() > 10 || !pokemon.canStoreNickname(value)) {
@@ -366,6 +477,10 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
             return false;
         }
         pokemon.setNickname(value);
+        if (pokemon.nickname() != value) {
+            error = "Nickname would not read back unchanged in this record's language";
+            return false;
+        }
     }
     if (edit.level && edit.experience) {
         error = "Edit either Level or Experience in one staged operation, not both";
@@ -423,15 +538,24 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         }
         pokemon.setOTName(value);
     }
-    if (edit.language) {
-        if (!validLanguage(*edit.language)) {
-            error = "Unsupported Generation III language id";
+    // (A language change was applied above, before the nickname.)
+    if (edit.friendship) pokemon.setFriendship(*edit.friendship);
+    if (edit.pokerus) {
+        if (!validPokerus(*edit.pokerus)) {
+            error = "Pokerus strain 0 cannot have days remaining";
             return false;
         }
-        pokemon.setLanguage(*edit.language);
+        pokemon.setPokerus(*edit.pokerus);
     }
-    if (edit.friendship) pokemon.setFriendship(*edit.friendship);
-    if (edit.pokerus) pokemon.setPokerus(*edit.pokerus);
+    // Name lengths follow the record's (possibly just edited) language.
+    if ((edit.nickname || edit.language) && pokemon.nickname().size() > maxNicknameLength(pokemon.language())) {
+        error = "Nickname is too long for this Generation III record language";
+        return false;
+    }
+    if ((edit.otName || edit.language) && pokemon.otName().size() > maxOtLength(pokemon.language())) {
+        error = "OT name is too long for this Generation III record language";
+        return false;
+    }
     if (edit.ball) {
         if (*edit.ball < 1 || *edit.ball > 12 || *edit.ball == 0) {
             error = "Generation III Ball must be one of the native Master-through-Premier ids";
@@ -466,7 +590,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
 
     const bool pidLinkedEdit =
         edit.nature.has_value() || edit.gender.has_value() ||
-        edit.shiny.has_value() || edit.abilityNumber.has_value();
+        edit.shiny.has_value() || edit.abilityNumber.has_value() || edit.form.has_value();
     const uint8_t expectedNature = edit.nature.value_or(pokemon.nature());
     const uint8_t expectedGender = edit.gender.value_or(pokemon.gender());
     const bool expectedShiny = edit.shiny.value_or(pokemon.isShiny(pokemon.id32(), ""));
@@ -494,11 +618,14 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         }
         pokemon.setAbilityNumber(*edit.abilityNumber);
     }
+    // Unown's letter is the fourth PID-derived trait; set last so it keeps the others.
+    if (!applyUnownLetter(pokemon, edit.form, error)) return false;
 
     if (pokemon.nature() != expectedNature ||
         pokemon.gender() != expectedGender ||
         pokemon.isShiny(pokemon.id32(), "") != expectedShiny ||
-        pokemon.abilityNumber() != expectedAbilityNumber) {
+        pokemon.abilityNumber() != expectedAbilityNumber ||
+        (edit.form && pokemon.form() != *edit.form)) {
         error = "Requested Generation III PID-linked field combination is not representable";
         return false;
     }
@@ -511,10 +638,27 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         return false;
     }
 
-    const auto replacement = encryptedBytes(pokemon);
+    const bool partyStatsChanged=before->species!=pokemon.speciesID() || before->experience!=pokemon.exp() ||
+        before->ivs!=ivs(pokemon) || before->evs!=evs(pokemon) || before->nature!=pokemon.nature();
+    if(party && partyStatsChanged)
+        pokemon.setStatHPCurrent(originalHP==0?0:originalHP>=originalMax?pokemon.statHPMax():
+                                std::min(originalHP,pokemon.statHPMax()));
+    std::vector<uint8_t> replacement(raw.size());
+    auto* encrypted=Encryption::encryptArray3FRLG(pokemon.getData());
+    std::memcpy(replacement.data(),encrypted,replacement.size());
+    delete[] encrypted;
+    // A name, item, friendship or PID edit with unchanged stat inputs must not repair
+    // unrelated unusual cached bytes merely because a PK3 setter recalculated them.
+    if(party && !partyStatsChanged)std::copy(raw.begin()+80,raw.end(),replacement.begin()+80);
     const auto stagedBackup = staged_;
     const auto changesBackup = changes_;
-    if (!writeBoxRaw(box, slot, replacement, error)) {
+    bool written=false;
+    if(party) {
+        std::set<uint8_t> touched;
+        written=writeLogical(staged_,sectorOffsets_,1,Detail::partyDataOffset(sourceGame_)+slot*100,replacement,touched);
+        if(written) repairChecksums(staged_,sectorOffsets_,touched);
+    } else written=writeBoxRaw(box,slot,replacement,error);
+    if (!written) {
         staged_ = stagedBackup;
         return false;
     }
@@ -524,7 +668,7 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         return false;
     }
 
-    auto after = boxedPokemon(box, slot, error);
+    auto after = party?partyPokemon(slot,error):boxedPokemon(box, slot, error);
     if (!after) {
         staged_ = stagedBackup;
         changes_ = changesBackup;
@@ -541,10 +685,62 @@ bool StagedPokemonEditor::stageBoxPokemonEdit(
         return false;
     }
 
-    changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(slot),
-                        recordLabel(box, slot) + " Pokemon edit",
-                        before->nickname + " Lv " + std::to_string(before->level),
-                        after->nickname + " Lv " + std::to_string(after->level)});
+    if(replacement==raw) return true;
+    const size_t firstChange=changes_.size();
+    const std::string location=party?"Party "+std::to_string(slot+1):recordLabel(box,slot);
+    const auto field=[&](const std::string& label,const std::string& oldValue,const std::string& value) {
+        if(oldValue!=value)changes_.push_back({static_cast<uint8_t>(box),static_cast<uint8_t>(slot),
+            location+" "+label,oldValue,value,party});
+    };
+    field("Species",Names::getSpeciesName(before->species),Names::getSpeciesName(after->species));
+    field("Nickname",before->nickname,after->nickname);
+    field("OT Name",before->otName,after->otName);
+    field("Trainer ID",std::to_string(before->tid),std::to_string(after->tid));
+    field("Level",std::to_string(before->level),std::to_string(after->level));
+    field("Experience",std::to_string(before->experience),std::to_string(after->experience));
+    // CG71: Gen III Review names Gen III items (the Gen III item table), with the honest label for
+    // a kept unreleased held item.
+    const auto heldItem=[](uint16_t item){return std::string(Names::getItemNameG3(item))+
+        (storedUnreleasedHeldItem(item)?kUnreleasedHeldItemSuffix:"");};
+    field("Held Item",heldItem(before->heldItem),heldItem(after->heldItem));
+    field("Nature",Names::getNatureName(before->nature),Names::getNatureName(after->nature));
+    field("Language",Enums::getLanguageName(before->language),Enums::getLanguageName(after->language));
+    field("Ball",Enums::getBallName(before->ball),Enums::getBallName(after->ball));
+    auto oldMet=Names::getMetLocationDisplayName(before->originGame,before->metLocation);
+    auto newMet=Names::getMetLocationDisplayName(after->originGame,after->metLocation);
+    if(oldMet==newMet && before->metLocation!=after->metLocation) {
+        oldMet+=" ("+std::to_string(before->metLocation)+")";
+        newMet+=" ("+std::to_string(after->metLocation)+")";
+    }
+    field("Met Location",oldMet,newMet);
+    field("Met Level",std::to_string(before->metLevel),std::to_string(after->metLevel));
+    field("Friendship",std::to_string(before->friendship),std::to_string(after->friendship));
+    field("PID",std::to_string(before->pid),std::to_string(after->pid));
+    field("Shiny",before->shiny?"Yes":"No",after->shiny?"Yes":"No");
+    const auto gender=[](uint8_t value){return value==0?"Male":value==1?"Female":"Genderless";};
+    field("Gender",gender(before->gender),gender(after->gender));
+    const auto ability=[](const auto& value){return std::string(Names::getAbilityName(value.ability))+
+        " (slot "+std::to_string(value.abilityNumber)+")";};
+    field("Ability",ability(*before),ability(*after));
+    const auto form=[](uint8_t value){return value<26?std::string(1,static_cast<char>('A'+value)):
+        value==26?std::string("!"):std::string("?");};
+    if(before->species==201 || after->species==201)field("Unown form",form(before->form),form(after->form));
+    const auto pokerus=[](uint8_t value){return std::string(value==0?"None":(value&15)?"Infected":"Cured")+
+        " ("+std::to_string(value)+")";};
+    field("Pokérus",pokerus(before->pokerus),pokerus(after->pokerus));
+    for(size_t i=0;i<4;++i) {
+        field("Move "+std::to_string(i+1),before->moves[i]?Names::getMoveName(before->moves[i]):"Empty",
+            after->moves[i]?Names::getMoveName(after->moves[i]):"Empty");
+        field("PP "+std::to_string(i+1),std::to_string(before->pp[i]),std::to_string(after->pp[i]));
+        field("PP Ups "+std::to_string(i+1),std::to_string(before->ppUps[i]),std::to_string(after->ppUps[i]));
+    }
+    constexpr const char* statNames[]{"HP","Attack","Defense","Speed","Sp. Atk","Sp. Def"};
+    for(size_t i=0;i<6;++i) {
+        field(std::string(statNames[i])+" IV",std::to_string(before->ivs[i]),std::to_string(after->ivs[i]));
+        field(std::string(statNames[i])+" EV",std::to_string(before->evs[i]),std::to_string(after->evs[i]));
+    }
+    if(changes_.size()==firstChange)
+        field("Stored record","Original bytes","Changed bytes");
     return true;
 }
 
@@ -566,10 +762,14 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         error = readError;
         return false;
     }
+    if (holdsUnreadableRecord(box, slot)) {
+        error = "Generation III Create needs an empty slot; this slot holds an unreadable record";
+        return false;
+    }
     if (create.species == 0 || create.species > 386 ||
         create.level < 1 || create.level > 100 ||
         !validHeldItem(sourceGame_, create.heldItem) ||
-        !validLanguage(create.language) ||
+        !validLanguage(create.language) || !validPokerus(create.pokerus) ||
         create.ball < 1 || create.ball > 12 ||
         create.metLevel > 100 || create.metLocation > 255) {
         error = "Generation III Create draft contains an unsupported field value";
@@ -595,16 +795,16 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     pokemon.setMetLocation(create.metLocation);
     pokemon.setOTGender(trainer_.gender & 1);
     const auto ot = Utils::utf8ToUtf16(create.otName.value_or(trainer_.name));
-    if (ot.size() > 7 || !pokemon.canStoreNickname(ot)) {
+    if (ot.size() > maxOtLength(create.language) || !pokemon.canStoreNickname(ot)) {
         error = "Create OT name cannot be represented in the Generation III character set";
         return false;
     }
     pokemon.setOTName(ot);
 
     std::string nickname = create.nickname;
-    if (nickname.empty()) nickname = Names::getSpeciesName(create.species);
+    if (nickname.empty()) nickname = defaultNickname(create.species, create.language);
     const auto nickname16 = Utils::utf8ToUtf16(nickname);
-    if (nickname16.size() > 10 || !pokemon.canStoreNickname(nickname16)) {
+    if (nickname16.size() > maxNicknameLength(create.language) || !pokemon.canStoreNickname(nickname16)) {
         error = "Create nickname cannot be represented in the Generation III character set";
         return false;
     }
@@ -666,10 +866,12 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         }
         pokemon.setAbilityNumber(*create.abilityNumber);
     }
+    if (!applyUnownLetter(pokemon, create.form, error)) return false;
     if (pokemon.nature() != expectedNature ||
         pokemon.gender() != expectedGender ||
         pokemon.isShiny(pokemon.id32(), "") != expectedShiny ||
-        pokemon.abilityNumber() != expectedAbilityNumber) {
+        pokemon.abilityNumber() != expectedAbilityNumber ||
+        (create.form && pokemon.form() != *create.form)) {
         error = "Requested Generation III Create PID-linked field combination is not representable";
         return false;
     }
@@ -684,7 +886,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     }
     auto after = boxedPokemon(box, slot, error);
     const std::string expectedNickname = create.nickname.empty()
-        ? std::string(Names::getSpeciesName(create.species)) : create.nickname;
+        ? defaultNickname(create.species, create.language) : create.nickname;
     const std::string expectedOt = create.otName.value_or(trainer_.name);
     if (!after || after->species != create.species || after->level != create.level ||
         (create.experience && after->experience != *create.experience) ||
@@ -703,9 +905,45 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         if (error.empty()) error = "Generation III Create failed strict semantic reparse";
         return false;
     }
+    // CG74 (owner Oct 25 P3): Review lists what was created in the shared Gen I-V row shape
+    // (Gen12CreateReview.h): a "<loc> / Add Pokémon" header with "Empty -> SPECIES Lv n", then one
+    // "<loc> / Field" row per value read back from the reparsed record. Empty rows and values left at
+    // the Create default (no moves, no item, no Pokérus, base friendship, zero IVs / EVs) add none.
+    namespace C = PokeVault::Integration::Gen12CreateReview;
+    const std::string loc = recordLabel(box, slot) + " / ";
     changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(slot),
-                        recordLabel(box, slot) + " Add Pokemon", "Empty",
-                        after->nickname + " Lv " + std::to_string(after->level)});
+                        loc + std::string(C::kAddPokemon), "Empty",
+                        C::header(Names::getSpeciesName(after->species), after->level)});
+    const auto detail=[&](const std::string& label,const std::string& value){
+        changes_.push_back({static_cast<uint8_t>(box),static_cast<uint8_t>(slot),
+                            loc+label,"",value,false,true});
+    };
+    std::string moveList;
+    for(const auto move:after->moves)
+        if(move)moveList+=(moveList.empty()?"":", ")+std::string(Names::getMoveName(move));
+    if(!moveList.empty())detail("Moves",moveList);
+    detail("Nickname",after->nickname);
+    detail("OT / TID / SID",(after->otName.empty()?std::string("(none)"):after->otName)+" / "+
+           std::to_string(after->tid)+" / "+std::to_string(after->sid));
+    if(after->heldItem)
+        detail("Held Item",std::string(Names::getItemNameG3(after->heldItem))+
+               (storedUnreleasedHeldItem(after->heldItem)?kUnreleasedHeldItemSuffix:""));
+    detail("Ball",Enums::getBallName(after->ball));
+    detail("Met",Names::getMetLocationDisplayName(after->originGame,after->metLocation)+
+           ", Lv "+std::to_string(after->metLevel));
+    detail("Nature",Names::getNatureName(after->nature));
+    detail("Gender",after->gender==0?"Male":after->gender==1?"Female":"Genderless");
+    if(after->shiny)detail("Shiny","Yes");
+    detail("Ability",std::string(Names::getAbilityName(after->ability))+
+           " (slot "+std::to_string(after->abilityNumber)+")");
+    detail("Language",Enums::getLanguageName(after->language));
+    constexpr std::array<const char*,6> statLabels{{"HP","Atk","Def","Spe","SpA","SpD"}};
+    if(const auto ivs=C::nonZero(statLabels,after->ivs);!ivs.empty())detail("IVs",ivs);
+    if(const auto evs=C::nonZero(statLabels,after->evs);!evs.empty())detail("EVs",evs);
+    if(after->pokerus)
+        detail("Pokérus",std::string((after->pokerus&15)?"Infected":"Cured")+
+               " ("+std::to_string(after->pokerus)+")");
+    if(after->friendship!=BoxPokemonCreate{}.friendship)detail("Friendship",std::to_string(after->friendship));
     return true;
 }
 
@@ -733,6 +971,10 @@ bool StagedPokemonEditor::stageCloneBoxPokemon(
     }
     if (!destError.empty()) {
         error = destError;
+        return false;
+    }
+    if (holdsUnreadableRecord(destinationBox, destinationSlot)) {
+        error = "Generation III clone destination holds an unreadable record";
         return false;
     }
 
@@ -788,6 +1030,203 @@ bool StagedPokemonEditor::stageReleaseBoxPokemon(
     return true;
 }
 
+namespace {
+
+// PKHeX plaintext of a stored (80) or party (100) PK3 as held in a save: the 0x20-0x4F block is
+// XOR-decrypted and un-shuffled into canonical G/A/E/M order (PKHeX PokeCrypto.Decrypt3); the
+// header and the party-only tail are copied unchanged, since Gen III never encrypts them
+// (pret pokeemerald src/pokemon.c DecryptBoxMon touches only secure.raw; PKHeX PK3.EncryptParty
+// is a no-op).
+std::vector<uint8_t> pk3Plaintext(std::span<const uint8_t> raw) {
+    std::byte* decrypted = Encryption::decryptArray3FRLG(std::as_bytes(raw));
+    std::vector<uint8_t> out(raw.size());
+    std::memcpy(out.data(), decrypted, out.size());
+    delete[] decrypted;
+    return out;
+}
+
+// The field checks Create applies to its own draft (stageAddBoxPokemon / validPpForMoves), applied
+// to an imported record as it is. A failure refuses the import; nothing is repaired. Language: any
+// PK3 language is accepted in every R/S/E/FR/LG save, as Clone does: the record carries its own
+// language byte (pret struct BoxPokemon `language`) and only name display depends on it. The EV cap
+// is pret include/constants/pokemon.h MAX_TOTAL_EVS (510). Held items follow validHeldItem, so the
+// two never-released held items (Gen3HeldItems.h kUnreleasedHeldItems) are refused like in Create.
+bool validateImportedRecord(const Pokemon::Pokemon3FRLG& pokemon, std::string& error) {
+    if (pokemon.speciesID() == 0 || pokemon.speciesID() > 386) {
+        error = "The file holds no valid Generation III species";
+        return false;
+    }
+    if (pokemon.heldItem() != 0 && storedUnreleasedHeldItem(pokemon.heldItem())) {
+        error = "The file's held item (" + std::string(Names::getItemNameG3(pokemon.heldItem())) +
+                ") was never released as a held item in Generation III";
+        return false;
+    }
+    if (!validHeldItem(SourceGame::FireRedGBA, pokemon.heldItem())) {
+        error = "The file's held item id " + std::to_string(pokemon.heldItem()) +
+                " is not a Generation III held item";
+        return false;
+    }
+    if (!validLanguage(pokemon.language())) {
+        error = "The file's language id " + std::to_string(pokemon.language()) +
+                " is not a Generation III language";
+        return false;
+    }
+    if (!validPokerus(pokemon.pokerus())) {
+        error = "The file's Pokerus byte has days remaining with strain 0";
+        return false;
+    }
+    if (pokemon.ball() < 1 || pokemon.ball() > 12) {
+        error = "The file's Ball is not one of the Generation III Master-through-Premier ids";
+        return false;
+    }
+    if (pokemon.metLevel() > 100) {
+        error = "The file's met level is above 100";
+        return false;
+    }
+    unsigned evTotal = 0;
+    for (const uint8_t value : evs(pokemon)) evTotal += value;
+    if (evTotal > 510) {
+        error = "The file's EV total is above the Generation III limit of 510";
+        return false;
+    }
+    std::array<uint8_t, 4> pp{}, ppUps{};
+    for (int i = 0; i < 4; ++i) {
+        pp[static_cast<std::size_t>(i)] = pokemon.movePP(i);
+        ppUps[static_cast<std::size_t>(i)] = pokemon.movePPUps(i);
+    }
+    if (!validPpForMoves(pokemon, pp, ppUps, error)) {
+        error = "The file's moves are refused: " + error;
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
+bool StagedPokemonEditor::stageImportBoxPokemon(
+    std::size_t box, std::size_t slot, const PokeBank::PokemonFile::Decoded& file,
+    std::string& error) {
+    error.clear();
+    if (carryingSparseMove()) { error = "Place or cancel the carried Pokemon first"; return false; }
+    if (file.generation != 3 || file.format != PokeBank::PokemonFile::Format::PK3) {
+        error = "This is a Generation " + std::to_string(file.generation) +
+                " Pokemon file; a Generation III save takes only .pk3 / .ek3 records";
+        return false;
+    }
+    if (file.plain.size() != (file.party ? Encryption::SIZE_PARTY3_FRLG : Encryption::SIZE_STORED3_FRLG)) {
+        error = "A Generation III Pokemon file is an 80-byte stored or 100-byte party record";
+        return false;
+    }
+    if (box >= boxCount() || slot >= boxCapacity()) {
+        error = "Generation III box/slot is outside the native 14 x 30 storage";
+        return false;
+    }
+    std::string readError;
+    if (boxedPokemon(box, slot, readError)) {
+        error = "Import needs an empty box slot; this slot already holds a Pokemon";
+        return false;
+    }
+    if (!readError.empty()) {
+        error = readError;
+        return false;
+    }
+    // boxedPokemon reads a record whose internal species index has no National Dex number (unused
+    // 252-276, or past 411) as "no Pokemon". Import does not write over such bytes: the slot must
+    // hold no species index at all (pret ZeroBoxMonData leaves a released slot all zero).
+    if (holdsUnreadableRecord(box, slot)) {
+        error = "Import needs an empty box slot; this slot holds an unreadable record";
+        return false;
+    }
+
+    // The box slot takes the stored part; a party file's 20 battle-stat bytes are not part of it
+    // (the game itself copies only `mon->box` into the PC: pret pokeemerald src/pokemon.c
+    // CopyMonToPC, pokefirered src/pokemon.c SendMonToPC).
+    std::array<uint8_t, 80> plain{};
+    std::copy_n(file.plain.begin(), plain.size(), plain.begin());
+    const uint16_t storedChecksum = static_cast<uint16_t>(plain[0x1C] | (plain[0x1D] << 8));
+    if (Encryption::checksum3FRLG(std::as_bytes(std::span<const uint8_t>(plain))) != storedChecksum) {
+        error = "The file's checksum does not match its data";
+        return false;
+    }
+    if (plain[0x13] & 0x01) {
+        error = "The file is marked as a Bad Egg";
+        return false;
+    }
+    std::array<uint8_t, 80> raw{};
+    {
+        std::byte* encrypted = Encryption::encryptArray3FRLG(std::as_bytes(std::span<const uint8_t>(plain)));
+        std::memcpy(raw.data(), encrypted, raw.size());
+        delete[] encrypted;
+    }
+    {
+        const Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+        if (!validateImportedRecord(pokemon, error)) return false;
+    }
+
+    const auto backup = staged_;
+    const auto changesBackup = changes_;
+    if (!writeBoxRaw(box, slot, raw, error) || !validateStaged(error)) {
+        staged_ = backup;
+        changes_ = changesBackup;
+        return false;
+    }
+    auto imported = boxedPokemon(box, slot, error);
+    bool readOk = false;
+    const auto stored = readBoxRaw(box, slot, readOk);
+    const auto storedPlain = pk3Plaintext(stored);
+    if (!imported || !readOk || stored != raw ||
+        !std::equal(plain.begin(), plain.end(), storedPlain.begin(), storedPlain.end())) {
+        staged_ = backup;
+        changes_ = changesBackup;
+        if (error.empty()) error = "Generation III import failed byte-identical reparse";
+        return false;
+    }
+
+    // Review: a header row in the Create shape ("<loc> / Import Pokémon", "Empty -> SPECIES Lv n"),
+    // then the identity of what arrived, read back from the staged record.
+    namespace C = PokeVault::Integration::Gen12CreateReview;
+    const std::string loc = recordLabel(box, slot) + " / ";
+    changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(slot),
+                        loc + "Import Pokémon", "Empty",
+                        C::header(Names::getSpeciesName(imported->species), imported->level)});
+    const auto detail = [&](const std::string& label, const std::string& value) {
+        changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(slot),
+                            loc + label, "", value, false, true});
+    };
+    detail("Nickname", imported->nickname);
+    detail("OT / TID / SID", (imported->otName.empty() ? std::string("(none)") : imported->otName) +
+           " / " + std::to_string(imported->tid) + " / " + std::to_string(imported->sid));
+    detail("Language", Enums::getLanguageName(imported->language));
+    detail("Source", std::string(file.wasEncrypted ? "Encrypted" : "Plain") +
+           (file.party ? " party" : " stored") + " Generation III file, kept byte for byte");
+    return true;
+}
+
+std::optional<std::vector<uint8_t>> StagedPokemonEditor::exportBoxPokemonFile(
+    std::size_t box, std::size_t slot, std::string& error) const {
+    const auto record = boxedPokemon(box, slot, error);
+    if (!record) {
+        if (error.empty()) error = "This box slot is empty; there is no Pokemon to export";
+        return std::nullopt;
+    }
+    return pk3Plaintext(record->encryptedBytes);
+}
+
+std::optional<std::vector<uint8_t>> StagedPokemonEditor::exportPartyPokemonFile(
+    std::size_t slot, std::string& error) const {
+    const auto raw = readPartyRaw(slot, error);
+    if (raw.size() != Encryption::SIZE_PARTY3_FRLG) {
+        if (error.empty()) error = "Generation III Party slot is empty or out of range";
+        return std::nullopt;
+    }
+    if (!partyPokemon(slot, error)) {
+        if (error.empty()) error = "This Party slot is empty; there is no Pokemon to export";
+        return std::nullopt;
+    }
+    return pk3Plaintext(raw);
+}
+
 bool StagedPokemonEditor::validateStaged(std::string& error) const {
     error.clear();
     const auto selected = Detail::validateSlot(staged_, activeSlot_);
@@ -837,6 +1276,12 @@ std::optional<StagedPokemonRecord> StagedPokemonEditor::previewEdit(
     auto preview = *this;
     if (!preview.stageBoxPokemonEdit(box, slot, edit, error)) return {};
     return preview.boxedPokemon(box, slot, error);
+}
+std::optional<StagedPokemonRecord> StagedPokemonEditor::previewPartyEdit(
+    std::size_t slot,const BoxPokemonEdit& edit,std::string& error) const {
+    auto preview=*this;
+    if(!preview.stagePartyPokemonEdit(slot,edit,error)) return {};
+    return preview.partyPokemon(slot,error);
 }
 
 std::optional<StagedPokemonRecord> StagedPokemonEditor::previewCreate(
@@ -896,6 +1341,10 @@ bool StagedPokemonEditor::placeSparseMove(std::size_t box, std::size_t anchor,
             if (error.empty()) error = "Move destination must be empty; no overwrite";
             return false;
         }
+        if (holdsUnreadableRecord(box, slot)) {
+            error = "Move destination holds an unreadable record; no overwrite";
+            return false;
+        }
         destinations.push_back(slot);
     }
     const auto backup = staged_;
@@ -911,8 +1360,10 @@ bool StagedPokemonEditor::placeSparseMove(std::size_t box, std::size_t anchor,
             staged_ = backup; error = "Sparse move failed exact reparse"; return false;
         }
     }
+    // One Review row per Move (same as Gen IV/V), in player words: what moved and where to.
     changes_.push_back({static_cast<uint8_t>(box), static_cast<uint8_t>(anchor),
-        "Sparse Pokemon move", std::to_string(carrySlots_.size()) + " carried", "Exact native slots"});
+        "Move Pokemon", std::to_string(carrySlots_.size()) + " Pokemon",
+        "Box " + std::to_string(box + 1) + " / Slot " + std::to_string(anchor + 1)});
     carrySlots_.clear(); carryRecords_.clear(); beforeCarry_.clear();
     return true;
 }

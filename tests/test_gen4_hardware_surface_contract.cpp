@@ -16,10 +16,32 @@
 #include <string>
 
 namespace {
+// The shared editor workspace lives in src/UI/SharedPokemonEditorSurface.inc,
+// which a generation surface includes textually. Expand that one include so a
+// surface's contract covers the shared code it compiles.
+std::string expandSurfaceIncludes(const std::string& text) {
+    std::string out;
+    std::size_t pos = 0;
+    const std::string marker = "#include \"";
+    while (true) {
+        const auto at = text.find(marker, pos);
+        if (at == std::string::npos) { out += text.substr(pos); break; }
+        const auto close = text.find('"', at + marker.size());
+        const std::string name = text.substr(at + marker.size(), close - at - marker.size());
+        out += text.substr(pos, close + 1 - pos);
+        pos = close + 1;
+        if (name == "SharedPokemonEditorSurface.inc") {
+            std::ifstream nested("src/UI/" + name, std::ios::binary);
+            if (nested) out += "\n" + expandSurfaceIncludes(
+                {std::istreambuf_iterator<char>(nested), std::istreambuf_iterator<char>()});
+        }
+    }
+    return out;
+}
 std::string read(const char* path) {
     std::ifstream in(path, std::ios::binary);
     assert(in);
-    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+    return expandSurfaceIncludes({std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()});
 }
 void contains(const std::string& text, const char* needle) {
     if (text.find(needle) == std::string::npos)
@@ -28,28 +50,42 @@ void contains(const std::string& text, const char* needle) {
 }
 }
 
+// The source between two needles (exclusive of the end needle); both must exist in order.
+std::string routeBetween(const std::string& text, const char* begin, const char* end) {
+    const auto start = text.find(begin);
+    if (start == std::string::npos) std::cerr << "Missing route start: " << begin << '\n';
+    assert(start != std::string::npos);
+    const auto stop = text.find(end, start);
+    if (stop == std::string::npos) std::cerr << "Missing route end: " << end << '\n';
+    assert(stop != std::string::npos);
+    return text.substr(start, stop - start);
+}
+
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
+    // PR #280 parity: both empty and occupied slots open Actions with A OR a clean tap;
+    // only an explicit X on an empty cell starts a staged Add, and X on an occupied cell
+    // or no input does nothing.
+    static_assert(Shared::boxActivation(false, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(true, true, false) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(false, false, true) == Shared::BoxActivation::Add);
+    static_assert(Shared::boxActivation(true, false, true) == Shared::BoxActivation::None);
+    static_assert(Shared::boxActivation(false, false, false) == Shared::BoxActivation::None);
     namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
     // Behavior-level contract: the older popup is narrow and never makes a
     // disabled transfer command available through touch or controller A.
     constexpr auto actions = Shared::actionsForSlot(true, {true, true, true}, true);
     constexpr auto rendered = Narrow::classic(actions, true);
-    static_assert(rendered.count == 11);
-    static_assert(rendered.rows[0].nativeIndex == 0);
-    static_assert(rendered.rows[1].nativeIndex == -1);
-    static_assert(rendered.rows[2].nativeIndex == -1);
-    static_assert(rendered.rows[3].nativeIndex == -1);
-    static_assert(rendered.rows[4].nativeIndex == 1);
-    static_assert(rendered.rows[5].nativeIndex == 2);
-    static_assert(rendered.rows[6].nativeIndex == 3);
-    static_assert(rendered.rows[7].nativeIndex == -1);
-    static_assert(rendered.rows[8].nativeIndex == 4);
-    static_assert(rendered.rows[9].nativeIndex == 5);
-    static_assert(rendered.rows[10].nativeIndex == 6);
+    // Shared order, only real commands: View, Edit, Clone, Release, Origin & Legality,
+    // Review, Cancel. No greyed placeholders (Make Shiny, Master Vault, Bank, Transfer).
+    static_assert(rendered.count == 7);
+    static_assert(rendered.rows[0].nativeIndex == 0 && rendered.rows[6].nativeIndex == 6);
+    for (int i = 0; i < rendered.count; ++i)
+        assert(rendered.rows[static_cast<std::size_t>(i)].nativeIndex == i);
+    assert(std::string(rendered.rows[4].label) == "Origin & Legality");
     static_assert(Narrow::geometry(12).width == 440);
     static_assert(Narrow::geometry(12).height <= 720 - 56);
-    static_assert(Narrow::geometry(9).rowHeight >= 54);
+    static_assert(Narrow::geometry(9).rowHeight == 46); // shared compact BoxMenu rule (Phase 2)
     static_assert(Shared::genderUsesInlineToggle(Shared::Generation::Gen4));
     static_assert(!Shared::genderOpensDedicatedPicker(Shared::Generation::Gen4));
 
@@ -177,7 +213,8 @@ int main() {
     assert(goBack && !saveConfirmActive && !exitingWithUnsavedChanges);
 
     const auto surface = read("src/UI/Gen4SharedPokemonSurface.inc");
-    contains(surface, "Gen4ItemListWindow::first(");
+    // The Add picker window is the shared SharedMenuGeometry window (full window on wrap).
+    contains(surface, "UI::SharedBagAddPicker::drawPicker(");
     const auto classicMove = read("src/UI/ClassicPackedMoveOverlay.inc");
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     // Require Gen IV to enter the already accepted Y tap/hold-release path,
@@ -242,7 +279,10 @@ int main() {
     const auto itemsPanel = read("src/UI/Panels/ItemsPanel.cpp");
     contains(itemsPanel, "ClassicMachineArtwork::artKey(");
     contains(itemsPanel, "fb.drawSpriteStaticContained(nx,");
-    contains(surface, "ItemPickerArtwork::drawNativeItem(");
+    // Exact-game machine art: the surface hands its own game group to the shared picker,
+    // which draws every row through ItemPickerArtwork::drawNativeItem.
+    contains(read("include/UI/SharedBagAddPicker.h"), "ItemPickerArtwork::drawNativeItem(");
+    contains(surface, "UI::SharedBagAddPicker::drawPicker(fb,screen.touchButtons,kGen4BagAddTouchBase,game,");
     const auto gen3Picker = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen2Held = read("include/UI/Gen2HeldItemPicker.h");
     const auto gen2Editor = read("src/UI/Gen2PokemonEditorFoundation.inc");
@@ -270,10 +310,14 @@ int main() {
     contains(surface, "appendClippedTouchButton(screen.touchButtons, 41000 + row");
     contains(surface, "detailPixelOffset, firstDetailRow");
     contains(surface, "SharedPokemonShell::drawDataAndGraph");
-    contains(surface, "Shared::normalizeMoveRowFocus(Shared::Generation::Gen4");
-    contains(surface, "Shared::moveRowColumn(Shared::Generation::Gen4");
-    contains(surface, "Shared::passiveViewMoveColumn(Shared::Generation::Gen4");
-    contains(surface, "Shared::moveRowFocus(g.rightW)");
+    // Gen IV drives the shared workspace model with its own Gen IV layout.
+    const auto workspaceModel = read("include/UI/SharedPokemonEditorWorkspace.h");
+    contains(surface, "static constexpr auto generation = Shared::Generation::Gen4;");
+    contains(surface, "Workspace::navigate(A::generation, state.focus, keys, passive, editable,");
+    contains(workspaceModel, "focus = Shared::normalizeMoveRowFocus(generation, focus);");
+    contains(workspaceModel, ": Shared::moveRowColumn(generation, focus, -1);");
+    contains(workspaceModel, "focus = passive ? Shared::passiveViewMoveColumn(generation, focus, -1)");
+    contains(surface, "SharedMovesPanel::draw(fb, movesLayout, slots, A::moveGame(screen),");
 
     // Gen IV inherits the accepted D-pad / left-stick repeat navigation path.
     contains(surface, "screen.controllerNavigation.apply(");
@@ -291,41 +335,41 @@ int main() {
     contains(surface, "Could not reconcile Species/Shiny while preserving PID-linked traits");
 
     // Outer move focus is exactly one row. PP / PP Ups live in the contextual dialog.
-    contains(surface, "openMoveEditor(screen, state, state.focus.row)");
-    contains(surface, "A: choose compatible Gen IV move");
-    contains(surface, "OK = native   Transfer/Preserved = warning");
+    contains(surface, "openMoveEditor<A>(screen, state, activation.row)");
     contains(surface, "PP Ups");
     contains(surface, "state.moveEditorRow = 0; // Shared move editor opens on the Move row");
     contains(surface, "state.moveEditorRow == 1");
     contains(surface, "state.moveEditorRow == 2");
     contains(surface, "state.session.working->setMove(slot, value)");
     contains(surface, "uint16_t moveBaseline = 0;");
-    contains(surface, "state.moveBaseline = state.session.working->moves()");
-    contains(surface, "state.session.working->setMove(slot, state.moveBaseline)");
+    contains(surface, "state.moveBaseline = A::workingMove(screen, state, slot)");
+    contains(surface, "A::setMove(screen, state, slot, state.moveBaseline)");
+    contains(surface, "gen4(state).session.working->moves()[static_cast<size_t>(slot)]");
     contains(surface, "PickerTarget::Move");
     contains(surface, "#include \"Integration/Gen4/Gen4MoveCompatibility.h\"");
     contains(surface, "PokeVault::Integration::Gen4MoveCompatibility::selectableMoves(");
     contains(surface, "screen.sourceGameId, state.session.working->species()");
     contains(surface, "state.session.working->form(), state.session.working->moves()");
-    // Gen IV native Inventory removal is APP-MEMORY staged only and always
-    // uses an explicit Y confirmation; A must never remove an item.
+    // Owner-directed Round 4 Bag policy: A confirms inside the explicit remove
+    // question; B cancels first. Pokémon Release remains independently Y-only.
     contains(surface, "state.itemRemoveConfirmActive");
     contains(surface, "stageBagRemove(");
     contains(surface, "Gen IV item removed from staged workspace ONLY");
     contains(surface, "state.itemAddPickerActive");
     contains(surface, "Gen4::gen4BagChoices(staged->layout()");
     contains(surface, "current->stageBagAdd(");
-    contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32,");
+    contains(surface, "#include \"UI/SharedBagAddPicker.h\"");
     contains(surface, "Gen IV item added to staged workspace ONLY (x");
-    contains(surface, "ItemPickerArtwork::drawNativeItem(fb,x+w-38,y+65,36,");
+    contains(surface, "UI::SharedBagAddPicker::drawRemoveConfirm(");
     const auto removeGuardAt=surface.find("if(state.itemRemoveConfirmActive) {");
     const auto quantityEntryAt=surface.find(
         "// Forward controller movement and B/Exit to the shared Items panel.",removeGuardAt);
     assert(removeGuardAt!=std::string::npos && quantityEntryAt>removeGuardAt);
     const auto confirmControls=surface.substr(removeGuardAt,quantityEntryAt-removeGuardAt);
     assert(confirmControls.find("down&HidNpadButton_B")!=std::string::npos);
-    assert(confirmControls.find("down&HidNpadButton_Y")!=std::string::npos);
-    assert(confirmControls.find("down&HidNpadButton_A")==std::string::npos);
+    assert(confirmControls.find("down&HidNpadButton_A")!=std::string::npos);
+    assert(confirmControls.find("down&HidNpadButton_Y")==std::string::npos);
+    assert(confirmControls.find("down&HidNpadButton_B")<confirmControls.find("down&HidNpadButton_A"));
     contains(surface, "state.itemRemoveConfirmActive=false;");
     // Both Gen IV inventory mutations must use the exact same native Switch
     // number keyboard as Gen I-III. A picker cancellation cannot stage bytes.
@@ -350,22 +394,33 @@ int main() {
     contains(surface,"int stickX,int stickY,const TouchInput& touch)");
     contains(addPath,"touch.justReleased() && touch.dragged()");
     contains(addPath,"touch.justTapped()");
-    contains(addPath,"startRow==endRow && selected<size");
+    contains(addPath,"startHit>=0 && startHit==endHit");
+    contains(addPath,"AddGrid::hitIndex(");   // R2-BUG-006: taps hit-test the drawn grid cells
     contains(addPath,"keys|=HidNpadButton_A");
-    contains(addPath,"Gen4ItemListWindow::first(");
-    contains(addPath,"Utils::promptNumber(");
+    contains(addPath,"UI::SharedBagAddPicker::pickerGrid(size,");   // page size = the drawn grid
+    // B01-B06: Add never opens a keypad. The shared Gen I-V flow (UI/SharedBagAddFlow.h)
+    // stages the item at x1, or focuses an already-held stack; A on the row edits quantity.
+    assert(addPath.find("Utils::promptNumber(")==std::string::npos);
     contains(editPath,"Utils::promptNumber(");
-    contains(addPath,"if(!r.accepted)return true;");
     contains(editPath,"if(!r.accepted)return true;");
-    contains(addPath,"Gen4::gen4BagMaxQuantity(");
-    contains(editPath,"Gen4::gen4BagMaxQuantity(");
+    contains(addPath,"const auto addRule=gen4PolicyRule(screen,addPocket,id);");
+    contains(addPath,"BagAdd::decidePick(addRule,pocketState,");
+    // A Key Item is staged only after the shared A-confirmed warning (same as Gen I-III).
+    contains(addPath,"if(BagAdd::needsKeyItemWarning(addRule)) {");
+    contains(addPath,"if(state.itemKeyWarningActive) {");
+    contains(surface,"UI::SharedBagAddPicker::drawKeyItemWarning(");
+    contains(addPath,"case BagAdd::PickOutcome::FocusExisting:");
+    contains(addPath,"case BagAdd::PickOutcome::PocketFull:");
+    contains(editPath,"BagAdd::decideRow(");
+    contains(editPath,"gen4QuantityRule(screen,static_cast<size_t>(pocket),item.itemId)");
+    contains(editPath,"This item is unique; its quantity is fixed at 1");
     contains(addPath,"Gen4::gen4BagItemAllowed(");
     contains(editPath,"itemId!=originalId");
-    contains(addPath,"static_cast<uint16_t>(r.value)");
+    contains(addPath,"(void)stageGen4BagAdd(screen,state,addPocket,id,decision.quantity);");
+    contains(surface,"if(!current->stageBagAdd(addPocket,id,quantity,&error)) {");
     contains(editPath,"static_cast<uint16_t>(r.value)");
-    contains(addPath,"*current=std::move(backup)");
+    contains(surface,"bool stageGen4BagAdd(TrainerViewScreen& screen,State& state,size_t addPocket,uint16_t id,");
     contains(editPath,"*current=std::move(backup)");
-    assert(addPath.find("Utils::promptNumber(")<addPath.find("stageBagAdd("));
     assert(editPath.find("Utils::promptNumber(")<editPath.find("stageBagQuantity("));
     assert(surface.find("drawItemQuantity(")==std::string::npos);
     assert(surface.find("itemQuantityActive")==std::string::npos);
@@ -392,7 +447,7 @@ int main() {
     contains(surface, "status = \"Preserved\"");
     contains(surface, "MoveResult::Unsupported");
     contains(surface, "status = \"Transfer\"");
-    contains(surface, "Gen IV move compatibility • event/encounter legality is not fully checked");
+    contains(surface, "Gen IV move compatibility checked • Origin & Legality: incomplete");
     assert(surface.find("Names::isMovePresent") == std::string::npos);
     assert(surface.find("Native Gen IV move catalog") == std::string::npos);
     assert(surface.find("move choice read-only in G4-03") == std::string::npos);
@@ -413,6 +468,16 @@ int main() {
     contains(surface, "screen.selectedItemIndex = tapped;");
     contains(surface, "beginActions(screen);");
     assert(surface.find("if (selectedOccupied(screen)) beginActions(screen);") == std::string::npos);
+    {
+        // The Boxes tap route (empty or occupied cell) opens the same guarded menu as A. It must
+        // never be gated on occupancy and never stage an Add directly from the first touch.
+        const auto boxTap = routeBetween(surface,
+            "screen.detailViewActive && touch.justTapped()", "if (!partyEntry && !boxEntry && !storageEntry) return false;");
+        assert(boxTap.find("beginActions(screen);") != std::string::npos);
+        assert(boxTap.find("selectedOccupied") == std::string::npos);
+        assert(boxTap.find("beginCreate") == std::string::npos);
+        assert(boxTap.find("screen.selectedItemIndex = previous;") != std::string::npos);
+    }
     // A stale six-party hit target cannot pick an out-of-range party member.
     contains(surface, "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())");
     contains(surface, "screen.touchedButtonId(touch)");
@@ -428,17 +493,15 @@ int main() {
     contains(boxPanel, "? \"A / tap: Actions\" : \"A / tap: Edit\"");
     contains(surface, "add(MenuAction::Clone, \"Clone\", stagedAvailable);");
     contains(surface, "add(MenuAction::Release, \"Release\", stagedAvailable);");
-    contains(surface, "add(MenuAction::AddMasterVault, \"Add to Master Vault\", false);");
-    contains(surface, "add(MenuAction::AddBank, \"Add to Bank...\", false);");
-    contains(surface, "add(MenuAction::TransferGame, \"Transfer to Game...\", false);");
-    contains(surface, "add(MenuAction::Clone, \"Clone\", false);");
-    contains(surface, "add(MenuAction::MakeShiny, \"Make Shiny\", false);");
+    contains(surface, "add(MenuAction::MovePokemon, \"Move\", stagedAvailable);");
+    assert(surface.find("\"Make Shiny\"") == std::string::npos);
+    assert(surface.find("add(MenuAction::AddMasterVault") == std::string::npos);
     contains(surface, "PickerTarget::Species");
     assert(surface.find("createSpeciesInitialized") == std::string::npos);
     contains(surface, "state.session.working->setSpecies(value)");
     contains(surface, "state.speciesPreviewShiny = !state.speciesPreviewShiny");
     contains(surface, "state.session.working->setShiny(state.speciesPreviewShiny)");
-    contains(surface, "\"Y\", \"Normal/Shiny\"");
+    contains(surface, "footer.yLabel = \"Normal/Shiny\"");
     contains(surface, "return \"#\" + number + \"  \" + Names::getSpeciesName(value);");
     contains(surface, "PickerTarget::HeldItem");
     contains(surface, "PickerTarget::Language");
@@ -464,11 +527,7 @@ int main() {
     assert(surface.find("Create is not enabled in the Edit milestone") == std::string::npos);
     contains(surface, "\"Clone\"");
     contains(surface, "\"Release\"");
-    contains(surface, "\"Legality & Provenance\"");
-    contains(surface, "\"Add to Master Vault\"");
-    contains(surface, "\"Add to Bank...\"");
-    contains(surface, "\"Transfer to Game...\"");
-    contains(surface, "\"Make Shiny\"");
+    contains(surface, "NarrowPokemonMenu::kOriginLegalityLabel");
     contains(staged, "stageCloneBoxPokemon");
     contains(staged, "stageReleaseBoxPokemon");
     contains(surface, "partyEntrySurface");
@@ -488,20 +547,23 @@ int main() {
     // metadata, SID/Origin remain inspectable read-only, and fixed-only rows are skipped.
     contains(surface, "bool detailEditable(const State& state");
     contains(surface, "hasAlternateValidForm");
-    contains(surface, "if (detailEditable(state, state.focus.row, p)) return;");
-    contains(surface, "if (pidLinkedRowEditable(state, state.focus.row, p)) return;");
+    contains(workspaceModel, "if (detailEditable(static_cast<int>(focus.row))) return focus;");
+    contains(workspaceModel, "if (pidEditable(static_cast<int>(focus.row))) return focus;");
+    contains(surface, "return UI::Gen4SharedEditorSurface::detailEditable(gen4(state), row, p);");
+    contains(surface, "return pidLinkedRowEditable(gen4(state), row, p);");
     contains(surface, "\"OT\", \"Trainer ID\"");
     assert(surface.find("OT (read-only)") == std::string::npos);
     assert(surface.find("TID (read-only)") == std::string::npos);
-    contains(surface, "SID (read-only)");
+    contains(surface, "\"SID\", \"Held Item\"");
     contains(surface, "setOriginalTrainerName");
     contains(surface, "setTID");
-    contains(surface, "Origin (read-only)");
-    contains(surface, "state.session.mode == SessionModel::Mode::View || editable");
+    contains(surface, "case 6: case 10: return true;"); // SID / Origin: gold ReadOnly field state
+    contains(surface, "state.focus.row == row && (viewMode || editable);");
+    contains(surface, "return gen4(state).session.mode == SessionModel::Mode::View;");
 
     // A nested move choice must render above the contextual Move editor, never behind it.
-    const auto moveEditorDraw = surface.find("if (state.moveEditor) drawMoveEditor(screen, fb, state);");
-    const auto valuePickerDraw = surface.find("if (state.valuePicker) drawValuePicker(screen, fb, state);");
+    const auto moveEditorDraw = surface.find("if (state.moveEditor) drawMoveEditor<A>(screen, fb, state);");
+    const auto valuePickerDraw = surface.find("if (state.valuePicker) drawValuePicker<A>(screen, fb, state);");
     assert(moveEditorDraw != std::string::npos && valuePickerDraw > moveEditorDraw);
 
     // Gen IV picker/action chrome follows the accepted shared layout instead of the cramped G4-04 prototype.
@@ -535,7 +597,10 @@ int main() {
     contains(surface, "drawLegality");
     contains(surface, "drawReleaseConfirm");
     assert(surface.find("const int h = occupied ? 500 : 350;") == std::string::npos);
-    contains(surface, "  |  Met Lv. ");
+    contains(surface, "pickerMetContext.detail(value,");
+    contains(surface, "openContextualMetLocationPicker(");
+    contains(surface, "pickerMetContext.scope(");
+    assert(surface.find("  |  Met Lv. ") == std::string::npos);
     assert(surface.find(" (current)") == std::string::npos);
     contains(surface, "const bool compactChoices=");
     contains(surface, "visibleChoices");
@@ -543,9 +608,11 @@ int main() {
     // Item pictures must be actual per-ball/item PNGs and part of reproducible
     // ROMFS recovery, not a generic placeholder drawn for every choice.
     // All Held Item generations now use one exact Gen III grid renderer.
-    contains(sharedHeld, "ItemPickerArtwork::draw(fb, cellX + cellWidth - 24");
-    contains(sharedHeld, "fb.drawSelectionHighlight(cellX, cellY - 3");
-    contains(sharedHeld, "fb.drawText(cellX + 10, cellY + 7");
+    // Phase 2: the sprite leads each cell and the name follows at the HeldItemPicker rule's gap.
+    contains(sharedHeld, "const int spriteRight = cellX + rule.cellPadX + rule.spriteSize;");
+    contains(sharedHeld, "ItemPickerArtwork::draw(fb, spriteRight, cellY + 2, rule.spriteSize");
+    contains(sharedHeld, "SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(cellX, cellY - 3"); // R2-BUG-012
+    contains(sharedHeld, "fb.drawText(spriteRight + rule.spriteGap, cellY + 7");
     contains(gen2Held, "SharedHeldItemPickerPresentation::drawGrid(");
     contains(gen2Editor, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(gen2Editor, "Gen2HeldItemPickerPresentation::drawList(fb, x, y");
@@ -554,9 +621,11 @@ int main() {
     contains(gen3Picker, "SharedHeldItemPickerPresentation::drawHeading(");
     contains(surface, "SharedHeldItemPickerPresentation::drawGrid(");
     contains(surface, "SharedHeldItemPickerPresentation::drawHeading(");
-    contains(surface, "ItemPickerArtwork::draw(fb, x + w - 35");
-    contains(gen3Picker, "ItemPickerArtwork::draw(fb, x + w - 35");
-    contains(gen2Editor, "\"A\", \"Choose\"");
+    // Phase 2: the ball sprite leads its name (BallPicker rule), in Gen III and Gen IV/V alike.
+    contains(surface, "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,");
+    contains(gen3Picker, "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w,");
+    contains(gen2Editor, "UI::SharedEditorChrome::drawPickerFooter(fb,footer);"); // A Select / B Cancel
+    contains(gen2Editor, "SharedHeldItemSearch::drawFooter(fb,state.heldItemSearch);"); // docked keys own input while open
     contains(sharedHeld, "if (value != 0)");
     contains(itemArtwork, "SpriteManager::getItemSprite(exactName)");
     contains(spriteRuntime, "sprites/items/");
@@ -568,10 +637,10 @@ int main() {
     // Gen I is included in the shared move text formatting requirements:
     // all four native picker paths consume the identical separator formatter.
     const auto fixedMoveRows = read("include/UI/MovePickerRowUI.h");
-    contains(gen1Move, "MovePickerRowUI::draw(fb");
-    contains(gen2Move, "MovePickerRowUI::draw(fb");
-    contains(gen3Picker, "MovePickerRowUI::draw(fb");
-    contains(surface, "MovePickerRowUI::draw(fb");
+    contains(gen1Move, "SharedMovesPanel::drawChooserRow(fb");
+    contains(gen2Move, "SharedMovesPanel::drawChooserRow(fb");
+    contains(gen3Picker, "SharedMovesPanel::drawChooserRow(fb");
+    contains(surface, "SharedMovesPanel::drawChooserRow(fb");
     contains(fixedMoveRows, "Presentation::numberedName(move)");
     contains(fixedMoveRows, "x+308");
     contains(fixedMoveRows, "x+423");
@@ -617,7 +686,8 @@ int main() {
 
     // Dirty Back uses the same shared exit guard and explicit A/Y/B confirmation.
     contains(session, "PokemonEditorExitGuard::requiresConfirmation");
-    contains(surface, "if (state.session.confirmExit)");
+    contains(surface, "if (A::confirmExit(screen, state)) {");
+    contains(surface, "return gen4(state).session.confirmExit;");
     contains(surface, "HidNpadButton_Y");
     contains(surface, "Dialogs::drawDialogFrame");
     contains(surface, "\"Unsaved changes\"");
@@ -654,8 +724,9 @@ int main() {
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
     contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
     contains(baseUi, "sourceGameId==\"platinum_nds\"");
-    contains(baseUi, "A: Edit Quantity  |  Y: Remove...");
-    contains(baseUi, "X: Add Item");
+    contains(baseUi, "footer.push(\"A\", \"Edit Quantity\");"); // only for a quantity-editable item (QuantityPolicy)
+    contains(baseUi, "PokeBank::UIModel::Gen4BagQuantity::rule(");
+    contains(baseUi, "footer.push(\"X\", \"Add Item\");");
 
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "exitOnlySaveConfirm");
@@ -678,9 +749,15 @@ int main() {
     const auto addItemEnd = surface.find("void drawItemRemoveConfirm(", addItemStart);
     assert(addItemStart != std::string::npos && addItemEnd > addItemStart);
     const auto addItemBody = surface.substr(addItemStart, addItemEnd - addItemStart);
-    assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::Divider,1)") != std::string::npos);
-    assert(addItemBody.find("fb.drawRoundedRect(x,y,w,h,18,Colors::FocusBorder,1)") == std::string::npos);
-    contains(addItemBody, "ItemPickerArtwork::draw");
+    // The shared picker (UI/SharedBagAddPicker.h) draws that neutral border and the row art.
+    contains(addItemBody, "UI::SharedBagAddPicker::drawPicker(");
+    const auto sharedPicker = read("include/UI/SharedBagAddPicker.h");
+    // R2-BUG-006: the Add picker's frame is the shared grid's (UI/SharedItemGridPicker.h).
+    const auto sharedGrid = read("include/UI/SharedItemGridPicker.h");
+    contains(sharedGrid, "fb.drawRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Divider, 1)");
+    assert(sharedPicker.find("Colors::FocusBorder") == std::string::npos);
+    assert(sharedGrid.find("Colors::FocusBorder") == std::string::npos);
+    contains(sharedPicker, "ItemPickerArtwork::drawNativeItem(");
 
     // The fixed-form Bulbasaur field is clearly informational in View.
     contains(surface, "Default (fixed)");

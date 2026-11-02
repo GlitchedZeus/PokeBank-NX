@@ -106,19 +106,28 @@ bool familyMatches(SourceGame hint, VersionFamily family) noexcept {
     return (hint == SourceGame::Crystal) == (family == VersionFamily::Crystal);
 }
 
-std::optional<std::pair<std::size_t, std::size_t>> splitPayload(std::span<const uint8_t> raw) noexcept {
+struct PayloadSplit {
+    std::size_t payload = 0;
+    std::size_t footer = 0;
+    std::size_t padding = 0;
+};
+
+std::optional<PayloadSplit> splitPayload(std::span<const uint8_t> raw) noexcept {
     if (raw.size() == kRawSaveSize32K || raw.size() == kRawSaveSize64K)
-        return std::pair{raw.size(), std::size_t{0}};
+        return PayloadSplit{raw.size(), 0, 0};
     for (const std::size_t base : {kRawSaveSize32K, kRawSaveSize64K}) {
         if (raw.size() <= base) continue;
         const std::size_t footer = raw.size() - base;
-        if (isKnownRTCFooterSize(footer)) return std::pair{base, footer};
+        if (isKnownRTCFooterSize(footer)) return PayloadSplit{base, footer, 0};
     }
+    std::size_t padded = 0;
+    if (splitPaddedSave(raw, padded)) return PayloadSplit{padded, 0, raw.size() - padded};
     return std::nullopt;
 }
 
 bool fitsLayout(std::span<const uint8_t> payload, const Layout& l) noexcept {
-    if (l.gender != kNoOffset && l.gender >= payload.size()) return false;
+    // The trainer gender is optional: Japanese Crystal keeps it at 0x8000, just past a 32 KiB image
+    // (independent QA 2026-10-27 Q02; upstream PKSE 0c993bc). Every required field is checked here.
     if (l.checksumPrimary + 1 >= payload.size()) return false;
     if (l.currentBoxCopy + storedBoxListLength(l) > payload.size()) return false;
     if (l.party + listLength(kPartyCapacity, kPartyBody, l.stringLength) > payload.size()) return false;
@@ -264,6 +273,26 @@ bool isKnownRTCFooterSize(std::size_t size) noexcept {
     return PokeVault::Save::isKnownRtcFooterSize(size);
 }
 
+bool splitPaddedSave(std::span<const uint8_t> raw, std::size_t& payloadSize) noexcept {
+    payloadSize = 0;
+    if (raw.size() != kPaddedSaveSize128K) return false;
+    // Smallest first, as upstream PKSE 9a9a731: every layout is probed at either size, so trying
+    // 64 KiB first would take an international save with 32 KiB of padding inside its payload.
+    // A real Japanese Crystal (64 KiB SRAM) fails the uniform-tail test at 32 KiB and lands here
+    // at 64 KiB with its bank-4 gender byte intact. One whose upper half is uniform opens at 32 KiB
+    // with its gender unspecified, and the padding is still kept byte for byte.
+    for (const std::size_t base : {kRawSaveSize32K, kRawSaveSize64K}) {
+        const uint8_t fill = raw[base];
+        if (fill != 0x00 && fill != 0xFF) continue;
+        if (std::all_of(raw.begin() + static_cast<std::ptrdiff_t>(base), raw.end(),
+                        [fill](uint8_t b) { return b == fill; })) {
+            payloadSize = base;
+            return true;
+        }
+    }
+    return false;
+}
+
 uint16_t calculateChecksum(
     std::span<const uint8_t> payload, RegionLayout region, VersionFamily family) noexcept {
     const Layout* chosen = nullptr;
@@ -352,10 +381,12 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
     const auto split = splitPayload(raw);
     if (!split) {
         result.error = SaveError::WrongSize;
-        result.detail = "Gen II battery save must be 0x8000/0x10000 bytes, optionally plus a known RTC footer";
+        result.detail = "Gen II battery save must be 0x8000/0x10000 bytes, optionally plus a known RTC footer, "
+                        "or padded to 0x20000 with uniform 0x00/0xFF bytes";
         return result;
     }
-    const auto [payloadSize, footerSize] = *split;
+    const std::size_t payloadSize = split->payload;
+    const std::size_t footerSize = split->footer;
     const auto payload = raw.first(payloadSize);
 
     std::vector<const Layout*> candidates;
@@ -397,8 +428,20 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
     save->metadata_.boxCapacity = l.boxCapacity;
     save->metadata_.payloadSize = payloadSize;
     save->metadata_.rtcFooterSize = footerSize;
+    save->metadata_.paddingSize = split->padding;
 
     save->trainer_.trainerId = readBE16(payload, l.tid);
+    // PKHeX SAV2Offsets.JohtoBadges: little-endian Johto + Kanto masks.
+    const size_t badgesOffset=l.region==RegionLayout::Japanese?
+        (l.family==VersionFamily::Crystal?0x23C7:0x23C5):
+        (l.family==VersionFamily::Crystal?0x23E5:0x23E4);
+    save->trainer_.badges=static_cast<uint16_t>(payload[badgesOffset]|
+        (static_cast<uint16_t>(payload[badgesOffset+1])<<8));
+    // PKHeX 6042efa241a9 SAV2Offsets / SAV2: big-endian hours, then minute/second bytes.
+    const size_t clockOffset=l.region==RegionLayout::Japanese?0x2034:
+        l.family==VersionFamily::Crystal?0x2052:0x2053;
+    save->trainer_.playTime=Common::nativePlayTime(readBE16(payload,clockOffset),
+                                                payload[clockOffset+2],payload[clockOffset+3]);
     save->trainer_.name = decodeGen2String(payload.subspan(l.tid + 2, l.stringLength), l.region);
     save->trainer_.money = readBE24(payload, l.money);
     if (save->trainer_.money > 999999) {
@@ -406,7 +449,8 @@ ParseResult parse(std::span<const uint8_t> raw, SourceGame hint) {
         result.detail = "Gen II money exceeds retail maximum 999999";
         return result;
     }
-    if (l.family == VersionFamily::Crystal) {
+    // An out-of-range gender (32 KiB Japanese Crystal) stays unspecified; nothing is invented.
+    if (l.family == VersionFamily::Crystal && l.gender != kNoOffset && l.gender < payload.size()) {
         const uint8_t g = payload[l.gender];
         if (g > 1) {
             result.error = SaveError::InvalidTrainerData;

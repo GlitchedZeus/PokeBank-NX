@@ -82,8 +82,8 @@ namespace Names {
         "Underwater (Sootopolis City)",  // 54
         "Granite Cave",  // 55
         "Mt. Chimney",  // 56
-        "Safari Zone (RSE)",  // 57
-        "Battle Tower (RS) / Battle Frontier (E)",  // 58
+        "Safari Zone (Hoenn)",  // 57
+        "Battle Tower / Battle Frontier",  // 58
         "Petalburg Woods",  // 59
         "Rusturf Tunnel",  // 60
         "Abandoned Ship",  // 61
@@ -95,7 +95,7 @@ namespace Names {
         "Shoal Cave",  // 67
         "Seafloor Cavern",  // 68
         "Underwater (Seafloor Cavern)",  // 69
-        "Victory Road (RSE)",  // 70
+        "Victory Road (Hoenn)",  // 70
         "Mirage Island",  // 71
         "Cave of Origin",  // 72
         "Southern Island",  // 73
@@ -199,7 +199,7 @@ namespace Names {
         "Sevii Isle 22",  // 171
         "Sevii Isle 23",  // 172
         "Sevii Isle 24",  // 173
-        "Navel Rock (FRLG)",  // 174
+        "Navel Rock",  // 174
         "Mt. Ember",  // 175
         "Berry Forest",  // 176
         "Icefall Cave",  // 177
@@ -208,11 +208,11 @@ namespace Names {
         "Dotted Hole",  // 180
         "Lost Cave",  // 181
         "Pattern Bush",  // 182
-        "Altering Cave (FRLG)",  // 183
+        "Altering Cave (Sevii Islands)",  // 183
         "Tanoby Chambers",  // 184
         "Three Isle Path",  // 185
         "Tanoby Key",  // 186
-        "Birth Island (FRLG)",  // 187
+        "Birth Island",  // 187
         "Monean Chamber",  // 188
         "Liptoo Chamber",  // 189
         "Weepth Chamber",  // 190
@@ -221,11 +221,11 @@ namespace Names {
         "Rixy Chamber",  // 193
         "Viapois Chamber",  // 194
         "Ember Spa",  // 195
-        "Celadon Dept. (FRLG) / Special Area (E)",  // 196
+        "Celadon Dept. / Special Area",  // 196
         "Aqua Hideout",  // 197
         "Magma Hideout",  // 198
         "Mirage Tower",  // 199
-        "Birth Island (E)",  // 200
+        "Birth Island",  // 200
         "Faraway Island",  // 201
         "Artisan Cave",  // 202
         "Marine Cave",  // 203
@@ -235,8 +235,8 @@ namespace Names {
         "Underwater (Route 125)",  // 207
         "Underwater (Route 129)",  // 208
         "Desert Underpass",  // 209
-        "Altering Cave (E)",  // 210
-        "Navel Rock (E)",  // 211
+        "Altering Cave (Hoenn)",  // 210
+        "Navel Rock",  // 211
         "Trainer Hill",  // 212
         "",  // 213
         "",  // 214

@@ -1,4 +1,5 @@
 #include "Integration/Gen2/Gen2StagedEditor.h"
+#include "Integration/Gen2/Gen2NativeItemList.h"
 
 #include "Inventory/ClassicInventoryCatalog.h"
 
@@ -17,7 +18,13 @@ struct InventoryLayout {
     std::size_t pcItems;
 };
 
-constexpr InventoryLayout inventoryLayout(VersionFamily family) noexcept {
+// PKHeX 8e3eb3d4 SAV2Offsets PouchTMHM / PouchItem / PouchKey / PouchBall / PouchPC, the offsets
+// Gen2ReadOnlyInventory.cpp decodes for each region.
+constexpr InventoryLayout inventoryLayout(RegionLayout region, VersionFamily family) noexcept {
+    if (region == RegionLayout::Japanese)
+        return family == VersionFamily::Crystal
+            ? InventoryLayout{0x23C9, 0x2402, 0x242C, 0x2447, 0x2461}
+            : InventoryLayout{0x23C7, 0x2400, 0x242A, 0x2445, 0x245F};
     return family == VersionFamily::Crystal
         ? InventoryLayout{0x23E7, 0x2420, 0x244A, 0x2465, 0x247F}
         : InventoryLayout{0x23E6, 0x241F, 0x2449, 0x2464, 0x247E};
@@ -90,18 +97,6 @@ bool readPairs(std::span<const uint8_t> bytes, std::size_t offset, std::size_t c
     return true;
 }
 
-void writePairs(std::vector<uint8_t>& bytes, std::size_t offset, std::size_t capacity,
-                std::span<const PairEntry> entries) {
-    bytes[offset] = static_cast<uint8_t>(entries.size());
-    std::fill(bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1),
-              bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1 + capacity * 2 + 1), 0);
-    for (std::size_t i = 0; i < entries.size(); ++i) {
-        bytes[offset + 1 + i * 2] = entries[i].id;
-        bytes[offset + 2 + i * 2] = entries[i].quantity;
-    }
-    bytes[offset + 1 + entries.size() * 2] = 0xFF;
-}
-
 constexpr std::size_t kKeyItemCapacity = 25;
 
 bool readKeys(std::span<const uint8_t> bytes, std::size_t offset, std::vector<uint8_t>& out) noexcept {
@@ -112,15 +107,6 @@ bool readKeys(std::span<const uint8_t> bytes, std::size_t offset, std::vector<ui
     out.assign(bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1),
                bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1 + count));
     return std::none_of(out.begin(), out.end(), [](uint8_t id) { return id == 0 || id == 0xFF; });
-}
-
-void writeKeys(std::vector<uint8_t>& bytes, std::size_t offset, std::span<const uint8_t> entries) {
-    constexpr std::size_t capacity = kKeyItemCapacity;
-    bytes[offset] = static_cast<uint8_t>(entries.size());
-    std::fill(bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1),
-              bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1 + capacity + 1), 0);
-    std::copy(entries.begin(), entries.end(), bytes.begin() + static_cast<std::ptrdiff_t>(offset + 1));
-    bytes[offset + 1 + entries.size()] = 0xFF;
 }
 
 Inventory::ClassicPocket semanticPocket(Inventory::ClassicGame game, InventoryPocket physical,
@@ -135,10 +121,10 @@ Inventory::ClassicPocket semanticPocket(Inventory::ClassicGame game, InventoryPo
     return Inventory::ClassicPocket::Items;
 }
 
-uint8_t quantityIn(std::span<const uint8_t> bytes, std::size_t payloadSize, VersionFamily family,
-                   InventoryPocket pocket, uint8_t itemId) {
+uint8_t quantityIn(std::span<const uint8_t> bytes, std::size_t payloadSize, RegionLayout region,
+                   VersionFamily family, InventoryPocket pocket, uint8_t itemId) {
     if (payloadSize > bytes.size()) return 0;
-    const auto record = decodeInventory(bytes.first(payloadSize), RegionLayout::International, family);
+    const auto record = decodeInventory(bytes.first(payloadSize), region, family);
     if (!record.available) return 0;
     const auto* list = listFor(record, pocket);
     if (!list) return 0;
@@ -151,7 +137,7 @@ uint8_t quantityIn(std::span<const uint8_t> bytes, std::size_t payloadSize, Vers
 
 std::vector<InventoryItem> StagedEditor::inventoryEntries(InventoryPocket pocket, std::string& error) const {
     error.clear();
-    if (metadata_.region != RegionLayout::International || metadata_.payloadSize > staged_.size()) {
+    if (metadata_.payloadSize > staged_.size()) {
         error = "Generation II staged inventory is unavailable for this save layout";
         return {};
     }
@@ -172,13 +158,13 @@ std::vector<InventoryItem> StagedEditor::inventoryEntries(InventoryPocket pocket
 }
 
 uint8_t StagedEditor::stagedInventoryQuantity(InventoryPocket pocket, uint8_t itemId) const {
-    return quantityIn(staged_, metadata_.payloadSize, metadata_.family, pocket, itemId);
+    return quantityIn(staged_, metadata_.payloadSize, metadata_.region, metadata_.family, pocket, itemId);
 }
 
 bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                                           std::string& error) {
     error.clear();
-    if (metadata_.region != RegionLayout::International || metadata_.payloadSize > staged_.size()) {
+    if (metadata_.payloadSize > staged_.size()) {
         error = "Generation II staged inventory is unavailable for this save layout";
         return false;
     }
@@ -195,10 +181,11 @@ bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId
         return false;
     }
 
-    const uint8_t originalQuantity = quantityIn(original_, metadata_.payloadSize, metadata_.family, pocket, itemId);
+    const uint8_t originalQuantity = quantityIn(original_, metadata_.payloadSize, metadata_.region, metadata_.family,
+                                                pocket, itemId);
     const auto stagedBackup = staged_;
     const auto changesBackup = changes_;
-    const auto layout = inventoryLayout(metadata_.family);
+    const auto layout = inventoryLayout(metadata_.region, metadata_.family);
 
     if (pocket == InventoryPocket::TMHM) {
         const auto machines = Inventory::addableItems(game, Inventory::ClassicPocket::TMHM);
@@ -219,17 +206,14 @@ bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId
             error = "Generation II staged Key Items list is malformed";
             return false;
         }
-        auto it = std::find(entries.begin(), entries.end(), itemId);
-        if (quantity == 0) {
-            if (it != entries.end()) entries.erase(it);
-        } else if (it == entries.end()) {
-            if (entries.size() >= kKeyItemCapacity) {
-                error = "No free slots in this Key Items pocket";
-                return false;
-            }
-            entries.push_back(itemId);
+        if (quantity != 0 && entries.size() >= kKeyItemCapacity &&
+            std::find(entries.begin(), entries.end(), itemId) == entries.end()) {
+            error = "No free slots in this Key Items pocket";
+            return false;
         }
-        writeKeys(staged_, layout.keyItems, entries);
+        // Byte-surgical (Q07): a key item is present (1) or absent (0).
+        if (!NativeItemList::set(staged_, layout.keyItems, kKeyItemCapacity, 1, itemId,
+                                 quantity != 0 ? 1 : 0, error)) return false;
     } else {
         const std::size_t offset = pairOffset(layout, pocket);
         const std::size_t capacity = pairCapacity(pocket);
@@ -238,20 +222,14 @@ bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId
             error = "Generation II staged inventory pair-list is malformed";
             return false;
         }
-        auto it = std::find_if(entries.begin(), entries.end(),
+        const bool present = std::any_of(entries.begin(), entries.end(),
             [itemId](const PairEntry& entry) { return entry.id == itemId; });
-        if (quantity == 0) {
-            if (it != entries.end()) entries.erase(it);
-        } else if (it != entries.end()) {
-            it->quantity = quantity;
-        } else {
-            if (entries.size() >= capacity) {
-                error = "No free slots in this Generation II pocket";
-                return false;
-            }
-            entries.push_back({itemId, quantity});
+        if (quantity != 0 && !present && entries.size() >= capacity) {
+            error = "No free slots in this Generation II pocket";
+            return false;
         }
-        writePairs(staged_, offset, capacity, entries);
+        // Byte-surgical (Q07): only the entry, the shifted tail and the count change.
+        if (!NativeItemList::set(staged_, offset, capacity, 2, itemId, quantity, error)) return false;
     }
 
     const auto record = decodeInventory(std::span<const uint8_t>(staged_).first(metadata_.payloadSize),
@@ -268,6 +246,82 @@ bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId
     const std::string label = std::string(Inventory::pocketName(physicalPocket)) + ": " +
                               Inventory::displayItemName(game, logicalPocket, itemId);
     setChange(key, label, std::to_string(originalQuantity), std::to_string(quantity));
+    return true;
+}
+
+std::size_t StagedEditor::inventoryCapacity(InventoryPocket pocket) const {
+    if (pocket == InventoryPocket::KeyItems) return kKeyItemCapacity;
+    if (pocket == InventoryPocket::TMHM)
+        return Inventory::addableItems(classicGame(sourceGame_), Inventory::ClassicPocket::TMHM).size();
+    return pairCapacity(pocket);
+}
+
+bool StagedEditor::stageInventorySlotQuantity(InventoryPocket pocket, std::size_t slot, uint8_t itemId,
+                                              uint8_t quantity, std::string& error) {
+    error.clear();
+    if (metadata_.payloadSize > staged_.size()) {
+        error = "Generation II staged inventory is unavailable for this save layout";
+        return false;
+    }
+    const auto layout = inventoryLayout(metadata_.region, metadata_.family);
+    const std::size_t offset = pairOffset(layout, pocket);
+    const std::size_t capacity = pairCapacity(pocket);
+    if (offset == static_cast<std::size_t>(-1) || capacity == 0) {
+        error = "Only Items, Balls and PC Items hold separate Generation II stacks";
+        return false;
+    }
+    const auto game = classicGame(sourceGame_);
+    if (!Inventory::isAddableItem(game, classicPocket(pocket), itemId)) {
+        error = "Item is not valid for this exact Generation II game and pocket";
+        return false;
+    }
+    const auto logicalPocket = semanticPocket(game, pocket, itemId);
+    const auto rule = Inventory::quantityRule(game, logicalPocket, itemId);
+    if (quantity == 0 || quantity < rule.minimum || quantity > rule.maximum) {
+        error = "Item quantity is outside the valid range for this Generation II item";
+        return false;
+    }
+    std::vector<PairEntry> entries;
+    if (!readPairs(staged_, offset, capacity, entries)) {
+        error = "Generation II staged inventory pair-list is malformed";
+        return false;
+    }
+    if (slot >= entries.size() || entries[slot].id != itemId) {
+        error = "Generation II item stack changed; edit it again";
+        return false;
+    }
+    std::size_t first = 0;
+    while (first < entries.size() && entries[first].id != itemId) ++first;
+    uint8_t before = 0;
+    if (first == slot) {
+        before = quantityIn(original_, metadata_.payloadSize, metadata_.region, metadata_.family, pocket, itemId);
+    } else {
+        std::vector<PairEntry> original;
+        if (readPairs(original_, offset, capacity, original) && slot < original.size() &&
+            original[slot].id == itemId)
+            before = original[slot].quantity;
+    }
+    const auto stagedBackup = staged_;
+    staged_[offset + 2 + slot * 2] = quantity;   // byte-surgical: this stack's quantity only
+    std::vector<PairEntry> check;
+    const auto record = decodeInventory(std::span<const uint8_t>(staged_).first(metadata_.payloadSize),
+                                        metadata_.region, metadata_.family);
+    if (!record.available || !readPairs(staged_, offset, capacity, check) || check.size() != entries.size() ||
+        check[slot].id != itemId || check[slot].quantity != quantity) {
+        staged_ = stagedBackup;
+        error = "Generation II inventory edit failed semantic round-trip validation";
+        return false;
+    }
+    // The first stack keeps the per-item Review row every other Bag edit uses; a further stack of
+    // the same item gets its own row.
+    std::string key = "inventory:" + std::to_string(static_cast<unsigned>(pocket)) + ":" + std::to_string(itemId);
+    std::string label = std::string(Inventory::pocketName(classicPocket(pocket))) + ": " +
+                        Inventory::displayItemName(game, logicalPocket, itemId);
+    if (first != slot) {
+        key += ":slot:" + std::to_string(slot);
+        label += " (stack " + std::to_string(slot + 1) + ")";
+    }
+    setChange(key, label, std::to_string(before), std::to_string(quantity));
     return true;
 }
 

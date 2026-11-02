@@ -237,11 +237,12 @@ for source in (classic_picker, gen3_picker, gen4_picker):
     assert "ItemPickerSort::next(" in source
     assert "ItemPickerSort::reorder(" in source
 assert "ClassicMachineArtwork::artKey(group, itemId)" in classic_picker
-assert "ItemPickerArtwork::draw(fb, x + width - 31" in classic_picker
+assert "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w, spriteKey)" in classic_picker
 assert "PokeVault::Inventory::displayItemName(*game, *pocket, itemId)" in classic_picker
 assert "std::string label = artName;" in classic_picker
 assert "Names::machineDisplayLabel(" in gen4_picker
-assert "ItemPickerArtwork::drawNativeItem(fb,x+w-31,yy+3,32," in gen4_picker
+assert "UI::SharedBagAddPicker::drawPicker(fb,screen.touchButtons,kGen4BagAddTouchBase,game," in gen4_picker
+assert "ItemPickerArtwork::drawNativeItem(fb, sprite.right(), sprite.y, sprite.w, game," in (ROOT / "include/UI/SharedBagAddPicker.h").read_text(encoding="utf-8")
 assert "ClassicMachineArtwork::artKey(" in gen3_picker
 assert "ClassicMachineArtwork::artKey(" in gen4_picker
 assert "Gen2MachineArtTypes" in native_disc and '"tm-unknown"' in native_disc

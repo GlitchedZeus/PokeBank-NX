@@ -13,6 +13,9 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
+
+namespace PokeBank::PokemonFile { struct Decoded; }
 
 namespace PokeVault::Integration::Gen2 {
 
@@ -23,6 +26,8 @@ inline constexpr uint32_t kMaxMoney = 999999;
 inline constexpr uint8_t kMaxStackQuantity = 99;
 inline constexpr std::size_t kInternationalTrainerNameMax = 7;
 inline constexpr std::size_t kInternationalPokemonNameMax = 10;
+// Japanese Gold / Silver / Crystal: trainer, OT and Pokemon names hold 5 kana (6-byte fields).
+inline constexpr std::size_t kJapaneseNameMax = 5;
 inline constexpr uint16_t kMaxGen2Species = 251;
 inline constexpr uint16_t kMaxGen2Move = 251;
 
@@ -63,7 +68,7 @@ struct BoxPokemonCreate {
     std::array<uint8_t, 4> moves{};
     std::array<uint8_t, 4> pp{};
     std::array<uint8_t, 4> ppUps{};
-    std::array<uint8_t, 4> dvs{8, 8, 8, 8};
+    std::array<uint8_t, 4> dvs{};
     std::array<uint16_t, 5> statExperience{};
     uint8_t friendship = 70;
     uint8_t pokerus = 0;
@@ -87,6 +92,28 @@ public:
     bool stageTrainerEdit(std::string_view name, uint32_t money, std::string& error);
     bool stageTrainerName(std::string_view name, std::string& error);
     bool stageMoney(uint32_t money, std::string& error);
+
+    // P3 (Round 5): Play Time (Gold / Silver / Crystal) and Crystal Trainer Gender, staged in this
+    // image. Offsets are the ones Gen2ReadOnlySave already reads (PKHeX 6042efa241a9 SAV2Offsets):
+    // play time = big-endian u16 hours, then minutes and seconds bytes, at 0x2053 (international
+    // Gold / Silver), 0x2052 (international Crystal) or 0x2034 (Japanese), inside the checksummed
+    // main block (the checksum and backup mirror are repaired at finalize). Crystal gender = one
+    // byte at 0x3E3D (international) or 0x8000 (Japanese, only in a 64 KiB image), 0 male /
+    // 1 female, outside the checksum. Gold / Silver have no gender byte. Hours are capped at 999 (the shared
+    // Gen III-V editor bound); the timer's other bytes are never touched.
+    struct PlayTime {
+        uint16_t hours = 0;
+        uint8_t minutes = 0;
+        uint8_t seconds = 0;
+        friend bool operator==(const PlayTime&, const PlayTime&) = default;
+    };
+    static constexpr uint16_t kMaxPlayedHours = 999;
+    PlayTime playTime() const noexcept;
+    bool playTimeEditable() const noexcept;
+    bool stagePlayTime(PlayTime time, std::string& error);
+    uint8_t trainerGender() const noexcept;
+    bool trainerGenderEditable() const noexcept;
+    bool stageTrainerGender(uint8_t gender, std::string& error);
     bool stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                            std::string& error);
 
@@ -97,9 +124,21 @@ public:
     uint8_t stagedInventoryQuantity(InventoryPocket pocket, uint8_t itemId) const;
     bool stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                                 std::string& error);
+    // Top Up / Add Missing (owner Oct 28): a Gen II pair list can legally hold one item in two
+    // slots (pret pokecrystal engine/items/items.asm PutItemInPocket opens a new stack past 99).
+    // Sets the quantity of the stack in native list position `slot` (Items, Balls, PC Items), which
+    // must still hold `itemId`; only that slot's quantity byte changes. Never removes (quantity
+    // 1..the item's maximum). Recorded for Review per stack.
+    bool stageInventorySlotQuantity(InventoryPocket pocket, std::size_t slot, uint8_t itemId,
+                                    uint8_t quantity, std::string& error);
+    // Native slots of a container: the pair-list capacity (Items 20, Balls 12, PC 50), the Key Items
+    // list capacity (25), or one fixed slot per TM/HM of this game.
+    std::size_t inventoryCapacity(InventoryPocket pocket) const;
 
     std::optional<PokemonRecord> boxedPokemon(std::size_t box, std::size_t slot,
                                                std::string& error) const;
+    std::optional<PokemonRecord> partyPokemon(std::size_t slot, std::string& error) const;
+    bool stagePartyPokemonEdit(std::size_t slot, const BoxPokemonEdit& edit, std::string& error);
     bool stageBoxPokemonEdit(std::size_t box, std::size_t slot, const BoxPokemonEdit& edit,
                              std::string& error);
     bool stageBoxPokemonShiny(std::size_t box, std::size_t slot, bool shiny,
@@ -110,6 +149,30 @@ public:
     bool stageAddBoxPokemon(std::size_t destinationBox, const BoxPokemonCreate& pokemon,
                             std::size_t& destinationSlot, std::string& error);
     bool stageReleaseBoxPokemon(std::size_t box, std::size_t slot, std::string& error);
+
+    // Feature A (owner Oct 28): standalone .pk2 files (PokemonFile/NativePokemonFile.h).
+    // stageImportBoxPokemon places one decoded .pk2 into the first empty slot of a box, as a staged
+    // change only (Review / Keep / Discard / Export Copy as for Add and Clone).
+    // The box keeps the first 32 bytes of the 48-byte party body (pret/pokecrystal box_struct),
+    // the file's list species byte (0xFD for an Egg, which imports as an Egg exactly as stored) and
+    // its OT and nickname (11 bytes international, 6 Japanese), all byte for byte. The record must
+    // pass the strict parser and this editor's own validators (species, level/EXP, held item,
+    // moves/PP, Pokerus). A Japanese (63-byte) file goes only into a Japanese save and an
+    // international (73-byte) file only into an international save; other generations, occupied
+    // or non-first-empty slots and full boxes are refused; nothing is converted, invented or
+    // legalized.
+    bool stageImportBoxPokemon(std::size_t box, std::size_t slot,
+                               const PokeBank::PokemonFile::Decoded& file, std::string& error);
+    // PKHeX single-entry .pk2 list (73 bytes, or 63 from a Japanese save; PokeCrypto.cs
+    // SIZE_2ULIST / SIZE_2JLIST) of a staged box or Party
+    // Pokemon. Reads only. A box record gets the party-only fields the game computes when it is
+    // withdrawn (pokecrystal engine/pokemon/move_mon.asm SendGetMonIntoFromBox, PC_WITHDRAW:
+    // CalcLevel into MON_LEVEL, CalcMonStats with Stat Exp, status 0, HP = max HP or 0 for an Egg).
+    // A Party record is copied as stored.
+    std::optional<std::vector<uint8_t>> exportBoxPokemonFile(std::size_t box, std::size_t slot,
+                                                             std::string& error) const;
+    std::optional<std::vector<uint8_t>> exportPartyPokemonFile(std::size_t slot,
+                                                               std::string& error) const;
 
     // Packed relocation engine used by the native classic box Y interaction. The single-Pokemon
     // entry points remain the Part 1 contract; Part 2 extends the same engine to an ordered group.
@@ -134,6 +197,9 @@ public:
     void discard() noexcept;
 
     std::vector<uint8_t> finalizedBytes(std::string& error) const;
+    // Display-only bytes: the staged image repaired for a strict reload, also while a packed move
+    // is carrying Pokemon (finalizedBytes refuses then). Never exported or written anywhere.
+    std::vector<uint8_t> presentationBytes(std::string& error) const;
 
 private:
     struct PokemonExpectation {
@@ -158,7 +224,12 @@ private:
                            std::string& error) const;
     bool encodePokemonName(std::string_view name, std::vector<uint8_t>& encoded,
                            std::string& error) const;
+    bool encodeOTName(std::string_view name, std::vector<uint8_t>& encoded,
+                      std::string& error) const;
+    std::string storedName(std::string_view typed, std::span<const uint8_t> encoded) const;
     bool syncCurrentBoxCopy(std::size_t box, std::string& error);
+    bool stageRecordEdit(bool party, std::size_t box, std::size_t slot,
+                         const BoxPokemonEdit&, std::string& error);
     void rememberPokemonExpectation(std::size_t box, std::size_t slot,
                                     const PokemonRecord& expected);
     void setChange(std::string key, std::string label,
@@ -177,6 +248,7 @@ private:
     uint32_t money_ = 0;
     std::vector<StagedChange> changes_;
     std::vector<PokemonExpectation> pokemonExpectations_;
+    std::vector<std::pair<std::size_t, PokemonRecord>> partyExpectations_;
     PackedMoveState packedMove_;
 };
 

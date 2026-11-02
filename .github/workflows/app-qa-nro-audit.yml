@@ -1,0 +1,244 @@
+name: PokeBank NX App QA NRO Audit
+
+# Thread 4 independent QA: run tools/qa/nro_audit.py against the EXACT candidate NRO that CI
+# published (downloaded from its own workflow run, never rebuilt), bound to GitHub's own run and
+# artifact records. Produces a hardware-test record that always says NOT DEVICE TESTED.
+#
+# QA-F9: the candidate identity comes from EXACTLY ONE source and there are no defaults:
+#   * workflow_dispatch: every input below (all required);
+#   * pull_request: the committed docs/qa/CANDIDATE_UNDER_AUDIT.env.
+# Every value is format-checked, the run/artifact are checked against the GitHub API, and on a pull
+# request the candidate must be built from the head under test (non-QA files unchanged), so a stale
+# artifact can never produce a green audit.
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Workflow run that published the candidate artifact (numeric)'
+        required: true
+      artifact_id:
+        description: 'Artifact id in that run (numeric)'
+        required: true
+      artifact_name:
+        description: 'Artifact name'
+        required: true
+      nro_file:
+        description: 'NRO file name inside the artifact'
+        required: true
+      code_sha:
+        description: 'Full 40-hex code SHA the NRO must be built from'
+        required: true
+      tree_sha:
+        description: 'Full 40-hex tree SHA of that commit'
+        required: true
+      nro_sha256:
+        description: 'Posted NRO SHA-256 (64 hex)'
+        required: true
+      nro_size:
+        description: 'Posted NRO size in bytes'
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: pokebank-app-qa-nro-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Exact-head audit of the published candidate NRO
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EVENT_NAME: ${{ github.event_name }}
+    steps:
+      # pull_request: the PR head commit itself (not the merge preview); workflow_dispatch: the
+      # dispatched ref (the ref input is empty then, so checkout uses github.sha).
+      - name: Checkout the head under test (full history, for the staleness guard)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Resolve the candidate identity from exactly one source
+        env:
+          IN_RUN_ID: ${{ inputs.run_id }}
+          IN_ARTIFACT_ID: ${{ inputs.artifact_id }}
+          IN_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+          IN_NRO_FILE: ${{ inputs.nro_file }}
+          IN_CODE_SHA: ${{ inputs.code_sha }}
+          IN_TREE_SHA: ${{ inputs.tree_sha }}
+          IN_NRO_SHA256: ${{ inputs.nro_sha256 }}
+          IN_NRO_SIZE: ${{ inputs.nro_size }}
+        run: |
+          set -euo pipefail
+          keys="RUN_ID ARTIFACT_ID ARTIFACT_NAME NRO_FILE CODE_SHA TREE_SHA NRO_SHA256 NRO_SIZE"
+          declare -A id
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            source_name="workflow_dispatch inputs"
+            for k in $keys; do v="IN_$k"; id[$k]="${!v}"; done
+          elif [ "$EVENT_NAME" = "pull_request" ]; then
+            source_name="docs/qa/CANDIDATE_UNDER_AUDIT.env"
+            test -f "$source_name" || { echo "::error::$source_name is missing"; exit 1; }
+            while IFS= read -r line; do
+              case "$line" in ''|'#'*) continue ;; esac
+              k="${line%%=*}"; v="${line#*=}"
+              case " $keys " in *" $k "*) ;; *) echo "::error::unknown key '$k' in $source_name"; exit 1 ;; esac
+              test -z "${id[$k]+set}" || { echo "::error::duplicate key '$k' in $source_name"; exit 1; }
+              id[$k]="$v"
+            done < "$source_name"
+          else
+            echo "::error::unsupported event $EVENT_NAME"; exit 1
+          fi
+          fail=0
+          check() { [[ "${id[$1]-}" =~ $2 ]] || { echo "::error::$1='${id[$1]-}' from $source_name does not match $2"; fail=1; }; }
+          check RUN_ID '^[0-9]+$'
+          check ARTIFACT_ID '^[0-9]+$'
+          check NRO_SIZE '^[0-9]+$'
+          check CODE_SHA '^[0-9a-f]{40}$'
+          check TREE_SHA '^[0-9a-f]{40}$'
+          check NRO_SHA256 '^[0-9a-f]{64}$'
+          check ARTIFACT_NAME '^[A-Za-z0-9._-]+$'
+          check NRO_FILE '^[A-Za-z0-9._-]+\.nro$'
+          test "$fail" = 0
+          for k in $keys; do echo "$k=${id[$k]}" >> "$GITHUB_ENV"; done
+          echo "SHORT_SHA=${id[CODE_SHA]:0:8}" >> "$GITHUB_ENV"
+          {
+            echo "### Candidate under audit (source: $source_name)"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            for k in $keys; do echo "| $k | \`${id[$k]}\` |"; done
+            echo "| Head under test | \`$(git rev-parse HEAD)\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Bind the run and artifact to GitHub's own records
+        run: |
+          set -euo pipefail
+          run_json="$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID")"
+          head_sha="$(jq -r .head_sha <<<"$run_json")"
+          conclusion="$(jq -r .conclusion <<<"$run_json")"
+          path="$(jq -r .path <<<"$run_json")"; path="${path%%@*}"
+          echo "run $RUN_ID: head_sha=$head_sha conclusion=$conclusion path=$path"
+          test "$head_sha" = "$CODE_SHA" || { echo "::error::run $RUN_ID head_sha $head_sha != CODE_SHA $CODE_SHA"; exit 1; }
+          test "$conclusion" = "success" || { echo "::error::run $RUN_ID conclusion is $conclusion"; exit 1; }
+          test "$path" = ".github/workflows/gen15-integrated-candidate.yml" || { echo "::error::run $RUN_ID is from $path, not the integrated-candidate workflow"; exit 1; }
+          gh api --paginate "repos/${{ github.repository }}/actions/runs/$RUN_ID/artifacts" \
+            --jq '.artifacts[] | [.id, .name, .expired] | @tsv' > run-artifacts.tsv
+          cat run-artifacts.tsv
+          matches="$(awk -F'\t' -v n="$ARTIFACT_NAME" '$2 == n' run-artifacts.tsv)"
+          test "$(printf '%s' "$matches" | grep -c . || true)" = 1 || { echo "::error::run $RUN_ID must hold exactly one artifact named $ARTIFACT_NAME"; exit 1; }
+          test "$(cut -f1 <<<"$matches")" = "$ARTIFACT_ID" || { echo "::error::artifact $ARTIFACT_NAME id is $(cut -f1 <<<"$matches"), expected $ARTIFACT_ID"; exit 1; }
+          test "$(cut -f3 <<<"$matches")" = "false" || { echo "::error::artifact $ARTIFACT_ID has expired"; exit 1; }
+          echo "| Run / artifact binding | head_sha, conclusion=success, workflow path, artifact id $ARTIFACT_ID (not expired) verified |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Candidate identity versus the head under test
+        run: |
+          set -euo pipefail
+          git cat-file -e "$CODE_SHA^{commit}" 2>/dev/null || git fetch -q origin "$CODE_SHA"
+          tree="$(git rev-parse "$CODE_SHA^{tree}")"
+          test "$tree" = "$TREE_SHA" || { echo "::error::tree of $CODE_SHA is $tree, expected $TREE_SHA"; exit 1; }
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git merge-base --is-ancestor "$CODE_SHA" HEAD || { echo "::error::candidate $CODE_SHA is not an ancestor of the head under test"; exit 1; }
+            stale="$(git diff --name-only "$CODE_SHA" HEAD -- . ':(exclude).github' ':(exclude)docs' ':(exclude)tests' ':(exclude)tools/qa' ':(exclude)*.md')"
+            if [ -n "$stale" ]; then
+              echo "::error::candidate $CODE_SHA is stale for this head; non-QA files changed since it was built:"
+              printf '%s\n' "$stale"
+              exit 1
+            fi
+            echo "| Staleness guard | candidate is an ancestor of the head; no application file changed since it was built |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Checkout the candidate's exact source (for the romfs:/ reference scan)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CODE_SHA }}
+          path: candidate-src
+          fetch-depth: 1
+
+      - name: Download the published artifact from its own run (no rebuild)
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ github.token }}
+          path: candidate-artifact
+
+      - name: Cross-check BUILD_IDENTITY.txt, SHA256SUMS.txt and the NRO bytes
+        run: |
+          set -euo pipefail
+          find candidate-artifact -type f -printf '%s  %p\n'
+          nro="candidate-artifact/$NRO_FILE"
+          test -f "$nro" || { echo "::error::$NRO_FILE not in the artifact"; exit 1; }
+          test "$(find candidate-artifact -type f -name '*.nro' | wc -l)" = 1 || { echo "::error::artifact must hold exactly one .nro"; exit 1; }
+          actual_sha="$(sha256sum "$nro" | cut -d' ' -f1)"
+          actual_size="$(stat -c %s "$nro")"
+          test "$actual_sha" = "$NRO_SHA256" || { echo "::error::NRO sha256 $actual_sha != $NRO_SHA256"; exit 1; }
+          test "$actual_size" = "$NRO_SIZE" || { echo "::error::NRO size $actual_size != $NRO_SIZE"; exit 1; }
+          bi="candidate-artifact/BUILD_IDENTITY.txt"
+          test -f "$bi" || { echo "::error::BUILD_IDENTITY.txt missing"; exit 1; }
+          cat "$bi"
+          field() { grep -m1 "^$1=" "$bi" | cut -d= -f2- ; }
+          expect() { test "$(field "$1")" = "$2" || { echo "::error::BUILD_IDENTITY $1='$(field "$1")' expected '$2'"; exit 1; }; }
+          expect APPLICATION_SHA "$CODE_SHA"
+          expect TREE_SHA "$TREE_SHA"
+          expect ARTIFACT "$NRO_FILE"
+          expect SIZE_BYTES "$NRO_SIZE"
+          expect SHA256 "$NRO_SHA256"
+          expect RUN_ID "$RUN_ID"
+          expect DEVICE_ACCEPTED false
+          sums="candidate-artifact/SHA256SUMS.txt"
+          test -f "$sums" || { echo "::error::SHA256SUMS.txt missing"; exit 1; }
+          test "$(grep -c . "$sums")" = 1 || { echo "::error::SHA256SUMS.txt must list exactly the NRO"; exit 1; }
+          read -r sum_sha sum_name < "$sums"
+          test "$sum_sha" = "$NRO_SHA256" && test "${sum_name#\*}" = "$NRO_FILE" || { echo "::error::SHA256SUMS.txt disagrees: $sum_sha $sum_name"; exit 1; }
+          echo "| BUILD_IDENTITY / SHA256SUMS / NRO bytes | APPLICATION_SHA, TREE_SHA, ARTIFACT, SIZE_BYTES, SHA256, RUN_ID, DEVICE_ACCEPTED=false and sha256sum/stat all match |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cross-generation UI contracts on the candidate's own source (candidate mode)
+        run: |
+          set -euo pipefail
+          # Release-candidate mode: XFAIL markers do not excuse a violation in the audited source.
+          python3 tests/test_qa_cross_gen_contract.py --candidate --list --root candidate-src | tee cross-gen-contracts.log
+          { echo; echo '### Cross-generation UI contracts (candidate source)'; echo '```'; cat cross-gen-contracts.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Audit
+        run: |
+          set -euo pipefail
+          python3 tools/qa/nro_audit.py "candidate-artifact/$NRO_FILE" \
+            --expect-sha "$CODE_SHA" \
+            --expect-nro-sha256 "$NRO_SHA256" \
+            --expect-size "$NRO_SIZE" \
+            --artifact candidate-artifact \
+            --romfs candidate-src/romfs \
+            --ci-run "https://github.com/${{ github.repository }}/actions/runs/$RUN_ID" \
+            --record HARDWARE_TEST_RECORD.md | tee nro-audit.log
+          { echo; cat HARDWARE_TEST_RECORD.md; } >> "$GITHUB_STEP_SUMMARY"
+
+      # The owner's offline retest checklist for THIS candidate ships with the audit record. It must be
+      # committed with the binding (tools/qa/make_retest.py) and name exactly the audited NRO.
+      - name: Owner retest checklist for this candidate
+        run: |
+          set -euo pipefail
+          python3 tools/qa/make_retest.py --check | tee retest-check.log
+          cp "docs/hardware/RETEST_${SHORT_SHA}.md" .
+          echo "| Owner retest checklist | docs/hardware/RETEST_${SHORT_SHA}.md names this NRO; uploaded with the audit record |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the audit record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-qa-nro-audit-${{ env.SHORT_SHA }}
+          path: |
+            HARDWARE_TEST_RECORD.md
+            nro-audit.log
+            run-artifacts.tsv
+            cross-gen-contracts.log
+            RETEST_${{ env.SHORT_SHA }}.md
+            retest-check.log
+          if-no-files-found: ignore
+          retention-days: 30

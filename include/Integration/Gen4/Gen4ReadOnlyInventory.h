@@ -27,18 +27,22 @@ struct BagPocketLayout {
 using BagLayout=std::array<BagPocketLayout,BagPocketCount>;
 
 [[nodiscard]] constexpr BagLayout bagLayout(Layout layout) noexcept {
-    // Documented Gen IV save structures; a slot is two little-endian u16s
-    // (native item ID and quantity) and takes exactly four bytes.
+    // Offsets are the pouch starts in vendor/PKSM-Core (pinned aa22d7a4)
+    // source/sav/SavDP.cpp / SavPT.cpp / SavHGSS.cpp. Each pouch's slot count is
+    // bounded by the next pouch's PKSM offset (pouches are contiguous, a slot is two
+    // little-endian u16s = 4 bytes). The final Battle Items pouch has no following
+    // PKSM offset, so it uses PKSM's own Battle capacity (13, which is also every
+    // distinct Gen IV battle item); never read or write past that.
     switch(layout) {
         case Layout::DiamondPearl:
             return {{{0x624,165},{0x8B8,50},{0x980,100},{0xB10,12},
-                     {0xB40,40},{0xBE0,64},{0xCE0,15},{0xD1C,56}}};
+                     {0xB40,40},{0xBE0,64},{0xCE0,15},{0xD1C,13}}};
         case Layout::Platinum:
             return {{{0x630,165},{0x8C4,50},{0x98C,100},{0xB1C,12},
-                     {0xB4C,40},{0xBEC,64},{0xCEC,15},{0xD28,30}}};
+                     {0xB4C,40},{0xBEC,64},{0xCEC,15},{0xD28,13}}};
         case Layout::HeartGoldSoulSilver:
-            return {{{0x644,165},{0x8D8,43},{0x9A4,100},{0xB34,12},
-                     {0xB64,40},{0xC04,64},{0xD04,24},{0xD64,31}}};
+            return {{{0x644,165},{0x8D8,50},{0x9A0,101},{0xB34,12},
+                     {0xB64,40},{0xC04,64},{0xD04,24},{0xD64,13}}};
     }
     return {};
 }

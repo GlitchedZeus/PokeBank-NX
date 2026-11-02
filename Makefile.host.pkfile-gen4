@@ -1,0 +1,37 @@
+# Feature A (owner Oct 28): standalone .pk4 / .ek4 import into the Gen IV staged editor and
+# plaintext PK4 export. Self-contained: builds with
+#   make -f Makefile.host.base -f Makefile.host.pkfile-gen4 HOST_BUILD=<dir> <dir>/test_pokemon_file_gen4
+# (and <dir>/test_pokemon_file_gen4_sanitize). Included by Makefile.host after Makefile.host.pkse-october.
+
+PKFILE_GEN4_SOURCES := tests/test_pokemon_file_gen4.cpp \
+	src/PokemonFile/NativePokemonFile.cpp src/Encryption/Encryption3FRLG.cpp \
+	src/Integration/Gen4/Gen4StagedPokemonEditor.cpp \
+	src/Integration/Gen4/Gen4ExportTransaction.cpp src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Pokemon/Pokemon4ReadOnlyView.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/MachineDisplay.cpp \
+	src/Names/TMMoves.cpp src/Names/LocationNames.cpp src/Names/AbilityNames.cpp src/Names/NatureNames.cpp \
+	src/Utils/SHA256.cpp \
+	src/Integration/Gen4/Gen4ReadOnlySave.cpp \
+	src/Pokemon/Pokemon4Mutable.cpp src/Pokemon/Pokemon4ReadOnly.cpp \
+	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp \
+	src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp \
+	src/Encryption/Encryption4.cpp src/Pokemon/Experience.cpp \
+	src/Names/SpeciesNames.cpp src/Names/ItemPresence.cpp src/Names/MoveInfo.cpp src/Names/MovePresence.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+PKFILE_GEN4_DEPS := $(PKFILE_GEN4_SOURCES) include/PokemonFile/NativePokemonFile.h \
+	include/Integration/Gen4/Gen4StagedPokemonEditor.h include/Integration/Gen4/Gen4ExportTransaction.h \
+	include/Pokemon/Pokemon4Mutable.h include/Pokemon/Pokemon4ReadOnly.h include/Names/Gen4HeldItemCatalog.h \
+	include/Encryption/Encryption4.h tests/fuzz_synthetic_saves.h
+PKFILE_GEN4_TEST := $(HOST_BUILD)/test_pokemon_file_gen4
+PKFILE_GEN4_SANITIZE := $(HOST_BUILD)/test_pokemon_file_gen4_sanitize
+
+HOST_TESTS += $(PKFILE_GEN4_TEST)
+HOST_SANITIZE_TESTS += $(PKFILE_GEN4_SANITIZE)
+host-test: $(PKFILE_GEN4_TEST)
+host-sanitize: $(PKFILE_GEN4_SANITIZE)
+
+$(PKFILE_GEN4_TEST): $(PKFILE_GEN4_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude -Itests $(PKFILE_GEN4_SOURCES) -o $@
+$(PKFILE_GEN4_SANITIZE): $(PKFILE_GEN4_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -Itests $(PKFILE_GEN4_SOURCES) -o $@

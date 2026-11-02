@@ -47,6 +47,8 @@ public:
         auto draft=StagedPokemon5Record::create(record->originalEncryptedBytes(),&error,
                                                   workspace.black2White2());
         if(!draft)return false;
+        if(const auto restore=workspace.pokerusRestoreByte(location))
+            draft->setPokerusRestoreBaseline(*restore);
         baseline_={record->originalEncryptedBytes().begin(),
                    record->originalEncryptedBytes().end()};
         working_=std::move(*draft);
@@ -124,11 +126,22 @@ public:
             return tentative.stageBox(location_.box,location_.slot,field,stat,value,&error);
         };
 
+        // Language replays first: on an unnicknamed record it also rewrites the
+        // nickname to the species' default name in that language (M1 D3), so
+        // only a name that still differs afterwards is a user name edit.
+        if(before.language()!=after.language() &&
+           !apply(Field::Language,0,after.language()))return false;
+        const auto base=readSlot(tentative,location_);
+        if(!base || !base->valid() || base->empty()) {
+            error="Gen V Keep lost the staged slot during language replay";
+            return false;
+        }
+
         // Name changes use only exact-width native UTF-16 ASCII transactions.
         // Keep replays through the workspace's field whitelist, then validates
         // the complete encrypted PK5 against the original local draft.
         const auto replayName=[&](bool nickname)->bool {
-            const auto oldBytes=before.decodedBytes(),newBytes=after.decodedBytes();
+            const auto oldBytes=base->decodedBytes(),newBytes=after.decodedBytes();
             const bool flagChange=nickname &&
                 ((Crypto::read32(oldBytes,0x38)^Crypto::read32(newBytes,0x38))&
                  0x80000000u);
@@ -206,6 +219,10 @@ public:
            !apply(Field::AbilitySlot,0,slot5(after)))return false;
         if(before.gender()!=after.gender() &&
            !apply(Field::Gender,0,after.gender()))return false;
+        // Coordinated Gender / Shiny / Ability / ID edits end in one exact
+        // PID; Review replays the same field in the same position.
+        if(before.pid()!=after.pid() &&
+           !apply(Field::Personality,0,after.pid()))return false;
 
         const auto beforeIv=before.ivs();
         const auto afterIv=after.ivs();

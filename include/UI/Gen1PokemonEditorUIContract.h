@@ -18,29 +18,46 @@ enum class Action : uint8_t {
     AddPokemon,
     ReviewPendingChanges,
     Cancel,
+    // R2-CHECK-009: starts the existing Boxes-view hold-Y carry with this Pokemon picked up.
+    // Appended so every existing action keeps its value.
+    Move,
+    // Feature A (owner Oct 28): standalone .pk1 files (UI/PokemonFileDialog.h), appended likewise.
+    ImportFile,
+    ExportFile,
 };
 
 struct ActionSet {
-    std::array<Action, 7> values{};
+    std::array<Action, 10> values{};
     std::size_t count = 0;
     constexpr Action operator[](std::size_t index) const noexcept { return values[index]; }
 };
 
-constexpr ActionSet actionsForSlot(bool occupied, bool hasPendingChanges = false) noexcept {
+// `boxMove`: the sheet was opened from the Boxes view, where the staged packed-move carry exists
+// (R2-CHECK-009). Move then sits between Clone and Release, the shared E02 order. The read-only
+// Storage pane and every other caller pass false and keep the sheet without Move.
+// `fileActions` (Feature A): the session has a staged editor, so an empty slot also offers
+// Import from file (after Add Pokemon) and an occupied one Export to file (after Origin & Legality).
+constexpr ActionSet actionsForSlot(bool occupied, bool hasPendingChanges = false,
+                                   bool boxMove = false, bool fileActions = false) noexcept {
+    ActionSet result{};
+    const auto append = [&result](Action action) constexpr { result.values[result.count++] = action; };
     if (occupied) {
-        if (hasPendingChanges) {
-            return {{{Action::View, Action::Edit, Action::Clone, Action::Remove,
-                      Action::LegalityProvenance, Action::ReviewPendingChanges, Action::Cancel}}, 7};
-        }
-        return {{{Action::View, Action::Edit, Action::Clone, Action::Remove,
-                  Action::LegalityProvenance, Action::Cancel, Action::Cancel}}, 6};
+        append(Action::View);
+        append(Action::Edit);
+        append(Action::Clone);
+        if (boxMove) append(Action::Move);
+        append(Action::Remove);
+        append(Action::LegalityProvenance);
+        if (fileActions) append(Action::ExportFile);
+    } else {
+        append(Action::AddPokemon);
+        if (fileActions) append(Action::ImportFile);
     }
-    if (hasPendingChanges) {
-        return {{{Action::AddPokemon, Action::ReviewPendingChanges, Action::Cancel,
-                  Action::Cancel, Action::Cancel, Action::Cancel, Action::Cancel}}, 3};
-    }
-    return {{{Action::AddPokemon, Action::Cancel, Action::Cancel, Action::Cancel,
-              Action::Cancel, Action::Cancel, Action::Cancel}}, 2};
+    if (hasPendingChanges) append(Action::ReviewPendingChanges);
+    append(Action::Cancel);
+    // The table has always padded unused entries with Cancel (count excludes them); keep that.
+    for (std::size_t i = result.count; i < result.values.size(); ++i) result.values[i] = Action::Cancel;
+    return result;
 }
 
 enum class AddDraftEvent : uint8_t {

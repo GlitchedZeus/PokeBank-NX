@@ -1,8 +1,21 @@
+#include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicGameContext.h"
+#include "UI/SharedPokemonShell.h"
+#include "UI/ClassicMovesPanel.h"
+#include "UI/ClassicFieldColor.h"
 
 namespace UI::Gen1PokemonEditor {
 
 namespace ClassicContext = PokeBank::UIModel::ClassicGameContext;
+
+// The Gen I workspace panels use the shared shell geometry; the retained Gen I constants
+// (drawNeutralGen1WorkspaceHeadings) must keep describing the same panels.
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).y == 96);
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).leftX == 24 &&
+              SharedPokemonShell::Geometry(1280, 720, 48).leftW == 300);
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).midX == 24 + 300 + 14 &&
+              SharedPokemonShell::Geometry(1280, 720, 48).midW == 398);
+static_assert(SharedPokemonShell::Geometry(1280, 720, 48).rightX == 24 + 300 + 14 + 398 + 14);
 
 // Hardware fix 2026-09-13: picker state must own both input and drawing even while
 // the underlying editor mode remains AddDraft/Edit. The original foundation gate
@@ -99,12 +112,13 @@ void drawNeutralGen1WorkspaceHeadings(PKSEFramebuffer& fb) {
     constexpr int midX = leftX + leftW + 14;
     constexpr int midW = 398;
     constexpr int rightX = midX + midW + 14;
-    const auto redraw = [&fb](int x, const char* text, TextStyle style) {
-        fb.drawText(x + 14, contentY + 10, text, Colors::Text, style);
+    // Round 7 P2: the one shared heading style (UI/SharedPanelHeading.h), as Gen IV / V.
+    const auto redraw = [&fb](int x, const char* text) {
+        PokeBank::UIModel::PanelHeading::draw(fb, x, contentY, text);
     };
-    redraw(leftX, "DETAILS", TextStyle::Caption);
-    redraw(midX, "STATS", TextStyle::Heading);
-    redraw(rightX, "MOVES", TextStyle::Heading);
+    redraw(leftX, "DETAILS");
+    redraw(midX, "STATS");
+    redraw(rightX, "MOVES");
 }
 
 void drawExactGen1WorkspaceSubtitle(TrainerViewScreen& screen, PKSEFramebuffer& fb, UX2Mode workspaceMode) {
@@ -142,9 +156,8 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     const auto& types = presentation.nativeTypes;
     const auto& moves = add ? state.draft.moves : pokemon->moves;
     const auto& pp = add ? state.draft.pp : pokemon->pp;
-    const auto badMove = MoveCompatibility::firstIncompatible(e->metadata().sourceGame, species, moves);
-    const Color incompatibleColor = add ? Colors::Error : Colors::Warning;
-    const bool editable = !view;
+    // View is read-only but navigable: focus outlines and field targets are drawn in every
+    // mode; only Edit/Create activation (A) changes values.
 
     screen.touchButtons.clear();
     fb.drawVerticalGradient(0, 0, fb.getWidth(), fb.getHeight(),
@@ -173,20 +186,22 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawFilledRect(0, 60, fb.getWidth(), 2, Colors::Accent);
     drawExactGen1WorkspaceSubtitle(screen, fb, workspaceMode);
 
-    constexpr int contentY = 96;
-    const int contentH = fb.getHeight() - contentY - kNavBarH - 8;
-    constexpr int leftX = 24, leftW = 300;
-    constexpr int gap = 14;
-    constexpr int midX = leftX + leftW + gap, midW = 398;
-    constexpr int rightX = midX + midW + gap;
-    const int rightW = fb.getWidth() - 24 - rightX;
+    // Panel geometry is the shared Pokemon shell's (identical numbers to the former Gen I
+    // constants), so Gen I DETAILS/STATS/MOVES sit exactly where Gen II-V panels do.
+    const SharedPokemonShell::Geometry geometry(fb.getWidth(), fb.getHeight(), kNavBarH);
+    const int contentY = geometry.y;
+    const int contentH = geometry.h;
+    const int leftX = geometry.leftX, leftW = geometry.leftW;
+    const int midX = geometry.midX, midW = geometry.midW;
+    const int rightX = geometry.rightX;
+    const int rightW = geometry.rightW;
 
     drawPanelSurface(fb, leftX, contentY, leftW, contentH, false, 14);
     drawPanelSurface(fb, midX, contentY, midW, contentH, false, 14);
     drawPanelSurface(fb, rightX, contentY, rightW, contentH, false, 14);
 
     // DETAILS — heading remains neutral; Gen I intentionally shows no native gender.
-    fb.drawText(leftX + 14, contentY + 10, "DETAILS", Colors::Text, TextStyle::Caption);
+    PokeBank::UIModel::PanelHeading::draw(fb, leftX, contentY, "DETAILS");
     if (auto* sprite = SpriteManager::getSprite(species, presentation.shiny); sprite && sprite->data)
         fb.drawSpriteStaticContained(leftX + 75, contentY + 34, 150, 136,
                                      sprite->width, sprite->height, sprite->data, sprite->channels);
@@ -196,7 +211,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
 
     const std::array<std::string, 6> leftLabels{"Species", "Nickname", "Level", "EXP", "OT", "Trainer ID"};
     const std::array<std::string, 6> leftValues{
-        speciesCompact(species),
+        speciesHeading(species),
         name,
         std::to_string(level),
         std::to_string(foundationExperience(state, pokemon ? &*pokemon : nullptr, add)),
@@ -205,16 +220,18 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     };
     for (int i = 0; i < 6; ++i) {
         const int yy = contentY + 214 + i * 43;
-        const bool selected = editable && foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
+        const bool selected = foundation.focus.panel == Foundation::Panel::Identity && foundation.focus.row == i;
         drawClassicFocus(fb, leftX + 8, yy, leftW - 16, 38, selected);
-        if (editable) screen.touchButtons.push_back({5000 + i, leftX + 8, yy, leftW - 16, 38});
+        screen.touchButtons.push_back({5000 + i, leftX + 8, yy, leftW - 16, 38});
         fb.drawText(leftX + 18, yy + 7, leftLabels[static_cast<size_t>(i)],
                     selected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         fb.drawText(leftX + 108, yy + 7, leftValues[static_cast<size_t>(i)], Colors::Text, TextStyle::Caption);
     }
 
-    // STATS — editable values stay bright; calculated/read-only values are visually quieter.
-    fb.drawText(midX + 14, contentY + 10, "STATS", Colors::Text, TextStyle::Heading);
+    // STATS — the shared field-state contract (UI/ClassicStatFieldState.h): stored DV / Stat Exp
+    // are Editable (Text), the derived HP DV and the calculated Stat column are ReadOnly (gold) in
+    // View, Create and Edit alike (R2-GOLD).
+    PokeBank::UIModel::PanelHeading::draw(fb, midX, contentY, "STATS");
     constexpr int labelW = 76;
     constexpr int cellW = 96;
     const int gridX = midX + 10;
@@ -225,7 +242,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     constexpr auto statLabels = Foundation::gen1StatLabels();
     for (int r = 0; r < 5; ++r) {
         const int rowY = gridY + 28 + r * 42;
-        const bool rowSelected = editable && foundation.focus.panel == Foundation::Panel::Values &&
+        const bool rowSelected = foundation.focus.panel == Foundation::Panel::Values &&
                                  foundation.focus.row == r &&
                                  Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
                                                                static_cast<Foundation::ValueColumn>(foundation.focus.column));
@@ -233,76 +250,66 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
                     rowSelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
         for (int c = 0; c < 3; ++c) {
             const int cellX = gridX + labelW + c * cellW;
-            const bool selected = editable &&
+            const bool selected =
                                   Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
                                                                 static_cast<Foundation::ValueColumn>(c)) &&
                                   foundation.focus.panel == Foundation::Panel::Values &&
                                   foundation.focus.row == r && foundation.focus.column == c;
             drawClassicFocus(fb, cellX, rowY, cellW - 4, 34, selected);
-            if (editable && Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
+            if (Foundation::valueCellEditable(static_cast<Foundation::ValueRow>(r),
                                                            static_cast<Foundation::ValueColumn>(c)))
                 screen.touchButtons.push_back({5100 + r * 10 + c, cellX, rowY, cellW - 4, 34});
             std::string value;
             if (c == 0) value = r == 0 ? std::to_string(Editor::derivedHPDV(dvs)) + " *" : std::to_string(dvs[static_cast<size_t>(r - 1)]);
             else if (c == 1) value = std::to_string(statExp[static_cast<size_t>(r)]);
             else value = std::to_string(stats[static_cast<size_t>(r)]);
-            const Color valueColor = (r == 0 && c == 0) ? Colors::TextDim :
-                                     c == 2 ? Colors::TextSecondary : Colors::Text;
+            const Color valueColor = UI::SharedEditorChrome::fieldColor(
+                UI::SharedEditorChrome::FieldState::style(
+                    PokeBank::UIModel::ClassicStatFields::cellState(r, c), selected).value);
             fb.drawText(cellX + 10, rowY + 8, value, valueColor, TextStyle::Caption);
         }
     }
     fb.drawText(gridX + 8, gridY + 244, "* HP DV derived / read-only", Colors::TextDim, TextStyle::Caption);
-    const bool shinySelected = editable && foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 5;
+    const bool shinySelected = foundation.focus.panel == Foundation::Panel::Values && foundation.focus.row == 5;
     drawClassicFocus(fb, gridX, gridY + 276, midW - 20, 38, shinySelected);
-    if (editable) screen.touchButtons.push_back({5190, gridX, gridY + 276, midW - 20, 38});
+    screen.touchButtons.push_back({5190, gridX, gridY + 276, midW - 20, 38});
     fb.drawText(gridX + 12, gridY + 286, "Shiny",
                 shinySelected ? Colors::SelectedText : Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 130, gridY + 286, presentation.shiny ? "Yes" : "No",
-                shinySelected ? Colors::SelectedText : (presentation.shiny ? Colors::ShinyStar : Colors::Text), TextStyle::Caption);
+                ::UI::ClassicFieldColor::shinyValueColor(shinySelected), TextStyle::Caption);
 
     const std::string splitSpecial = std::to_string(stats[4]);
     fb.drawText(gridX + 12, gridY + 334, "CALCULATED SPECIAL STATS", Colors::TextDim, TextStyle::Caption);
     fb.drawText(gridX + 12, gridY + 362, "SpA", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 78, gridY + 362, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(gridX + 78, gridY + 362, splitSpecial, ::UI::ClassicFieldColor::splitSpecialColor(), TextStyle::Caption);
     fb.drawText(gridX + 194, gridY + 362, "SpD", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(gridX + 260, gridY + 362, splitSpecial, Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(gridX + 260, gridY + 362, splitSpecial, ::UI::ClassicFieldColor::splitSpecialColor(), TextStyle::Caption);
     fb.drawText(gridX + 12, gridY + 392, "one stored Gen I Special stat; split display only", Colors::TextDim, TextStyle::Caption);
 
-    // MOVES — selected row gets only the compact focus outline; text does not become red.
-    fb.drawText(rightX + 14, contentY + 10, "MOVES", Colors::Text, TextStyle::Heading);
-    for (int i = 0; i < 4; ++i) {
-        const int rowY = contentY + 44 + i * 40;
-        const bool selected = editable && foundation.focus.panel == Foundation::Panel::Moves && foundation.focus.row == i;
-        drawClassicFocus(fb, rightX + 10, rowY, rightW - 20, 36, selected);
-        if (editable) screen.touchButtons.push_back({5200 + i, rightX + 10, rowY, rightW - 20, 36});
-        const bool incompatible = !MoveCompatibility::canLearnMove(e->metadata().sourceGame, species, moves[static_cast<size_t>(i)]);
-        std::string moveText = moves[static_cast<size_t>(i)] == 0 ? "Empty" : std::string(Names::getMoveName(moves[static_cast<size_t>(i)]));
-        if (incompatible) moveText = "[!] " + moveText;
-        fb.drawText(rightX + 20, rowY + 8, moveText, incompatible ? incompatibleColor : Colors::Text, TextStyle::Caption);
-        const std::string status = incompatible ? (add ? "Invalid" : "Unusual") : "OK";
-        int statusW = 0, statusH = 0;
-        fb.measureText(status, statusW, statusH, TextStyle::Caption);
-        const int statusX = rightX + rightW - 16 - statusW;
-        fb.drawText(statusX, rowY + 8, status, incompatible ? incompatibleColor : Colors::Success, TextStyle::Caption);
-        const auto ups = add ? state.draft.ppUps[static_cast<size_t>(i)] : pokemon->ppUps[static_cast<size_t>(i)];
-        if (moves[static_cast<size_t>(i)] != 0) {
-            const std::string ppText = "PP " + std::to_string(pp[static_cast<size_t>(i)]) + "  Up " + std::to_string(ups);
-            int ppW = 0, ppH = 0;
-            fb.measureText(ppText, ppW, ppH, TextStyle::Caption);
-            fb.drawText(statusX - 12 - ppW, rowY + 8, ppText, Colors::TextDim, TextStyle::Caption);
+    // MOVES — the ONE shared Moves panel (UI/ClassicMovesPanel.h), same rows as Gen II-V.
+    // An unlearnable move is Invalid in Create (it must be fixed) and Preserved in Edit.
+    PokeBank::UIModel::PanelHeading::draw(fb, rightX, contentY, "MOVES");
+    {
+        const auto& ups = add ? state.draft.ppUps : pokemon->ppUps;
+        std::array<int, 4> maxPP{};
+        std::array<ClassicMovesPanel::Status, 4> status{};
+        for (int i = 0; i < 4; ++i) {
+            const auto slot = static_cast<size_t>(i);
+            maxPP[slot] = Editor::moveMaxPP(moves[slot], ups[slot]);
+            const bool incompatible = !MoveCompatibility::canLearnMove(e->metadata().sourceGame, species, moves[slot]);
+            status[slot] = !incompatible ? ClassicMovesPanel::Status::Ok
+                : add ? ClassicMovesPanel::Status::Invalid : ClassicMovesPanel::Status::Preserved;
+            const auto rect = ClassicMovesPanel::slotRect(i, rightX, contentY, rightW);
+            screen.touchButtons.push_back({5200 + i, rect.x, rect.y, rect.w, rect.h});
         }
+        const int focusedMove = foundation.focus.panel == Foundation::Panel::Moves ? foundation.focus.row : -1;
+        ClassicMovesPanel::draw(fb, rightX, contentY, rightW,
+                                ClassicMovesPanel::slots(moves, pp, ups, maxPP, status),
+                                Enums::GameVersion::RBY, focusedMove);
     }
-    const int statusY = contentY + 214;
-    fb.drawHDivider(rightX + 14, statusY - 12, rightW - 28);
-    fb.drawText(rightX + 18, statusY, "Move compatibility", Colors::TextDim, TextStyle::Caption);
-    const std::string compatibilityText = !badMove ? "OK" : (add ? "Needs correction" : "Unusual preserved");
-    const Color compatibilityColor = !badMove ? Colors::Success : (add ? Colors::Error : Colors::Warning);
-    fb.drawText(rightX + rightW - 154, statusY, compatibilityText, compatibilityColor, TextStyle::Caption);
-    fb.drawText(rightX + 18, statusY + 26, "Encounter legality", Colors::TextDim, TextStyle::Caption);
-    fb.drawText(rightX + rightW - 120, statusY + 26, "Not checked", Colors::Text, TextStyle::Caption);
 
-    const int splitY = contentY + 276;
-    const int splitH = contentH - 288;
+    const int splitY = contentY + SharedMovesPanel::kDataPaneOffset;
+    const int splitH = contentH - 256;
     constexpr int inset = 12, paneGap = 10, leftPaneW = 148;
     const int innerW = rightW - inset * 2;
     const int rightPaneW = innerW - paneGap - leftPaneW;
@@ -315,7 +322,7 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     const uint8_t growth = Editor::growthRate(species);
     const uint32_t nextLevelExp = level < 100 ? Pokemon::getExpForLevel(static_cast<uint8_t>(level + 1), growth) : experience;
     const uint32_t toNextLevel = level < 100 && nextLevelExp > experience ? nextLevelExp - experience : 0;
-    fb.drawText(leftPaneX + 10, splitY + 10, "GEN I DATA", Colors::Accent, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 10, PokeBank::UIModel::SharedEditorPresentation::kOriginLegalityHeading, Colors::Accent, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 38, "Game", Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 56, foundationExactGameName(screen, e->metadata().sourceGame), Colors::Text, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 80, "Growth", Colors::TextDim, TextStyle::Caption);
@@ -326,18 +333,25 @@ void drawFullscreenGen1Workspace(TrainerViewScreen& screen, PKSEFramebuffer& fb)
     fb.drawText(leftPaneX + 10, splitY + 164, "Catch byte", Colors::TextDim, TextStyle::Caption);
     fb.drawText(leftPaneX + 10, splitY + 182,
                 add ? std::string("Species default") : std::to_string(pokemon->catchRate), Colors::Text, TextStyle::Caption);
+    // Origin & Legality (formerly under the move rows): Gen I records no origin to check.
+    fb.drawText(leftPaneX + 10, splitY + 206, "Legality", Colors::TextDim, TextStyle::Caption);
+    fb.drawText(leftPaneX + 10, splitY + 224, PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked), Colors::Text, TextStyle::Caption);
 
     fb.drawText(rightPaneX + 10, splitY + 10, "BATTLE STATS", Colors::Accent, TextStyle::Caption);
     StatsRadar::drawGen1Labeled(fb, rightPaneX + 8, splitY + 32, rightPaneW - 16, splitH - 40, stats);
 
     if (view) {
-        drawNavBar(fb, {{"B", "Back"}, {"Touch", "Back"}});
+        drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
+    } else if (foundationStateFor(screen).editExitConfirm) {
+        // The exit dialog is modal: its footer offers exactly the dialog's own B/Y/A, so a
+        // footer tap (mapped to that button) never reads as a workspace edit shortcut.
+        drawNavBar(fb, {{"B", "Back"}, {"Y", "Discard"}, {"A", add ? "Keep" : "Save"}});
     } else if (add) {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"X", "Add"}, {"B", "Exit"}});
+                        {"Y", "Random DVs"}, {"X", "Add"}, {"+", "Review"}, {"B", "Exit"}});
     } else {
         drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"A", "Edit"},
-                        {"Y", "Random DVs"}, {"B", "Exit"}});
+                        {"Y", "Random DVs"}, {"X", "Keep"}, {"+", "Review"}, {"B", "Exit"}});
     }
 }
 
@@ -359,7 +373,7 @@ void drawFoundationPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // underlying DETAILS/STATS/MOVES target before registering picker rows.
     screen.touchButtons.clear();
     // ux3DrawPicker applies the existing dimmer exactly once.
-    const int w = state.picker == UX2Picker::Species ? 1080 : 760;
+    const int w = state.picker == UX2Picker::Species ? 1080 : kGen1MovePickerW;
     constexpr int h = 520;
     ux3DrawPicker(screen, fb, (1280 - w) / 2, (672 - h) / 2, w, h);
     ux3DrawTouchNavBar(fb, state);

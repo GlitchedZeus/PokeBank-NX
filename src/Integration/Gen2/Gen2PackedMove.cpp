@@ -7,8 +7,11 @@ namespace PokeVault::Integration::Gen2 {
 namespace {
 struct PackedLayout { std::size_t currentBoxCopy; uint8_t boxCapacity, boxCount, stringLength, splitAtBox; };
 constexpr PackedLayout kGoldSilverLayout{0x2D6C,20,14,11,7}, kCrystalLayout{0x2D10,20,14,11,7};
+// Japanese Gold / Silver / Crystal: 9 boxes of 30, 6-byte names, boxes 7-9 in bank 3, current box at
+// 0x2D10 (Gen2ReadOnlySave.cpp kJpnGS / kJpnC; PKHeX 8e3eb3d4 SAV2Offsets LoadOffsetsJapanese).
+constexpr PackedLayout kJapaneseLayout{0x2D10,30,9,6,6};
 constexpr std::size_t kStoredBodySize=32;
-const PackedLayout& packedLayoutFor(VersionFamily family) noexcept { return family==VersionFamily::Crystal?kCrystalLayout:kGoldSilverLayout; }
+const PackedLayout& packedLayoutFor(const Metadata& m) noexcept { return m.region==RegionLayout::Japanese?kJapaneseLayout:m.family==VersionFamily::Crystal?kCrystalLayout:kGoldSilverLayout; }
 std::size_t boxListLength(const PackedLayout& l) noexcept { return 1+(static_cast<std::size_t>(l.boxCapacity)+1)+static_cast<std::size_t>(l.boxCapacity)*kStoredBodySize+2*static_cast<std::size_t>(l.boxCapacity)*l.stringLength; }
 std::size_t boxStride(const PackedLayout& l) noexcept { return boxListLength(l)+2; }
 std::size_t boxStart(const PackedLayout& l,std::size_t box) noexcept { return box<l.splitAtBox?0x4000+box*boxStride(l):0x6000+(box-l.splitAtBox)*boxStride(l); }
@@ -37,7 +40,7 @@ bool StagedEditor::beginPackedMove(std::size_t sourceBox,std::size_t sourceSlot,
 }
 bool StagedEditor::beginPackedGroupMove(std::size_t sourceBox,std::span<const std::size_t> sourceSlots,std::string& error) {
     error.clear(); if(packedMove_.active){error="A Generation II Pokemon group is already being carried";return false;}
-    const auto& layout=packedLayoutFor(metadata_.family);
+    const auto& layout=packedLayoutFor(metadata_);
     if(sourceBox>=layout.boxCount||sourceBox>=metadata_.boxCount||sourceSlots.empty()){error="Generation II move selection is empty or out of range";return false;}
     std::vector<std::size_t> ordered(sourceSlots.begin(),sourceSlots.end()); std::sort(ordered.begin(),ordered.end());
     if(ordered.back()>=layout.boxCapacity){error="Generation II move source is out of range";return false;}
@@ -61,7 +64,7 @@ bool StagedEditor::placePackedMove(std::size_t destinationBox,std::size_t destin
 }
 bool StagedEditor::placePackedGroupMove(std::size_t destinationBox,std::size_t destinationSlot,std::size_t& firstPlacedSlot,std::string& error) {
     error.clear();firstPlacedSlot=0;if(!packedMove_.active||packedMove_.sourceSlots.empty()){error="No Generation II Pokemon group is being carried";return false;}
-    const auto& layout=packedLayoutFor(metadata_.family);if(destinationBox>=layout.boxCount||destinationBox>=metadata_.boxCount||destinationSlot>=layout.boxCapacity){error="Generation II move destination is out of range";return false;}
+    const auto& layout=packedLayoutFor(metadata_);if(destinationBox>=layout.boxCount||destinationBox>=metadata_.boxCount||destinationSlot>=layout.boxCapacity){error="Generation II move destination is out of range";return false;}
     const auto list=boxStart(layout,destinationBox);const std::size_t count=staged_[list],groupSize=packedMove_.sourceSlots.size();if(count+groupSize>layout.boxCapacity){error="This Generation II box does not have enough room for the selected Pokemon";return false;}
     const std::size_t insert=std::min(destinationSlot,count);const auto stagedBeforePlace=staged_;const auto expectationsBeforePlace=pokemonExpectations_;
     for(std::size_t slot=count;slot>insert;--slot){const std::size_t from=slot-1;copyStoredSlot(stagedBeforePlace,layout,destinationBox,from,staged_,destinationBox,from+groupSize);}for(std::size_t i=0;i<groupSize;++i)copyStoredSlot(packedMove_.stagedBefore,layout,packedMove_.sourceBox,packedMove_.sourceSlots[i],staged_,destinationBox,insert+i);

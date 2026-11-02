@@ -193,6 +193,36 @@ namespace Names {
         15, 19, 57, 70, 148, 249, 127, 291,
     };
 
+    // Red/Blue/Yellow (pret pokered d2704a63 data/moves/tmhm_moves.asm; same table as
+    // Inventory/ClassicInventoryCatalog kG1MachineMoves). Indexed by itemId - 196:
+    // HM01..HM05 == items 196..200, TM01..TM50 == items 201..250.
+    static const uint16_t RBY_MACHINE_MOVES[] = {
+        15, 19, 57, 70, 148,
+        5, 13, 14, 18, 25, 92, 32, 34, 36, 38, 61, 55, 58, 59, 63, 6, 66, 68, 69, 99, 72, 76, 82, 85, 87,
+        89, 90, 91, 94, 100, 102, 104, 115, 117, 118, 120, 121, 126, 129, 130, 135, 138, 143, 156, 86,
+        149, 153, 157, 161, 164,
+    };
+
+    // Black/White and Black 2/White 2 (PKHeX 6501f0ab PKHeX.Core/PersonalInfo/Info/
+    // PersonalInfo5BW.cs MachineMoves; PersonalInfo5B2W2 defines no list of its own).
+    // TM01..TM92 == items 328..419, TM93..TM95 == items 618..620 (Gen5Bag BagCatalog5::kMachine),
+    // HM01..HM06 == items 420..425.
+    static const uint16_t GEN5_TM_MOVES[] = {
+        468, 337, 473, 347, 46,  92,  258, 339, 474, 237,
+        241, 269, 58,  59,  63,  113, 182, 240, 477, 219,
+        218, 76,  479, 85,  87,  89,  216, 91,  94,  247,
+        280, 104, 115, 482, 53,  188, 201, 126, 317, 332,
+        259, 263, 488, 156, 213, 168, 490, 496, 497, 315,
+        502, 411, 412, 206, 503, 374, 451, 507, 510, 511,
+        261, 512, 373, 153, 421, 371, 514, 416, 397, 148,
+        444, 521, 86,  360, 14,  522, 244, 523, 524, 157,
+        404, 525, 526, 398, 138, 447, 207, 365, 369, 164,
+        430, 433, 528, 249, 555,
+    };
+    static const uint16_t GEN5_HM_MOVES[] = {
+        15, 19, 57, 70, 127, 291,
+    };
+
     // Bounds-checked table read.
     static uint16_t idxMove(const uint16_t* table, size_t count, size_t index) {
         return index < count ? table[index] : 0;
@@ -242,6 +272,28 @@ namespace Names {
                 constexpr size_t NH = sizeof(GEN4_HM_HGSS_MOVES) / sizeof(GEN4_HM_HGSS_MOVES[0]);
                 if (itemId >= 328 && itemId <= 419) return idxMove(GEN4_TM_MOVES, NT, itemId - 328);
                 if (itemId >= 420 && itemId <= 427) return idxMove(GEN4_HM_HGSS_MOVES, NH, itemId - 420);
+                return 0;
+            }
+
+            // ---- Red/Blue/Yellow ----
+            case GameVersion::RBY: {
+                constexpr size_t N = sizeof(RBY_MACHINE_MOVES) / sizeof(RBY_MACHINE_MOVES[0]);
+                if (itemId >= 196 && itemId <= 250) return idxMove(RBY_MACHINE_MOVES, N, itemId - 196);
+                return 0;
+            }
+
+            // ---- Black/White, Black 2/White 2 ----
+            case GameVersion::B:
+            case GameVersion::W:
+            case GameVersion::BW:
+            case GameVersion::B2:
+            case GameVersion::W2:
+            case GameVersion::B2W2: {
+                constexpr size_t NT = sizeof(GEN5_TM_MOVES) / sizeof(GEN5_TM_MOVES[0]);
+                constexpr size_t NH = sizeof(GEN5_HM_MOVES) / sizeof(GEN5_HM_MOVES[0]);
+                if (itemId >= 328 && itemId <= 419) return idxMove(GEN5_TM_MOVES, NT, itemId - 328);   // TM01-92
+                if (itemId >= 618 && itemId <= 620) return idxMove(GEN5_TM_MOVES, NT, itemId - 618 + 92); // TM93-95
+                if (itemId >= 420 && itemId <= 425) return idxMove(GEN5_HM_MOVES, NH, itemId - 420);   // HM01-06
                 return 0;
             }
 

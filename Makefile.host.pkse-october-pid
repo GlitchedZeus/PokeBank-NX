@@ -1,0 +1,40 @@
+# PKSE 620c5f6 review "PID, shiny and gender preservation" (owner directive): Gen III / IV / V
+# IV / EV edits, unchanged re-stages, Discard and serialization through the production
+# staged-editing routes keep PID, shininess, gender, nature and ability.
+PKSE_OCTOBER_PID_HOST_TESTS := $(HOST_BUILD)/test_gen345_pid_preservation_routes
+PKSE_OCTOBER_PID_SANITIZE_TESTS := $(HOST_BUILD)/test_gen345_pid_preservation_routes_sanitize
+
+HOST_TESTS += $(PKSE_OCTOBER_PID_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(PKSE_OCTOBER_PID_SANITIZE_TESTS)
+host-test: $(PKSE_OCTOBER_PID_HOST_TESTS)
+host-sanitize: $(PKSE_OCTOBER_PID_SANITIZE_TESTS)
+
+GEN345_PID_PRESERVATION_SOURCES := tests/test_gen345_pid_preservation_routes.cpp \
+	src/Integration/Gen3/Gen3StagedPokemonEditor.cpp src/Integration/Gen3/Gen3StagedInventoryEditor.cpp \
+	src/Integration/Gen3/PKSMGen3NativeAdapter.cpp src/Integration/Gen3/FRLGReadModel.cpp \
+	src/Pokemon/Pokemon3FRLG.cpp src/Pokemon/BaseStatsGen89.cpp src/Pokemon/PersonalInfoTable.cpp \
+	src/Encryption/Encryption3FRLG.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+	src/Integration/Gen4/Gen4StagedPokemonEditor.cpp src/Integration/Gen4/Gen4ExportTransaction.cpp \
+	src/Integration/Gen4/Gen4ReadOnlySave.cpp src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Pokemon/Pokemon4ReadOnlyView.cpp src/Pokemon/Pokemon4Mutable.cpp src/Pokemon/Pokemon4ReadOnly.cpp \
+	src/Pokemon/PersonalRecord4.cpp src/Pokemon/PersonalInfo4DP.cpp src/Pokemon/PersonalInfo4PT.cpp \
+	src/Pokemon/PersonalInfo4HGSS.cpp src/Encryption/Encryption4.cpp \
+	src/Integration/Gen5/Gen5WorkingCopyExport.cpp \
+	src/Pokemon/Experience.cpp src/Names/ItemNames.cpp src/Names/ItemPresence.cpp src/Names/MoveNames.cpp \
+	src/Names/MoveInfo.cpp src/Names/MovePresence.cpp src/Names/MachineDisplay.cpp src/Names/TMMoves.cpp \
+	src/Names/LocationNames.cpp src/Names/AbilityNames.cpp src/Names/NatureNames.cpp src/Names/SpeciesNames.cpp \
+	src/Utils/SHA256.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+GEN345_PID_PRESERVATION_DEPS := $(GEN345_PID_PRESERVATION_SOURCES) \
+	include/Integration/Gen3/Gen3StagedPokemonEditor.h include/UI/Gen3SharedPokemonSession.h \
+	include/Integration/Gen4/Gen4StagedPokemonEditor.h include/UI/Gen4SharedPokemonSession.h \
+	include/Pokemon/Pokemon4Mutable.h include/Integration/Gen4/Gen4ExportTransaction.h \
+	$(wildcard include/Integration/Gen5/*.h)
+
+$(HOST_BUILD)/test_gen345_pid_preservation_routes: $(GEN345_PID_PRESERVATION_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(GEN345_PID_PRESERVATION_SOURCES) -o $@
+
+$(HOST_BUILD)/test_gen345_pid_preservation_routes_sanitize: $(GEN345_PID_PRESERVATION_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(GEN345_PID_PRESERVATION_SOURCES) -o $@

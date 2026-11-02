@@ -83,6 +83,17 @@ namespace Enums {
             // Gen 3 - FireRed/LeafGreen (Nintendo Switch Online GBA release)
             case 0x0100554023408000: return GameVersion::FR;  // FireRed   (title ids from real Switch backups)
             case 0x010034D02340E000: return GameVersion::LG;  // LeafGreen
+            // Localized releases (upstream PKSE include/Enums/GameVersion.h:163-174 at a79fe61a).
+            case 0x01006FA0233F8000: return GameVersion::FR;  // FireRed   (Japanese)
+            case 0x01004B3023412000: return GameVersion::FR;  // FireRed   (French)
+            case 0x010092302342A000: return GameVersion::FR;  // FireRed   (Italian)
+            case 0x01007F8023416000: return GameVersion::FR;  // FireRed   (German)
+            case 0x0100EB702342C000: return GameVersion::FR;  // FireRed   (Spanish)
+            case 0x0100F1E0233FA000: return GameVersion::LG;  // LeafGreen (Japanese)
+            case 0x010087C02342E000: return GameVersion::LG;  // LeafGreen (French)
+            case 0x01005C7023432000: return GameVersion::LG;  // LeafGreen (Italian)
+            case 0x0100FD6023430000: return GameVersion::LG;  // LeafGreen (German)
+            case 0x01002B5023434000: return GameVersion::LG;  // LeafGreen (Spanish)
 
             // // Gen 7 - Let's Go
             case 0x010003F003A34000: return GameVersion::GP;  // Let's Go Pikachu

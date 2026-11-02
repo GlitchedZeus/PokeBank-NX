@@ -1,5 +1,6 @@
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "Integration/Gen5/Gen5WorkingCopyExport.h"
+#include "Integration/Gen5/Gen5SharedPokemonSession.h"
 
 #include <algorithm>
 #include <array>
@@ -80,8 +81,56 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(!G::buildStagedSaveCandidate(ws,&error) && !error.empty());
 
     using Field=G::StagedPokemon5Record::Field;
+    {
+        G::Gen5StagedPokemonWorkspace languageWs(*parsed);
+        for (auto region : {G::Gen5StagedPokemonWorkspace::Region::Party,
+                            G::Gen5StagedPokemonWorkspace::Region::Box}) {
+            const G::Gen5StagedPokemonWorkspace::Slot location{region,0,0};
+            G::Gen5SharedPokemonSession draft;
+            assert(draft.begin(languageWs,location,G::Gen5SharedPokemonSession::Mode::Edit,error));
+            assert(draft.stage(Field::Language,0,8,error));
+            assert(!draft.back() && draft.confirmExit());
+            draft.continueEditing();
+            assert(draft.keep(languageWs,error));
+        }
+        assert(languageWs.viewParty(0)->language()==8 && languageWs.viewBox(0,0)->language()==8);
+        for (const auto& change : languageWs.pendingReview()) {
+            const auto verified=G::verifyStagedReview(change,&error);
+            assert(verified && verified->fields.size()==1 && verified->fields[0].field==Field::Language);
+        }
+        const auto languageCandidate=G::buildStagedSaveCandidate(languageWs,&error);
+        assert(languageCandidate);
+        const auto languageParsed=G::Gen5ReadOnlySave::parse(languageCandidate->bytes,game,&error,selected);
+        assert(languageParsed && languageParsed->partyPokemon(0)->language()==8 && languageParsed->boxPokemon(0,0)->language()==8);
+        languageWs.discardAll();
+        assert(languageWs.pendingReview().empty());
+        // M1 D3: one draft that changes language AND sets an explicit nickname, in both orders.
+        // Keep/Review replay language first (its derived default name is not a name edit), then
+        // the explicit nickname; the result must match the draft byte for byte.
+        for (const bool nameFirst : {false,true}) {
+            const G::Gen5StagedPokemonWorkspace::Slot location{G::Gen5StagedPokemonWorkspace::Region::Box,0,0};
+            G::Gen5SharedPokemonSession draft;
+            assert(draft.begin(languageWs,location,G::Gen5SharedPokemonSession::Mode::Edit,error));
+            if (nameFirst) assert(draft.stageName(Field::NicknameText,"SPARKY",error));
+            assert(draft.stage(Field::Language,0,1,error));
+            if (!nameFirst) assert(draft.stageName(Field::NicknameText,"SPARKY",error));
+            assert(!draft.back() && draft.confirmExit());
+            draft.continueEditing();
+            assert(draft.keep(languageWs,error));
+            const auto kept=languageWs.viewBox(0,0);
+            assert(kept && kept->language()==1 && G::asciiName5(kept->decodedBytes(),true)=="SPARKY");
+            const auto pending=languageWs.pendingReview();
+            assert(pending.size()==1);
+            const auto verified=G::verifyStagedReview(pending[0],&error);
+            assert(verified && verified->fields.size()==2);
+            assert(verified->fields[0].field==Field::Language && verified->fields[1].field==Field::NicknameText);
+            languageWs.discardAll();
+        }
+        assert(std::equal(input.begin(),input.end(),languageWs.sourceSave().sourceBytes().begin()));
+    }
     assert(ws.stageParty(0,Field::Nature,0,22,&error));
     assert(ws.stageParty(0,Field::Friendship,0,128,&error));
+    assert(ws.stageParty(0,Field::Language,0,8,&error));
     assert(ws.stageParty(0,Field::Ball,0,25,&error));
     assert(ws.stageParty(0,Field::MetLevel,0,72,&error));
     assert(ws.stageParty(0,Field::TrainerId,0,65535,&error));
@@ -96,6 +145,7 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(ws.stagePartyName(0,true,"PARTY",&error));
     assert(ws.stageParty(0,Field::Species,0,26,&error));
     assert(ws.stageBoxName(0,0,false,"NXT",&error));
+    assert(ws.stageBox(0,0,Field::Language,0,1,&error));
     assert(ws.stageBox(0,0,Field::Level,0,40,&error));
     assert(ws.stageBox(0,0,Field::Experience,0,75000,&error));
     assert(ws.stageBox(0,0,Field::HeldItem,0,638,&error));
@@ -175,6 +225,8 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
     assert(candidate->exactGameId()==game);
     assert(candidate->partyPokemon(0)->nature()==22);
     assert(candidate->partyPokemon(0)->friendship()==128);
+    assert(candidate->partyPokemon(0)->language()==8);
+    assert(candidate->boxPokemon(0,0)->language()==1);
     assert(candidate->partyPokemon(0)->ball()==25);
     assert(candidate->partyPokemon(0)->metLevel()==72);
     assert(candidate->partyPokemon(0)->originalTrainerGender()==0);
@@ -291,6 +343,29 @@ static void exercise(G::SaveFamily family,std::string_view game,uint8_t version,
             const std::string temporary=exportRoot+"/account-"+req.profileIdentity+
                 "/."+std::string(game)+"_"+req.timestamp+".pending";
             assert(::lstat(temporary.c_str(),&st)!=0 && errno==ENOENT);
+        }
+        {
+            // QA-F3: a destination appearing just before publication is never
+            // replaced (the racing empty directory survives untouched) and a
+            // mid-publication failure leaves neither directory behind.
+            req.timestamp="20261012_221510";
+            req.failurePoint=G::WorkingCopyFailurePoint::DestinationAppears;
+            const auto raced=G::publishGen5WorkingCopy(ws,req);
+            assert(!raced.success && raced.error.find("existing export preserved")!=std::string::npos);
+            const std::string base=exportRoot+"/account-"+req.profileIdentity+"/";
+            const std::string racedPath=base+std::string(game)+"_"+req.timestamp;
+            struct stat st{};
+            assert(::lstat(racedPath.c_str(),&st)==0 && S_ISDIR(st.st_mode));
+            assert(::rmdir(racedPath.c_str())==0); // proves it stayed empty
+            const std::string racedTemp=base+"."+std::string(game)+"_"+req.timestamp+".pending";
+            assert(::lstat(racedTemp.c_str(),&st)!=0 && errno==ENOENT);
+            req.timestamp="20261012_221511";
+            req.failurePoint=G::WorkingCopyFailurePoint::AfterFirstPublishedFile;
+            assert(!G::publishGen5WorkingCopy(ws,req).success);
+            const std::string midPath=base+std::string(game)+"_"+req.timestamp;
+            assert(::lstat(midPath.c_str(),&st)!=0 && errno==ENOENT);
+            const std::string midTemp=base+"."+std::string(game)+"_"+req.timestamp+".pending";
+            assert(::lstat(midTemp.c_str(),&st)!=0 && errno==ENOENT);
         }
         req.failurePoint=G::WorkingCopyFailurePoint::None;
         req.timestamp="20261012_221520";

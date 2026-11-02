@@ -37,15 +37,19 @@ for name,body,native in [
     assert native in body, (name,"native sort snapshot missing")
     assert "ItemPickerSort::reorder(" in body, (name,"reorder not wired")
     assert "ItemPickerSort::next(" in body, (name,"sort X cycle missing")
-    assert '{"X", "Sort"}' in body or '{"X","Sort"}' in body, (name,"controller help missing")
+    # The shared picker footer (SharedEditorPresentation::pickerFooter) names X Sort as xLabel.
+    assert ('{"X", "Sort"}' in body or '{"X","Sort"}' in body or
+            'footer.xLabel = "Sort"' in body), (name,"controller help missing")
     assert "ItemPickerSort::label(" in body, (name,"sort label missing")
 
 # Original game item IDs must be mapped to move type before asking for art.
 assert "ClassicMachineArtwork::artKey(group, itemId)" in classic
-assert "ItemPickerArtwork::draw(fb, x + width - 31" in classic
+assert "ItemPickerArtwork::draw(fb, sprite.right(), sprite.y, sprite.w, spriteKey)" in classic
 assert "ClassicMachineArtwork::artKey(" in gen3
 assert "ClassicMachineArtwork::artKey(" in gen4
-assert "ItemPickerArtwork::drawNativeItem(" in gen4
+# Gen IV (and Gen V) Add rows draw through the ONE shared picker, which draws every row's sprite.
+assert "UI::SharedBagAddPicker::drawPicker(" in gen4
+assert "ItemPickerArtwork::drawNativeItem(" in source("include/UI/SharedBagAddPicker.h")
 
 # PC / Gen IV Add labels must show the taught move, not just "TM43".
 assert "classicMachineMove(game, itemId)" in catalog

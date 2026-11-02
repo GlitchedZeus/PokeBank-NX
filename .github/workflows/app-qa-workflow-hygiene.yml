@@ -1,0 +1,30 @@
+name: PokeBank NX App QA Workflow Hygiene
+
+# Thread 4 CI hygiene (QA-F2, docs/qa/WORKFLOW_CLEANUP_PROPOSAL.md): fails when any committed workflow
+# file stops parsing or loses its `on:` / `jobs:` keys. GitHub records a failed run on every push for a
+# workflow it cannot parse, which hides real failures.
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'tools/qa/check_workflows.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokebank-app-qa-workflow-hygiene-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  parse:
+    name: Every workflow file parses
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - run: python3 tools/qa/check_workflows.py

@@ -3,10 +3,14 @@
 #include "Integration/Gen4/Gen4BagCatalog.h"
 
 #include "Encryption/Encryption4.h"
+#include "Names/Gen4HeldItemCatalog.h"
+#include "Names/SpeciesNames.h"
 #include "Utils/CRC16.h"
+#include "Utils/Gen4Text.h"
 #include "Enums/LanguageID.h"
 
 #include <algorithm>
+#include <array>
 #include <utility>
 
 namespace PokeVault::Integration::Gen4 {
@@ -16,16 +20,23 @@ struct GeneralGeometry {
     size_t size = 0;
     size_t footerSize = 0;
     size_t partyOffset = 0;
+    size_t trainerOffset = 0; // PKHeX SAV4*.Trainer1, same values as Gen4ReadOnlySave's spec
 };
 
 GeneralGeometry generalGeometry(Layout layout) noexcept {
     switch (layout) {
-        case Layout::DiamondPearl: return {0xC100, 0x14, 0x98};
-        case Layout::Platinum: return {0xCF2C, 0x14, 0xA0};
-        case Layout::HeartGoldSoulSilver: return {0xF628, 0x10, 0x98};
+        case Layout::DiamondPearl: return {0xC100, 0x14, 0x98, 0x64};
+        case Layout::Platinum: return {0xCF2C, 0x14, 0xA0, 0x68};
+        case Layout::HeartGoldSoulSilver: return {0xF628, 0x10, 0x98, 0x64};
     }
     return {};
 }
+
+constexpr size_t kTrainerNameField = 0x00;  // 8 u16 units
+constexpr size_t kTrainerNameUnits = 8;
+constexpr size_t kTrainerMoneyField = 0x14; // u32
+constexpr size_t kTrainerGenderField = 0x18;   // u8, 0 male / 1 female (PKSM-Core Sav4::gender)
+constexpr size_t kTrainerPlayTimeField = 0x22; // u16 hours, u8 minutes, u8 seconds (Sav4::played*)
 
 struct StorageGeometry {
     size_t size = 0;
@@ -54,6 +65,58 @@ void write16(std::vector<uint8_t>& bytes, size_t offset, uint16_t value) noexcep
 
 void setError(std::string* error, std::string value) {
     if (error) *error = std::move(value);
+}
+
+uint16_t slot16(const std::vector<uint8_t>& bytes, size_t offset) noexcept {
+    return static_cast<uint16_t>(bytes[offset] | (static_cast<uint16_t>(bytes[offset + 1]) << 8));
+}
+
+// The games list a pocket up to its FIRST slot with no item or a zero quantity
+// (pret pokediamond arm9/src/bag.c, pokeplatinum and pokeheartgold src/bag.c and
+// their bag list builders). `listed` counts those leading slots. `consistent` is
+// false when the app's list (decodeReadOnlyBag: id not 0 / 0xFFFF, quantity not
+// 0) differs from the game's: a stack after an empty or zero-quantity slot, or an
+// item ID 0xFFFF stack inside the list. Such a pocket is pre-existing native
+// damage; Bag edits refuse it rather than rearrange it or hide items in game.
+struct NativePocketList {
+    size_t listed = 0;
+    bool consistent = true;
+};
+
+NativePocketList nativePocketList(const std::vector<uint8_t>& bytes, size_t start, size_t slots) noexcept {
+    NativePocketList out;
+    while (out.listed < slots && slot16(bytes, start + out.listed * 4) != 0 &&
+           slot16(bytes, start + out.listed * 4 + 2) != 0)
+        ++out.listed;
+    for (size_t slot = 0; slot < slots; ++slot) {
+        const uint16_t id = slot16(bytes, start + slot * 4);
+        const uint16_t quantity = slot16(bytes, start + slot * 4 + 2);
+        const bool appVisible = id != 0 && id != 0xFFFF && quantity != 0;
+        if ((slot < out.listed) != appVisible) out.consistent = false;
+    }
+    return out;
+}
+
+constexpr const char* kDamagedPocketMessage =
+    "this pocket already has an empty or unreadable slot before other items. It is left unchanged.";
+
+const char* layoutGameName(Layout layout) noexcept {
+    switch (layout) {
+        case Layout::DiamondPearl: return "Diamond/Pearl";
+        case Layout::Platinum: return "Platinum";
+        case Layout::HeartGoldSoulSilver: return "HeartGold/SoulSilver";
+    }
+    return "this Generation IV game";
+}
+
+std::string speciesLabel(uint16_t species) {
+    const char* name = Names::getSpeciesName(species);
+    return std::string(name ? name : "Species") + " #" + std::to_string(species);
+}
+
+// PK4 plaintext (PKHeX PK4): checksum u16 at 0x06 over 0x08..0x87.
+uint16_t plainU16(std::span<const uint8_t> bytes, size_t offset) noexcept {
+    return static_cast<uint16_t>(bytes[offset] | (static_cast<uint16_t>(bytes[offset + 1]) << 8));
 }
 
 } // namespace
@@ -115,6 +178,18 @@ std::optional<Gen4ReadOnlySave> Gen4StagedPokemonEditor::reparse(
     }
     if (error) error->clear();
     return parsed;
+}
+
+bool Gen4StagedPokemonEditor::originalEmptyRecordAt(
+    const Gen4ReadOnlySave& stagedParse, size_t box, size_t slot, size_t offset) const {
+    if (original_.size() != staged_.size()) return false;
+    const auto original = Gen4ReadOnlySave::parse(original_, layout_, exactGameId_);
+    if (!original) return false;
+    if (original->storageSelection().offset != stagedParse.storageSelection().offset) return false;
+    const auto originalOffset = boxRecordOffset(*original, box, slot);
+    if (!originalOffset || *originalOffset != offset) return false;
+    const auto& record = original->box(box, slot);
+    return record.valid() && record.empty();
 }
 
 std::optional<size_t> Gen4StagedPokemonEditor::boxRecordOffset(
@@ -468,6 +543,176 @@ bool Gen4StagedPokemonEditor::stageCloneBoxPokemon(
     return true;
 }
 
+// Feature A: standalone .pk4 / .ek4 import. The decoder (PokemonFile::decode) already proved the
+// file is a Gen IV PK4 by content (checksum in exactly one reading, PKHeX GetFormat45); this adds
+// the target game's own structural validators and never edits a byte of the record.
+bool Gen4StagedPokemonEditor::canImportPokemonFile(
+    const PokeBank::PokemonFile::Decoded& file, std::string* error) const {
+    if (file.generation != 4 || file.format != PokeBank::PokemonFile::Format::PK4) {
+        setError(error, "This is a Generation " + std::to_string(file.generation) +
+            " Pokemon file; a Generation IV save accepts only .pk4 / .ek4 records "
+            "(no conversion between generations)");
+        return false;
+    }
+    if (file.plain.size() != Encryption::SIZE_STORED4 &&
+        file.plain.size() != Encryption::SIZE_PARTY4) {
+        setError(error, "The .pk4 record is not 136 (box) or 236 (party) bytes");
+        return false;
+    }
+    // The stored 136 bytes; a party record's trailing battle-stat cache is not stored in a box.
+    const std::span<const uint8_t> stored(file.plain.data(), Encryption::SIZE_STORED4);
+    const auto storedBytes = std::as_bytes(stored);
+    if (Encryption::checksum4(storedBytes) != plainU16(stored, 0x06)) {
+        setError(error, "The .pk4 record's checksum does not match its data");
+        return false;
+    }
+    const auto encrypted = Encryption::encryptArray4(storedBytes);
+    const Pokemon::Pokemon4ReadOnly record(encrypted, sourceGroup_);
+    if (!record.valid() || record.isParty() ||
+        !std::equal(record.decryptedBytes().begin(), record.decryptedBytes().end(),
+                    storedBytes.begin(), storedBytes.end())) {
+        setError(error, "The .pk4 record failed strict PK4 checksum/sanity validation");
+        return false;
+    }
+    if (record.empty()) {
+        setError(error, "The .pk4 record holds no Pokemon (species 0)");
+        return false;
+    }
+
+    const std::string game = layoutGameName(layout_);
+    const uint16_t species = record.species();
+    // Species and form must exist in THIS game's personal table (PKHeX PersonalTable.DP / .Pt /
+    // .HGSS): e.g. Rotom appliance forms and Giratina Origin are Platinum+, Spiky-eared Pichu is
+    // HeartGold/SoulSilver only. Same tables and stored-form rule as Pokemon4Mutable::setForm.
+    if (species > 493 || record.personal().hp == 0) {
+        setError(error, speciesLabel(species) + " does not exist in " + game);
+        return false;
+    }
+    const auto editable = Pokemon::Pokemon4Mutable::fromEncrypted(encrypted, sourceGroup_, error);
+    if (!editable) return false;
+    if (record.form() >= editable->formCount()) {
+        setError(error, speciesLabel(species) + " form " + std::to_string(record.form()) +
+            " does not exist in " + game);
+        return false;
+    }
+    // PKHeX FormVerifier: Shaymin Sky Forme cannot be kept in a Gen IV PC box (setForm rule).
+    if (species == 492 && record.form() != 0) {
+        setError(error, "Shaymin Sky Forme cannot be stored in a Generation IV PC box");
+        return false;
+    }
+    // Holdable items per game: PKHeX ItemStorage4DP / ItemStorage4Pt GetAllHeld (setHeldItem rule).
+    if (record.heldItem() != 0 && !Names::isGen4HeldItemPresent(record.heldItem(), sourceGroup_)) {
+        setError(error, "Held item #" + std::to_string(record.heldItem()) +
+            " is not a holdable item in " + game);
+        return false;
+    }
+    // Native PK4 move range ends at Shadow Force (467), PKHeX Legal.MaxMoveID_4 (setMove rule).
+    for (const auto move : record.moves()) {
+        if (move > 467) {
+            setError(error, "Move #" + std::to_string(move) +
+                " is outside the Generation IV move list");
+            return false;
+        }
+    }
+    if (!Enums::groupHasLanguage(sourceGroup_, record.language())) {
+        setError(error, "Language id " + std::to_string(record.language()) +
+            " is not a Generation IV game language");
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
+
+bool Gen4StagedPokemonEditor::stageImportBoxPokemon(
+    size_t box, size_t slot, const PokeBank::PokemonFile::Decoded& file, std::string* error) {
+    if (!canImportPokemonFile(file, error)) return false;
+    auto parsedBefore = reparse(error);
+    if (!parsedBefore) return false;
+    if (box >= 18 || slot >= 30) {
+        setError(error, "Generation IV Import target is outside native 18 x 30 storage");
+        return false;
+    }
+    const auto& destination = parsedBefore->box(box, slot);
+    if (!destination.valid() || !destination.empty()) {
+        setError(error, destination.valid()
+            ? "Generation IV Import refuses to overwrite an occupied box slot"
+            : "Generation IV Import target failed strict slot validation");
+        return false;
+    }
+    const auto offset = boxRecordOffset(*parsedBefore, box, slot);
+    if (!offset) {
+        setError(error, "Generation IV Import target is outside the selected Storage block");
+        return false;
+    }
+
+    const auto plain = std::as_bytes(std::span<const uint8_t>(file.plain.data(),
+                                                              Encryption::SIZE_STORED4));
+    const auto encrypted = Encryption::encryptArray4(plain);
+    if (encrypted.size() != Encryption::SIZE_STORED4) {
+        setError(error, "Generation IV Import did not encrypt to a 0x88-byte stored PK4");
+        return false;
+    }
+
+    const auto backup = staged_;
+    for (size_t i = 0; i < encrypted.size(); ++i)
+        staged_[*offset + i] = static_cast<uint8_t>(encrypted[i]);
+
+    if (!refreshStorageCrc(*parsedBefore, error)) {
+        staged_ = backup;
+        return false;
+    }
+    auto parsedAfter = reparse(error);
+    if (!parsedAfter) {
+        staged_ = backup;
+        return false;
+    }
+    const auto& imported = parsedAfter->box(box, slot);
+    if (!imported.valid() || imported.empty() ||
+        !std::equal(imported.originalEncryptedBytes().begin(),
+                    imported.originalEncryptedBytes().end(),
+                    encrypted.begin(), encrypted.end()) ||
+        !std::equal(imported.decryptedBytes().begin(), imported.decryptedBytes().end(),
+                    plain.begin(), plain.end())) {
+        staged_ = backup;
+        setError(error, "Generation IV staged Import failed exact PK4 reparse verification");
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
+
+std::optional<std::vector<uint8_t>> Gen4StagedPokemonEditor::exportBoxPokemonFile(
+    size_t box, size_t slot, std::string* error) const {
+    const auto pokemon = boxedPokemon(box, slot, error);
+    if (!pokemon) return std::nullopt;
+    const auto plain = pokemon->decryptedBytes();
+    if (plain.size() != Encryption::SIZE_STORED4) {
+        setError(error, "Generation IV box record is not a stored 0x88-byte PK4");
+        return std::nullopt;
+    }
+    std::vector<uint8_t> out(plain.size());
+    std::transform(plain.begin(), plain.end(), out.begin(),
+                   [](std::byte value) { return static_cast<uint8_t>(value); });
+    if (error) error->clear();
+    return out;
+}
+
+std::optional<std::vector<uint8_t>> Gen4StagedPokemonEditor::exportPartyPokemonFile(
+    size_t slot, std::string* error) const {
+    const auto pokemon = partyPokemon(slot, error);
+    if (!pokemon) return std::nullopt;
+    const auto plain = pokemon->decryptedBytes();
+    if (plain.size() != Encryption::SIZE_PARTY4) {
+        setError(error, "Generation IV party record is not a 0xEC-byte party PK4");
+        return std::nullopt;
+    }
+    std::vector<uint8_t> out(plain.size());
+    std::transform(plain.begin(), plain.end(), out.begin(),
+                   [](std::byte value) { return static_cast<uint8_t>(value); });
+    if (error) error->clear();
+    return out;
+}
+
 bool Gen4StagedPokemonEditor::stageMoveBoxPokemon(
     size_t sourceBox, size_t sourceSlot,
     size_t destinationBox, size_t destinationSlot,
@@ -555,9 +800,19 @@ bool Gen4StagedPokemonEditor::stageReleaseBoxPokemon(
         return false;
     }
 
+    // A slot that started empty gets its original empty record back (retail empty box slots
+    // hold an encrypted blank, not zeros), so clone + release of the clone is byte-identical to
+    // the source. A slot that held a Pokemon in the source is zero-filled, which reparses as
+    // empty. The original slot only counts when the source selected the same Storage copy.
     const auto backup = staged_;
-    std::fill_n(staged_.begin() + static_cast<std::ptrdiff_t>(*offset),
-                Encryption::SIZE_STORED4, uint8_t{0});
+    const auto restore = originalEmptyRecordAt(*parsedBefore, box, slot, *offset);
+    if (restore)
+        std::copy_n(original_.begin() + static_cast<std::ptrdiff_t>(*offset),
+                    Encryption::SIZE_STORED4,
+                    staged_.begin() + static_cast<std::ptrdiff_t>(*offset));
+    else
+        std::fill_n(staged_.begin() + static_cast<std::ptrdiff_t>(*offset),
+                    Encryption::SIZE_STORED4, uint8_t{0});
 
     if (!refreshStorageCrc(*parsedBefore, error)) {
         staged_ = backup;
@@ -761,14 +1016,23 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
         setError(error,"Gen IV selected General pocket geometry is invalid");
         return false;
     }
+    // Removal packs the pocket natively (PocketCompaction / Pocket_SortEmpty).
+    // Packing is only safe when the app's list and the game's list agree.
+    const auto slotAt=[&](size_t slot){ return base+spec.offset+slot*4; };
+    const auto read16=[&](size_t at){ return slot16(staged_,at); };
+    const auto native=nativePocketList(staged_,slotAt(0),spec.slots);
+    if(!native.consistent) {
+        setError(error,std::string("Gen IV Remove refused: ")+kDamagedPocketMessage);
+        return false;
+    }
+    const size_t gameListed=native.listed;
     size_t foundAt=0;
     size_t populated=0;
     bool found=false;
-    for(size_t slot=0;slot<spec.slots;++slot) {
-        const size_t at=base+spec.offset+slot*4;
-        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
-        const uint16_t quantity=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
-        if(id==0 || id==0xFFFF || quantity==0)continue;
+    for(size_t slot=0;slot<gameListed;++slot) {
+        const size_t at=slotAt(slot);
+        const uint16_t id=read16(at);
+        const uint16_t quantity=read16(at+2);
         if(populated++==visibleIndex) {
             if(id!=expected.itemId || quantity!=expected.count) {
                 setError(error,"Gen IV item removal selection changed");
@@ -784,8 +1048,20 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
         return false;
     }
     auto backup=staged_;
-    write16(staged_,foundAt,0);
-    write16(staged_,foundAt+2,0);
+    // Native behaviour (pret Bag_TakeItem / Bag_TryRemoveItem -> pocket compaction): a removed
+    // stack never leaves a hole, since a hole would hide every later stack in game. Shift the
+    // listed stacks after it up one slot and blank the last listed slot. Slots past the game's
+    // list (ghost or filler data) are not listed in game either way and stay byte-identical.
+    const size_t listEnd=slotAt(gameListed);
+    for(size_t at=foundAt;at+4<listEnd;at+=4)
+        for(size_t k=0;k<4;++k)staged_[at+k]=staged_[at+4+k];
+    for(size_t k=0;k<4;++k)staged_[listEnd-4+k]=0;
+    const auto post=nativePocketList(staged_,slotAt(0),spec.slots);
+    if(!post.consistent || post.listed+1!=gameListed) {
+        staged_=std::move(backup);
+        setError(error,"Gen IV removal would leave the native pocket inconsistent");
+        return false;
+    }
     if(!refreshGeneralCrc(*before,error)) {
         staged_=std::move(backup);
         return false;
@@ -816,11 +1092,11 @@ bool Gen4StagedPokemonEditor::stageBagRemove(
             }
         }
     }
-    // Audit every byte, not merely the displayed pouch. Only the native
-    // four-byte item slot and the verified General CRC may change.
+    // Audit every byte, not merely the displayed pouch. Only the listed slots
+    // from the removed stack on and the verified General CRC may change.
     const size_t crcAt=base+blockSize-2;
     for(size_t i=0;i<staged_.size();++i) {
-        if(i>=foundAt && i<foundAt+4)continue;
+        if(i>=foundAt && i<listEnd)continue;
         if(i==crcAt || i==crcAt+1)continue;
         if(staged_[i]!=backup[i]) {
             staged_=std::move(backup);
@@ -861,46 +1137,78 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
         setError(error,"Gen IV Add selected native pocket geometry is invalid");
         return false;
     }
-    // Append after the last occupied native slot so the shared visible item
-    // order remains stable. Never reuse nonzero-ID/zero-quantity ghost slots
-    // or overwrite a slot whose bytes are not a native blank sentinel.
-    size_t afterLast=0;
-    for(size_t slot=0;slot<spec.slots;++slot) {
-        const size_t at=base+spec.offset+slot*4;
-        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
-        const uint16_t count=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
-        if(id!=0 && id!=0xFFFF && count!=0)afterLast=slot+1;
+    // Native Add (pret Bag_AddItem / Bag_TryAddItem) uses the first blank slot,
+    // then sorts the Berries and TM/HM pockets by ascending item ID (SortPocket /
+    // Pocket_Sort); other pockets keep their order. The new stack must land in
+    // the slot right after the game's list, or the game would not show it.
+    const size_t regionLo=base+spec.offset;
+    const auto native=nativePocketList(staged_,regionLo,spec.slots);
+    if(!native.consistent) {
+        setError(error,std::string("Gen IV Add refused: ")+kDamagedPocketMessage);
+        return false;
     }
-    size_t target=0;
-    bool found=false;
-    for(size_t slot=afterLast;slot<spec.slots;++slot) {
-        const size_t at=base+spec.offset+slot*4;
-        const uint16_t id=uint16_t(staged_[at]) | (uint16_t(staged_[at+1])<<8);
-        const uint16_t count=uint16_t(staged_[at+2]) | (uint16_t(staged_[at+3])<<8);
-        if((id==0 && count==0) ||
-           (id==0xFFFF && count==0xFFFF)) {
-            target=at;
-            found=true;
-            break;
-        }
-    }
-    if(!found) {
+    const size_t listed=native.listed;
+    if(listed>=spec.slots) {
         setError(error,"Gen IV Add refused: native pouch has no verified trailing empty slot");
         return false;
     }
+    {
+        const uint16_t id=slot16(staged_,regionLo+listed*4);
+        const uint16_t count=slot16(staged_,regionLo+listed*4+2);
+        // Never reuse a ghost (item, zero quantity) or other leftover record. (A
+        // 0xFFFF/0xFFFF slot here would be game-listed, so nativePocketList has
+        // already refused it.)
+        if(id!=0 || count!=0) {
+            setError(error,"Gen IV Add refused: the slot after the last item holds leftover "
+                           "native data. It is left unchanged.");
+            return false;
+        }
+    }
+    // Insert in ID order only when the pocket is already in the native order
+    // (strictly ascending, as every native Add leaves it). A pocket in some other
+    // order is not re-sorted here: the new stack is appended and the existing
+    // stacks keep their slots.
+    const bool nativeSorted=pocket==static_cast<size_t>(BagPocket::Berries) ||
+                            pocket==static_cast<size_t>(BagPocket::Machines);
+    bool ascending=true;
+    for(size_t n=1;n<prior.size();++n)
+        if(prior[n-1].itemId>=prior[n].itemId)ascending=false;
+    size_t insertAt=listed;
+    if(nativeSorted && ascending) {
+        insertAt=0;
+        while(insertAt<prior.size() && prior[insertAt].itemId<itemId)++insertAt;
+    }
+    std::vector<Trainer::InventoryItem> expectedPocket(prior.begin(),prior.end());
+    expectedPocket.insert(expectedPocket.begin()+static_cast<std::ptrdiff_t>(insertAt),
+                          Trainer::InventoryItem{itemId,quantity,false,false});
+    const size_t changedLo=regionLo+insertAt*4;
+    const size_t changedHi=regionLo+(listed+1)*4;
 
     auto backup=staged_;
-    write16(staged_,target,itemId);
-    write16(staged_,target+2,quantity);
+    for(size_t at=changedHi-4;at>changedLo;at-=4)
+        for(size_t k=0;k<4;++k)staged_[at+k]=staged_[at-4+k];
+    write16(staged_,changedLo,itemId);
+    write16(staged_,changedLo+2,quantity);
+    // Filling the blank slot must not bring leftover data behind it into the
+    // game's list (e.g. 0xFFFF/0xFFFF filler that the game would show).
+    const auto post=nativePocketList(staged_,regionLo,spec.slots);
+    if(!post.consistent || post.listed!=expectedPocket.size()) {
+        staged_=std::move(backup);
+        setError(error,"Gen IV Add refused: leftover native data after the last item would "
+                       "appear in game. It is left unchanged.");
+        return false;
+    }
     if(!refreshGeneralCrc(*before,error)) {
         staged_=std::move(backup);
         return false;
     }
     const auto after=reparse(error);
     const auto current=after?decodeReadOnlyBag(*after):std::nullopt;
-    if(!current || (*current)[pocket].size()!=prior.size()+1 ||
-       (*current)[pocket].back().itemId!=itemId ||
-       (*current)[pocket].back().count!=quantity) {
+    bool pocketOk=current && (*current)[pocket].size()==expectedPocket.size();
+    for(size_t n=0;pocketOk && n<expectedPocket.size();++n)
+        pocketOk=(*current)[pocket][n].itemId==expectedPocket[n].itemId &&
+                 (*current)[pocket][n].count==expectedPocket[n].count;
+    if(!pocketOk) {
         staged_=std::move(backup);
         setError(error,"Gen IV Add failed exact native pocket reparse");
         return false;
@@ -913,7 +1221,7 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
             setError(error,"Gen IV Add changed another native pocket");
             return false;
         }
-        for(size_t n=0;n<oldPocket.size();++n) {
+        for(size_t n=0;i!=pocket && n<oldPocket.size();++n) {
             if(oldPocket[n].itemId!=newPocket[n].itemId ||
                oldPocket[n].count!=newPocket[n].count) {
                 staged_=std::move(backup);
@@ -924,7 +1232,7 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
     }
     const size_t crcAt=base+blockSize-2;
     for(size_t i=0;i<staged_.size();++i) {
-        if(i>=target && i<target+4)continue;
+        if(i>=changedLo && i<changedHi)continue;
         if(i==crcAt || i==crcAt+1)continue;
         if(staged_[i]!=backup[i]) {
             staged_=std::move(backup);
@@ -934,6 +1242,130 @@ bool Gen4StagedPokemonEditor::stageBagAdd(
     }
     if(error)error->clear();
     return true;
+}
+
+std::optional<size_t> Gen4StagedPokemonEditor::trainerRecordOffset(
+    const Gen4ReadOnlySave& parsed) const noexcept {
+    const auto geometry = generalGeometry(layout_);
+    const size_t base = parsed.generalSelection().offset;
+    // The whole trainer struct read by Gen4ReadOnlySave (0x26 bytes) must sit inside the selected
+    // General block, before its footer.
+    if (geometry.size == 0 || geometry.trainerOffset + 0x26 > geometry.size - geometry.footerSize ||
+        base > staged_.size() || geometry.size > staged_.size() - base) return std::nullopt;
+    return base + geometry.trainerOffset;
+}
+
+template <class Verify>
+bool Gen4StagedPokemonEditor::stageTrainerBytes(size_t field, std::span<const uint8_t> bytes,
+                                                Verify&& verify, std::string* error) {
+    auto before = reparse(error);
+    if (!before) return false;
+    const auto base = trainerRecordOffset(*before);
+    if (!base) {
+        setError(error, "Gen IV trainer structure is outside the selected General block");
+        return false;
+    }
+    auto backup = staged_;
+    std::copy(bytes.begin(), bytes.end(), staged_.begin() + static_cast<std::ptrdiff_t>(*base + field));
+    if (!refreshGeneralCrc(*before, error)) {
+        staged_ = std::move(backup);
+        return false;
+    }
+    auto after = reparse(error);
+    if (!after || after->generalSelection().offset != before->generalSelection().offset ||
+        !verify(after->trainer())) {
+        if (after) setError(error, "staged Gen IV trainer field did not reparse as entered");
+        staged_ = std::move(backup);
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
+
+std::optional<TrainerReadOnly> Gen4StagedPokemonEditor::stagedTrainer(std::string* error) const {
+    auto parsed = reparse(error);
+    if (!parsed) return std::nullopt;
+    return parsed->trainer();
+}
+
+bool Gen4StagedPokemonEditor::trainerNameEditable() const {
+    const auto trainer = stagedTrainer();
+    if (!trainer) return false;
+    using L = Enums::LanguageID;
+    switch (static_cast<L>(trainer->language)) {
+        case L::English: case L::French: case L::Italian: case L::German: case L::Spanish:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool Gen4StagedPokemonEditor::stageTrainerName(const std::u16string& name, std::string* error) {
+    if (!trainerNameEditable()) {
+        setError(error, "This Gen IV save's trainer name language is read-only here");
+        return false;
+    }
+    if (name.empty() || name.size() > kTrainerNameMax) {
+        setError(error, "Gen IV trainer name must be 1-7 characters");
+        return false;
+    }
+    if (!Utils::gen4CanEncode(name)) {
+        setError(error, "Gen IV trainer name has a character the game cannot store");
+        return false;
+    }
+    std::array<uint8_t, kTrainerNameUnits * 2> field{};
+    Utils::writeGen4Field(field.data(), kTrainerNameUnits, name, kTrainerNameMax);
+    return stageTrainerBytes(kTrainerNameField, field,
+        [&](const TrainerReadOnly& trainer) { return trainer.name == name; }, error);
+}
+
+bool Gen4StagedPokemonEditor::stageTrainerMoney(uint32_t money, std::string* error) {
+    if (money > kMaxMoney) {
+        setError(error, "Gen IV money must be 0-999999");
+        return false;
+    }
+    const std::array<uint8_t, 4> field{static_cast<uint8_t>(money), static_cast<uint8_t>(money >> 8),
+                                       static_cast<uint8_t>(money >> 16), static_cast<uint8_t>(money >> 24)};
+    return stageTrainerBytes(kTrainerMoneyField, field,
+        [&](const TrainerReadOnly& trainer) { return trainer.money == money; }, error);
+}
+
+bool Gen4StagedPokemonEditor::trainerGenderEditable() const {
+    const auto base = [&]() -> std::optional<size_t> {
+        const auto parsed = reparse();
+        return parsed ? trainerRecordOffset(*parsed) : std::nullopt;
+    }();
+    // Only a stored 0 / 1 byte is a native choice; any other value stays read-only, never rewritten.
+    return base && staged_[*base + kTrainerGenderField] <= 1;
+}
+
+bool Gen4StagedPokemonEditor::stageTrainerGender(uint8_t gender, std::string* error) {
+    if (gender > 1) {
+        setError(error, "Gen IV trainer gender must be Male or Female");
+        return false;
+    }
+    if (!trainerGenderEditable()) {
+        setError(error, "This save's trainer gender byte is not a native Male / Female value");
+        return false;
+    }
+    const std::array<uint8_t, 1> field{gender};
+    return stageTrainerBytes(kTrainerGenderField, field,
+        [&](const TrainerReadOnly& trainer) { return trainer.gender == gender; }, error);
+}
+
+bool Gen4StagedPokemonEditor::stageTrainerPlayTime(uint16_t hours, uint8_t minutes, uint8_t seconds,
+                                                   std::string* error) {
+    if (hours > kMaxPlayedHours || minutes > 59 || seconds > 59) {
+        setError(error, "Gen IV play time must be 0:00:00-999:59:59");
+        return false;
+    }
+    const std::array<uint8_t, 4> field{static_cast<uint8_t>(hours), static_cast<uint8_t>(hours >> 8),
+                                       minutes, seconds};
+    return stageTrainerBytes(kTrainerPlayTimeField, field,
+        [&](const TrainerReadOnly& trainer) {
+            return trainer.playedHours == hours && trainer.playedMinutes == minutes &&
+                   trainer.playedSeconds == seconds;
+        }, error);
 }
 
 std::vector<uint8_t> Gen4StagedPokemonEditor::finalizedBytes(

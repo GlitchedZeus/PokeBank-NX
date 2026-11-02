@@ -93,6 +93,15 @@ inline std::string slug(std::string_view label) {
     if (key == "secret-medicine") return "secret-potion"; // ID 464
     if (key == "silver-feather") return "silver-wing"; // ID 482
     if (key == "rainbow-feather") return "rainbow-wing"; // ID 483
+    // Gen V feathers (IDs 565-571): the modern "Feather" names of the B/W/B2/W2 Wings; the pinned
+    // archive (tools/pinned_item_sprite_names.txt) holds their art as *-wing.
+    if (key == "health-feather") return "health-wing";   // ID 565
+    if (key == "muscle-feather") return "muscle-wing";   // ID 566
+    if (key == "resist-feather") return "resist-wing";   // ID 567
+    if (key == "genius-feather") return "genius-wing";   // ID 568
+    if (key == "clever-feather") return "clever-wing";   // ID 569
+    if (key == "swift-feather") return "swift-wing";     // ID 570
+    if (key == "pretty-feather") return "pretty-wing";   // ID 571
     if (key == "itemfinder") return "itemfinder"; // verified extra asset
 
     // Gen II's historical mail labels sometimes differ from the source

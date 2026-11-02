@@ -1,6 +1,7 @@
 #include "Encryption/Encryption4.h"
 #include "Integration/Gen4/Gen4AssignedSource.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
+#include "test_temp_dir.h"
 #include "Legacy/Gen4ReadOnlyTrainer.h"
 #include "Utils/SHA256.h"
 #include "utils/crypto.hpp"
@@ -13,6 +14,8 @@
 #include "Integration/Gen4/Gen4ReadOnlySave.h"
 #include "Integration/Gen4/Gen4ReadOnlyInventory.h"
 #include "Integration/Gen4/Gen4BagCatalog.h"
+#include "UI/Gen4BagQuantity.h"
+#include "UI/SharedBagAddFlow.h"
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
 #include "Utils/CRC16.h"
@@ -620,7 +623,7 @@ void testFieldFidelity() {
 void testAssignmentsOnDisk() {
     using namespace PokeVault::Integration::Gen4;
     namespace fs=std::filesystem;
-    const auto root=fs::temp_directory_path()/("pokebank-g4-"+std::to_string(getpid()));
+    const fs::path root=PokeBankTest::freshTempBase("pokebank-g4");  // fresh per run
     fs::create_directories(root);
     const auto savePath=root/"assigned.sav";
     const auto otherPath=root/"another.sav";
@@ -704,7 +707,7 @@ void testAssignmentsOnDisk() {
 void testSourceDiscovery() {
     using namespace PokeVault::Integration::Gen4;
     namespace fs=std::filesystem;
-    const auto root=fs::temp_directory_path()/("pokebank-g4-discovery-"+std::to_string(getpid()));
+    const fs::path root=PokeBankTest::freshTempBase("pokebank-g4-discovery");  // fresh per run
     const auto retro=root/"retroarch";
     const auto drastic=root/"drastic";
     const auto drasticBackup=drastic/"user"/"backup";
@@ -1012,6 +1015,10 @@ void testQuarantinedPresentationRefresh() {
     auto trainer = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(
         *parsed, "platinum_nds", error);
     assert(trainer && error.empty() && trainer->stagedPokemonAvailable());
+    assert(PokeVault::Integration::Common::playTimeText(trainer->nativePlayTime)=="321:45:12");
+    assert(trainer->pokedexProgress().total==493);
+    assert(trainer->pokedexProgress().seen==parsed->dexProgress().seen);
+    assert(trainer->pokedexProgress().caught==parsed->dexProgress().caught);
     assert(trainer->party.size() == 2 && trainer->party[0] && !trainer->party[1]);
     assert(trainer->boxes[0][0] && !trainer->boxes[0][1]);
 
@@ -1128,8 +1135,21 @@ void testNativeGen4Bag() {
                (*removedBag)[kMedicine][0].count==7);
         assert(removed->box(0,0).species()==25);
         const size_t removedAt=PARTITION+native[kBalls].offset;
+        const size_t removedEnd=removedAt+native[kBalls].slots*4;
+        // Regression (QA, pret/pokeplatinum bag.c): the in-game bag list stops at the FIRST empty
+        // slot and the game's own removal packs empties to the end. Removing slot 0 must therefore
+        // shift the next stack into slot 0 instead of leaving a hole that hides it in game.
+        auto r16=[&](size_t o){return uint16_t(removedOutput[o]|(removedOutput[o+1]<<8));};
+        assert(r16(removedAt)==1 && r16(removedAt+2)==3);
+        for(size_t o=removedAt+4;o<removedEnd;o+=4) assert(r16(o)==0 && r16(o+2)==0);
+        size_t gameVisible=0;
+        for(size_t o=removedAt;o<removedEnd;o+=4) {
+            if(r16(o)==0 || r16(o+2)==0)break;
+            ++gameVisible;
+        }
+        assert(gameVisible==(*removedBag)[kBalls].size());
         for(size_t i=0;i<removedOutput.size();++i) {
-            if(i>=removedAt && i<removedAt+4)continue;
+            if(i>=removedAt && i<removedEnd)continue;
             if(i==crcAt || i==crcAt+1)continue;
             assert(removedOutput[i]==beforeRemove[i]);
         }
@@ -1167,7 +1187,7 @@ void testNativeGen4Bag() {
         const auto reBag=G4::decodeReadOnlyBag(*reparsedAdd);
         assert(reBag && (*reBag)[kBalls].size()==2);
         assert(reparsedAdd->box(0,0).species()==25);
-        const size_t addedAt=PARTITION+native[kBalls].offset+2*4;
+        const size_t addedAt=PARTITION+native[kBalls].offset+1*4; // packed after Remove (no hole)
         for(size_t i=0;i<added.size();++i) {
             if(i>=addedAt && i<addedAt+4)continue;
             if(i==crcAt || i==crcAt+1)continue;
@@ -1183,14 +1203,127 @@ void testNativeGen4Bag() {
         assert(workspace->stageBagAdd(kMachines,420,1,&error) && error.empty());
         assert(!workspace->stageBagQuantity(kMachines,0,2,&error));
         assert(workspace->stageBagAdd(kMachines,328,99,&error) && error.empty());
-        assert(!workspace->stageBagQuantity(kMachines,1,100,&error));
-        assert(workspace->stageBagQuantity(kMachines,1,99,&error) && error.empty());
+        // Native Add sorts the TM/HM pocket by item ID (pret decomps), so
+        // TM01 (328) now precedes HM01 (420).
+        assert(!workspace->stageBagQuantity(kMachines,0,100,&error));
+        assert(!workspace->stageBagQuantity(kMachines,1,2,&error)); // HM cap is 1
+        assert(workspace->stageBagQuantity(kMachines,0,99,&error) && error.empty());
         assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
         assert(trainer->items[kKeyItems][0].count==1);
         assert(trainer->items[kMachines].size()==2);
-        assert(trainer->items[kMachines][0].count==1 &&
-               trainer->items[kMachines][1].count==99);
+        assert(trainer->items[kMachines][0].itemId==328 &&
+               trainer->items[kMachines][0].count==99);
+        assert(trainer->items[kMachines][1].itemId==420 &&
+               trainer->items[kMachines][1].count==1);
         assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        // T-01 (PKSE 9a9a731 "real pouch capacity"; owner Oct 28). In every Gen IV pouch the
+        // native slot count is at least the number of distinct legal items, so a legal Add never
+        // meets a false "pouch full". Items: every legal item fits. Berries, where legal items equal
+        // the slots (64): the pouch fills completely, a further Add is refused, nothing changes,
+        // and the full pouch reparses.
+        bool reachedFull=false;
+        for(const size_t pocket:{kItems,static_cast<size_t>(Bag::Berries)}) {
+            const size_t slots=G4::bagLayout(layout)[pocket].slots;
+            // Entries the save already holds that are not legal new Adds stay as they are.
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            size_t kept=0;
+            for(const auto& it:trainer->items[pocket])kept+=G4::gen4BagItemAllowed(layout,pocket,it.itemId)?0:1;
+            size_t legal=0;
+            for(uint16_t id=1;id<1000;++id) {
+                if(!G4::gen4BagItemAllowed(layout,pocket,id))continue;
+                ++legal;
+                assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+                bool held=false;
+                for(const auto& it:trainer->items[pocket])held=held || it.itemId==id;
+                if(!held)assert(workspace->stageBagAdd(pocket,id,1,&error) && error.empty());
+            }
+            assert(legal+kept<=slots);
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            assert(trainer->items[pocket].size()==legal+kept);
+            if(legal+kept==slots) {
+                reachedFull=true;
+                const auto full=workspace->stagedBytes();
+                for(uint16_t id=1;id<1000;++id)
+                    if(G4::gen4BagItemAllowed(layout,pocket,id))
+                        assert(!workspace->stageBagAdd(pocket,id,1,&error));
+                assert(workspace->stagedBytes()==full);
+            }
+            const auto out=workspace->finalizedBytes(&error);
+            const auto reparsedFull=Gen4ReadOnlySave::parse(out,layout,game,&error);
+            const auto fullBag=reparsedFull?G4::decodeReadOnlyBag(*reparsedFull):std::nullopt;
+            assert(fullBag && (*fullBag)[pocket].size()==legal+kept);
+            assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        }
+        assert(reachedFull);
+        // B04: the shared Gen I-V Bag Add flow (UI/SharedBagAddFlow.h) on the real Gen IV
+        // writer: A stages a new item at x1 with no keypad, A on the row edits only an
+        // editable stack up to the native cap, a held item focuses its stack, a unique Key
+        // Item stays at 1, and the export reopens while the source stays byte-identical.
+        {
+            namespace BA=PokeBank::UIModel::BagAdd;
+            namespace QP=PokeVault::Inventory::QuantityPolicy;
+            constexpr size_t kKeys=static_cast<size_t>(Bag::KeyItems);
+            QP::Game policyGame{};
+            assert(QP::gameFromId(game,policyGame));
+            const auto stateFor=[&](size_t pocket,uint16_t id) {
+                BA::PocketState state{};
+                const auto& rows=trainer->items[pocket];
+                state.usedSlots=rows.size();
+                state.capacity=G4::bagLayout(layout)[pocket].slots;
+                for(const auto& stack:rows)if(stack.itemId==id)state.heldInPocket=stack.count;
+                return state;
+            };
+            const auto rowOf=[&](size_t pocket,uint16_t id) {
+                const auto& rows=trainer->items[pocket];
+                for(size_t i=0;i<rows.size();++i)if(rows[i].itemId==id)return i;
+                return rows.size();
+            };
+            const auto antidote=PokeBank::UIModel::Gen4BagQuantity::policyRule(policyGame,kMedicine,18);
+            BA::Flow flow;
+            assert(flow.openPicker(true) && flow.cancel());
+            assert(workspace->stagedBytes()==workspace->stagedBytes());
+            assert(flow.openPicker(true));
+            const auto pick=flow.pick(antidote,stateFor(kMedicine,18),G4::bagPocketName(kMedicine));
+            assert(pick.outcome==BA::PickOutcome::StageNew && pick.quantity==1);
+            assert(workspace->stageBagAdd(kMedicine,18,pick.quantity,&error) && error.empty());
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            const size_t antidoteRow=rowOf(kMedicine,18);
+            assert(antidoteRow<trainer->items[kMedicine].size() &&
+                   trainer->items[kMedicine][antidoteRow].count==1);
+            const auto row=BA::decideRow(antidote,1,G4::gen4BagMaxQuantity(kMedicine,18));
+            assert(row.outcome==BA::RowOutcome::EditQuantity && row.maximum==999);
+            assert(!workspace->stageBagQuantity(kMedicine,antidoteRow,1000,&error));
+            assert(workspace->stageBagQuantity(kMedicine,antidoteRow,row.maximum,&error));
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            // Held: focus the existing stack, nothing staged, never a duplicate.
+            const auto heldBytes=workspace->stagedBytes();
+            assert(flow.openPicker(true));
+            assert(flow.pick(antidote,stateFor(kMedicine,18)).outcome==BA::PickOutcome::FocusExisting);
+            assert(workspace->stagedBytes()==heldBytes);
+            // Bicycle: unique, staged at 1, no quantity editor, the writer refuses 2.
+            const auto bike=PokeBank::UIModel::Gen4BagQuantity::policyRule(policyGame,kKeys,450);
+            assert(bike.valid && bike.unique);
+            assert(flow.openPicker(true));
+            const auto bikePick=flow.pick(bike,stateFor(kKeys,450));
+            assert(bikePick.outcome==BA::PickOutcome::StageNew && bikePick.quantity==1);
+            assert(workspace->stageBagAdd(kKeys,450,bikePick.quantity,&error) && error.empty());
+            assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
+            assert(BA::decideRow(bike,1,G4::gen4BagMaxQuantity(kKeys,450)).outcome==
+                   BA::RowOutcome::FixedQuantity);
+            assert(!workspace->stageBagQuantity(kKeys,rowOf(kKeys,450),2,&error));
+            // Export + reopen; the source is untouched.
+            const auto out=workspace->finalizedBytes(&error);
+            const auto reopened=Gen4ReadOnlySave::parse(out,layout,game,&error);
+            assert(reopened);
+            const auto reBag=G4::decodeReadOnlyBag(*reopened);
+            assert(reBag);
+            const auto has=[&](size_t pocket,uint16_t id,uint16_t count) {
+                return std::any_of((*reBag)[pocket].begin(),(*reBag)[pocket].end(),
+                    [&](const auto& s){return s.itemId==id && s.count==count;});
+            };
+            assert(has(kMedicine,18,999) && has(kKeys,450,1));
+            assert(digest(bytes)==original && digest(parsed->sourceBytes())==original);
+        }
         workspace->discard();
         assert(trainer->refreshStagedPokemonPresentation(error) && error.empty());
         assert(trainer->items[kBalls][0].count==43 &&
@@ -1255,6 +1388,45 @@ void testPresentationBridge() {
 
 }
 
+
+// Bag layout pinned to vendor/PKSM-Core aa22d7a4 pouch offsets: pouches are contiguous and never
+// overlap; the final Battle pouch is PKSM's 13 slots; HGSS TM/HM starts at 0x9A0 (101 slots up to
+// Mail at 0xB34). Bytes after the Battle pouch (DP/Pt/HGSS event/game state) are never decoded as
+// items, so they can never be "removed" or overwritten by an append.
+void testGen4BagLayoutBounds() {
+    namespace G4=PokeVault::Integration::Gen4;
+    using Bag=G4::BagPocket;
+    constexpr size_t kMachines=static_cast<size_t>(Bag::Machines);
+    constexpr size_t kBattle=static_cast<size_t>(Bag::BattleItems);
+    static_assert(G4::bagLayout(Layout::HeartGoldSoulSilver)[kMachines].offset==0x9A0);
+    static_assert(G4::bagLayout(Layout::HeartGoldSoulSilver)[kMachines].slots==101);
+    for(const auto layout:{Layout::DiamondPearl,Layout::Platinum,Layout::HeartGoldSoulSilver}) {
+        const auto native=G4::bagLayout(layout);
+        for(size_t p=0;p+1<G4::BagPocketCount;++p)
+            assert(native[p].offset+native[p].slots*4==native[p+1].offset);
+        assert(native[kBattle].slots==13);
+
+        auto bytes=makeSave(layout,0,0,layout==Layout::HeartGoldSoulSilver?7:0);
+        const auto s=spec(layout);
+        // Plausible (valid id, small count) pairs right after the Battle pouch: event vars in a
+        // real save. They must not appear as Battle Items.
+        const size_t after=native[kBattle].offset+native[kBattle].slots*4;
+        for(size_t i=0;i<8;++i) { w16(bytes,after+i*4,static_cast<uint16_t>(55+i)); w16(bytes,after+i*4+2,1); }
+        // The lowest HGSS TM sits at the true pouch start.
+        w16(bytes,native[kMachines].offset,328); w16(bytes,native[kMachines].offset+2,1);
+        stamp(bytes,0,s.generalSize,s.footerSize,20,1,MAGIC_INTL);
+        const std::string game=layout==Layout::DiamondPearl?"diamond_nds":
+            layout==Layout::Platinum?"platinum_nds":"heartgold_nds";
+        std::string error;
+        auto parsed=Gen4ReadOnlySave::parse(bytes,layout,game,&error);
+        assert(parsed && error.empty());
+        const auto bag=G4::decodeReadOnlyBag(*parsed);
+        assert(bag);
+        assert((*bag)[kBattle].empty());
+        assert((*bag)[kMachines].size()==1 && (*bag)[kMachines][0].itemId==328);
+    }
+}
+
 int main(int argc,char** argv) {
     if(argc==2 && std::string_view(argv[1])=="--generate-oracles") {
         std::filesystem::create_directories("tests/fixtures/gen4");
@@ -1273,6 +1445,7 @@ int main(int argc,char** argv) {
     testHardwareEmptyCartridgeShape();
     testQuarantinedPresentationRefresh();
     testNativeGen4Bag();
+    testGen4BagLayoutBounds();
     testPresentationBridge();
     testCryptoAndEntity();
     testText();

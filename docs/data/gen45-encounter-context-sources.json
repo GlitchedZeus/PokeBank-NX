@@ -1,0 +1,36 @@
+{
+  "counts": {
+    "black2_nds": 1771,
+    "black_nds": 1237,
+    "diamond_nds": 1878,
+    "heartgold_nds": 2589,
+    "pearl_nds": 1877,
+    "platinum_nds": 1854,
+    "soulsilver_nds": 2595,
+    "white2_nds": 1764,
+    "white_nds": 1272
+  },
+  "evolution_edges": 566,
+  "inputs_sha256": {
+    "Game/Locations/Locations.cs": "08577221abba22a585e47e9227137ad6733c2a9084f2ede6ca35559ca3fd72ef",
+    "Legality/Assets/BinLinkerAccessor.cs": "2fe3cfd7448649b0ac3ddeb13c36152ba570ade4c765838d78fd6935e4b4183d",
+    "Legality/Assets/BinLinkerAccessor16.cs": "2353665981a406cc7f4d81c46e48a2d3f30eb4f6b92a890a4dc6e731ac0d812a",
+    "Legality/Encounters/Templates/Gen4/EncounterArea4.cs": "a41adea51d51a3e8d8293bd80e910eb1bb126d57bff348b484fb9a7eb7830f0f",
+    "Legality/Encounters/Templates/Gen5/EncounterArea5.cs": "40e009b3a8689d1c50afb59bdb6ae1388d5df748f81fd9fcfa0e27c8d1238ef5",
+    "Legality/Evolutions/EvolutionSet.cs": "c0558ae2b6806f8df9f1bece912704dd211ec0791ec23191fabf9e517a7bbeb9",
+    "Resources/byte/evolve/evos_g4.pkl": "1063f0234520f541c271fe62675db051caba6c31697012e9817c180b76e80352",
+    "Resources/byte/evolve/evos_g5.pkl": "40a415c1febd807cd6e82b1bece71d7dcd724c7a17f03d9117af67304023479f",
+    "Resources/legality/wild/Gen4/encounter_d.pkl": "7ff252ccb21c3714d79d8f95449a0911a2595ffaac534bb16fd82d02b0e663f3",
+    "Resources/legality/wild/Gen4/encounter_hg.pkl": "1438e31625d87fd378b6656c44c30199a1386a571f0906c9ec2c91a269762a8b",
+    "Resources/legality/wild/Gen4/encounter_p.pkl": "69b56a8acb5cae8eb85f2b28a801fb832f2112fbcee898ba95ff997499018683",
+    "Resources/legality/wild/Gen4/encounter_pt.pkl": "cf5dc717d6539e8ecb483c903993fcbe59e76bed761727bc8b2b87a14efbbdde",
+    "Resources/legality/wild/Gen4/encounter_ss.pkl": "96b0ef501e40ae435bf65ee66ed77fda3b0de0cd6e890aa447a0b083c8939afa",
+    "Resources/legality/wild/Gen5/encounter_b.pkl": "8a05d13b36418196c55241613af989eb338f5e7c81d2f7e1b7434194a62144bd",
+    "Resources/legality/wild/Gen5/encounter_b2.pkl": "c739ef3bd07732f93779c7f7f29b18b19a7049457b9f1ac2918837d0e7943627",
+    "Resources/legality/wild/Gen5/encounter_w.pkl": "af9cd245ab40c991dbf33caa5a114c308dd31cf89ae6abddcc2179c2bf7c3cf8",
+    "Resources/legality/wild/Gen5/encounter_w2.pkl": "9c65fcd096b96f4dec33da19534a426600ca68a097f83ed051254c6bcbb7930f"
+  },
+  "revision": "6042efa241a9925ce57e645329ea7f976deabdd3",
+  "scope": "species-level wild locations and ancestry only; no legality verdict",
+  "source": "https://github.com/kwsch/PKHeX"
+}

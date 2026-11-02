@@ -120,13 +120,18 @@ void run(SourceGame game) {
     edit.level=27;auto before=bytes(*e);assert(!e->stageEdit(2,0,edit,error));assert(bytes(*e)==before);
     edit={};edit.moves=std::array<uint8_t,4>{1,14,74,165};edit.ppUps=std::array<uint8_t,4>{1,2,3,0};edit.pp=std::array<uint8_t,4>{42,42,61,10};
     assert(e->stageEdit(2,0,edit,error));assert(p().moves==*edit.moves && p().pp==*edit.pp && p().ppUps==*edit.ppUps);
+    bool readableMove = false;
+    for (const auto& change : e->pendingChanges())
+        if (change.label.find("Move 1") != std::string::npos && change.afterValue == "Pound") readableMove = true;
+    assert(readableMove);
     edit.pp=std::array<uint8_t,4>{42,42,62,10};before=bytes(*e);assert(!e->stageEdit(2,0,edit,error));assert(bytes(*e)==before);
     edit={};edit.moves=std::array<uint8_t,4>{166,0,0,0};assert(!e->stageEdit(2,0,edit,error));
     edit={};edit.dvs=std::array<uint8_t,4>{15,2,3,4};assert(e->stageEdit(2,0,edit,error));assert((p().dvs==std::array<uint8_t,5>{10,15,2,3,4}));
     edit.dvs=std::array<uint8_t,4>{16,0,0,0};assert(!e->stageEdit(2,0,edit,error));
     edit={};edit.statExperience=std::array<uint16_t,5>{0,1,255,256,65535};assert(e->stageEdit(2,0,edit,error));assert(p().statExperience==*edit.statExperience);
     edit={};edit.otName="Will";edit.trainerId=65535;assert(e->stageEdit(2,0,edit,error));assert(p().originalTrainer=="Will" && p().trainerId==65535);
-    edit={};edit.nickname="ABCDEFGHIJK";assert(!e->stageEdit(2,0,edit,error));edit.nickname="Poké";assert(!e->stageEdit(2,0,edit,error));
+    edit={};edit.nickname="ABCDEFGHIJK";assert(!e->stageEdit(2,0,edit,error));edit.nickname="Pok\xC3\x9F";assert(!e->stageEdit(2,0,edit,error));
+    edit.nickname="Poké";assert(e->stageEdit(2,0,edit,error));assert(p().nickname=="Poké"); // M1 D4: é is 0xBC (StringConverter1.TableEN)
     auto output=e->finalizedBytes(error);assert(!output.empty() && parse(output,game));
     assert(output[0x3523]==sum(output,0x2598,0xF8B));
     for(size_t b:{size_t(0x4000),size_t(0x6000)}) {
@@ -159,6 +164,48 @@ void run(SourceGame game) {
     }
 }
 }
+// Stored current HP (box_struct +1) follows max HP when species/level/DVs/Stat Exp change: a
+// Pokemon at full HP stays full, a damaged one is clamped (never above max). New Pokemon start at
+// the exact max HP including Stat Exp. HP never changes for unrelated edits.
+void currentHpFollowsMaxHp(SourceGame game) {
+    const auto hpOf=[](const PokemonRecord& p){
+        return StagedPokemonEditor::calculateBattleStats(p.species,p.level,{p.dvs[1],p.dvs[2],p.dvs[3],p.dvs[4]},p.statExperience).hp;
+    };
+    for (const uint16_t startHp : {uint16_t(20), uint16_t(10)}) {
+        auto raw=fixture(game);
+        const size_t body=0x30C0+22;
+        raw[body+1]=static_cast<uint8_t>(startHp>>8); raw[body+2]=static_cast<uint8_t>(startHp);
+        std::copy_n(raw.begin()+0x30C0,0x462,raw.begin()+bank(2)); checksums(raw);
+        const auto source=parse(raw,game); assert(source);
+        std::string error; auto e=StagedPokemonEditor::create(*source.save,error); assert(e);
+        const auto before=*e->boxedPokemon(2,0,error);
+        const bool full=startHp>=hpOf(before);
+        BoxPokemonEdit edit; edit.nickname="SPARKY";
+        assert(e->stageEdit(2,0,edit,error) && e->boxedPokemon(2,0,error)->currentHP==startHp);
+        edit={}; edit.level=50; assert(e->stageEdit(2,0,edit,error));
+        auto now=*e->boxedPokemon(2,0,error);
+        assert(hpOf(now)>startHp);
+        assert(now.currentHP==(full?hpOf(now):startHp));
+        edit={}; edit.level=2; assert(e->stageEdit(2,0,edit,error));
+        now=*e->boxedPokemon(2,0,error);
+        assert(now.currentHP<=hpOf(now));
+        assert(now.currentHP==(full?hpOf(now):std::min<uint16_t>(startHp,hpOf(now))));
+        edit={}; edit.statExperience=std::array<uint16_t,5>{65535,0,0,0,0}; assert(e->stageEdit(2,0,edit,error));
+        now=*e->boxedPokemon(2,0,error);
+        assert(now.currentHP<=hpOf(now));
+        const auto out=e->finalizedBytes(error); assert(!out.empty() && parse(out,game));
+    }
+    const auto raw=fixture(game); const auto source=parse(raw,game);
+    std::string error; auto e=StagedPokemonEditor::create(*source.save,error); assert(e);
+    BoxPokemonCreate create; create.species=113; create.level=60; create.nickname="CHANSEY";
+    create.statExperience={65535,0,0,0,0};
+    const auto slot=e->appendSlot(2,error); assert(slot);
+    assert(e->stageAdd(2,*slot,create,error));
+    const auto added=*e->boxedPokemon(2,*slot,error);
+    assert(added.currentHP==hpOf(added));
+    assert(added.currentHP>StagedPokemonEditor::calculateBattleStats(113,60,create.dvs,{}).hp);
+}
+
 int main() {
     using namespace PokeVault::Inventory;
     for (auto game : {ClassicGame::Red, ClassicGame::Blue, ClassicGame::Yellow}) {
@@ -175,8 +222,21 @@ int main() {
     assert(nicknameAfterSpeciesChange("FlameBoy", 6, 9) == "FlameBoy");
     assert(nicknameAfterSpeciesChange("", 1, 150).empty());
     assert(nicknameAfterSpeciesChange("Pikachu", 25, 83) == "Farfetchd");
+    // A blank nickname defaults to the retail upper-case species name, and a still-default
+    // upper-case name follows a species change.
+    assert(PokeBank::UIModel::classicDefaultNickname(25) == "PIKACHU");
+    assert(PokeBank::UIModel::classicDefaultNickname(29) == "NIDORAN F");
+    assert(nicknameAfterSpeciesChange("PIKACHU", 25, 26) == "RAICHU");
+    for (auto game : {SourceGame::Red, SourceGame::Blue, SourceGame::Yellow}) {
+        const auto raw = fixture(game); const auto source = parse(raw, game);
+        std::string error; auto e = StagedPokemonEditor::create(*source.save, error); assert(e);
+        BoxPokemonCreate blank; blank.species = 25; blank.nickname = "";
+        const auto slot = e->appendSlot(2, error); assert(slot);
+        assert(e->stageAdd(2, *slot, blank, error));
+        assert(e->boxedPokemon(2, *slot, error)->nickname == "PIKACHU");
+    }
 
-    for(auto game:{SourceGame::Red,SourceGame::Blue,SourceGame::Yellow}) { run(game); currentBoxAdd(game); speciesLevelPolicy(game); }
+    for(auto game:{SourceGame::Red,SourceGame::Blue,SourceGame::Yellow}) { run(game); currentBoxAdd(game); speciesLevelPolicy(game); currentHpFollowsMaxHp(game); }
     assert(StagedPokemonEditor::moveMaxPP(74,3)==61);assert(StagedPokemonEditor::moveBasePP(105)==20);
     assert(StagedPokemonEditor::moveBasePP(166)==0);
     for(uint8_t a=0;a<16;++a) for(uint8_t d=0;d<16;++d) for(uint8_t s=0;s<16;++s) for(uint8_t c=0;c<16;++c)
@@ -186,14 +246,38 @@ int main() {
         assert(StagedPokemonEditor::encodeName(text,10,encoded,error));assert(decodeGen1String(encoded,RegionLayout::International)==text);
     }
     assert(!StagedPokemonEditor::encodeName("12345678",7,encoded,error));
+    // M1 D4: Gen I has one international table (PKHeX StringConverter1.TableEN), so every European
+    // accent has exactly one byte. Length counts characters, not UTF-8 bytes.
+    for(const auto text:{"M\xC3\xBCller","\xC3\x89mile","\xC3\x91" "and\xC3\xBA",
+                         "\xC3\xA0\xC3\xA8\xC3\xA9\xC3\xB9\xC3\x80\xC3\x81\xC3\x84\xC3\x96\xC3\x9C\xC3\xA4",
+                         "\xC3\xB6\xC3\xBC\xC3\x88\xC3\x89\xC3\x8C\xC3\x8D\xC3\x91\xC3\x92\xC3\x93\xC3\x99",
+                         "\xC3\x9A\xC3\xA1\xC3\xAC\xC3\xAD\xC3\xB1\xC3\xB2\xC3\xB3\xC3\xBA"}) {
+        assert(StagedPokemonEditor::encodeName(text,10,encoded,error));assert(decodeGen1String(encoded,RegionLayout::International)==text);
+    }
+    assert(StagedPokemonEditor::encodeName("M\xC3\xBCllers",7,encoded,error));
+    assert(encoded[0]==0x8C && encoded[1]==0xC5 && encoded[6]==0xB2 && encoded[7]==0x50);
+    assert(!StagedPokemonEditor::encodeName("M\xC3\xBCllerin",7,encoded,error));
+    assert(!StagedPokemonEditor::encodeName("Stra\xC3\x9F" "e",10,encoded,error));  // not in the Gen I table
     auto raw=fixture(SourceGame::Red,false);auto p=parse(raw,SourceGame::Red);assert(p);
     auto e=StagedPokemonEditor::create(*p.save,error);BoxPokemonCreate create;
     assert(e->stageAdd(11,0,create,error));auto output=e->finalizedBytes(error);assert(!output.empty());
     assert(parse(output,SourceGame::Red).save->metadata().boxesInitialized);
     assert(parse(output,SourceGame::Red).save->boxes()[2].slots[0]->nickname=="PIKA");
     assert(e->stageRemove(11,0,error));assert(bytes(*e)==raw);
-    // Japanese layout remains browsable but is capability-gated for mutation.
+    // Japanese layout: the staged editor now writes it (8 x 30, kana; tests/test_gen1_japanese_writer.cpp).
+    // The app keeps Japanese saves read-only behind Integration/Common/JapaneseEditingGate.h
+    // (src/Legacy/RBYReadOnlyTrainer.cpp; pinned by tests/test_rby_readonly_bridge.cpp).
     std::vector<uint8_t> jp(0x8000);jp[0x2ED6]=jp[0x302E]=0xFF;jp[0x3594]=sum(jp,0x2598,0xFFC);
-    auto j=parse(jp,SourceGame::Red);assert(j);assert(!StagedPokemonEditor::create(*j.save,error));
+    auto j=parse(jp,SourceGame::Red);assert(j);
+    {auto je=StagedPokemonEditor::create(*j.save,error);assert(je&&je->view().boxes().size()==8&&je->view().boxes()[0].slots.size()==30);
+     std::vector<uint8_t> jpOut=je->finalizedBytes(error);assert(jpOut==jp);}
+    {
+        // Create default matches Gen II-V (#25 L5) with Pikachu's pokered base moves at base PP.
+        const PokeVault::Integration::Gen1::BoxPokemonCreate defaults{};
+        using E = PokeVault::Integration::Gen1::StagedPokemonEditor;
+        assert(defaults.species == 25 && defaults.level == 5);
+        assert(defaults.moves[0] == 84 && defaults.moves[1] == 45 && defaults.moves[2] == 0 && defaults.moves[3] == 0);
+        for (std::size_t i = 0; i < 4; ++i) assert(defaults.pp[i] == E::moveBasePP(defaults.moves[i]));
+    }
     std::cout<<"Gen I staged boxed Pokemon editor: PASS (R/B/Y fields, lists, encoding, immutable export)\n";
 }

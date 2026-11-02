@@ -1,5 +1,6 @@
 #include "Legacy/RBYReadOnlyTrainer.h"
 
+#include "Integration/Common/JapaneseEditingGate.h"
 #include "Integration/Gen1/Gen1ReadOnlyInventory.h"
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "Pokemon/Pokemon1ReadOnly.h"
@@ -64,19 +65,41 @@ std::unique_ptr<RBYReadOnlyTrainer> RBYReadOnlyTrainer::create(
     auto trainer = std::unique_ptr<RBYReadOnlyTrainer>(new RBYReadOnlyTrainer(metadata));
     if (!trainer->populate(save, error)) return nullptr;
 
+    // The Gen I writers handle the Japanese layout, but the app keeps Japanese saves read-only until
+    // the owner opens the gate (Integration/Common/JapaneseEditingGate.h). NONE of the three staged
+    // editors exists for such a save: no Pokemon workspace, no Bag editor (the Bag screen offers
+    // edits whenever one exists; Round 8 still created it for Japanese saves), no Trainer editor.
+    const bool japaneseLocked = metadata.region == Integration::Gen1::RegionLayout::Japanese &&
+                                !Integration::Common::kJapaneseClassicEditingEnabled;
+    constexpr const char* kLocked = "Japanese Generation I saves are read-only";
+
     std::string stagedError;
-    trainer->stagedInventory_ = Integration::Gen1::StagedInventoryEditor::create(save, stagedError);
+    if (japaneseLocked)
+        stagedError = kLocked;
+    else
+        trainer->stagedInventory_ = Integration::Gen1::StagedInventoryEditor::create(save, stagedError);
     trainer->stagedInventoryUnavailableReason_ = std::move(stagedError);
 
     stagedError.clear();
-    trainer->stagedPokemon_ = Integration::Gen1::StagedPokemonEditor::create(save, stagedError);
+    if (japaneseLocked)
+        stagedError = kLocked;
+    else
+        trainer->stagedPokemon_ = Integration::Gen1::StagedPokemonEditor::create(save, stagedError);
     trainer->stagedPokemonUnavailableReason_ = std::move(stagedError);
+
+    stagedError.clear();
+    if (!japaneseLocked)
+        trainer->stagedTrainer_ = Integration::Gen1::StagedTrainerEditor::create(save, stagedError);
     return trainer;
 }
 
 bool RBYReadOnlyTrainer::populate(
     const Integration::Gen1::ReadOnlySave& save, std::string& error) {
     const auto& strictTrainer = save.trainer();
+    nativePlayTime = strictTrainer.playTime;
+    nativeBadges={strictTrainer.badges,8};
+    const auto dex = save.dexProgress();
+    nativeDexProgress = {dex.seen,dex.caught,dex.total};
     trainerName = strictTrainer.name;
     money = strictTrainer.money;
     TID16 = strictTrainer.trainerId;
@@ -186,6 +209,10 @@ bool RBYReadOnlyTrainer::refreshBoxesFromStagedPokemon(std::string& error) {
             boxes[box][slot] = std::make_unique<Pokemon::Pokemon1ReadOnly>(*record);
         }
     }
+    decltype(party) displayParty;
+    for(const auto& record:stagedPokemon_->view().party())
+        displayParty.push_back(std::make_unique<Pokemon::Pokemon1ReadOnly>(record));
+    party.swap(displayParty);
     return true;
 }
 

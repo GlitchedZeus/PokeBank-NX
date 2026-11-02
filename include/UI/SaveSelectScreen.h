@@ -6,6 +6,8 @@
 #include <map>
 #include <optional>
 #include <vector>
+#include "UI/SourceBackupClassification.h"
+#include "UI/RecoveryManagementFs.h"
 #include <string>
 
 #include <switch.h>
@@ -13,6 +15,7 @@
 #include "UI/UIScreen.h"
 #include "UI/NavigationRepeat.h"
 #include "UI/TouchScroll.h"
+#include "UI/SharedScrollbar.h"
 #include "UI/QuickGamesDrawerMotion.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/GameLaunchModel.h"
@@ -22,6 +25,8 @@
 #include "Integration/Gen5/Gen5SourceDiscovery.h"
 #include "Integration/Gen5/Gen5GameCardPreview.h"
 #include "Integration/Gen5/Gen5SourceSelection.h"
+#include "UI/ProfileTitleFocus.h"
+#include "Source/HomeCardSnapshot.h"
 
 namespace UI {
     // JKSV-style combined user + title picker. Shows the selected user's avatar + name at the top
@@ -99,6 +104,12 @@ namespace UI {
         }
         size_t getSelectedLegacySourceIndex() const { return selectedLegacySourceIndex; }
         OpenIntent getOpenIntent() const { return openIntent; }
+        const PokeVault::Source::ImmutableSnapshot::File& getSelectedBackupSnapshot() const {
+            return selectedBackupSnapshot;
+        }
+        const std::string& getSelectedBackupLabel() const { return selectedBackupLabel; }
+        // The card's raw provider label for an opened backup copy (top bar names its provider).
+        const std::string& getSelectedBackupProvider() const { return selectedBackupProvider; }
 
     private:
         PokeBank::UIModel::ControllerNavigation controllerNavigation;
@@ -117,9 +128,15 @@ namespace UI {
             uint16_t dexSeen = 0;
             uint16_t dexCaught = 0;
             uint16_t dexTotal = 0;
-            // App-memory presentation snapshot; session Open always revalidates
-            // the exact save/copy/fingerprint, never trusts this cached data.
-            std::optional<PokeVault::Integration::Gen5::GameCardReadOnlyPreview> gen5Preview;
+            // Raw provider recorded by discovery/manual link in Save Instance
+            // metadata (binding sourceType for Gen IV/V). Empty while the card
+            // is unassigned/missing/invalid/ambiguous.
+            std::string providerLabel;
+            // An explicit Gen IV/V assignment currently resolves to a file.
+            bool linkedSave = false;
+            // Presentation state of the validated Home snapshot for this card.
+            PokeVault::Source::SnapshotState snapshotState =
+                PokeVault::Source::SnapshotState::Unavailable;
             std::vector<PokeVault::Legacy::FRLGSaveInstance> legacyInstances;
             SelectedSourceKind sourceKind = SelectedSourceKind::SwitchTitle;
         };
@@ -168,6 +185,10 @@ namespace UI {
         uint16_t previewDexCaught = 0;
         uint16_t previewDexTotal = 0;
         GameLaunchDescriptor launchDescriptor;
+        // Where the emulator's Quit goes for the ready launch (Thread L's quit-route notice),
+        // recomputed only when the resolved launch target changes, never per frame.
+        std::string launchQuitNotice;
+        std::string launchQuitNoticeKey;
         std::string hubNotice;
         std::string openFailureMessage;
         bool launchLegacyMode = false;
@@ -192,7 +213,18 @@ namespace UI {
 
         bool titleSelected = false;
         bool exitRequested = false;     // return from Games & Sources to product Home
-        bool appExitRequested = false;  // explicit Options -> Exit PokeBank NX
+        bool appExitRequested = false;  // set only by an explicit Y in the leave decision
+        // P0 #320: every way out of PokeBank NX (quit, or a launch handoff that closes the app)
+        // first opens one visible leave decision; only an explicit Y there commits it.
+        enum class LeaveKind : uint8_t { Quit, LaunchTitle, LaunchLegacyInstance };
+        LeaveKind leaveKind = LeaveKind::Quit;
+        GameLaunchDescriptor pendingLaunch;
+        std::string pendingLaunchName;
+        std::string pendingLaunchNotice;
+        std::string pendingLaunchStarter = "the emulator"; // LeaveDecisionLayout::launchStarter
+        void openLeaveDecision(LeaveKind kind, const char* origin);
+        void openLaunchDecision(LeaveKind kind, const GameLaunchDescriptor& descriptor,
+                                const std::string& gameName, const char* origin);
         MainMenuDestination requestedMainMenuDestination = MainMenuDestination::None;
         bool hubDockFocused = false;
         int headerActionIndex = -1; // -1 = none, 0 = profile, 1 = settings
@@ -200,6 +232,16 @@ namespace UI {
         int gamesDrawerIndex = 0;
         int gamesDrawerScroll = 0;
         TouchScrollState gamesDrawerTouchScroll;
+        SharedScrollbar::State gamesDrawerScrollbar;   // draggable thumb beside the Quick Games grid
+        // One shared draggable scrollbar per scrolling list on this screen (R2-SCROLLBAR).
+        SharedScrollbar::State profileScrollbar;
+        SharedScrollbar::State launchFileScrollbar;
+        SharedScrollbar::State legacyInstanceScrollbar;
+        SharedScrollbar::State legacyAssignmentScrollbar;
+        SharedScrollbar::State gen4CandidateScrollbar;
+        SharedScrollbar::State gen5CandidateScrollbar;
+        SharedScrollbar::State classicGamesScrollbar;
+        SharedScrollbar::State emuBackupScrollbar;
         PokeBank::UIModel::QuickGamesDrawerMotion quickDrawerMotion;
         int profilePickerIndex = 0;
         int profilePickerScroll = 0; // independent visible first row; never scroll the focus index
@@ -210,9 +252,40 @@ namespace UI {
         enum class Overlay { None, Options, Help, OpenFailure, GamesDrawer, ProfilePicker, GameWorkspace,
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
                              Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
-                             Gen5Candidates, GameFilePicker };
+                             Gen5Candidates, GameFilePicker, QuitConfirm,
+                             EmulatorBackups, EmulatorBackupDeleteConfirm,
+                             RecoveryFiles, RecoveryConfirm };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
+        Overlay leaveReturnOverlay = Overlay::None; // where A/B "Stay" returns from the leave decision
+        // + -> Backups for an emulator game (round 2 phase 7): one listing per exact source file.
+        std::vector<PokeBank::UIModel::SourceBackups::Listing> emuBackupListings;
+        struct EmuBackupRow { int listing = 0; int entry = 0; };
+        std::vector<EmuBackupRow> emuBackupRows;
+        int emuBackupIndex = 0;
+        int emuBackupScroll = 0;
+        std::string emuBackupNotice;
+        std::string emuBackupProvider; // provider display name of the card the Backups list belongs to
+        std::string emuBackupGameId;   // exact game of the card (names the backup folder)
+        void openEmulatorBackups(const std::string& notice = {});
+        void createEmulatorBackup(int listing);
+        void browseEmulatorSource(const std::string& source);
+        // Owner item #10: Backups -> X "Recovery files". Review older copies and DurableFile
+        // leftovers (UI/RecoveryManagementModel.h decides what may go), select with A, Y opens a
+        // confirmation that lists every file and its size, Y there removes, A/B keep. Nothing is
+        // selected by default and nothing is removed on a single press.
+        PokeBank::UIModel::RecoveryManagement::Fs::Request recoveryRequest;
+        PokeBank::UIModel::RecoveryManagement::Fs::Listing recoveryListing;
+        PokeBank::UIModel::RecoveryManagement::Selection recoverySelection;
+        PokeBank::UIModel::RecoveryManagement::Plan recoveryPlan;
+        std::vector<PokeBank::UIModel::RecoveryManagement::Row> recoveryRows;
+        int recoveryIndex = 0;
+        int recoveryScroll = 0;
+        int recoveryConfirmScroll = 0;   // first file line shown in the confirmation
+        std::string recoveryNotice;
+        SharedScrollbar::State recoveryScrollbar;
+        void openRecoveryFiles(const std::string& notice = {});
+        void rebuildRecoveryRows();
         // Touch motion is surface-local. These markers let one centralized fence clear residual
         // drag/coast state whenever an overlay or the full Games browser is entered/exited.
         Overlay touchScrollOverlay = Overlay::None;
@@ -227,6 +300,9 @@ namespace UI {
         std::string selectedTitleName;
         std::string selectedGameId;
         SelectedSourceKind selectedSourceKind = SelectedSourceKind::None;
+        PokeVault::Source::ImmutableSnapshot::File selectedBackupSnapshot;
+        std::string selectedBackupLabel;
+        std::string selectedBackupProvider;
         // Ephemeral, exact-session selection; never guessed from file mtime
         // and never grants emulator/source write authority.
         PokeVault::Integration::Gen5::SaveCopySelection selectedGen5Copy =
@@ -234,6 +310,18 @@ namespace UI {
         // Only the normalized exact source bytes selected for THIS editor
         // open, never a permission token or a remembered game preference.
         std::string selectedGen5Fingerprint;
+        // Why the last direct open of an assigned Gen V save fell back to the
+        // Save Instances picker (empty when nothing was assigned).
+        std::string gen5DirectOpenNotice;
+        bool openAssignedGen5Directly(const UserEntry& user, const TitleEntry& title,
+                                      const std::string& gameId);
+        static PokeVault::Integration::Gen5::SaveCopySelection gen5CopyForVariant(
+            const std::string& variant) {
+            using PokeVault::Integration::Gen5::SaveCopySelection;
+            if (variant == "gen5-copy-0-primary") return SaveCopySelection::Primary;
+            if (variant == "gen5-copy-1-backup") return SaveCopySelection::Backup;
+            return SaveCopySelection::Automatic;
+        }
         size_t selectedLegacySourceIndex = 0;
         PokeVault::Legacy::FRLGDiscoveryResult* legacyCatalog = nullptr;
         PokeVault::Legacy::LegacySourceBindings* legacyBindings = nullptr;
@@ -277,6 +365,7 @@ namespace UI {
         int gen5CandidateScroll = 0;
         TouchScrollState gen5CandidateTouchScroll;
         PokeVault::Integration::Gen5::ProfileGameFocus gen5ProfileFocus;
+        PokeBank::UIModel::ProfileTitleFocus profileTitleFocus; // every card kind (Gen V above stays)
         int gen4SetupIndex = 0;
         int gen4CandidateIndex = 0;
         int gen4CandidateScroll = 0;
@@ -321,7 +410,22 @@ namespace UI {
         static bool scanSaveSpace(UserEntry& user, int spaceId, int& scanned, int& forUser);
         void setUser(int idx);
         void refreshHubSelectionFromCache();
+        // Fingerprinted, validated Home snapshot of an assigned Gen IV/V save.
+        // stat() on every call; the strict parser only when size/mtime or the
+        // assignment changed. Never opens an editor or writes a source.
+        const PokeVault::Source::HomeCardSnapshot* refreshAssignedSnapshot(
+            const std::string& profile, const TitleEntry& title,
+            PokeVault::Source::SnapshotRefresh* outcome = nullptr);
+        void applyAssignedCardState(TitleEntry& card, const std::string& profile);
+        void applySnapshotToHub(const PokeVault::Source::HomeCardSnapshot& snapshot);
+        // Re-check only the focused card's save file; reparse only on change.
+        void pollFocusedSaveChange();
+        bool syncFocusedSaveSnapshot();
+        std::string legacyWatchKey;
+        PokeVault::Source::HomeSnapshotCache homeSnapshots;
+        int saveWatchFrames = 0;
         void refreshHubPreview(bool resolveLaunchTarget = true);
+        const std::string& currentLaunchQuitNotice();
         bool launchCurrentTitle();
         bool launchCurrentLegacyInstance();
         bool beginLaunchLinkForCurrentTitle();

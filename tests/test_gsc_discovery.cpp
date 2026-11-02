@@ -84,6 +84,12 @@ int main(){
     auto wrapped=gs;wrapped.insert(wrapped.end(),7,0);writeFile(root/"wrapped"/"Pokemon Gold.srm",wrapped);
     const std::vector<std::string> wrappedRoot{(root/"wrapped").string()};auto wr=discoverGSCSaves(wrappedRoot);assert(wr.sources.size()==1&&wr.sources[0].ready());assert(wr.sources[0].save->metadata().rtcFooterSize==7);
 
+    // A 128 KiB padded battery save is discovered and opens at its real 32 KiB payload.
+    auto padded=gs;padded.resize(0x20000,0xFF);writeFile(root/"padded"/"Pokemon Gold.srm",padded);
+    const std::vector<std::string> paddedRoot{(root/"padded").string()};auto pr=discoverGSCSaves(paddedRoot);
+    assert(pr.sources.size()==1&&pr.sources[0].ready());
+    assert(pr.sources[0].save->metadata().payloadSize==0x8000&&pr.sources[0].save->metadata().paddingSize==0x18000);
+
     const std::string stableIdentity=gold->sourceIdentity;const std::string oldFingerprint=gold->contentFingerprint;
     auto changed=gs;changed[0x200B]=0x81;checksum(changed,IGS);writeFile(root/"Pokemon Gold.srm",changed);
     const auto refreshed=discoverGSCSaves(roots);const auto* refreshedGold=byPath(refreshed,"Pokemon Gold.srm");assert(refreshedGold&&refreshedGold->ready());assert(refreshedGold->sourceIdentity==stableIdentity);assert(refreshedGold->contentFingerprint!=oldFingerprint);

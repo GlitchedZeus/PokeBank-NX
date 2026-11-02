@@ -1,0 +1,69 @@
+{
+  "commit": "168b1e89467054cda2e7df43ccebbb69b459497a",
+  "sources": [
+    {
+      "file": "pokemon.csv",
+      "url": "https://raw.githubusercontent.com/PokeAPI/pokeapi/168b1e89467054cda2e7df43ccebbb69b459497a/data/v2/csv/pokemon.csv",
+      "bytes": 47082,
+      "sha256": "16c81c33188b0eac403aa2f759fcbe9e42c611f722d263f5b5a6a5bff9f8ce6b"
+    },
+    {
+      "file": "pokemon_species.csv",
+      "url": "https://raw.githubusercontent.com/PokeAPI/pokeapi/168b1e89467054cda2e7df43ccebbb69b459497a/data/v2/csv/pokemon_species.csv",
+      "bytes": 56884,
+      "sha256": "e66e2eeb25fd3836b0ebab6bf87bbf01960aa3c0555e2bac495fa8393c5e0c45"
+    },
+    {
+      "file": "pokemon_forms.csv",
+      "url": "https://raw.githubusercontent.com/PokeAPI/pokeapi/168b1e89467054cda2e7df43ccebbb69b459497a/data/v2/csv/pokemon_forms.csv",
+      "bytes": 63721,
+      "sha256": "99bf8f7ad4dc1f2e291357a090cef6a575623ec3cbf9030d0e33656e6e608ae2"
+    },
+    {
+      "file": "pokemon_moves.csv",
+      "url": "https://raw.githubusercontent.com/PokeAPI/pokeapi/168b1e89467054cda2e7df43ccebbb69b459497a/data/v2/csv/pokemon_moves.csv",
+      "bytes": 10733699,
+      "sha256": "22a807cef26891eeac0d0c900bd363e66baf421f7ee795bc7bc3e718f23b939e"
+    }
+  ],
+  "pkhex_commit": "6042efa241a9925ce57e645329ea7f976deabdd3",
+  "pkhex_sources": [
+    {
+      "file": "PKHeX.Core/Resources/byte/personal/personal_bw",
+      "url": "https://github.com/kwsch/PKHeX/blob/6042efa241a9925ce57e645329ea7f976deabdd3/PKHeX.Core/Resources/byte/personal/personal_bw",
+      "bytes": 40080,
+      "sha256": "3b2989703f07416162e61328186d2858cbe3082875c98c21eb40c2f7ce85ab7e"
+    },
+    {
+      "file": "PKHeX.Core/Resources/byte/personal/personal_b2w2",
+      "url": "https://github.com/kwsch/PKHeX/blob/6042efa241a9925ce57e645329ea7f976deabdd3/PKHeX.Core/Resources/byte/personal/personal_b2w2",
+      "bytes": 53884,
+      "sha256": "6df24e7f00dab32322d9d8f8b3209d30de1c89b0de88277081fe53434211830f"
+    },
+    {
+      "file": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource5BW.cs",
+      "url": "https://github.com/kwsch/PKHeX/blob/6042efa241a9925ce57e645329ea7f976deabdd3/PKHeX.Core/Legality/LearnSource/Sources/LearnSource5BW.cs",
+      "bytes": 5287,
+      "sha256": "2502d9c7b97df5c2ebfa869cb1a3bb1b3df2dbcfbcda221ab089bcb1cf235426"
+    },
+    {
+      "file": "PKHeX.Core/Legality/LearnSource/Sources/LearnSource5B2W2.cs",
+      "url": "https://github.com/kwsch/PKHeX/blob/6042efa241a9925ce57e645329ea7f976deabdd3/PKHeX.Core/Legality/LearnSource/Sources/LearnSource5B2W2.cs",
+      "bytes": 5180,
+      "sha256": "7e2a2f1b3906aea13050e33b7888ce23f20e5befcad74e8daa39f3148f6e5869"
+    },
+    {
+      "file": "PKHeX.Core/Legality/Tables/FormInfo.cs",
+      "url": "https://github.com/kwsch/PKHeX/blob/6042efa241a9925ce57e645329ea7f976deabdd3/PKHeX.Core/Legality/Tables/FormInfo.cs",
+      "bytes": 15877,
+      "sha256": "52f835d573f1748238168cd4622589015f2e9bb8cf3aaeb0a938acdbf4483460"
+    },
+    {
+      "file": "PKHeX.Core/Moves/MoveInfo.cs",
+      "url": "https://github.com/kwsch/PKHeX/blob/6042efa241a9925ce57e645329ea7f976deabdd3/PKHeX.Core/Moves/MoveInfo.cs",
+      "bytes": 9055,
+      "sha256": "293c7f4a99797b4fa7043b7f7e7c3d46fee6e0cbba2312ac2d33e95bc45a4da8"
+    }
+  ],
+  "scope": "Compatibility filter, not full legality. Current native forms, ordinary ancestor moves, explicit prior-form retention, Gen IV transfer compatibility, existing unsupported moves preserved. BW TM95 unavailable; Sketch exception excludes Struggle/Chatter."
+}

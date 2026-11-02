@@ -1,0 +1,26 @@
+# Feature A UI (owner Oct 28): the Pokemon file browser model. Included by Makefile.host after the
+# Feature A codec fragments.
+POKEMON_FILE_BROWSER_SOURCES := tests/test_pokemon_file_browser.cpp src/PokemonFile/NativePokemonFile.cpp src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp
+HOST_TESTS += $(HOST_BUILD)/test_pokemon_file_browser
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_pokemon_file_browser_sanitize
+host-test: $(HOST_BUILD)/test_pokemon_file_browser
+host-sanitize: $(HOST_BUILD)/test_pokemon_file_browser_sanitize
+$(HOST_BUILD)/test_pokemon_file_browser: $(POKEMON_FILE_BROWSER_SOURCES) include/UI/PokemonFileBrowser.h include/Utils/FolderPreferences.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(POKEMON_FILE_BROWSER_SOURCES) -o $@
+$(HOST_BUILD)/test_pokemon_file_browser_sanitize: $(POKEMON_FILE_BROWSER_SOURCES) include/UI/PokemonFileBrowser.h include/Utils/FolderPreferences.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(POKEMON_FILE_BROWSER_SOURCES) -o $@
+
+# Feature D (owner Oct 28): opt-in real-save round trip (POKEBANK_REAL_SAVES; saves never committed).
+REAL_SAVE_ROUNDTRIP_SOURCES := tests/test_real_save_roundtrip.cpp $(sort $(filter-out tests/%,$(POKEMON_FILE_GEN12_SOURCES) $(PKFILE_GEN3_SOURCES) $(PKFILE_GEN4_SOURCES)))
+HOST_TESTS += $(HOST_BUILD)/test_real_save_roundtrip
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_real_save_roundtrip_sanitize
+host-test: $(HOST_BUILD)/test_real_save_roundtrip
+host-sanitize: $(HOST_BUILD)/test_real_save_roundtrip_sanitize
+$(HOST_BUILD)/test_real_save_roundtrip: $(REAL_SAVE_ROUNDTRIP_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST $(REAL_SAVE_ROUNDTRIP_SOURCES) -o $@
+$(HOST_BUILD)/test_real_save_roundtrip_sanitize: $(REAL_SAVE_ROUNDTRIP_SOURCES)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST $(REAL_SAVE_ROUNDTRIP_SOURCES) -o $@

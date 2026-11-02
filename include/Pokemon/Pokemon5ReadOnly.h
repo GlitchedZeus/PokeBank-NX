@@ -91,6 +91,18 @@ public:
     [[nodiscard]] uint8_t metLevel() const noexcept { return at(0x84) & 0x7F; }
     [[nodiscard]] uint8_t originalTrainerGender() const noexcept { return at(0x84) >> 7; }
     [[nodiscard]] uint16_t metLocation() const noexcept { return u16(0x80); }
+    // Read-only origin dates/locations (PKSM-Core aa22d7a source/pkx/PK5.cpp:
+    // eggYear/Month/Day 0x78-0x7A, metYear/Month/Day 0x7B-0x7D with year
+    // stored as offset from 2000, eggLocation u16 0x7E, encounterType 0x85).
+    struct NativeDate5 { uint16_t year = 0; uint8_t month = 0; uint8_t day = 0; };
+    [[nodiscard]] NativeDate5 eggDate() const noexcept {
+        return {static_cast<uint16_t>(2000 + at(0x78)), at(0x79), at(0x7A)};
+    }
+    [[nodiscard]] NativeDate5 metDate() const noexcept {
+        return {static_cast<uint16_t>(2000 + at(0x7B)), at(0x7C), at(0x7D)};
+    }
+    [[nodiscard]] uint16_t eggLocation() const noexcept { return u16(0x7E); }
+    [[nodiscard]] uint8_t encounterType() const noexcept { return at(0x85); }
     [[nodiscard]] bool shiny() const noexcept {
         if (!valid() || empty()) return false;
         const uint32_t value = pid();

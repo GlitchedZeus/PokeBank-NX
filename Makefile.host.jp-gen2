@@ -1,0 +1,30 @@
+# Japanese Gold / Silver / Crystal staged writing (owner Oct 28). The writer and its tests live here;
+# the app keeps Japanese saves read-only until the owner opens
+# include/Integration/Common/JapaneseEditingGate.h (GSCReadOnlyTrainer consults it).
+# Real-save evidence is opt-in: POKEBANK_JP_FIXTURES=<folder with saves/ and pokemon/> (never committed).
+# Included by Makefile.host after Makefile.host.jp-gen12.
+
+JP_GEN2_WRITER_SOURCES := tests/test_gen2_japanese_writer.cpp \
+	src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2PackedMove.cpp \
+	src/Integration/Gen2/Gen2UniversalInventory.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Integration/Gen2/Gen2PersonalData.cpp \
+	src/PokemonFile/NativePokemonFile.cpp src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp \
+	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
+	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Names/ItemNames.cpp \
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+JP_GEN2_WRITER_HEADERS := include/Integration/Gen2/Gen2StagedEditor.h include/Utils/Gen12KanaText.h \
+	include/PokemonFile/NativePokemonFile.h tests/fixtures/gsc_pokemon_fixture.h
+JP_GEN2_HOST_TESTS := $(HOST_BUILD)/test_gen2_japanese_writer
+JP_GEN2_SANITIZE_TESTS := $(HOST_BUILD)/test_gen2_japanese_writer_sanitize
+
+HOST_TESTS += $(JP_GEN2_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(JP_GEN2_SANITIZE_TESTS)
+host-test: $(JP_GEN2_HOST_TESTS)
+host-sanitize: $(JP_GEN2_SANITIZE_TESTS)
+
+$(HOST_BUILD)/test_gen2_japanese_writer: $(JP_GEN2_WRITER_SOURCES) $(JP_GEN2_WRITER_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude -Itests $(JP_GEN2_WRITER_SOURCES) -o $@
+$(HOST_BUILD)/test_gen2_japanese_writer_sanitize: $(JP_GEN2_WRITER_SOURCES) $(JP_GEN2_WRITER_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests $(JP_GEN2_WRITER_SOURCES) -o $@

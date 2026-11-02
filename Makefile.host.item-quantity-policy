@@ -1,0 +1,87 @@
+# Thread I: generation/game-aware item quantity policy (pure query API, no UI).
+ITEM_QUANTITY_POLICY_TEST := $(HOST_BUILD)/test_item_quantity_policy
+ITEM_QUANTITY_POLICY_SANITIZE := $(HOST_BUILD)/test_item_quantity_policy_sanitize
+ITEM_QUANTITY_POLICY_SOURCES := tests/test_item_quantity_policy.cpp \
+    src/Inventory/ItemQuantityPolicy.cpp src/Inventory/ClassicInventoryCatalog.cpp \
+    src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+ITEM_QUANTITY_POLICY_INPUTS := $(ITEM_QUANTITY_POLICY_SOURCES) \
+    include/Inventory/ItemQuantityPolicy.h include/Inventory/ClassicInventoryCatalog.h \
+    include/Integration/Gen4/Gen4BagCatalog.h include/Integration/Gen5/Gen5Bag.h
+
+HOST_TESTS += $(ITEM_QUANTITY_POLICY_TEST)
+HOST_SANITIZE_TESTS += $(ITEM_QUANTITY_POLICY_SANITIZE)
+host-test: $(ITEM_QUANTITY_POLICY_TEST)
+host-sanitize: $(ITEM_QUANTITY_POLICY_SANITIZE)
+
+.PHONY: host-item-quantity-policy
+host-item-quantity-policy: $(ITEM_QUANTITY_POLICY_TEST)
+	./$(ITEM_QUANTITY_POLICY_TEST)
+
+$(ITEM_QUANTITY_POLICY_TEST): $(ITEM_QUANTITY_POLICY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(ITEM_QUANTITY_POLICY_SOURCES) -o $@
+
+$(ITEM_QUANTITY_POLICY_SANITIZE): $(ITEM_QUANTITY_POLICY_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(ITEM_QUANTITY_POLICY_SOURCES) -o $@
+
+# Round 2 B01-B06/B04: the ONE shared Gen I-V Bag Add flow against every real staged writer.
+BAG_ADD_FLOW_TEST := $(HOST_BUILD)/test_bag_add_flow_gen15
+BAG_ADD_FLOW_SANITIZE := $(HOST_BUILD)/test_bag_add_flow_gen15_sanitize
+BAG_ADD_FLOW_SOURCES := tests/test_bag_add_flow_gen15.cpp \
+    src/Inventory/ItemQuantityPolicy.cpp src/Inventory/ClassicInventoryCatalog.cpp \
+    src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/SpeciesNames.cpp \
+    src/Integration/Gen1/Gen1ReadOnlyInventory.cpp src/Integration/Gen1/Gen1ReadOnlySave.cpp \
+    src/Integration/Gen1/Gen1StagedInventoryEditor.cpp \
+    src/Integration/Gen2/Gen2StagedEditor.cpp src/Integration/Gen2/Gen2UniversalInventory.cpp \
+    src/Integration/Gen2/Gen2ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
+    src/Integration/Gen2/Gen2PersonalData.cpp src/Pokemon/Experience.cpp \
+    src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+    src/Integration/Gen3/Gen3StagedInventoryEditor.cpp \
+    src/Legacy/Gen5ReadOnlyTrainer.cpp
+BAG_ADD_FLOW_INPUTS := $(BAG_ADD_FLOW_SOURCES) include/UI/SharedBagAddFlow.h \
+    include/Inventory/ItemQuantityPolicy.h include/UI/Gen4BagQuantity.h \
+    include/Integration/Gen4/Gen4BagCatalog.h include/Integration/Gen5/Gen5BagScreen.h \
+    include/Integration/Gen5/Gen5Bag.h include/UI/SharedMenuGeometry.h
+
+HOST_TESTS += $(BAG_ADD_FLOW_TEST)
+HOST_SANITIZE_TESTS += $(BAG_ADD_FLOW_SANITIZE)
+host-test: $(BAG_ADD_FLOW_TEST)
+host-sanitize: $(BAG_ADD_FLOW_SANITIZE)
+
+.PHONY: host-bag-add-flow
+host-bag-add-flow: $(BAG_ADD_FLOW_TEST)
+	./$(BAG_ADD_FLOW_TEST)
+
+$(BAG_ADD_FLOW_TEST): $(BAG_ADD_FLOW_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(BAG_ADD_FLOW_SOURCES) -o $@
+
+$(BAG_ADD_FLOW_SANITIZE): $(BAG_ADD_FLOW_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(BAG_ADD_FLOW_SOURCES) -o $@
+
+# Round 3 R2-BUG-005: per-game TM/HM -> move table and that generation's move facts (Lane P renders).
+MACHINE_MOVES_TEST := $(HOST_BUILD)/test_machine_moves_gen15
+MACHINE_MOVES_SANITIZE := $(HOST_BUILD)/test_machine_moves_gen15_sanitize
+MACHINE_MOVES_SOURCES := tests/test_machine_moves_gen15.cpp src/Inventory/MachineMoves.cpp \
+    src/Inventory/ItemQuantityPolicy.cpp src/Inventory/ClassicInventoryCatalog.cpp \
+    src/Names/ItemNames.cpp src/Names/MoveNames.cpp src/Names/TMMoves.cpp src/Names/MachineDisplay.cpp \
+    src/Integration/Gen2/Gen2ReadOnlyInventory.cpp
+MACHINE_MOVES_INPUTS := $(MACHINE_MOVES_SOURCES) include/Inventory/MachineMoves.h \
+    include/Names/MoveBattleStats.h include/Names/MoveBattleStats5.h include/Names/MoveTypes34.h \
+    include/Names/TMMoves.h include/Names/MachineDisplay.h include/UI/ClassicMachineArtwork.h \
+    include/UI/ItemSpriteKey.h tools/pinned_item_sprite_names.txt
+
+HOST_TESTS += $(MACHINE_MOVES_TEST)
+HOST_SANITIZE_TESTS += $(MACHINE_MOVES_SANITIZE)
+host-test: $(MACHINE_MOVES_TEST)
+host-sanitize: $(MACHINE_MOVES_SANITIZE)
+
+$(MACHINE_MOVES_TEST): $(MACHINE_MOVES_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(MACHINE_MOVES_SOURCES) -o $@
+
+$(MACHINE_MOVES_SANITIZE): $(MACHINE_MOVES_INPUTS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(MACHINE_MOVES_SOURCES) -o $@

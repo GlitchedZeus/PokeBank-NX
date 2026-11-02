@@ -3,6 +3,7 @@
 
 #include "Pokemon/Pokemon.h"
 #include "Pokemon/Pokemon5ReadOnly.h"
+#include "Integration/Gen5/Gen5DisplayStats.h"
 #include "Integration/Gen5/Gen5Progression.h"
 #include "Names/SpeciesNames.h"
 
@@ -107,8 +108,8 @@ public:
     bool isFatefulEncounter() const noexcept override { return (at(0x40)&1)!=0; }
     std::u16string otName() const override { return nativeString(0x68,8); }
 
-    // Exact native BW/B2W2 base stats are now available for both party
-    // and boxed Pokémon; boxed *battle* stats remain unavailable.
+    // Exact native BW/B2W2 base stats for party and boxed Pokemon. Battle
+    // stats come from displayStats5, the same values View and Edit show.
     uint8_t baseHP() const noexcept override { const auto* p=nativePersonal();return p?p->hp:0; }
     uint8_t baseATK() const noexcept override { const auto* p=nativePersonal();return p?p->atk:0; }
     uint8_t baseDEF() const noexcept override { const auto* p=nativePersonal();return p?p->def:0; }
@@ -116,13 +117,16 @@ public:
     uint8_t baseSPA() const noexcept override { const auto* p=nativePersonal();return p?p->spa:0; }
     uint8_t baseSPD() const noexcept override { const auto* p=nativePersonal();return p?p->spd:0; }
 
-    uint16_t statHPCurrent() const noexcept override { return partyStat(0x8E); }
-    uint16_t statHPMax() const noexcept override { return partyStat(0x90); }
-    uint16_t statATK() const noexcept override { return partyStat(0x92); }
-    uint16_t statDEF() const noexcept override { return partyStat(0x94); }
-    uint16_t statSPE() const noexcept override { return partyStat(0x96); }
-    uint16_t statSPA() const noexcept override { return partyStat(0x98); }
-    uint16_t statSPD() const noexcept override { return partyStat(0x9A); }
+    // A boxed Pokemon is stored at full health: current HP is its max HP.
+    uint16_t statHPCurrent() const noexcept override {
+        return source_.partyRecord() ? partyStat(0x8E) : displayStat(0);
+    }
+    uint16_t statHPMax() const noexcept override { return displayStat(0); }
+    uint16_t statATK() const noexcept override { return displayStat(1); }
+    uint16_t statDEF() const noexcept override { return displayStat(2); }
+    uint16_t statSPE() const noexcept override { return displayStat(3); }
+    uint16_t statSPA() const noexcept override { return displayStat(4); }
+    uint16_t statSPD() const noexcept override { return displayStat(5); }
 
     uint8_t friendship() const noexcept override { return source_.friendship(); }
     bool isEgg() const noexcept override { return source_.egg(); }
@@ -160,6 +164,10 @@ private:
     }
     [[nodiscard]] uint32_t u32(size_t n) const noexcept {
         return uint32_t(u16(n)) | (uint32_t(u16(n+2))<<16);
+    }
+    [[nodiscard]] uint16_t displayStat(size_t index) const noexcept {
+        return PokeVault::Integration::Gen5::displayStats5(
+            source_,sourceGroup_==Enums::GameVersion::B2W2)[index];
     }
     [[nodiscard]] uint16_t partyStat(size_t n) const noexcept {
         return source_.partyRecord() ? u16(n) : 0;

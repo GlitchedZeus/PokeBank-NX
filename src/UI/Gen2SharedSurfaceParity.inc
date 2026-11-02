@@ -1,3 +1,4 @@
+#include "UI/ClassicPokemonActionMenu.h"
 #include "Pokemon/Pokemon2ReadOnly.h"
 #include "UI/Gen2StagedAccess.h"
 #include "Gen2TrainerSessionOverlay.inc"
@@ -70,7 +71,7 @@ void drawParityExternalPassiveView(TrainerViewScreen& screen, PKSEFramebuffer& f
 
     screen.touchButtons.push_back({PokeBank::UIModel::passiveBackTarget,
                                    16, fb.getHeight() - 68, 190, 58});
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}, {"Touch", "Back"}});
+    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"L/R", "Panel"}, {"B", "Back"}});
 }
 
 bool handleParityExternalPassiveInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
@@ -120,50 +121,17 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     // Keep the live box as background; the narrow modal owns every foreground
     // hitbox. All active rows retain the exact Gen II staged command indices.
     screen.drawLegacyBase(fb);
-    const auto model = PokeBank::UIModel::NarrowPokemonMenu::classic(
-        actions, static_cast<bool>(pokemon));
+    const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);
     const std::string title = pokemon
         ? std::string(Names::getSpeciesName(pokemon->species)) : "Empty Slot";
     drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,
                             title,
                             screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 31600);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Select"}, {"B", "Back"}});
+    UI::SharedEditorChrome::drawPickerFooter(fb, {true, false}); // Browse, A Select, B Cancel
 }
 
 void drawParityGen2Review(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    auto& legacy = editorOverlayState(screen);
-    auto* editor = stagedEditor(screen);
-    if (!editor) return;
-    const auto& changes = editor->pendingChanges();
-    constexpr int w = 980, h = 540;
-    constexpr int x = (1280 - w) / 2;
-    constexpr int y = (672 - h) / 2;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, "Review Pending Changes", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-        std::to_string(changes.size()) + " staged change(s)  •  original source is immutable",
-        Colors::TextDim, TextStyle::Caption);
-    if (changes.empty()) {
-        fb.drawText(x + 30, y + 100, "No pending changes", Colors::TextDim, TextStyle::Body);
-    } else {
-        const int first = std::clamp(legacy.reviewRow - 4, 0, std::max(0, static_cast<int>(changes.size()) - 9));
-        const int last = std::min(static_cast<int>(changes.size()), first + 9);
-        for (int i = first; i < last; ++i) {
-            const int rowY = y + 88 + (i - first) * 45;
-            const bool selected = i == legacy.reviewRow;
-            if (selected) fb.drawSelectionHighlight(x + 22, rowY, w - 44, 42);
-            const auto& change = changes[static_cast<std::size_t>(i)];
-            fb.drawText(x + 38, rowY + 10, change.label, selected ? Colors::Text : Colors::TextDim);
-            fb.drawText(x + 350, rowY + 10, change.beforeValue + "  ->  " + change.afterValue,
-                        Colors::Text, TextStyle::Caption);
-        }
-    }
-    if (!legacy.lastExportDirectory.empty())
-        fb.drawText(x + 24, y + h - 44, "Last verified export: " + legacy.lastExportDirectory,
-                    Colors::Success, TextStyle::Caption);
-    drawNavBar(fb, {{"D-pad/Stick", "Navigate"}, {"A", "Export Copy"},
-                    {"X", "Discard Staged"}, {"B", "Back"}});
+    drawSharedReviewSurface(screen,fb);
 }
 
 void drawParityGen2Clone(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -191,7 +159,7 @@ void drawParityGen2Clone(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(shared.cloneBox),
                                                    static_cast<std::size_t>(slot), error);
         const bool target = slot == destination;
-        if (target) fb.drawSelectionHighlight(xx, yy, cellW - 10, cellH - 10);
+        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(xx, yy, cellW - 10, cellH - 10), {target});  // R2-BUG-012 boxed row
         fb.drawRoundedRect(xx, yy, cellW - 10, cellH - 10, 8, target ? Colors::Accent : Colors::Divider, 1);
         fb.drawText(xx + 10, yy + 8, "Slot " + std::to_string(slot + 1), Colors::TextDim, TextStyle::Caption);
         fb.drawText(xx + 10, yy + 34,
@@ -299,6 +267,7 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
             legacy.active = true;
             legacy.review = false;
             legacy.pokemonActions = true;
+            legacy.pokemonParty = false;
             legacy.pokemonFields = false;
             legacy.pokemonBox = box;
             legacy.pokemonSlot = slot;
@@ -317,6 +286,7 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         legacy.active = true;
         legacy.review = false;
         legacy.pokemonActions = true;
+        legacy.pokemonParty = false;
         legacy.pokemonFields = false;
         legacy.pokemonBox = box;
         legacy.pokemonSlot = slot;

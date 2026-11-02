@@ -198,6 +198,7 @@ std::optional<Gen4ReadOnlySave> Gen4ReadOnlySave::parse(std::span<const uint8_t>
     out.trainer_.gender = out.source_[trainerBase + 0x18] & 1u;
     out.trainer_.language = out.source_[trainerBase + 0x19];
     out.trainer_.badges = out.source_[trainerBase + 0x1A];
+    if(layout==Layout::HeartGoldSoulSilver)out.trainer_.kantoBadges=out.source_[trainerBase+0x1F];
     out.trainer_.romCode = out.source_[trainerBase + 0x1C];
     out.trainer_.playedHours = read16(out.source_, trainerBase + 0x22);
     out.trainer_.playedMinutes = out.source_[trainerBase + 0x24];

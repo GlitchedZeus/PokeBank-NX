@@ -24,6 +24,16 @@ inline std::string_view exactGameName(std::string_view sourceGameId) noexcept {
     if (sourceGameId == "emerald_gba") return "Emerald";
     if (sourceGameId == "firered_gba") return "FireRed";
     if (sourceGameId == "leafgreen_gba") return "LeafGreen";
+    // S03 (owner round 1): Gen IV/V Create/Edit/View headers name the exact game as Gen I-III do.
+    if (sourceGameId == "diamond_nds") return "Diamond";
+    if (sourceGameId == "pearl_nds") return "Pearl";
+    if (sourceGameId == "platinum_nds") return "Platinum";
+    if (sourceGameId == "heartgold_nds") return "HeartGold";
+    if (sourceGameId == "soulsilver_nds") return "SoulSilver";
+    if (sourceGameId == "black_nds") return "Black";
+    if (sourceGameId == "white_nds") return "White";
+    if (sourceGameId == "black2_nds") return "Black 2";
+    if (sourceGameId == "white2_nds") return "White 2";
     return {};
 }
 

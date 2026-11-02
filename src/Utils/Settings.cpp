@@ -1,4 +1,5 @@
 #include "Utils/Settings.h"
+#include "Utils/SettingsFile.h"
 #include "Utils/AtomicTextFile.h"
 
 #include <cstdio>
@@ -25,22 +26,32 @@ namespace Utils {
         FILE* f = fopen(settingsPath().c_str(), "r");
         if (!f) return;  // no config yet -> keep compiled-in defaults
 
-        char line[128];
-        while (fgets(line, sizeof(line), f)) {
-            // Trim the trailing newline / carriage return.
-            char* nl = strpbrk(line, "\r\n");
-            if (nl) *nl = '\0';
+        // Read the whole (bounded) file and parse it line by line, never in fixed-size chunks: a
+        // long line is handled whole, so its tail can never be read as another setting.
+        std::string text;
+        char chunk[512];
+        size_t got = 0;
+        while ((got = fread(chunk, 1, sizeof(chunk), f)) > 0) {
+            text.append(chunk, got);
+            if (text.size() > SettingsFile::kMaxFile) break;
+        }
+        fclose(f);
+        if (text.size() > SettingsFile::kMaxFile) {
+            logErrorToFile("Settings file is too large; defaults kept", settingsPath().c_str());
+            return;
+        }
 
-            char* eq = strchr(line, '=');
-            if (!eq) continue;
-            *eq = '\0';
-            const char* key = line;
-            const char* val = eq + 1;
+        const auto entries = SettingsFile::parse(text);
+        g_folderPreferences = FolderPreferences::fromSettings(entries);
+        for (const auto& entry : entries) {
+            const char* key = entry.key.c_str();
+            const char* val = entry.value.c_str();
 
             if (strcmp(key, "theme") == 0) {
                 UI::applyTheme(UI::themeModeFromKey(val));
             } else if (strcmp(key, "autoBackup") == 0) {
-                g_autoBackupEnabled = (strcmp(val, "0") != 0);
+                // Retired setting. Opening a save never makes a backup now; backups are made only
+                // by the "Create backup now" rows. Old settings.cfg files may still carry the key.
             } else if (strcmp(key, "allowIllegal") == 0) {
                 g_allowIllegalEdits = (strcmp(val, "0") != 0);
             } else if (strcmp(key, "moveWarn") == 0 || strcmp(key, "lgpeMoveWarn") == 0) {
@@ -55,7 +66,6 @@ namespace Utils {
                 g_debugLogging = (strcmp(val, "0") != 0);
             }
         }
-        fclose(f);
     }
 
     bool saveSettings() {
@@ -70,8 +80,6 @@ namespace Utils {
         text.reserve(160);
         text += "theme=";
         text.append(themeKey.data(), themeKey.size());
-        text += "\nautoBackup=";
-        text += g_autoBackupEnabled ? "1" : "0";
         text += "\nallowIllegal=";
         text += g_allowIllegalEdits ? "1" : "0";
         text += "\nmoveWarn=";
@@ -82,6 +90,7 @@ namespace Utils {
         text += "\ndebugLogging=";
         text += g_debugLogging ? "1" : "0";
         text += "\n";
+        text += FolderPreferences::toSettingsText(g_folderPreferences);
 
         if (!AtomicTextFile::replace(settingsPath(), text)) {
             logErrorToFile("Failed to replace settings file safely", settingsPath().c_str());

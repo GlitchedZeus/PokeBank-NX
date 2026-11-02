@@ -5,6 +5,8 @@
 #include "Encryption/Encryption5.h"
 
 #include <algorithm>
+#include <array>
+#include <optional>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -46,29 +48,21 @@ namespace PokeVault::Integration::Gen5 {
     return 1;
 }
 
-// PKHeX PK5.cs: Level 0x8C, current HP 0x8E, max HP 0x90,
-// Attack/Defense/Speed/Sp.Atk/Sp.Def 0x92..0x9A. This recalculates only
-// the party battle stat cache, leaving status, mail and every other byte alone.
-// Preserve existing HP damage (or fainted state), never heal on edit.
-[[nodiscard]] inline bool regeneratePartyStats5(std::vector<uint8_t>& plain,
-                                                 const std::vector<uint8_t>& original,
-                                                 bool black2White2) {
-    if(plain.size()!=Crypto::PartySize || original.size()!=Crypto::PartySize)
-        return false;
-    const uint16_t species=Crypto::read16(plain,0x08);
-    const uint8_t form=static_cast<uint8_t>(plain[0x40]>>3);
-    const uint8_t level=plain[0x8C],nature=plain[0x41];
+// Native Gen III-V battle stat formula (HP, Atk, Def, Spe, SpA, SpD order as
+// stored in PK5). ivWord is the packed 0x38 word; evs are 0x18..0x1D. Shared
+// by the party stat cache regeneration below and the shared workspace's
+// Stats panel for boxed records (which carry no stat cache).
+[[nodiscard]] inline std::optional<std::array<uint16_t,6>> computeStats5(
+    uint16_t species,uint8_t form,uint8_t level,uint8_t nature,uint32_t ivWord,
+    const std::array<uint8_t,6>& evs,bool black2White2) {
     const auto personal=personal5(species,form,black2White2);
-    if(!personal || level<1 || level>100 || nature>24 ||
-       (Crypto::read32(plain,0x38)&0x40000000u))
-        return false; // Unknown identity/level or egg: do not guess.
+    if(!personal || level<1 || level>100 || nature>24)return std::nullopt;
     const auto& p=*personal.info;
     const uint8_t base[6]={p.hp,p.atk,p.def,p.spe,p.spa,p.spd};
-    const uint32_t iv=Crypto::read32(plain,0x38);
-    uint16_t stats[6]{};
+    std::array<uint16_t,6> stats{};
     for(size_t i=0;i<6;++i) {
         const uint32_t value=static_cast<uint32_t>(2*base[i])+
-            ((iv>>(5*i))&31u)+(plain[0x18+i]/4u);
+            ((ivWord>>(5*i))&31u)+(evs[i]/4u);
         uint32_t computed=value*level/100;
         if(i==0)
             computed=species==292?1:computed+level+10; // Shedinja
@@ -82,6 +76,29 @@ namespace PokeVault::Integration::Gen5 {
         }
         stats[i]=static_cast<uint16_t>(computed);
     }
+    return stats;
+}
+
+// PKHeX PK5.cs: Level 0x8C, current HP 0x8E, max HP 0x90,
+// Attack/Defense/Speed/Sp.Atk/Sp.Def 0x92..0x9A. This recalculates only
+// the party battle stat cache, leaving status, mail and every other byte alone.
+// Preserve existing HP damage (or fainted state), never heal on edit.
+[[nodiscard]] inline bool regeneratePartyStats5(std::vector<uint8_t>& plain,
+                                                 const std::vector<uint8_t>& original,
+                                                 bool black2White2) {
+    if(plain.size()!=Crypto::PartySize || original.size()!=Crypto::PartySize)
+        return false;
+    const uint16_t species=Crypto::read16(plain,0x08);
+    const uint8_t form=static_cast<uint8_t>(plain[0x40]>>3);
+    const uint8_t level=plain[0x8C],nature=plain[0x41];
+    if(Crypto::read32(plain,0x38)&0x40000000u)
+        return false; // Egg: do not guess.
+    const std::array<uint8_t,6> evs{{plain[0x18],plain[0x19],plain[0x1A],
+                                     plain[0x1B],plain[0x1C],plain[0x1D]}};
+    const auto computed=computeStats5(species,form,level,nature,
+                                      Crypto::read32(plain,0x38),evs,black2White2);
+    if(!computed)return false; // Unknown identity/level: do not guess.
+    const auto& stats=*computed;
     // Immutable baseline damage makes replay independent of draft edit order.
     const uint16_t oldHP=Crypto::read16(original,0x8E);
     const uint16_t oldMax=Crypto::read16(original,0x90);

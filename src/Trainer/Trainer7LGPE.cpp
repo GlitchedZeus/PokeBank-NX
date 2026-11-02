@@ -423,10 +423,28 @@ namespace Trainer {
             const size_t required = TOTAL * SIZE_PARTY7_LGPE;
             if (block.data.size() < required) block.data.resize(required, 0);
 
+            // The game writes an empty slot as encryption constant 0 followed by non-zero bytes.
+            // Keep the file's own empty records, in order, behind the packed list (PKHeX
+            // CompressStorage; PKSE 9a9a731) instead of zeroing them: an unedited write is then
+            // byte-identical, and a slot freed this session gets a copy of a genuine blank rather
+            // than zeros or the departed Pokemon's old bytes. Zeros only if the file had no blank.
+            std::vector<std::vector<uint8_t>> fileBlanks;
+            for (size_t n = 0; n < TOTAL; ++n) {
+                const auto first = block.data.begin() + static_cast<std::ptrdiff_t>(n * SIZE_PARTY7_LGPE);
+                if (readUInt32LittleEndian(&block.data[n * SIZE_PARTY7_LGPE]) == 0)
+                    fileBlanks.emplace_back(first, first + static_cast<std::ptrdiff_t>(SIZE_PARTY7_LGPE));
+            }
+            size_t nextBlank = 0;
             for (size_t n = 0; n < TOTAL; ++n) {
                 const size_t offset = n * SIZE_PARTY7_LGPE;
-                if (n < packed.size()) writeEncryptedPokemon(block.data, offset, *packed[n]);
-                else std::memset(&block.data[offset], 0, SIZE_PARTY7_LGPE);
+                if (n < packed.size()) {
+                    writeEncryptedPokemon(block.data, offset, *packed[n]);
+                } else if (!fileBlanks.empty()) {
+                    const auto& blank = fileBlanks[nextBlank < fileBlanks.size() ? nextBlank++ : 0];
+                    std::memcpy(&block.data[offset], blank.data(), SIZE_PARTY7_LGPE);
+                } else {
+                    std::memset(&block.data[offset], 0, SIZE_PARTY7_LGPE);
+                }
             }
 
             for (size_t i = 0; i < party.size() && i < MAX_PARTY_SLOTS; ++i) {
@@ -550,7 +568,7 @@ namespace Trainer {
     {
         // A zeroed *decrypted* PB7 buffer encrypted with EC/seed 0, then fed to the ctor (which
         // decrypts it straight back to zeros) -> a clean species-0, checksum-valid entity. LGPE's
-        // own empty box slots are written as raw zeros (the read path gates on a non-zero EC), but a
+        // own empty box slots are EC-0 records the writer carries over (the read path gates on a non-zero EC), but a
         // *live* blank entity still needs a valid decrypted PB7 buffer, so use the encrypt->decrypt
         // round-trip here (same principle as the SwishCrypto gens' encrypted-blank fallback).
         std::vector<std::byte> zero(SIZE_PARTY7_LGPE, std::byte{0});

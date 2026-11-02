@@ -25,6 +25,19 @@
 namespace Trainer {
     class Bank {
     public:
+        /// What the last load() found. Only FirstRun may create or migrate a Bank; every other
+        /// non-Loaded outcome leaves the authoritative bytes untouched and blocks saving.
+        enum class LoadOutcome {
+            FirstRun,        // bank.dat genuinely absent, no preserved or set-aside generation
+            Loaded,          // a complete, supported bank.dat was read
+            Restored,        // an interrupted save's validated .previous.N was put back first
+            ReadFailed,      // bank.dat exists but could not be read (open/I/O/allocation/short read)
+            Quarantined,     // unsupported or corrupt header: preserved as a unique .unreadable.N
+            Truncated,       // record table shorter than its header says: loaded for inspection only
+            DamagedRecords,  // some records failed validation: loaded for inspection only
+            NewerLayout,     // more boxes than this build supports: loaded for inspection only
+            Blocked,         // path not inspectable, or only unverifiable/set-aside evidence exists
+        };
         /// Number of bank boxes. 8 was not enough to stage a full generation for testing (Gen 3 alone
         /// is 386 Pokemon = 13 boxes); PKSM ships 150. The on-disk record table is fixed-size so that
         /// slot N sits at a computable offset, which makes the file grow with this constant --
@@ -90,6 +103,7 @@ namespace Trainer {
         /// True when the on-disk Bank is valid enough to inspect but was written with a
         /// newer/larger layout this build cannot round-trip without data loss.
         bool isWriteBlocked() const noexcept { return writeBlocked; }
+        LoadOutcome lastLoadOutcome() const noexcept { return loadOutcome; }
         const std::string& writeBlockReason() const noexcept { return writeBlockReasonText; }
 
     private:
@@ -104,6 +118,8 @@ namespace Trainer {
         size_t loadRejects = 0;
         bool writeBlocked = false;
         std::string writeBlockReasonText;
+        LoadOutcome loadOutcome = LoadOutcome::FirstRun;
+        void blockWrites(LoadOutcome outcome, std::string reason);
     };
 }
 

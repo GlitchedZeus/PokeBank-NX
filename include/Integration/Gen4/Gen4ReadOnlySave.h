@@ -47,6 +47,7 @@ struct TrainerReadOnly {
     uint8_t gender = 0;
     uint8_t language = 0;
     uint8_t badges = 0;
+    uint8_t kantoBadges = 0; // HGSS Trainer1 +0x1F (PKHeX SAV4HGSS.Badges16).
     uint8_t romCode = 0;
     uint16_t playedHours = 0;
     uint8_t playedMinutes = 0;

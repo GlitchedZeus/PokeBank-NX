@@ -1,10 +1,12 @@
 #include "Integration/Gen2/Gen2ReadOnlySave.h"
+#include "Integration/Gen2/Gen2StagedEditor.h"
 
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <tuple>
 #include <vector>
 
 using namespace PokeVault::Integration::Gen2;
@@ -53,6 +55,15 @@ void putChecksum(std::vector<uint8_t>& d,const L& l){
     uint16_t s=0;for(size_t i=0x2009;i<=l.end;i++)s=static_cast<uint16_t>(s+d[i]);
     d[l.sum]=s&0xFF;d[l.sum+1]=s>>8;
 }
+// Empty Japanese bag (PKHeX 8e3eb3d4 SAV2Offsets LoadOffsetsJapanese PouchTMHM .. PouchPC), then
+// the checksum again: the staged editor opens only on a save whose bag validates.
+void japaneseBag(std::vector<uint8_t>& d,const L& l){
+    const bool c=l.family==VersionFamily::Crystal;
+    const size_t tm=c?0x23C9:0x23C7;
+    std::fill_n(d.begin()+static_cast<std::ptrdiff_t>(tm),57,0);
+    for(size_t o:{c?0x2402:0x2400,c?0x242C:0x242A,c?0x2447:0x2445,c?0x2461:0x245F}){d[o]=0;d[o+1]=0xFF;}
+    putChecksum(d,l);
+}
 std::vector<uint8_t> fixture(const L& l,uint8_t species=25,bool shiny=true){
     size_t sz=(l.gender==0x8000)?0x10000:0x8000;
     std::vector<uint8_t>d(sz);
@@ -100,6 +111,96 @@ int main(){
     {
         auto d=fixture(IGS);for(int i=0;i<7;i++)d.push_back(0);auto r=parse(d,SourceGame::Gold);
         assert(r&&r.save->metadata().rtcFooterSize==7&&r.save->sourceBytes().size()==0x8007);
+    }
+    // 128 KiB padded files (upstream PKSE 9a9a731): sizes tried smallest first, uniform tail only.
+    for(const uint8_t fill:{uint8_t{0x00},uint8_t{0xFF}}){
+        auto d=fixture(IGS);d.resize(kPaddedSaveSize128K,fill);const auto before=d;
+        auto r=parse(d,SourceGame::Gold);assert(r);
+        assert(r.save->metadata().payloadSize==0x8000&&r.save->metadata().paddingSize==0x18000);
+        assert(r.save->metadata().rtcFooterSize==0&&r.save->sourceBytes().size()==kPaddedSaveSize128K);
+        assert(r.save->party().size()==1&&d==before);
+    }
+    {
+        // A real 64 KiB Japanese Crystal padded to 128 KiB opens at 64 KiB with its gender byte.
+        auto d=fixture(JC,201,false);d.resize(kPaddedSaveSize128K,0xFF);
+        auto r=parse(d,SourceGame::Crystal);assert(r);
+        assert(r.save->metadata().payloadSize==0x10000&&r.save->metadata().paddingSize==0x10000);
+        assert(r.save->trainer().gender&&*r.save->trainer().gender==1);
+    }
+    {
+        // A 64 KiB international core (data in its upper half) padded to 128 KiB opens at 64 KiB.
+        auto d=fixture(IGS);d.resize(0x10000,0x00);d[0x9000]=0x5C;d.resize(kPaddedSaveSize128K,0xFF);
+        auto r=parse(d,SourceGame::Gold);assert(r);
+        assert(r.save->metadata().payloadSize==0x10000&&r.save->metadata().paddingSize==0x10000);
+        // RTC footers stay footers at either core size, and are not padding.
+        auto rtc32=fixture(IGS);rtc32.insert(rtc32.end(),0x2C,0x11);
+        auto a=parse(rtc32,SourceGame::Gold);
+        assert(a&&a.save->metadata().rtcFooterSize==0x2C&&a.save->metadata().paddingSize==0);
+        auto rtc64=fixture(IGS);rtc64.resize(0x10000,0x00);rtc64.insert(rtc64.end(),7,0x22);
+        auto b=parse(rtc64,SourceGame::Gold);
+        assert(b&&b.save->metadata().payloadSize==0x10000&&b.save->metadata().rtcFooterSize==7);
+        // Padding plus a footer is not a known envelope: refused, never truncated or guessed.
+        auto both=fixture(IGS);both.resize(kPaddedSaveSize128K,0xFF);both.insert(both.end(),7,0x00);
+        auto c=parse(both,SourceGame::Gold);assert(!c&&c.error==SaveError::WrongSize);
+    }
+    {
+        // Not padding: one stray byte in the tail, or a padded size other than 128 KiB.
+        auto d=fixture(IGS);d.resize(kPaddedSaveSize128K,0xFF);d[0x1FFFF]=0x01;
+        auto r=parse(d,SourceGame::Gold);assert(!r&&r.error==SaveError::WrongSize);
+        // Mixed past 32 KiB but uniform past 64 KiB is a 64 KiB image plus padding, exactly as
+        // the same 64 KiB image is accepted unpadded.
+        auto mixed=fixture(IGS);mixed.resize(kPaddedSaveSize128K,0x00);mixed[0x8000]=0xFF;
+        auto m=parse(mixed,SourceGame::Gold);
+        assert(m&&m.save->metadata().payloadSize==0x10000&&m.save->metadata().paddingSize==0x10000);
+        auto unpadded=mixed;unpadded.resize(0x10000);assert(parse(unpadded,SourceGame::Gold));
+        auto odd=fixture(IGS);odd.resize(0x18000,0xFF);
+        auto o=parse(odd,SourceGame::Gold);assert(!o&&o.error==SaveError::WrongSize);
+    }
+    {
+        // Q02 (independent QA 2026-10-27; upstream PKSE 0c993bc): a 32 KiB Japanese Crystal file is
+        // valid; its optional trainer gender (0x8000) is absent and stays unspecified, never invented.
+        auto d=fixture(JC,201,false);d.resize(0x8000);const auto before=d;
+        auto r=parse(d,SourceGame::Crystal);assert(r);
+        assert(r.save->metadata().region==RegionLayout::Japanese&&r.save->metadata().family==VersionFamily::Crystal);
+        assert(r.save->metadata().payloadSize==0x8000&&!r.save->trainer().gender);
+        assert(r.save->party()[0].species==201&&d==before);
+        // The same Crystal at 64 KiB still reads its gender.
+        auto full=fixture(JC,201,false);auto f=parse(full,SourceGame::Crystal);
+        assert(f&&f.save->trainer().gender&&*f.save->trainer().gender==1);
+        // The staged editor writes Japanese layouts too (tests/test_gen2_japanese_writer.cpp); the
+        // APP keeps them read-only through JapaneseEditingGate.h in GSCReadOnlyTrainer
+        // (test_gsc_readonly_bridge). With a valid bag a 32 KiB Japanese Crystal opens, has no
+        // editable gender (its 0x8000 byte is absent) and opening it never changes a byte.
+        {
+            auto withBag=d;japaneseBag(withBag,JC);
+            auto opened=parse(withBag,SourceGame::Crystal);assert(opened);
+            std::string error;auto editor=StagedEditor::create(*opened.save,error);
+            assert(editor&&error.empty()&&!editor->trainerGenderEditable());
+            assert(std::equal(editor->originalBytes().begin(),editor->originalBytes().end(),withBag.begin()));
+        }
+        // Malformed: a broken checksum is refused at 32 KiB too.
+        auto bad=d;bad[JC.sum]^=0xFF;assert(!parse(bad,SourceGame::Crystal));
+        // Japanese Gold/Silver at 32 KiB is still Gold/Silver, not Crystal.
+        auto jgs=fixture(JGS);auto g=parse(jgs,SourceGame::Gold);
+        assert(g&&g.save->metadata().family==VersionFamily::GoldSilver&&!g.save->trainer().gender);
+        assert(!parse(jgs,SourceGame::Crystal));
+        // Round 8 automated QA (updated for the Japanese Gen II writer, owner Oct 28): Japanese
+        // Gold, Silver and 64 KiB Crystal open in the staged editor on their own 9 x 30 layout,
+        // and parsing or opening them never changes a byte. Whether the app offers editing is the
+        // owner gate's call (JapaneseEditingGate.h, pinned closed in test_gsc_readonly_bridge).
+        for (auto [bytes, game, layout] : {std::tuple{fixture(JGS), SourceGame::Gold, JGS},
+                                           std::tuple{fixture(JGS), SourceGame::Silver, JGS},
+                                           std::tuple{fixture(JC,201,false), SourceGame::Crystal, JC}}) {
+            japaneseBag(bytes,layout);
+            const auto pristine=bytes;
+            auto japanese=parse(bytes,game);
+            assert(japanese&&japanese.save->metadata().region==RegionLayout::Japanese);
+            std::string error;
+            auto editor=StagedEditor::create(*japanese.save,error);
+            assert(editor&&error.empty());
+            assert(editor->metadata().boxCount==9&&editor->metadata().boxCapacity==30);
+            assert(bytes==pristine);
+        }
     }
     {
         auto d=fixture(IGS);

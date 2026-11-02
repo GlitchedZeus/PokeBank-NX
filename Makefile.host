@@ -11,5 +11,34 @@ include Makefile.host.gen5
 include Makefile.host.source-instances
 include Makefile.host.product-ui
 include Makefile.host.exports
+include Makefile.host.home-providers
+include Makefile.host.gen14
+include Makefile.host.qa
+include Makefile.host.item-quantity-policy
+include Makefile.host.pickers
+include Makefile.host.reroll-mechanics
+include Makefile.host.species-change-moves
+include Makefile.host.round4-r
+include Makefile.host.round4-codex
+include Makefile.host.host-ui
+include Makefile.host.review-entry
+include Makefile.host.pkse-upstream
+include Makefile.host.multilingual
+include Makefile.host.pkse-october
+include Makefile.host.pkse-october-pid
+include Makefile.host.pkfile-gen12
+include Makefile.host.pkfile-gen3
+include Makefile.host.pkfile-gen4
+include Makefile.host.pkfile-gen5
+include Makefile.host.pokemon-file-ui
+include Makefile.host.recovery-view
+include Makefile.host.jp-gen12
+include Makefile.host.jp-gen1
+include Makefile.host.jp-gen2
+include Makefile.host.bag-top-up
+include Makefile.host.pokemon-file-menus
 
 include Makefile.host.machine
+
+# Must stay last: wraps $(CXX) for header dependency tracking (Makefile.host.deps).
+include Makefile.host.deps

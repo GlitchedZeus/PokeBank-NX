@@ -51,6 +51,14 @@ struct DiscoveryResult {
     const std::string& path, std::vector<uint8_t>& bytes,
     std::string& diagnostic, std::string* containerType = nullptr);
 
+// Export-time read: the COMPLETE source file, byte for byte (a .dsv keeps its
+// emulator metadata and 40-byte DeSmuME footer), plus the same normalized
+// 0x80000 payload. Both reads must agree; the file is bounded and never opened
+// for writing. The verbatim bytes back up the source exactly as found.
+[[nodiscard]] bool readSourceFileReadOnly(
+    const std::string& path, std::vector<uint8_t>& file, std::vector<uint8_t>& payload,
+    std::string& diagnostic, std::string* containerType = nullptr);
+
 // Stable metadata key for a source owned by one Switch profile. On FAT/exFAT
 // (st_ino == 0), saved content naturally changes whenever the emulator saves:
 // the persisted profile assignment must therefore key the NORMALIZED PATH,
@@ -79,6 +87,14 @@ struct DiscoveryResult {
 [[nodiscard]] ReadOnlyProbe reopenValidatedSource(
     const Source::SaveInstance& selected,
     SaveCopySelection copy = SaveCopySelection::Automatic);
+
+// Owner-requested evidence: read the source read-only, inspect BOTH copies
+// and write a plain-text report (no names, IDs or raw bytes) as a NEW file in
+// the app-owned diagnostics directory. Never opens the source for writing.
+[[nodiscard]] bool writeGen5DiagnosticsReport(
+    const std::string& sourcePath, std::string_view exactGame,
+    std::string_view timestamp, const std::string& diagnosticsRoot,
+    std::string& writtenPath, std::string& error);
 
 [[nodiscard]] DiscoveryResult discoverSources(
     std::span<const DiscoveryRoot> roots, DiscoveryLimits limits = {});

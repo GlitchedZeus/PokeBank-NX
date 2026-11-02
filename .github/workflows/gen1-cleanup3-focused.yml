@@ -2,6 +2,9 @@ name: HISTORICAL / MANUAL — Gen I Cleanup3 Focused Gates
 
 
 # Frozen evidence workflow retained for reproducibility. It must never auto-run on current development.
+# Frozen; superseded by app-qa-contracts and the round-1 hardware regression gate. Its embedded
+# source needles ("Y Shiny", "Encounter legality") describe the tree it was recorded on, not the current tree
+# (tools/qa/manual_workflow_staleness.py reports them as STALE by design).
 on:
   workflow_dispatch:
 

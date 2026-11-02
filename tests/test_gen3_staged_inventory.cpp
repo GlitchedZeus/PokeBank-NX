@@ -171,6 +171,18 @@ void runExactGame(SourceGame game, Family family) {
     assert(editor->stageInventoryQuantity(InventoryPouch::TMCase, 290, 6, error));
     assert(editor->stageInventoryQuantity(InventoryPouch::BerryPouch, 134, 8, error));
     assert(editor->stageInventoryQuantity(InventoryPouch::PCItems, 14, 9, error));
+    // One per-item quantity rule (QuantityPolicy native caps): FireRed/LeafGreen bag pockets
+    // stack to 999, Ruby/Sapphire/Emerald bag pockets to 99; PC Items are 999 in every Gen III game.
+    const bool frlg = family == Family::FRLG;
+    assert(editor->stageInventoryQuantity(InventoryPouch::Items, 13, 100, error) == frlg);
+    if (frlg) {
+        assert(editor->stageInventoryQuantity(InventoryPouch::Items, 13, 999, error));
+        assert(editor->stagedInventoryQuantity(InventoryPouch::Items, 13) == 999);
+    }
+    assert(!editor->stageInventoryQuantity(InventoryPouch::Items, 13, 1000, error));
+    assert(editor->stageInventoryQuantity(InventoryPouch::PCItems, 14, 999, error));
+    assert(editor->stagedInventoryQuantity(InventoryPouch::PCItems, 14) == 999);
+    assert(editor->stageInventoryQuantity(InventoryPouch::PCItems, 14, 9, error)); // restore for the byte checks below
 
     assert(!editor->stageInventoryQuantity(InventoryPouch::PokeBalls, 13, 1, error));
     assert(!editor->stageInventoryQuantity(InventoryPouch::Items, 500, 1, error));

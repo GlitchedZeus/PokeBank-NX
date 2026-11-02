@@ -1,0 +1,75 @@
+# Thread R, round 3 (R2-BUG-004): a species change resets all four moves to the new species'
+# native level-up moves, Gen I-V (20 games). Data + algorithm + apply-path contracts, then one
+# real record round trip per generation (reusing each generation's existing source list).
+SPECIES_MOVES_DEPS := include/Pokemon/SpeciesMoveDefaults.h include/Pokemon/LevelUpLearnsets15Data.inc include/UI/Gen1SpeciesChangeMoves.h \
+	include/UI/SpeciesChangeMoves.h
+
+SPECIES_MOVES_DATA_SOURCES := tests/test_species_change_moves_gen15.cpp
+SPECIES_MOVES_GEN2_SOURCES := tests/test_species_change_moves_gen2.cpp $(GEN2_STAGED_EDITOR_COMMON) \
+	src/Integration/Gen2/Gen2MoveCompatibility.cpp src/Integration/Gen1/Gen1MoveCompatibility.cpp
+
+SPECIES_MOVES_GEN1_SOURCES := tests/test_species_change_moves_gen1.cpp $(GEN1_POKEMON_COMMON) \
+	src/Integration/Gen1/Gen1MoveCompatibility.cpp
+
+SPECIES_MOVES_GEN3_SOURCES := tests/test_species_change_moves_gen3.cpp \
+	$(filter-out tests/test_gen3_staged_pokemon_editor.cpp,$(GEN3_POKEMON_EDITOR_SOURCES))
+
+SPECIES_MOVES_GEN4_SOURCES := tests/test_species_change_moves_gen4.cpp \
+	$(filter-out tests/test_gen4_staged_pokemon_editor.cpp,$(GEN4_STAGED_EDITOR_SOURCES))
+
+SPECIES_MOVES_TESTS := $(HOST_BUILD)/test_species_change_moves_gen15 $(HOST_BUILD)/test_species_change_moves_gen1 \
+	$(HOST_BUILD)/test_species_change_moves_gen2 $(HOST_BUILD)/test_species_change_moves_gen3 \
+	$(HOST_BUILD)/test_species_change_moves_gen4 $(HOST_BUILD)/test_species_change_moves_gen5
+SPECIES_MOVES_SANITIZE := $(addsuffix _sanitize,$(SPECIES_MOVES_TESTS))
+HOST_TESTS += $(SPECIES_MOVES_TESTS)
+HOST_SANITIZE_TESTS += $(SPECIES_MOVES_SANITIZE)
+host-test: $(SPECIES_MOVES_TESTS)
+host-sanitize: $(SPECIES_MOVES_SANITIZE)
+
+.PHONY: host-species-change-moves
+host-species-change-moves: $(SPECIES_MOVES_TESTS)
+	@set -e; for t in $(SPECIES_MOVES_TESTS); do $$t; done
+
+$(HOST_BUILD)/test_species_change_moves_gen15: $(SPECIES_MOVES_DATA_SOURCES) $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SPECIES_MOVES_DATA_SOURCES) -o $@
+$(HOST_BUILD)/test_species_change_moves_gen15_sanitize: $(SPECIES_MOVES_DATA_SOURCES) $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SPECIES_MOVES_DATA_SOURCES) -o $@
+
+$(HOST_BUILD)/test_species_change_moves_gen2: $(SPECIES_MOVES_GEN2_SOURCES) $(SPECIES_MOVES_DEPS) include/UI/Gen2PokemonSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude -Itests $(SPECIES_MOVES_GEN2_SOURCES) -o $@
+$(HOST_BUILD)/test_species_change_moves_gen2_sanitize: $(SPECIES_MOVES_GEN2_SOURCES) $(SPECIES_MOVES_DEPS) include/UI/Gen2PokemonSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests $(SPECIES_MOVES_GEN2_SOURCES) -o $@
+
+$(HOST_BUILD)/test_species_change_moves_gen1: $(SPECIES_MOVES_GEN1_SOURCES) $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(SPECIES_MOVES_GEN1_SOURCES) -o $@
+$(HOST_BUILD)/test_species_change_moves_gen1_sanitize: $(SPECIES_MOVES_GEN1_SOURCES) $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(SPECIES_MOVES_GEN1_SOURCES) -o $@
+
+$(HOST_BUILD)/test_species_change_moves_gen3: $(SPECIES_MOVES_GEN3_SOURCES) $(SPECIES_MOVES_DEPS) include/UI/Gen3SharedPokemonSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(SPECIES_MOVES_GEN3_SOURCES) -o $@
+$(HOST_BUILD)/test_species_change_moves_gen3_sanitize: $(SPECIES_MOVES_GEN3_SOURCES) $(SPECIES_MOVES_DEPS) include/UI/Gen3SharedPokemonSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(SPECIES_MOVES_GEN3_SOURCES) -o $@
+
+$(HOST_BUILD)/test_species_change_moves_gen4: $(SPECIES_MOVES_GEN4_SOURCES) $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(SPECIES_MOVES_GEN4_SOURCES) -o $@
+$(HOST_BUILD)/test_species_change_moves_gen4_sanitize: $(SPECIES_MOVES_GEN4_SOURCES) $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(SPECIES_MOVES_GEN4_SOURCES) -o $@
+
+$(HOST_BUILD)/test_species_change_moves_gen5: tests/test_species_change_moves_gen5.cpp $(SPECIES_MOVES_DEPS) \
+	include/Integration/Gen5/Gen5SharedScreenState.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@
+$(HOST_BUILD)/test_species_change_moves_gen5_sanitize: tests/test_species_change_moves_gen5.cpp $(SPECIES_MOVES_DEPS) \
+	include/Integration/Gen5/Gen5SharedScreenState.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_species_change_moves_gen5.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp -o $@

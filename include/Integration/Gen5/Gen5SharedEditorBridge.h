@@ -46,19 +46,40 @@ struct SharedEditorSlot {
     const auto live=selectedSlot(workspace,slot.location);
     if(live.validated && !live.occupied &&
        slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
-       workspace.emptyCloneDestination(slot.location.box,slot.location.slot))
+       workspace.emptyCloneDestination(slot.location.box,slot.location.slot)) {
         append(Shared::Action::Add);
+        // Feature A (owner Oct 28): a .pk5 / .ek5 file into the same verified empty box cell
+        // (Gen5PokemonFile.h importPokemonFile5; the UI runs the shared file dialog).
+        append(Shared::Action::ImportFile);
+    }
     if(live.validated && live.occupied) {
         append(Shared::Action::View);
         // Native Create/Clone results use the SAME shared Edit surface.
         // Only app-owned PK5 fields can be staged, never source-save writes.
         append(Shared::Action::Edit);
-        if(workspace.originalOccupied(slot.location) &&
-           workspace.firstEmptyCloneDestination()<720)
+        // Move Pokemon matches Gen IV's box action: an exact clone into a
+        // verified empty box slot plus removal of the source slot.
+        // Shared order (NarrowPokemonActionMenu.h): View, Edit, Clone, Move,
+        // Release, Origin & Legality. Round 3 Part 9: like Gen IV (which works
+        // from its reparsed staged buffer) these follow the STAGED slot, so a
+        // Pokemon created, cloned or edited this session keeps them. Untouched
+        // originals use the strict primitives; staged slots use the
+        // certificate-preserving companions (Gen5StagedPokemonWorkspace.h).
+        const bool operand=workspace.originalOccupied(slot.location) ||
+                           workspace.stagedOperand(slot.location);
+        const bool box=slot.location.region==Gen5StagedPokemonWorkspace::Region::Box;
+        if(operand && workspace.firstEmptyCloneDestination()<720)
             append(Shared::Action::Clone);
-        if(slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
-           workspace.originalOccupied(slot.location))
+        if(box && operand && workspace.firstEmptyCloneDestination()<720)
+            append(Shared::Action::Move);
+        if(box && operand)
             append(Shared::Action::Remove);
+        // Neutral Origin & Legality (Gen I-IV row): structure and origin only,
+        // never a legality verdict.
+        append(Shared::Action::LegalityProvenance);
+        // Feature A: a new .pk5 file of the record as staged (exportStagedPokemonFile5); never a
+        // workspace change.
+        append(Shared::Action::ExportFile);
     }
     if(workspace.hasChanges())append(Shared::Action::Review);
     append(Shared::Action::Close);
@@ -108,6 +129,8 @@ struct SharedEditorSlot {
             return session.stage(NativeField::Experience,stat,value,error);
         case Shared::FieldIdentity::Friendship:
             return session.stage(NativeField::Friendship,stat,value,error);
+        case Shared::FieldIdentity::Language:
+            return session.stage(NativeField::Language,stat,value,error);
         case Shared::FieldIdentity::IV:
             return session.stage(NativeField::IV,stat,value,error);
         case Shared::FieldIdentity::EV:
