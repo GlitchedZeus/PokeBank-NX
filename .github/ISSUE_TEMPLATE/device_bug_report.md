@@ -1,6 +1,6 @@
 ---
-name: Physical Switch bug report
-about: Report a reproducible PokeBank NX issue from an exact .nro build
+name: Detailed hardware test report
+about: Full report for testers working through a hardware checklist on an exact .nro build
 labels: ''
 assignees: ''
 ---

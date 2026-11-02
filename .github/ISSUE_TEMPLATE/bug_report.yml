@@ -1,0 +1,98 @@
+name: Bug report
+description: Something in PokeBank NX does not work as expected on your Switch.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing PokeBank NX. Builds are alpha: please identify the exact file you ran.
+
+        **If a save was changed, overwritten or damaged, stop using that path and report it privately instead** (see [SECURITY.md](https://github.com/GlitchedZeus/PokeBank-NX/blob/main/SECURITY.md)).
+
+        Do not attach real save files publicly; they contain trainer names and IDs.
+  - type: input
+    id: build
+    attributes:
+      label: Build
+      description: NRO file name, and its SHA-256 if you can compute it (or the commit you built).
+      placeholder: "PokeBank-NX-Gen1-5-Candidate-9c301c48.nro, SHA-256 0ecf8655…"
+    validations:
+      required: true
+  - type: dropdown
+    id: generation
+    attributes:
+      label: Generation
+      multiple: true
+      options:
+        - "Gen I (Red / Blue / Yellow)"
+        - "Gen II (Gold / Silver / Crystal)"
+        - "Gen III (Ruby / Sapphire / Emerald / FireRed / LeafGreen)"
+        - "Gen IV (Diamond / Pearl / Platinum / HeartGold / SoulSilver)"
+        - "Gen V (Black / White / Black 2 / White 2)"
+        - "Not game-specific (Home, settings, backups…)"
+    validations:
+      required: true
+  - type: input
+    id: game
+    attributes:
+      label: Game, language and save source
+      description: Exact game and language, and where the save comes from (RetroArch core, DraStic, melonDS, Nintendo Switch Online, manual file, backup).
+      placeholder: "Crystal (English), RetroArch Gambatte .srm"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact screens and buttons, from opening the save.
+      placeholder: |
+        1. Open Crystal from Home
+        2. Boxes → Box 3 → A on Pikachu → Edit
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: What happened instead. Screenshots or a short video help a lot for UI problems.
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often
+      options:
+        - Always
+        - Sometimes
+        - Once
+    validations:
+      required: true
+  - type: dropdown
+    id: save-safety
+    attributes:
+      label: Did any save change unexpectedly?
+      description: The app must never change an original save. Export Copy writes a separate file.
+      options:
+        - "No, original saves are unchanged"
+        - "Not sure"
+        - "Yes (please also report privately, see SECURITY.md)"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Switch environment
+      description: Firmware, Atmosphère version, handheld or docked, launched from hbmenu or a forwarder.
+      placeholder: "19.0.1, Atmosphère 1.8.0, handheld, hbmenu"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Crash/error codes, crash reports, theme, controller or touch details.

@@ -1,0 +1,51 @@
+name: Feature request
+description: Suggest an improvement or a missing feature.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [docs/STATUS.md](https://github.com/GlitchedZeus/PokeBank-NX/blob/main/docs/STATUS.md) first: the Master Vault, Move to Vault, deposit/withdraw, Vault search, cross-generation transfer and in-save box renaming are already planned for v1.0. Gen VI–IX and the legality engine are paused.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task or problem, in your own words.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like PokeBank NX to do?
+      description: Screens, buttons, or how another tool you like handles it.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Pokémon editor
+        - Bag / items
+        - Trainer
+        - Save discovery and backups
+        - Export / import
+        - Vault / storage
+        - Home and navigation
+        - Controls and touch
+        - Other
+  - type: input
+    id: games
+    attributes:
+      label: Games it applies to
+      placeholder: "All Gen I–V, or e.g. Emerald only"
+  - type: dropdown
+    id: save-impact
+    attributes:
+      label: Would it need to write to a game save?
+      description: The app never writes original saves; edits are exported as a separate verified copy.
+      options:
+        - "No"
+        - "Only through Export Copy"
+        - "Not sure"
