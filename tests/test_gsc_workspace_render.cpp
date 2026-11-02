@@ -353,6 +353,9 @@ int main() {
         texts.clear();
         // Render the same accepted Gen III modal geometry used by Gen II-IV.
         UI::Gen2HeldItemPickerPresentation::drawList(fb, 0, 0, items, i);
+        // Ported from PR #122: native-style viewport clipping is balanced after every draw, so a
+        // later frame element is never silently clipped to the picker grid.
+        assert(!clipActive);
         assert(texts.size() <= static_cast<std::size_t>(Held::pageSize));
         for (const auto& text : texts)
             assert(text.x >= 0 && text.y >= 0 &&
