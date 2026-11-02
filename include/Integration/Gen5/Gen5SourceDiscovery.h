@@ -105,7 +105,8 @@ struct DiscoveryResult {
 [[nodiscard]] DiscoveryResult discoverKnownSources(
     DiscoveryLimits limits = {},
     const std::string& retroArchConfig = "sdmc:/retroarch/retroarch.cfg",
-    const std::string& retroArchFallback = "sdmc:/retroarch/cores/savefiles");
+    const std::string& retroArchFallback = "sdmc:/retroarch/cores/savefiles",
+    std::string_view providerFilter = {});
 
 } // namespace PokeVault::Integration::Gen5
 #endif

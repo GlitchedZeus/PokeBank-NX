@@ -554,7 +554,7 @@ std::vector<DiscoveryRoot> defaultDraSticRoots() {
 
 DiscoveryResult discoverKnownSources(
     DiscoveryLimits limits, const std::string& retroArchConfig,
-    const std::string& retroArchFallback) {
+    const std::string& retroArchFallback, std::string_view providerFilter) {
     std::vector<DiscoveryRoot> roots;
 
     const auto configured = retroArchRootsFromConfig(retroArchConfig);
@@ -572,6 +572,12 @@ DiscoveryResult discoverKnownSources(
         }) {
         if (isDirectory(root.path)) roots.push_back(root);
     }
+    if (!providerFilter.empty())
+        roots.erase(std::remove_if(roots.begin(), roots.end(),
+            [&](const DiscoveryRoot& root) {
+                return root.sourceType != providerFilter &&
+                    !(providerFilter == "DraStic" && root.sourceType == "DraStic Savestate");
+            }), roots.end());
     return discoverSources(roots, limits);
 }
 

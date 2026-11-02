@@ -7,6 +7,7 @@
 #include <optional>
 #include <vector>
 #include "UI/SourceBackupClassification.h"
+#include "UI/LinkEmulatorModel.h"
 #include "UI/RecoveryManagementFs.h"
 #include <memory>
 #include <string>
@@ -281,7 +282,7 @@ namespace UI {
         int hubFeatureIndex = -1;
         enum class Overlay { None, Options, Help, OpenFailure, GamesDrawer, ProfilePicker, GameWorkspace,
                              LegacyInstances, LegacyAssignment, LegacyDetails, Gen4Setup,
-                             Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
+                             Gen4Candidates, LinkEmulator, Gen5Setup, Gen5UnassignConfirm,
                              Gen5Candidates, GameFilePicker, QuitConfirm,
                              EmulatorBackups, EmulatorBackupDeleteConfirm,
                              RecoveryFiles, RecoveryConfirm };
@@ -372,6 +373,16 @@ namespace UI {
         // instances and always shows a chooser before opening. The existing assignment database is
         // retained only as a remembered/manual source so paths outside known emulator roots remain
         // reachable; it must never bypass the Save Instances chooser.
+        // App-wide Link Emulator picker; native Switch titles bypass it.
+        std::string linkTargetGameId;
+        PokeVault::Games::Platform linkPlatform = PokeVault::Games::Platform::NintendoSwitch;
+        std::string linkProviderFilter;
+        std::string linkManualProviderLabel;
+        int linkEmulatorIndex = 0;
+        bool linkFromGamesDrawer = false;
+        bool linkFromClassicGames = false;
+        bool linkBypassNextSourceOpen = false;
+        std::string linkNotice;
         std::string gen4TargetGameId;
         std::string gen4Notice;
         bool gen4SetupFromGamesDrawer = false;
@@ -471,6 +482,8 @@ namespace UI {
         void selectCurrentTitle();
         void selectCurrentTitleForItems();
         void selectCurrentLegacyInstance();
+        void openLinkEmulatorForCurrentTitle(bool fromGamesDrawer, bool fromClassicGames);
+        void activateLinkEmulator();
         void openGen4Setup(const std::string& gameId, std::string notice = {},
                            bool returnToGamesDrawer = false, bool returnToClassicGames = false);
         void discoverGen4Candidates();
