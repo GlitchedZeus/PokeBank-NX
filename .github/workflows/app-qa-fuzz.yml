@@ -20,8 +20,8 @@ on:
       - 'tests/fuzz_*'
       - 'tests/fixtures/**'
       - 'Makefile.host'
-      - 'build-system/host/build-system/host/Makefile.host.base'
-      - 'build-system/host/build-system/host/Makefile.host.qa'
+      - 'build-system/host/Makefile.host.base'
+      - 'build-system/host/Makefile.host.qa'
       - '.github/workflows/app-qa-fuzz.yml'
   schedule:
     - cron: '17 3 * * *'
