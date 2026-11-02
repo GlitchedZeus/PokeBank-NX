@@ -125,29 +125,21 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
             closePicker(screen, picker);
             return true;
         }
-        auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
-        caught.present = true;
-        caught.location = static_cast<uint8_t>(encounter->location);
-        caught.levelCode = encounter->method == Encounter::Method::Egg
-            ? 1 : static_cast<uint8_t>(std::clamp<int>(encounter->minLevel, 2, 63));
-        uint8_t resolvedMetTime = state.crystalMetTime;
-        if (resolvedMetTime < 1 || resolvedMetTime > 3 ||
-            !Encounter::timeAllowed(*encounter, resolvedMetTime)) {
-            for (uint8_t value = 1; value <= 3; ++value) {
-                if (Encounter::timeAllowed(*encounter, value)) {
-                    resolvedMetTime = value;
-                    break;
-                }
-            }
-        }
-        state.crystalMetTime = resolvedMetTime;
-        caught.timeOfDay = resolvedMetTime;
         // A real Crystal caught record must encode Male or Female. If the user already
         // chose one while caught history was unset, preserve it. Otherwise use the
         // authentic clear-bit Male encoding as the deterministic default.
         if (state.crystalOtGender == Gen2Native::CrystalOtGenderChoice::Unknown)
             state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Male;
-        caught.originalTrainerFemale = Gen2Native::crystalOtGenderFemale(state.crystalOtGender);
+        // Round 13 (owner decisions 7 / 8): the one rule for the caught data a verified row writes
+        // (Gen2PokemonPickerModel.h caughtForTemplate): a gift / trade at LANDMARK_GIFT is written
+        // as Crystal writes it (level 0, time 0); a row spanning several times keeps the pending
+        // Met Time when it can, otherwise writes the row's first time -- and says which, never a
+        // silent change.
+        const auto choice = Gen2Picker::caughtForTemplate(
+            *encounter, state.crystalMetTime, Gen2Native::crystalOtGenderFemale(state.crystalOtGender));
+        auto caught = choice.caught;
+        state.crystalMetTime = caught.timeOfDay;
+        if (!choice.status.empty()) screen.postStatus(choice.status, 300);
         state.working.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
     } else {
         return false;

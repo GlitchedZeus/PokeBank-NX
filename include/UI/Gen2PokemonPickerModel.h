@@ -32,6 +32,23 @@ inline std::string encounterTimeLabel(uint8_t timeMask) {
     return out;
 }
 
+// Round 13 (owner decision 8: "Crystal time rows can be grouped visually, but do not lose
+// encounter-time distinctions"): the short time list a grouped Crystal row shows -- "morn/day",
+// "night", and "any time" for a slot met morning, day AND night (said, never dropped; short so the
+// row fits the 640 px chooser). "" for a gift / static row (no time restriction in the data).
+inline std::string encounterTimeShortLabel(uint8_t timeMask) {
+    if ((timeMask & 0x0E) == 0x0E) return "any time";
+    std::string out;
+    const auto add = [&](const char* text) {
+        if (!out.empty()) out += "/";
+        out += text;
+    };
+    if (timeMask & (1u << 1)) add("morn");
+    if (timeMask & (1u << 2)) add("day");
+    if (timeMask & (1u << 3)) add("night");
+    return out;
+}
+
 enum class Kind : uint8_t { None, Species, Move, Location };
 
 struct Model {
@@ -98,7 +115,10 @@ struct Model {
         // Never a closed list: a species with no Crystal catch template (traded in, evolved, or
         // not wild in Crystal) still has the markers and every native landmark (unverified list).
         // One row per slot: Crystal lists a slot once per time of day; rows that differ only in
-        // time are one row whose detail names every time ("Morning/Day"), so the list stays short.
+        // time are one row whose detail names every time ("morn/day"), so the list stays short.
+        // Round 13 (owner decision 8): only rows with the SAME level range merge, so a place whose
+        // times differ in level keeps one row per level, each naming its own times; the caught
+        // time written for a row spanning several times is chosen by caughtForTemplate (stated).
         std::vector<Encounter::EncounterTemplate> all;
         for (const auto& choice : MetRows::templatesWithAncestry(sourceGameId, species, 251)) {
             const auto& e = choice.encounter;
@@ -272,11 +292,61 @@ inline LocationRowText locationRowText(const Encounter::EncounterTemplate& encou
     out.place = Gen2Native::crystalCaughtLocationName(static_cast<uint8_t>(encounter.location));
     out.detail = std::string(Encounter::methodName(encounter.method)) + " · Lv. " +
                  std::to_string(encounter.minLevel);
-    if (encounter.maxLevel != encounter.minLevel)
+    // Round 13: an in-game trade arrives at the traded Pokémon's level (PKHeX EncounterTrade2:
+    // LevelMin = Level, LevelMax = 100), so it reads "Lv. 5+".
+    if (encounter.maxLevel == 100 && encounter.minLevel < 100) out.detail += "+";
+    else if (encounter.maxLevel != encounter.minLevel)
         out.detail += "–" + std::to_string(encounter.maxLevel);
-    // Round 12: a slot met at every time of day (merged Morning/Day/Night rows) needs no time text.
-    const auto time = (encounter.timeMask & 0x0E) == 0x0E ? std::string() : encounterTimeLabel(encounter.timeMask);
+    // Round 13 (owner decision 8; was: a slot met at every time showed no time, Round 12): every
+    // timed row names the times it occurs, short so the row fits ("morn/day", "night", "any time").
+    const auto time = encounterTimeShortLabel(encounter.timeMask);
     if (!time.empty()) out.detail += " · " + time;
+    return out;
+}
+
+// Round 13 (owner decisions 7 / 8): the Crystal caught data a verified row writes (the one rule the
+// chooser overlay and the tests use).
+//  - A gift / trade Crystal records at LANDMARK_GIFT (0x7E) is written as the game writes it
+//    (pret engine/pokemon/caught_data.asm SetGiftMonCaughtData): caught level 0 and time 0.
+//  - Otherwise the level code is the row's minimum level (1 = the egg marker) and the time is
+//    the pending Met Time when the row occurs at it; when it does not (or none is pending), the
+//    row's first time is written (Morning for a row met at any time) and `status` STATES the
+//    time written and the row's times, so a grouped row never changes the time silently. The
+//    editor's Time row then offers only the times the row occurs at.
+struct CaughtChoice {
+    Gen2Native::CrystalCaughtData caught;
+    bool timeDefaulted = false;
+    std::string status;
+};
+inline CaughtChoice caughtForTemplate(const Encounter::EncounterTemplate& encounter, uint8_t pendingTime,
+                                      bool otFemale) {
+    namespace Gifts = PokeVault::Integration::GiftStaticEncounters;
+    CaughtChoice out;
+    out.caught.present = true;
+    out.caught.location = static_cast<uint8_t>(encounter.location);
+    out.caught.originalTrainerFemale = otFemale;
+    if (const auto* gift = Gifts::rowOf(encounter); gift && (gift->flags & Gifts::kCaughtLevelUnrecorded)) {
+        out.caught.levelCode = 0;
+        out.caught.timeOfDay = 0;
+        out.status = std::string("Met as a Crystal ") + Gifts::kindLabel(gift->kind) +
+                     ": level and time not recorded";
+        return out;
+    }
+    out.caught.levelCode = encounter.method == Encounter::Method::Egg
+        ? 1 : static_cast<uint8_t>(std::clamp<int>(encounter.minLevel, 2, 63));
+    uint8_t time = pendingTime;
+    if (time < 1 || time > 3 || !Encounter::timeAllowed(encounter, time)) {
+        out.timeDefaulted = true;
+        for (uint8_t value = 1; value <= 3; ++value)
+            if (Encounter::timeAllowed(encounter, value)) { time = value; break; }
+    }
+    out.caught.timeOfDay = time;
+    const auto times = encounterTimeShortLabel(encounter.timeMask);
+    const int timeCount = ((encounter.timeMask >> 1) & 1) + ((encounter.timeMask >> 2) & 1) + ((encounter.timeMask >> 3) & 1);
+    const bool severalTimes = encounter.timeMask == 0 || timeCount > 1;
+    if (out.timeDefaulted || severalTimes)
+        out.status = std::string("Met time: ") + Gen2Native::crystalMetTimeName(time) + " (" +
+                     (times.empty() ? std::string("any time") : times) + "); change it on the Time row";
     return out;
 }
 

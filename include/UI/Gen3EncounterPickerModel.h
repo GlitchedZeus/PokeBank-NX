@@ -266,7 +266,10 @@ inline RowText rowText(const std::vector<Choice>& choices, uint16_t value, uint8
     // Round 5 NEW-10: short enough that every row fits the 620 px window on one line
     // (tests/test_met_location_fit.cpp).
     out.detail = std::string(Encounter::methodName(encounter.method)) + " Lv. " + std::to_string(encounter.minLevel);
-    if (encounter.maxLevel != encounter.minLevel) out.detail += "–" + std::to_string(encounter.maxLevel);
+    // Round 13 (owner decision 7): an in-game trade arrives at the traded Pokémon's level (PKHeX
+    // EncounterTrade3: LevelMin = Level, LevelMax = 100): "Trade Lv. 5+".
+    if (encounter.maxLevel == 100 && encounter.minLevel < 100) out.detail += "+";
+    else if (encounter.maxLevel != encounter.minLevel) out.detail += "–" + std::to_string(encounter.maxLevel);
     if constexpr (requires { selected->evolved; }) {
         // Round 12: every pre-evolution's rows are offered now (not only when the species has none
         // of its own), so the row names the ancestor it was met as the way Gen II / IV / V rows do
