@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace PokeBank::UIModel {
@@ -41,23 +42,69 @@ struct InventoryActionAvailability {
     };
 }
 
-// `plusHint` names what + does: "+: Options" (installed titles), "+: Review" (Gen I-V staged
-// Bags, ReviewEntry.h). `topUp` adds "ZR: Top Up" (Top Up / Add Missing, owner Oct 28 Feature B)
-// for a Bag with a staged editor.
+// ---- The ONE Bag footer model (Gen I-V) ------------------------------------------------------
+// Round 14 R08 (owner, verbatim: "gen 4 footer says edit quanitty not edit amout or what gen 1-3 have for
+// the A button, gen 5 has almost none of the proper footers and im guessing controls"): every
+// generation's Bag list draws THIS list, in the Gen I-III wording and order the owner calls correct:
+//   D-pad/Stick Navigate, A Edit Amount, X Add Item, Y Remove Item, L/R Category, ZR Top Up, + <plus>,
+//   - Help, B Back.
+// Each entry appears only when its handler acts (inventoryActionAvailability): A only for a
+// quantity-editable selected item, Y only with a selection, X / ZR only in an editable category.
+// `plus` names what + does: "Options" (installed titles), "Review" (Gen I-V staged Bags,
+// ReviewEntry.h). `topUp` adds ZR Top Up (owner Oct 28 Feature B) for a Bag with a staged editor.
+struct InventoryFooterHint {
+    const char* glyph;
+    const char* label;
+};
+
+[[nodiscard]] inline std::vector<InventoryFooterHint> inventoryFooterHints(
+    bool editable, bool categorySupported, bool hasSelection, bool quantityEditable,
+    const char* plusLabel = "Options", bool topUp = false) {
+    const auto available = inventoryActionAvailability(
+        editable, categorySupported, hasSelection, quantityEditable);
+    std::vector<InventoryFooterHint> out{{"D-pad/Stick", "Navigate"}};
+    if (available.editAmount) out.push_back({"A", "Edit Amount"});
+    if (available.addItem) out.push_back({"X", "Add Item"});
+    if (available.removeItem) out.push_back({"Y", "Remove Item"});
+    if (categorySupported) out.push_back({"L/R", "Category"});
+    if (topUp && editable && categorySupported) out.push_back({"ZR", "Top Up"});
+    if (plusLabel && *plusLabel) out.push_back({"+", plusLabel});
+    out.push_back({"-", "Help"});
+    out.push_back({"B", "Back"});
+    return out;
+}
+
+// The "K: label  |  K: label" form ScreenChrome::drawNavBar(const std::string&) draws as badges.
+[[nodiscard]] inline std::string serializeInventoryFooter(const std::vector<InventoryFooterHint>& hints) {
+    std::string out;
+    for (const auto& hint : hints) {
+        if (!out.empty()) out += "  |  ";
+        out += hint.glyph;
+        out += ": ";
+        out += hint.label;
+    }
+    return out;
+}
+
+// `plusHint` is the old "+: Label" segment (ReviewEntry::footerText); only its label is used, the
+// + glyph is fixed by the model.
 [[nodiscard]] inline std::string inventoryFooter(bool editable, bool categorySupported,
                                                  bool hasSelection, bool quantityEditable,
                                                  const char* plusHint = "+: Options", bool topUp = false) {
-    const auto available = inventoryActionAvailability(
-        editable, categorySupported, hasSelection, quantityEditable);
-    std::string out = "D-pad/Stick: Navigate";
-    if (available.editAmount) out += "  |  A: Edit Amount";
-    if (available.addItem) out += "  |  X: Add Item";
-    if (available.removeItem) out += "  |  Y: Remove Item";
-    if (categorySupported) out += "  |  L/R: Category";
-    if (topUp && editable && categorySupported) out += "  |  ZR: Top Up";
-    out += "  |  ";
-    out += plusHint;
-    out += "  |  -: Help  |  B: Back";
+    std::string_view plus = plusHint ? plusHint : "";
+    if (plus.size() > 3 && plus.substr(0, 3) == "+: ") plus.remove_prefix(3);
+    const std::string label(plus);
+    return serializeInventoryFooter(inventoryFooterHints(
+        editable, categorySupported, hasSelection, quantityEditable, label.c_str(), topUp));
+}
+
+// The ONE Add Item picker footer (Gen I-V; the picker itself is UI/SharedBagAddPicker.h /
+// SharedItemGridPicker). The Gen I-III wording; the picker is a grid, so navigation is the whole
+// D-pad / Stick (never "Up/Down"). X Sort is shown only where the picker's X handler sorts.
+[[nodiscard]] inline std::vector<InventoryFooterHint> addItemPickerFooterHints(bool sort = true) {
+    std::vector<InventoryFooterHint> out{
+        {"D-pad/Stick", "Navigate"}, {"A", "Add / Select"}, {"B", "Cancel"}, {"L/R", "Page"}};
+    if (sort) out.push_back({"X", "Sort"});
     return out;
 }
 

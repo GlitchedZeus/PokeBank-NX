@@ -3,6 +3,7 @@
 
 #include "Integration/Gen5/Gen5StagedPokemonWorkspace.h"
 #include "UI/InventoryUIContract.h"
+#include "UI/ItemPickerSort.h"
 #include "UI/SharedBagAddFlow.h"
 
 #include <algorithm>
@@ -23,7 +24,8 @@ namespace PokeVault::Integration::Gen5 {
 //   A / tap selected row   -> quantity keypad (mutable pockets, editable items only)
 //   X / footer X           -> Add picker      (mutable pockets only); A in the picker
 //                             stages the item at x1 with no keypad, or focuses an
-//                             existing stack (UI/SharedBagAddFlow.h, Gen I-V)
+//                             existing stack (UI/SharedBagAddFlow.h, Gen I-V); X in the
+//                             picker cycles the Gen I-IV Sort (UI/ItemPickerSort.h)
 //   Y / footer Y           -> explicit Remove confirm, A confirms and B cancels
 //   L/R / header arrows    -> previous/next native pocket
 //   ZR / footer ZR         -> Top Up / Add Missing (UI/SharedBagTopUp.h; mutable pockets only)
@@ -40,7 +42,8 @@ public:
         uint16_t current = 0;
         uint16_t maximum = 0;
     };
-    struct FooterEntry { const char* glyph; const char* label; };
+    // Round 14 R08: the Bag footers are the ONE Gen I-V models (UI/InventoryUIContract.h).
+    using FooterEntry=PokeBank::UIModel::InventoryFooterHint;
 
     [[nodiscard]] Surface surface() const noexcept { return surface_; }
     [[nodiscard]] size_t pocket() const noexcept { return pocket_; }
@@ -77,21 +80,20 @@ public:
             available(ws),mutablePocket(pocket_),selected(ws).has_value(),
             mutablePocket(pocket_) && bagPocketLayout5(ws.sourceSave().family(),pocket_).maxCount>1);
     }
+    // Round 14 R08 (owner: "gen 5 has almost none of the proper footers and im guessing controls"):
+    // the Browse footer is the ONE Gen I-V Bag model, Gen I-III wording (D-pad/Stick Navigate, A Edit
+    // Amount, X Add Item, Y Remove Item, L/R Category, ZR Top Up, + Review, - Help, B Back), each
+    // shown only where its handler acts. + is always Review: the Bag's + opens Review, or says there
+    // is nothing to review (Gen5SharedReadOnlySurface), as on Gen I-IV. The Add picker uses the ONE
+    // Add picker footer, X Sort included.
     [[nodiscard]] std::vector<FooterEntry> footer(const Workspace& ws) const {
         if(surface_==Surface::AddPicker)
-            return {{"D-pad/Stick","Choose"},{"L/R","Page"},{"A","Add"},{"B","Cancel"}};
+            return PokeBank::UIModel::addItemPickerFooterHints(true);
         if(surface_==Surface::ConfirmRemove || surface_==Surface::KeyItemAddWarning)
             return {{"A","Confirm Remove"},{"B","Cancel"}};
-        std::vector<FooterEntry> out{{"L/R","Pocket"}};
         const auto can=availability(ws);
-        if(can.editAmount)out.push_back({"A","Quantity"});
-        if(can.addItem)out.push_back({"X","Add Item"});
-        if(can.removeItem)out.push_back({"Y","Remove"});
-        // Top Up / Add Missing (owner Oct 28, Feature B): wherever X Add is offered.
-        if(can.addItem)out.push_back({"ZR","Top Up"});
-        if(ws.hasChanges())out.push_back({"+","Review"});
-        out.push_back({"B","Back"});
-        return out;
+        return PokeBank::UIModel::inventoryFooterHints(
+            available(ws),mutablePocket(pocket_),selected(ws).has_value(),can.editAmount,"Review",true);
     }
     [[nodiscard]] std::string status(const Workspace& ws) const {
         if(!available(ws))
@@ -193,6 +195,8 @@ public:
         // Every native, released item of the pocket, held or not: choosing a held one
         // focuses its stack (never a duplicate); a full pocket is refused at the pick.
         addChoices_=gen5BagChoices(ws.sourceSave().family(),pocket_);
+        addNativeChoices_=addChoices_;
+        addSort_=::UI::ItemPickerSort::Mode::Native;
         if(addChoices_.empty()) {
             error="No native Gen V items are available for this pocket";
             return false;
@@ -207,6 +211,16 @@ public:
         addIndex_=static_cast<size_t>(std::clamp(static_cast<long>(addIndex_)+delta,
                                                  0L,static_cast<long>(addChoices_.size())-1));
     }
+    // X in the picker: the Gen I-IV Sort (native order -> Name A-Z -> Name Z-A) of the presentation
+    // copy only; the cursor stays on the same item. nameFor(itemId) is the label the picker draws.
+    template<class NameFor>
+    void cycleAddSort(NameFor&& nameFor) {
+        if(surface_!=Surface::AddPicker || addChoices_.empty())return;
+        addSort_=::UI::ItemPickerSort::next(addSort_);
+        addIndex_=static_cast<size_t>(::UI::ItemPickerSort::reorder(
+            addChoices_,addNativeChoices_,addSort_,static_cast<int>(addIndex_),nameFor));
+    }
+    [[nodiscard]] ::UI::ItemPickerSort::Mode addSort() const noexcept { return addSort_; }
     // Touch selects a picker row; a second tap on it is the same as A.
     [[nodiscard]] bool tapAddChoice(size_t index) noexcept {
         if(surface_!=Surface::AddPicker || index>=addChoices_.size())return false;
@@ -349,6 +363,8 @@ public:
 private:
     void clearModal() noexcept {
         addChoices_.clear();
+        addNativeChoices_.clear();
+        addSort_=::UI::ItemPickerSort::Mode::Native;
         addIndex_=0;
         removeTarget_.reset();
         removeRow_=0;
@@ -380,6 +396,8 @@ private:
     size_t pocket_=0;
     size_t row_=0;
     std::vector<uint16_t> addChoices_;
+    std::vector<uint16_t> addNativeChoices_;
+    ::UI::ItemPickerSort::Mode addSort_=::UI::ItemPickerSort::Mode::Native;
     size_t addIndex_=0;
     std::optional<Trainer::InventoryItem> removeTarget_;
     size_t removeRow_=0;

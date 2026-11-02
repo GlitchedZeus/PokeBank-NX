@@ -152,16 +152,30 @@ inline const Choice* verifiedTemplate(const std::vector<Choice>& choices, uint16
 // keep-stored row (stored location set and not a verified row here), the templates the current
 // level reaches, the gift egg / in-game trade / fateful markers (labelled markers), then the one
 // "Other location (unverified)..." row. Never empty.
+// Round 13 (owner decision 5): the "Hatched from a Day-Care egg" row (kHatchedEggRow). Gen III eggs
+// hatch at Lv. 5; a hatched Pokémon's Met Location is where it hatched and its Met Level is 0
+// (PKHeX EncounterEgg3 / EncounterVerifier.VerifyEncounterEgg3). The row writes the origin game's
+// Day-Care hatch place (MetLocationPolicy::dayCareHatchLocation) and Met Level 0.
+inline constexpr uint16_t kHatchedEggRow = MetRows::kHatchedEggRowValue;
+inline PokeVault::Integration::BreedingPolicy::EggVerdict eggVerdict(uint16_t species, uint8_t currentLevel) noexcept {
+    return PokeVault::Integration::BreedingPolicy::eggHistory(3, species, currentLevel);
+}
+
+// Round 13: the default list offers the hatched-egg row only when BreedingPolicy verifies the
+// species (or a pre-evolution) hatches from a Day-Care egg in Gen III at this level (`species` 0:
+// no hatched-egg row), and only the trade / fateful markers (the gift-egg marker 253 is unverified).
 template <typename Choice>
 inline std::vector<uint16_t> defaultRows(const std::vector<Choice>& choices, uint16_t storedLocation,
-                                         uint8_t origin, uint8_t currentLevel) {
+                                         uint8_t origin, uint8_t currentLevel, uint16_t species = 0) {
     std::vector<uint16_t> rows;
     const bool keepRow = storedLocation != 0 && !reachedTemplateAt(choices, storedLocation, currentLevel);
     if (keepRow) rows.push_back(kKeepStoredRow);
     for (std::size_t i = 0; i < choices.size(); ++i)
         if (levelReached(choices[i], currentLevel)) rows.push_back(static_cast<uint16_t>(i));
+    if (species != 0 && Policy::dayCareHatchLocation(origin) != 0 && eggVerdict(species, currentLevel).verified())
+        rows.push_back(kHatchedEggRow);
     for (const auto id : MetRows::gen3OfferedLocations(origin)) {
-        if (!MetRows::gen3MarkerLocation(id) || (keepRow && id == storedLocation)) continue;
+        if (!MetRows::gen3DefaultMarker(id) || (keepRow && id == storedLocation)) continue;
         if (reachedTemplateAt(choices, id, currentLevel)) continue;
         rows.push_back(MetRows::otherNativeRow(id));
     }
@@ -174,15 +188,18 @@ inline std::vector<uint16_t> defaultRows(const std::vector<Choice>& choices, uin
 // no template and is not a marker. Empty only for an origin with no native Gen III GBA list.
 template <typename Choice>
 inline std::vector<uint16_t> unverifiedRows(const std::vector<Choice>& choices, uint16_t storedLocation,
-                                            uint8_t origin, uint8_t currentLevel) {
+                                            uint8_t origin, uint8_t currentLevel, uint16_t species = 0) {
     std::vector<uint16_t> rows;
     const bool keepRow = storedLocation != 0 && !reachedTemplateAt(choices, storedLocation, currentLevel);
     if (keepRow) rows.push_back(kKeepStoredRow);
     for (std::size_t i = 0; i < choices.size(); ++i)
         if (!levelReached(choices[i], currentLevel)) rows.push_back(static_cast<uint16_t>(i));
+    // Round 13: a hatched-egg history BreedingPolicy does not verify (labelled with the reason).
+    if (species != 0 && Policy::dayCareHatchLocation(origin) != 0 && !eggVerdict(species, currentLevel).verified())
+        rows.push_back(kHatchedEggRow);
     for (const auto row : MetRows::otherNativeRows(
              MetRows::gen3OfferedLocations(origin),
-             [&](uint16_t id) { return storedLocationListed(choices, id) || MetRows::gen3MarkerLocation(id); },
+             [&](uint16_t id) { return storedLocationListed(choices, id) || MetRows::gen3DefaultMarker(id); },
              keepRow, storedLocation))
         rows.push_back(row);
     return rows;
@@ -261,9 +278,23 @@ struct RowText {
 };
 template <typename Choice>
 inline RowText rowText(const std::vector<Choice>& choices, uint16_t value, uint8_t origin,
-                       uint16_t storedLocation, uint8_t storedMetLevel, uint8_t currentLevel = 0) {
+                       uint16_t storedLocation, uint8_t storedMetLevel, uint8_t currentLevel = 0,
+                       uint16_t species = 0) {
     if (value == kUnverifiedListRow)   // Round 12: opens the unverified list; never a location
         return {Policy::kUnverifiedListRowPlace, Policy::kUnverifiedListRowDetail, false};
+    if (value == kHatchedEggRow) {
+        // Round 13 (owner decision 5): the hatch place it writes; verified only by BreedingPolicy.
+        const auto egg = eggVerdict(species, currentLevel);
+        RowText out{Names::getMetLocationDisplayName(origin, Policy::dayCareHatchLocation(origin)), {}, egg.verified()};
+        if (egg.verified()) {
+            out.detail = std::string(Policy::kHatchedEggVerified) + " Lv. 5+";
+            if (egg.hatchedAs != species) out.detail += " via " + std::string(Names::getSpeciesName(egg.hatchedAs));
+        } else {
+            out.detail = std::string(Policy::kHatchedEggUnverified) + "; " +
+                         PokeVault::Integration::BreedingPolicy::reasonText(egg.reason) + "; unverified";
+        }
+        return out;
+    }
     if (value == kKeepStoredRow) {
         // R2-BUG-008: the save's own met location, not judged (traded / hatched / event / other).
         return {"Keep stored: " + Names::getMetLocationDisplayName(origin, storedLocation),
@@ -327,6 +358,16 @@ inline std::string encounterOriginText(const std::vector<Choice>& choices, uint1
             if (const auto* row = dataRowOf(choice); row && !accessKnown(choice))
                 return PokeVault::Integration::GiftStaticEncounters::incompleteNote(*row);
     }
+    // Round 13 (owner decision 5): Met Level 0 is a hatched egg (any hatch place of the game).
+    if (metLevel == 0 && !MetRows::gen3MarkerLocation(location)) {
+        const auto egg = eggVerdict(species, currentLevel);
+        if (egg.verified())
+            return egg.hatchedAs == species
+                ? "Hatched: " + std::string(Names::getSpeciesName(species))
+                : "Hatched: " + std::string(Names::getSpeciesName(egg.hatchedAs)) + " → " + Names::getSpeciesName(species);
+        return std::string("Hatched-egg history; ") + PokeVault::Integration::BreedingPolicy::reasonText(egg.reason) +
+               "; unverified";
+    }
     if (MetRows::gen3MarkerLocation(location)) return MetRows::gen3OtherDetail(location);
     if (storedLocationListed(choices, location)) return "Not a listed catch at this level; unverified";
     return MetRows::kOtherPlaceDetail;
@@ -342,6 +383,10 @@ inline std::string evidenceNote(const std::vector<Choice>& choices, uint16_t spe
         const auto* row = dataRowOf(*verified);
         return row ? PokeVault::Integration::GiftStaticEncounters::singleSourceNote(*row) : std::string();
     }
+    // Round 13 (owner decision 5): a hatched egg (Met Level 0) BreedingPolicy verifies needs no note.
+    if (metLevel == 0 && location != 0 && !MetRows::gen3MarkerLocation(location) &&
+        eggVerdict(species, currentLevel).verified())
+        return {};
     return encounterOriginText(choices, species, location, metLevel, currentLevel);
 }
 

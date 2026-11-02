@@ -54,11 +54,18 @@ assert "void drawTransientStatus(PKSEFramebuffer& fb);" in header
 # Only one painter: no second copy of the toast drawing code.
 assert len(re.findall(r"fb\.drawText\([^;]*storageStatus,", base)) == 1
 
-# Each generation's export reports through postStatus (now always visible).
+# Each generation's export reports through postStatus (now always visible). Round 14 R08 (owner
+# regression list: "save-export messages"): every generation words the result through the ONE shared
+# wording (include/UI/ExportMessages.h), success and refusal alike.
 for rel, needle in (
-        ("src/UI/Gen4SharedPokemonSurface.inc", 'screen.postStatus("Verified copy exported: "'),
-        ("src/UI/Gen3SharedPokemonSurface.inc", "screen.postStatus("),
-        ("src/UI/Gen5SharedReadOnlySurface.inc", 'screen.postStatus("Gen V export blocked: "')):
+        ("src/UI/Gen4SharedPokemonSurface.inc", "screen.postStatus(PokeBank::UIModel::ExportMessages::exported("),
+        ("src/UI/Gen3SharedPokemonSurface.inc", "screen.postStatus(PokeBank::UIModel::ExportMessages::exported("),
+        ("src/UI/Gen5SharedReadOnlySurface.inc", "screen.postStatus(PokeBank::UIModel::ExportMessages::failed("),
+        ("src/UI/Gen5SharedReadOnlySurface.inc", "screen.postStatus(PokeBank::UIModel::ExportMessages::exported(")):
     assert needle in read(rel), (rel, needle)
+for rel in ("src/UI/Gen3SharedPokemonSurface.inc", "src/UI/Gen4SharedPokemonSurface.inc",
+            "src/UI/Gen5SharedReadOnlySurface.inc", "src/UI/Gen2SharedPokemonSurface.inc",
+            "src/UI/ClassicInventoryOverlay.cpp", "src/UI/TrainerViewScreenCompositeOverlay.cpp"):
+    assert "Verified copy exported: " not in read(rel), (rel, "export wording is not shared")
 
 print("B08 status toast contracts: PASS")

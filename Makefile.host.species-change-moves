@@ -83,3 +83,16 @@ $(HOST_BUILD)/test_species_change_history_policy: tests/test_species_change_hist
 $(HOST_BUILD)/test_species_change_history_policy_sanitize: tests/test_species_change_history_policy.cpp $(SPECIES_MOVES_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_species_change_history_policy.cpp -o $@
+# Round 13 (owner decisions 5 / 6): Gen IV Day-Care / trade markers through Create, export, strict reparse.
+GEN4_BREEDING_MARKERS_SOURCES := tests/test_gen4_breeding_markers.cpp \
+	$(filter-out tests/test_gen4_staged_pokemon_editor.cpp,$(GEN4_STAGED_EDITOR_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen4_breeding_markers
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_breeding_markers_sanitize
+host-test: $(HOST_BUILD)/test_gen4_breeding_markers
+host-sanitize: $(HOST_BUILD)/test_gen4_breeding_markers_sanitize
+$(HOST_BUILD)/test_gen4_breeding_markers: $(GEN4_BREEDING_MARKERS_SOURCES) $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN4_BREEDING_MARKERS_SOURCES) -o $@
+$(HOST_BUILD)/test_gen4_breeding_markers_sanitize: $(GEN4_BREEDING_MARKERS_SOURCES) $(SPECIES_MOVES_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN4_BREEDING_MARKERS_SOURCES) -o $@

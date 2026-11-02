@@ -783,7 +783,12 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
     } else if (target == PickerTarget::Ball) {
         ok = state.session.working->setBall(static_cast<uint8_t>(value));
     } else if (target == PickerTarget::MetLocation) {
-        ok = state.session.working->setMetLocation(value);
+        // Round 13 (owner decisions 5 / 6): "Hatched from a Day-Care egg" writes the native hatched
+        // fields (Met Location = the game's Day-Care hatch place, Met Level 0, Egg Location 2000).
+        if (PokeVault::Integration::EncounterContext45::Catalogue::isHatchedEggRow(value))
+            ok = state.session.working->setHatchedEggHistory();
+        else
+            ok = state.session.working->setMetLocation(value);
         // Round 11 follow-up: an explicit choice from the exact game's list (the flag, not != 0).
         if (ok) state.session.noteMetLocationChosen();
     } else if (target == PickerTarget::Form) {
@@ -1148,7 +1153,7 @@ bool handleReleaseConfirm(TrainerViewScreen& screen, State& state, u64 down) {
 void exportStagedGen4Copy(TrainerViewScreen& screen) {
     auto* staged = editor(screen);
     if (!staged || !staged->hasChanges()) {
-        screen.postStatus("No staged Generation IV changes to export", 240);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::kNothingToExport, 240);
         return;
     }
     std::string error;
@@ -1156,7 +1161,7 @@ void exportStagedGen4Copy(TrainerViewScreen& screen) {
     const std::string timestamp = Utils::getTimestamp();
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
         !PokeBank::Paths::isSafeTimestamp(timestamp)) {
-        screen.postStatus(error.empty() ? "Could not prepare the Generation IV export folder" : error, 420);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error.empty() ? "could not prepare the export folder" : error), 420);
         return;
     }
     PokeVault::Integration::Gen4::Gen4ExportRequest request;
@@ -1171,10 +1176,10 @@ void exportStagedGen4Copy(TrainerViewScreen& screen) {
 #endif
     const auto result = PokeVault::Integration::Gen4::publishVerifiedGen4Export(*staged, request);
     if (!result.success) {
-        screen.postStatus(result.error.empty() ? "Verified Generation IV export failed" : result.error, 480);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::failed(result.error), 480);
         return;
     }
-    screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
+    screen.postStatus(PokeBank::UIModel::ExportMessages::exported(result.directory + "/edited.sav"), 600);
 }
 
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down) {
@@ -1256,6 +1261,10 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         // Round 12 (R12-004): the default list's last row opens the unverified list.
         if (PokeVault::Integration::EncounterContext45::Catalogue::isUnverifiedListRow(value))
             label = PokeVault::Integration::MetLocationPolicy::kUnverifiedListRowPlace;
+        // Round 13: the hatched-egg row names the hatch place it writes.
+        if (preview && PokeVault::Integration::EncounterContext45::Catalogue::isHatchedEggRow(value))
+            label = Names::getMetLocationChoiceName(preview->originVersion(),
+                PokeVault::Integration::MetLocationPolicy::dayCareHatchLocation(preview->originVersion()));
         if (state.pickerMetContextActive)
             label += "  |  " + state.pickerMetContext.detail(value,
                 [](uint16_t species) { return Names::getSpeciesName(species); });
@@ -1563,7 +1572,8 @@ struct Gen4Editor {
         const uint8_t origin = static_cast<uint8_t>(r.originVersion());
         const uint16_t met = origin == 7 || origin == 8 ? r.metLocationExtended() : view.metLocation();
         if (auto note = PokeVault::Integration::EncounterContext45::unverifiedMetNote45(
-                origin, r.species(), met, static_cast<uint8_t>(view.level())); !note.empty()) {
+                origin, r.species(), met, static_cast<uint8_t>(view.level()), view.eggLocation(), r.metLevel());
+            !note.empty()) {
             auto at = std::find_if(rows.begin(), rows.end(), [](const auto& row) { return row.label == "Met"; });
             rows.insert(at == rows.end() ? rows.end() : at + 1, {"Met evidence", std::move(note)});
         }
@@ -2285,8 +2295,8 @@ void drawItemAddPicker(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State
             return Names::getMachineDescriptor(game,state.itemAddChoices[static_cast<size_t>(index)]).moveId;
         },
         stateFor(screen).itemAddScrollbar);   // shared draggable scrollbar, published by the grid
-    drawNavBar(fb,{{"D-pad/Stick","Choose"},{"L/R","Page"},
-                   {"A","Add"},{"B","Cancel"},{"X","Sort"}});
+    // Round 14 R08: the ONE Gen I-V Add picker footer (InventoryUIContract.h), Gen I-III wording.
+    drawNavBar(fb,PokeBank::UIModel::serializeInventoryFooter(PokeBank::UIModel::addItemPickerFooterHints(true)));
 }
 
 void drawItemKeyWarning(TrainerViewScreen& screen,PKSEFramebuffer& fb,const State& state) {

@@ -5459,40 +5459,30 @@ int reviewGeneration(const std::string& gameId) {
                      sourceGameId=="platinum_nds" ||
                      sourceGameId=="heartgold_nds" || sourceGameId=="soulsilver_nds");
                 if(gen4ItemView) {
-                    // The Gen IV bag footer comes from the shared footer model and the ONE Gen IV
-                    // quantity query: A appears only for a quantity-editable item (QuantityPolicy),
-                    // never for a unique Key Item / HM.
-                    namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
-                    Presentation::Footer footer;
-                    footer.push("D-pad/Stick", "Items");
-                    footer.push("L/R", "Pocket");
+                    // Round 14 R08: the Gen IV Bag draws the ONE Gen I-V Bag footer model
+                    // (InventoryUIContract inventoryFooterHints) in the Gen I-III wording ("A: Edit
+                    // Amount", "Y: Remove Item", "L/R: Category"). A appears only for a
+                    // quantity-editable item (the ONE Gen IV quantity query, never a unique Key
+                    // Item / HM); ZR Top Up is offered like X Add Item (the surface reports when no
+                    // staged bag exists); + opens Review straight from the Bag (Round 6 B08).
                     const auto visible = visibleItemIndices();
                     const bool hasItem = selectedCategory >= 0 &&
                         selectedCategory < static_cast<int>(trainer.items.size()) &&
                         selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(visible.size());
+                    bool quantityEditable = false;
                     if (hasItem) {
                         const auto& pouch = trainer.items[static_cast<size_t>(selectedCategory)];
                         const auto raw = static_cast<size_t>(visible[static_cast<size_t>(selectedItemIndex)]);
-                        if (raw < pouch.size() &&
+                        quantityEditable = raw < pouch.size() &&
                             PokeBank::UIModel::Gen4BagQuantity::rule(
-                                sourceGameId, static_cast<size_t>(selectedCategory), pouch[raw].itemId).editable)
-                            footer.push("A", "Edit Quantity");
+                                sourceGameId, static_cast<size_t>(selectedCategory), pouch[raw].itemId).editable;
                     }
-                    footer.push("X", "Add Item");
-                    if (hasItem) footer.push("Y", "Remove");
-                    // Top Up / Add Missing (owner Oct 28, Feature B; Gen4SharedPokemonSurface.inc),
-                    // offered like X Add Item: the surface reports when no staged bag exists.
-                    footer.push("ZR", "Top Up");
-                    // Round 6 (B08): Review straight from the Bag (+; Y stays Remove).
                     static_assert(PokeBank::UIModel::ReviewEntry::footerHint(
                                       PokeBank::UIModel::ReviewEntry::Screen::Bag, 4).glyph[0] == '+');
-                    footer.push("+", "Review");
-                    footer.push("B", "Back");
-                    instructions.clear();
-                    for (const auto& hint : footer) {
-                        if (!instructions.empty()) instructions += "  |  ";
-                        instructions += std::string(hint.glyph) + ": " + hint.label;
-                    }
+                    instructions = PokeBank::UIModel::inventoryFooter(
+                        true, true, hasItem, quantityEditable,
+                        PokeBank::UIModel::ReviewEntry::footerText(PokeBank::UIModel::ReviewEntry::Screen::Bag, 4),
+                        true);
                 } else {
                     // One fixed order for every Gen I-IV browse page, as in Gen V (E05).
                     namespace BrowseFooter = PokeBank::UIModel::ClassicBrowseFooter;
@@ -5521,8 +5511,9 @@ int reviewGeneration(const std::string& gameId) {
                     }
                     // Round 7: the Gen V save hub's + opens Review (Gen5SharedReadOnlySurface browse
                     // input, Help "+ Review staged ..."); its footer now shows that key too, so no
-                    // screen has a Review key its footer does not name.
-                    if (!detailViewActive && reviewGen == 5) {
+                    // screen has a Review key its footer does not name. Round 14 R08: the Gen I-IV hub
+                    // has the same + Review (ClassicBrowseReview::open), so every hub shows it.
+                    if (!detailViewActive && reviewGen >= 1 && reviewGen <= 5) {
                         spec.review = true;
                         spec.reviewGlyph = "+";
                     }

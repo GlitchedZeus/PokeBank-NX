@@ -601,7 +601,7 @@ std::pair<std::string, std::string> metLocationChoiceText(const State& state, ui
     // markers name themselves, and keep-stored is the save's own value, never judged.
     const auto& stored = state.session.working;
     auto text = EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,
-                                         stored.metLocation, stored.metLevel, stored.level);
+                                         stored.metLocation, stored.metLevel, stored.level, stored.species);
     return {std::move(text.place), std::move(text.detail)};
 }
 
@@ -1825,7 +1825,7 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
     if (!staged || (!staged->hasPendingChanges() &&
                     !(inventory && inventory->hasPendingChanges()) &&
                     !(trainer && trainer->hasPendingChanges()))) {
-        screen.postStatus("No staged Generation III changes to export", 240);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::kNothingToExport, 240);
         return;
     }
     std::string error;
@@ -1838,7 +1838,7 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
     const std::string timestamp = Utils::getTimestamp();
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
         !PokeBank::Paths::isSafeTimestamp(timestamp)) {
-        screen.postStatus(error.empty() ? "Could not prepare the Generation III export folder" : error, 420);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error.empty() ? "could not prepare the export folder" : error), 420);
         return;
     }
     Gen3::Gen3ExportRequest request;
@@ -1854,10 +1854,10 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
     // save carries every workspace.
     const auto result = Gen3::publishVerifiedGen3Export(*staged, request, inventory, trainer);
     if (!result.success) {
-        screen.postStatus(result.error.empty() ? "Verified Generation III export failed" : result.error, 480);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::failed(result.error), 480);
         return;
     }
-    screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
+    screen.postStatus(PokeBank::UIModel::ExportMessages::exported(result.directory + "/edited.sav"), 600);
 }
 
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
