@@ -2,8 +2,8 @@
 
 Independent QA for the Main Development application: parser robustness fuzzing, export-safety
 contracts, exact-head NRO auditing, and CI for all of it. This lane owns new files only
-(`tests/fuzz_*`, `tests/test_qa_*`, `tests/fixtures/qa/**`, `tools/qa/**`, `Makefile.host.qa`,
-`.github/workflows/app-qa-*.yml`, `docs/qa/**`) plus one `include Makefile.host.qa` line in
+(`tests/fuzz_*`, `tests/test_qa_*`, `tests/fixtures/qa/**`, `tools/qa/**`, `build-system/host/Makefile.host.qa`,
+`.github/workflows/app-qa-*.yml`, `docs/qa/**`) plus one `include build-system/host/Makefile.host.qa` line in
 `Makefile.host`. It never edits production `src/` or `include/`; defects go to the owning thread with
 a failing regression test (see [FINDINGS.md](FINDINGS.md)).
 
@@ -23,7 +23,7 @@ make -f Makefile.host qa-known-failures        # open-defect repros; exits non-z
 
 `qa*` targets are opt-in; the default `host-test` / `host-sanitize` graph is unchanged.
 
-Header dependencies: host rules list only their `.cpp` prerequisites, so `Makefile.host.deps` (included
+Header dependencies: host rules list only their `.cpp` prerequisites, so `build-system/host/Makefile.host.deps` (included
 last by `Makefile.host`) wraps every `$(CXX)` call in `tools/qa/cxx_with_deps.sh`, which records the
 headers each output was built from in `build-host/.hdrdeps/`. `tools/qa/host_header_sweep.py` runs when
 the Makefile is parsed and deletes any output older than one of its headers, so a header-only change
