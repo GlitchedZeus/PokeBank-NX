@@ -410,7 +410,8 @@ MetLocationCounts exhaustiveMetLocation(SourceGame game, Family family) {
     auto editor = StagedPokemonEditor::create(source, game, error);
     require(editor && error.empty(), id + " editor: " + error);
     MetLocationCounts counts;
-    std::size_t rowsChecked = 0, stagedChecked = 0, templateRows = 0, markerRows = 0, otherRows = 0, levelRows = 0;
+    std::size_t rowsChecked = 0, stagedChecked = 0, templateRows = 0, markerRows = 0, otherRows = 0, levelRows = 0,
+                hatchedRows = 0;
     for (uint16_t species = 1; species <= 386; ++species) {
         const std::string what = id + " " + std::to_string(species);
         Session base;
@@ -444,11 +445,23 @@ MetLocationCounts exhaustiveMetLocation(SourceGame game, Family family) {
                 what + ": the default list ends with the one 'Other location (unverified)...' row");
         std::size_t verifiedHere = 0;
         std::array<bool, 3> markerCovered{};   // 253 gift egg, 254 trade, 255 event
+        // Round 13 (owner decision 5, "no generic egg histories presented as verified"; updated
+        // deliberately): the hatched-egg row is in the default list exactly when the breeding data
+        // verifies the species (or a pre-evolution) hatches in Gen III at this level, otherwise in
+        // the unverified list; the bare gift-egg marker 253 is never a default row.
+        const auto egg = Picker::eggVerdict(species, base.working.level);
+        require(std::count(picker.rows.begin(), picker.rows.end(), Picker::kHatchedEggRow) == (egg.verified() ? 1 : 0) &&
+                std::count(unverified.rows.begin(), unverified.rows.end(), Picker::kHatchedEggRow) == (egg.verified() ? 0 : 1),
+                what + ": the hatched-egg row is in exactly one list, by the breeding verdict");
+        require(std::count(picker.rows.begin(), picker.rows.end(), Rows::otherNativeRow(253)) == 0,
+                what + ": the gift-egg marker is not a default row");
+        hatchedRows += egg.verified();
         for (const auto row : picker.rows) {
             Session chosen = base;
             const PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice* applied = nullptr;
             const auto text = Picker::rowText(picker.choices, row, chosen.working.originGame,
-                                              base.working.metLocation, base.working.metLevel, base.working.level);
+                                              base.working.metLocation, base.working.metLevel, base.working.level,
+                                              base.working.species);
             require(text.detail.find("legal") == std::string::npos, what + ": no row says legal");
             require(row != Picker::kKeepStoredRow, "a new draft has no stored location to keep");
             if (row == Picker::kUnverifiedListRow) {
@@ -463,6 +476,18 @@ MetLocationCounts exhaustiveMetLocation(SourceGame game, Family family) {
             require(chosen.metLocationChosen && chosen.missingRequiredFields().empty(),
                     what + ": any offered row makes Keep possible");
             const bool unverifiedText = text.detail.find("unverified") != std::string::npos;
+            if (row == Picker::kHatchedEggRow) {
+                // Round 13: a verified hatched egg -- the Day-Care hatch place, Met Level 0.
+                require(!applied && text.verifiedCatch && !unverifiedText &&
+                        text.detail.find(Policy::kHatchedEggVerified) != std::string::npos &&
+                        chosen.working.metLocation == Policy::dayCareHatchLocation(origin(game)) &&
+                        chosen.working.metLevel == 0 && chosen.encounterStillValid() &&
+                        Picker::encounterOriginText(picker.choices, species, chosen.working.metLocation, 0,
+                                                    chosen.working.level).rfind("Hatched: ", 0) == 0,
+                        what + ": the hatched-egg row is a verified hatch: " + text.detail);
+                ++rowsChecked;
+                continue;
+            }
             if (Rows::isOtherNativeRow(row)) {
                 // Only the game's own markers, labelled as markers.
                 ++markerRows;
@@ -501,9 +526,8 @@ MetLocationCounts exhaustiveMetLocation(SourceGame game, Family family) {
                     what + ": every offered row is native to the exact game");
             ++rowsChecked;
         }
-        // Never empty: a species with no verified row here still shows the three markers.
-        require(markerCovered == (std::array<bool, 3>{true, true, true}),
-                what + ": the gift egg / trade / event markers are in the default list");
+        // Never empty: a species with no verified row here still shows the trade / event markers.
+        require(markerCovered[1] && markerCovered[2], what + ": the trade / event markers are in the default list");
         if (verifiedHere == 0) ++counts.markersOnly;
         // UNVERIFIED list: reachable, labelled, every row an explicit choice that stays unverified.
         for (const auto row : unverified.rows) {
@@ -514,13 +538,22 @@ MetLocationCounts exhaustiveMetLocation(SourceGame game, Family family) {
             require(chosen.metLocationChosen && chosen.missingRequiredFields().empty(),
                     what + ": an unverified row is still an explicit choice");
             const auto text = Picker::rowText(unverified.choices, row, chosen.working.originGame,
-                                              base.working.metLocation, base.working.metLevel, base.working.level);
+                                              base.working.metLocation, base.working.metLevel, base.working.level,
+                                              base.working.species);
             require(!text.verifiedCatch && text.detail.find("legal") == std::string::npos, what + ": never verified");
-            if (Rows::isOtherNativeRow(row)) {
+            if (row == Picker::kHatchedEggRow) {
+                // Round 13: an egg history the breeding data does not verify says why.
+                require(text.detail.find("unverified") != std::string::npos &&
+                        text.detail.find(PokeVault::Integration::BreedingPolicy::reasonText(egg.reason)) != std::string::npos &&
+                        chosen.working.metLevel == 0 && !chosen.encounterStillValid(),
+                        what + ": an unverified egg row names its reason: " + text.detail);
+            } else if (Rows::isOtherNativeRow(row)) {
                 ++otherRows;
-                require(text.detail == Rows::kOtherPlaceDetail &&
-                        !Rows::gen3MarkerLocation(Rows::otherNativeRowLocation(row)),
-                        what + ": an other place is labelled unverified: " + text.detail);
+                // Round 13: the gift-egg marker 253 is here now, still labelled as a marker.
+                const auto location = Rows::otherNativeRowLocation(row);
+                require(location == 253 ? text.detail == Rows::kEggMarkerDetail
+                                        : text.detail == Rows::kOtherPlaceDetail && !Rows::gen3MarkerLocation(location),
+                        what + ": an other place / the gift-egg marker is labelled unverified: " + text.detail);
             } else {
                 ++levelRows;   // R12-005: a template above the level, kept but moved here
                 const auto* choice = Picker::choiceAt(unverified.choices, row);
@@ -573,12 +606,12 @@ MetLocationCounts exhaustiveMetLocation(SourceGame game, Family family) {
             ++stagedChecked;
         }
     }
-    require(templateRows > 0 && markerRows > 0 && otherRows > 0 && levelRows > 0,
+    require(templateRows > 0 && markerRows > 0 && otherRows > 0 && levelRows > 0 && hatchedRows > 0,
             id + ": every kind of row is exercised");
     std::cout << id << ": 386 species, " << rowsChecked << " rows chosen (" << templateRows << " verified, "
               << markerRows << " markers, " << otherRows << " unverified places, " << levelRows
               << " above the level), " << stagedChecked << " staged and reparsed, " << counts.markersOnly
-              << " markers only, " << counts.empty << " empty\n";
+              << " markers only, " << counts.empty << " empty, " << hatchedRows << " species with a verified hatched-egg row\n";
     return counts;
 }
 
@@ -600,10 +633,15 @@ void ownerExamples() {
     const auto all = pikachu.metLocationPicker(true).rows;
     std::cout << "Ruby Pikachu Lv. 25: default list " << rows.size() << " rows (was 87), unverified list "
               << all.size() << " rows\n";
+    // Round 13 (owner decision 5; updated deliberately): the hatched-egg row (Pikachu hatches as
+    // Pichu) replaces the generic gift-egg marker, which moves to the unverified list.
     require(rows.size() == 5 && rows.front() == 0 && rows.back() == Picker::kUnverifiedListRow &&
-            rows[1] == Rows::otherNativeRow(253) && rows[2] == Rows::otherNativeRow(254) &&
-            rows[3] == Rows::otherNativeRow(255), "Ruby Pikachu: Safari Zone, 3 markers, Other location");
-    require(rows.size() - 1 + all.size() == 87, "every one of the 87 earlier rows is still reachable");
+            rows[1] == Picker::kHatchedEggRow && rows[2] == Rows::otherNativeRow(254) &&
+            rows[3] == Rows::otherNativeRow(255), "Ruby Pikachu: Safari Zone, hatched egg, 2 markers, Other location");
+    require(Picker::rowText(pikachu.metLocationPicker().choices, Picker::kHatchedEggRow, 2, 0, 0, 25, 25).detail ==
+                "Hatched Day-Care egg Lv. 5+ via Pichu", "Ruby Pikachu hatched via Pichu");
+    require(std::count(all.begin(), all.end(), Rows::otherNativeRow(253)) == 1, "the gift-egg marker is unverified");
+    require(rows.size() - 1 + all.size() == 88, "every one of the 87 earlier rows plus the hatched row is reachable");
     Session raichu;
     raichu.beginCreate(editor->trainer(), 2);
     require(raichu.setSpecies(26, "ruby_gba") && raichu.working.level == 5, "Ruby Raichu Lv. 5");

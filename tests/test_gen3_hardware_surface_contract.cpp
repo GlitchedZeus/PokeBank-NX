@@ -248,8 +248,10 @@ int main() {
     // origin-game templates plus every other native location (Kanto for FR/LG), honestly labelled.
     assert(surface.find("No supported exact-game encounter templates for this Pokemon") == std::string::npos);
     contains(surface, "EncounterPicker::templatesForOrigin(");
-    contains(metModel, "Gen3EncounterPicker::defaultRows(picker.choices, working.metLocation, working.originGame, working.level)");
-    contains(metModel, "Gen3EncounterPicker::unverifiedRows(picker.choices, working.metLocation, working.originGame, working.level)");
+    // Round 13 (owner decision 5; updated deliberately): the species is passed too, so the lists can
+    // place the breeding-verified "Hatched from a Day-Care egg" row.
+    contains(metModel, "Gen3EncounterPicker::defaultRows(picker.choices, working.metLocation, working.originGame, working.level,\n                                               working.species)");
+    contains(metModel, "Gen3EncounterPicker::unverifiedRows(picker.choices, working.metLocation, working.originGame, working.level,\n                                                  working.species)");
     contains(surface, "EncounterPicker::selectedRowIn(");
     contains(metModel, "ExactGameMetLocations::isOtherNativeRow(row)");
     contains(metModel, "MetRows::gen3OtherDetail(");

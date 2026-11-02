@@ -783,7 +783,12 @@ bool applyGen4Picker(TrainerViewScreen& screen, State& state, PickerTarget targe
     } else if (target == PickerTarget::Ball) {
         ok = state.session.working->setBall(static_cast<uint8_t>(value));
     } else if (target == PickerTarget::MetLocation) {
-        ok = state.session.working->setMetLocation(value);
+        // Round 13 (owner decisions 5 / 6): "Hatched from a Day-Care egg" writes the native hatched
+        // fields (Met Location = the game's Day-Care hatch place, Met Level 0, Egg Location 2000).
+        if (PokeVault::Integration::EncounterContext45::Catalogue::isHatchedEggRow(value))
+            ok = state.session.working->setHatchedEggHistory();
+        else
+            ok = state.session.working->setMetLocation(value);
         // Round 11 follow-up: an explicit choice from the exact game's list (the flag, not != 0).
         if (ok) state.session.noteMetLocationChosen();
     } else if (target == PickerTarget::Form) {
@@ -1256,6 +1261,10 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         // Round 12 (R12-004): the default list's last row opens the unverified list.
         if (PokeVault::Integration::EncounterContext45::Catalogue::isUnverifiedListRow(value))
             label = PokeVault::Integration::MetLocationPolicy::kUnverifiedListRowPlace;
+        // Round 13: the hatched-egg row names the hatch place it writes.
+        if (preview && PokeVault::Integration::EncounterContext45::Catalogue::isHatchedEggRow(value))
+            label = Names::getMetLocationChoiceName(preview->originVersion(),
+                PokeVault::Integration::MetLocationPolicy::dayCareHatchLocation(preview->originVersion()));
         if (state.pickerMetContextActive)
             label += "  |  " + state.pickerMetContext.detail(value,
                 [](uint16_t species) { return Names::getSpeciesName(species); });
@@ -1563,7 +1572,8 @@ struct Gen4Editor {
         const uint8_t origin = static_cast<uint8_t>(r.originVersion());
         const uint16_t met = origin == 7 || origin == 8 ? r.metLocationExtended() : view.metLocation();
         if (auto note = PokeVault::Integration::EncounterContext45::unverifiedMetNote45(
-                origin, r.species(), met, static_cast<uint8_t>(view.level())); !note.empty()) {
+                origin, r.species(), met, static_cast<uint8_t>(view.level()), view.eggLocation(), r.metLevel());
+            !note.empty()) {
             auto at = std::find_if(rows.begin(), rows.end(), [](const auto& row) { return row.label == "Met"; });
             rows.insert(at == rows.end() ? rows.end() : at + 1, {"Met evidence", std::move(note)});
         }

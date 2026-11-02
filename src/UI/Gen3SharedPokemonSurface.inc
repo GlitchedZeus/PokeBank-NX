@@ -601,7 +601,7 @@ std::pair<std::string, std::string> metLocationChoiceText(const State& state, ui
     // markers name themselves, and keep-stored is the save's own value, never judged.
     const auto& stored = state.session.working;
     auto text = EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,
-                                         stored.metLocation, stored.metLevel, stored.level);
+                                         stored.metLocation, stored.metLevel, stored.level, stored.species);
     return {std::move(text.place), std::move(text.detail)};
 }
 

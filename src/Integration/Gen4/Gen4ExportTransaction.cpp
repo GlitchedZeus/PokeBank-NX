@@ -203,6 +203,16 @@ std::vector<std::pair<std::string,std::string>> describeStagedReviewChanges(
         detail("Ball",Enums::getBallName(bv.ball()));
         detail("Met",Names::getMetLocationDisplayName(b.originVersion(),bv.metLocation())+", Lv "+
                std::to_string(b.metLevel()));
+        // Round 13 (owner decisions 5 / 6): the hatched-egg row's Egg Location, and the honest note
+        // for a Met Location the breeding / trade / wild data does not verify.
+        if(bv.eggLocation())detail("Egg Location",Names::getMetLocationDisplayName(b.originVersion(),bv.eggLocation()));
+        {
+            const uint8_t origin=static_cast<uint8_t>(b.originVersion());
+            const uint16_t met=origin==7 || origin==8 ? b.metLocationExtended() : bv.metLocation();
+            if(const auto note=PokeVault::Integration::EncounterContext45::unverifiedMetNote45(
+                   origin,b.species(),met,static_cast<uint8_t>(bv.level()),bv.eggLocation(),b.metLevel());!note.empty())
+                detail("Met evidence",note);
+        }
         detail("Nature",Names::getNatureName(bv.nature()));
         detail("Gender",bv.genderSymbol());
         if(bv.isShiny(b.id32(),{}))detail("Shiny","Yes");
@@ -246,6 +256,9 @@ std::vector<std::pair<std::string,std::string>> describeStagedReviewChanges(
         emit("Ball",Enums::getBallName(av.ball()),Enums::getBallName(bv.ball()));
         emit("Met Location",Names::getMetLocationDisplayName(a.originVersion(),av.metLocation()),
             Names::getMetLocationDisplayName(b.originVersion(),bv.metLocation()));
+        // Round 13 (owner decision 6): the hatched-egg row also writes the Egg Location (2000).
+        emit("Egg Location",av.eggLocation()==0?std::string("None"):Names::getMetLocationDisplayName(a.originVersion(),av.eggLocation()),
+            bv.eggLocation()==0?std::string("None"):Names::getMetLocationDisplayName(b.originVersion(),bv.eggLocation()));
         emit("Language",Enums::getLanguageName(a.language()),Enums::getLanguageName(b.language()));
         emit("Friendship",std::to_string(a.friendship()),std::to_string(b.friendship()));
         emit("Experience",std::to_string(a.experience()),std::to_string(b.experience()));
@@ -258,11 +271,11 @@ std::vector<std::pair<std::string,std::string>> describeStagedReviewChanges(
         // verified wild encounter of the species / its ancestry at this level stays labelled
         // unverified in Review (one note; nothing is refused or changed).
         if(av.metLocation()!=bv.metLocation() || a.metLevel()!=b.metLevel() || av.level()!=bv.level() ||
-           a.species()!=b.species()) {
+           a.species()!=b.species() || av.eggLocation()!=bv.eggLocation()) {
             const uint8_t origin=static_cast<uint8_t>(b.originVersion());
             const uint16_t met=origin==7 || origin==8 ? b.metLocationExtended() : bv.metLocation();
             if(const auto note=PokeVault::Integration::EncounterContext45::unverifiedMetNote45(
-                   origin,b.species(),met,static_cast<uint8_t>(bv.level()));!note.empty())
+                   origin,b.species(),met,static_cast<uint8_t>(bv.level()),bv.eggLocation(),b.metLevel());!note.empty())
                 rows.push_back({location+" / Met evidence",note});
         }
         const auto am=a.moves(),bm=b.moves();

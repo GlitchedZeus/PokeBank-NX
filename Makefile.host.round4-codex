@@ -75,3 +75,13 @@ $(HOST_BUILD)/test_backup_snapshot_open: tests/test_backup_snapshot_open.cpp src
 $(HOST_BUILD)/test_backup_snapshot_open_sanitize: tests/test_backup_snapshot_open.cpp src/Utils/SHA256.cpp
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@
+HOST_TESTS += $(HOST_BUILD)/test_breeding_policy
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_breeding_policy_sanitize
+host-test: $(HOST_BUILD)/test_breeding_policy
+host-sanitize: $(HOST_BUILD)/test_breeding_policy_sanitize
+$(HOST_BUILD)/test_breeding_policy: tests/test_breeding_policy.cpp include/Data/EggGroups.h include/Integration/Encounter/BreedingPolicy.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_breeding_policy.cpp -o $@
+$(HOST_BUILD)/test_breeding_policy_sanitize: tests/test_breeding_policy.cpp include/Data/EggGroups.h include/Integration/Encounter/BreedingPolicy.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_breeding_policy.cpp -o $@
