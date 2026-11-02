@@ -1,4 +1,5 @@
 #include "UI/ClassicSourceGuard.h"
+#include "UI/CreateRequiredFields.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/TrainerViewScreen.h"
 
@@ -10,6 +11,7 @@
 #include "Names/SpeciesNames.h"
 #include "UI/Common.h"
 #include "UI/ClassicInventoryOverlay.h"
+#include "UI/ClassicPackedMovePresentation.h"
 #include "UI/LegacyPresentationRules.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
@@ -183,31 +185,6 @@ std::string gen2MoveDisplay(uint8_t move) {
 
 std::array<uint8_t, 4> editableDVs(const PokeVault::Integration::Gen2::PokemonRecord& pokemon) {
     return {pokemon.dvs[1], pokemon.dvs[2], pokemon.dvs[3], pokemon.dvs[4]};
-}
-
-bool openPokemonActions(TrainerViewScreen& screen) {
-    auto* editor = stagedEditor(screen);
-    if (!editor) {
-        screen.postStatus("Staged Pokemon editor is unavailable; source remains read-only");
-        return false;
-    }
-    if (screen.selectedBoxIndex < 0 || screen.selectedItemIndex < 0 ||
-        screen.selectedBoxIndex >= static_cast<int>(editor->metadata().boxCount) ||
-        screen.selectedItemIndex >= static_cast<int>(editor->metadata().boxCapacity)) {
-        screen.postStatus("Select a Generation II box slot first");
-        return false;
-    }
-    auto& state = editorOverlayState(screen);
-    state.active = true;
-    state.review = false;
-    state.pokemonActions = true;
-    state.pokemonFields = false;
-    state.pokemonBox = screen.selectedBoxIndex;
-    state.pokemonParty = false;
-    state.pokemonSlot = screen.selectedItemIndex;
-    state.pokemonRow = 0;
-    state.reviewRow = 0;
-    return true;
 }
 
 bool stagePokemonFieldEdit(TrainerViewScreen& screen, int row) {
@@ -386,6 +363,11 @@ bool stageAddPokemon(TrainerViewScreen& screen, int box) {
     if (!caught.accepted) return false;
     create.caughtData = static_cast<uint16_t>(caught.value);
 
+    // Round 11 shared Create rule (UI/CreateRequiredFields.h): never add a Pokemon with no move.
+    if (const auto missing = PokeBank::UIModel::CreateRequiredFields::forCreate(2, false, create.moves); missing.any()) {
+        screen.postStatus(PokeBank::UIModel::CreateRequiredFields::message(missing, "Add"), 300);
+        return false;
+    }
     std::size_t slot = 0;
     std::string error;
     if (!editor->stageAddBoxPokemon(static_cast<std::size_t>(box), create, slot, error)) {
@@ -443,18 +425,14 @@ void handlePokemonActionInput(TrainerViewScreen& screen, u64 down) {
             state.pokemonRow = 0;
             break;
         case Actions::SlotAction::Clone: {
-            const auto destination = Utils::promptNumber("Clone to Gen II Box", state.pokemonBox + 1, 1,
-                                                         editor->metadata().boxCount);
-            if (!destination.accepted) break;
-            std::size_t destinationSlot = 0;
-            if (!editor->stageCloneBoxPokemon(static_cast<std::size_t>(state.pokemonBox),
-                                              static_cast<std::size_t>(state.pokemonSlot),
-                                              static_cast<std::size_t>(destination.value - 1),
-                                              destinationSlot, error))
-                screen.postStatus(error.empty() ? "Clone failed" : error, 300);
-            else
-                screen.postStatus("Clone staged in Box " + std::to_string(destination.value) +
-                                  " Slot " + std::to_string(destinationSlot + 1) + "; source unchanged", 300);
+            // Round 11 H31: the one shared visual Clone carry (ClassicPackedMoveOverlay), never a
+            // keypad: the sheet closes, A places the copy on an empty slot, B cancels.
+            const int box = state.pokemonBox, slot = state.pokemonSlot;
+            state.active = false;
+            state.pokemonActions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginCloneFromAction(screen, box, slot))
+                screen.postStatus("Clone could not start from here", 240);
             break;
         }
         case Actions::SlotAction::Add:
@@ -934,11 +912,10 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         const bool pokemonEntrySurface = detailViewActive && selectedMode == ViewMode::Boxes &&
             selectedItemIndex >= 0 && !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
             !saveConfirmActive && !pickerActive && !itemEditDialogActive;
-        if (pokemonEntrySurface && (down & HidNpadButton_X)) {
-            openPokemonActions(*this);
-            controllerNavigation.reset();
-            return;
-        }
+        // Round 11 X-IMPEXP: on the Boxes grid X is Import / Export, handled by the staged parity
+        // surface. Without a staged editor (nothing can be imported or exported) X is inert here
+        // rather than a hidden second way into Pokemon Actions; A still opens them.
+        if (pokemonEntrySurface && (down & HidNpadButton_X)) return;
 
         const bool editorEntrySurface = detailViewActive &&
             selectedMode == ViewMode::Trainer &&

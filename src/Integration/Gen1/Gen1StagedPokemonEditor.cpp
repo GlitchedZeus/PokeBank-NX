@@ -340,7 +340,16 @@ bool StagedPokemonEditor::commit(std::vector<uint8_t> candidate,std::string& err
     if(changes_.empty()) view_=original_;
     error.clear(); return true;
 }
+// Round 11 H32: a packed carry owns the staged image from pickup to place / cancel (cancel commits the
+// pickup snapshot back), so every public box mutation refuses while one is active, as Gen III does.
+// The pickup's own removals use removeBoxedSlot, which has no guard.
+bool StagedPokemonEditor::refuseWhileCarrying(std::string& error) const {
+    if(!packedMove_.active) return false;
+    error="Place or cancel carried Pokemon first";
+    return true;
+}
 bool StagedPokemonEditor::stageEdit(size_t b,size_t s,const BoxPokemonEdit& e,std::string& error) {
+    if(refuseWhileCarrying(error)) return false;
     return stageRecordEdit(false,b,s,e,error);
 }
 bool StagedPokemonEditor::stagePartyPokemonEdit(size_t s,const BoxPokemonEdit& e,std::string& error) {
@@ -423,6 +432,7 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,size_t b,size_t s,const Box
     return true;
 }
 bool StagedPokemonEditor::stageAdd(size_t b,size_t s,const BoxPokemonCreate& c,std::string& error) {
+    if(refuseWhileCarrying(error)) return false;
     if(!destination(b,s,error)) return false;
     if(c.species<1 || c.species>151 || c.level<1 || c.level>100) {error="Invalid Gen I species/level";return false;}
     const auto& l=layout();
@@ -472,6 +482,7 @@ bool StagedPokemonEditor::stageAdd(size_t b,size_t s,const BoxPokemonCreate& c,s
     return commit(std::move(bytes),error);
 }
 bool StagedPokemonEditor::stageClone(size_t sb,size_t ss,size_t b,size_t s,std::string& error) {
+    if(refuseWhileCarrying(error)) return false;
     auto p=boxedPokemon(sb,ss,error); if(!p) {if(error.empty())error="Clone source is empty";return false;}
     if(!destination(b,s,error) || !validPokemon(*p,error)) return false;
     const auto& l=layout();
@@ -483,6 +494,10 @@ bool StagedPokemonEditor::stageClone(size_t sb,size_t ss,size_t b,size_t s,std::
     return commit(std::move(bytes),error);
 }
 bool StagedPokemonEditor::stageRemove(size_t b,size_t s,std::string& error) {
+    if(refuseWhileCarrying(error)) return false;
+    return removeBoxedSlot(b,s,error);
+}
+bool StagedPokemonEditor::removeBoxedSlot(size_t b,size_t s,std::string& error) {
     auto p=boxedPokemon(b,s,error); if(!p) {if(error.empty())error="Box slot is empty";return false;}
     const auto& l=layout();
     std::vector<uint8_t> bytes(stagedBytes().begin(),stagedBytes().end());const auto old=bytes;
@@ -496,10 +511,11 @@ bool StagedPokemonEditor::stageRemove(size_t b,size_t s,std::string& error) {
     return commit(std::move(bytes),error);
 }
 bool StagedPokemonEditor::revertPokemon(size_t b,size_t s,std::string& error) {
+    if(refuseWhileCarrying(error)) return false;
     const auto& l=layout();
     if(b>=l.boxCount || s>=l.capacity) {error="Box or slot out of range";return false;}
     const auto& p=original_->boxes()[b].slots[s];
-    if(!p) return stageRemove(b,s,error);
+    if(!p) return removeBoxedSlot(b,s,error);
     // Whole-box restoration avoids ambiguous identities after compaction.
     std::vector<uint8_t> bytes(stagedBytes().begin(),stagedBytes().end());const auto box=l.boxOffset(metadata(),b);
     std::copy_n(originalBytes().begin()+box,l.boxSize,bytes.begin()+box);
@@ -596,7 +612,8 @@ std::optional<std::vector<uint8_t>> StagedPokemonEditor::exportPartyPokemonFile(
     const auto staged=stagedBytes();
     return pk1List(l,p->rawBody,staged.subspan(l.partyOT(s),l.stringLength),staged.subspan(l.partyNick(s),l.stringLength));
 }
-void StagedPokemonEditor::discard() noexcept {view_=original_;changes_.clear();imported_.clear();}
+// Discard also ends a carry: its pickup snapshot predates the discard and must never be restored.
+void StagedPokemonEditor::discard() noexcept {view_=original_;changes_.clear();imported_.clear();packedMove_={};}
 std::vector<uint8_t> StagedPokemonEditor::finalizedBytes(std::string& error,std::span<const uint8_t> inventory,std::span<const uint8_t> trainer) const {
     error.clear();
     if (packedMove_.active) {

@@ -1,0 +1,3305 @@
+{
+ "areas": [
+  "vault",
+  "transfer",
+  "bank-storage",
+  "actions-menu",
+  "clone",
+  "move-carry",
+  "release"
+ ],
+ "issues": [
+  {
+   "id": "PBX-ACT-001",
+   "title": "Pokemon Actions sheet basics: A opens a deliberate menu, B/Cancel close with zero mutation, unfinished actions inert, stable under repetition, same semantics Party/Boxes/Storage",
+   "gens": [
+    "all"
+   ],
+   "area": "actions-menu",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE 2026-09-01 test-matrix 'A -> Pokemon Action Sheet' (3be4de6b)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS on the original generic sheet (PRE 3be4de6b, A0080 '~100 open/close no lag', A0175) and on the Gen I-IV narrow menus (PR #278, d0a45909, A0939/D0340 'other than that its a pass'); Gen I-III Party popup and Boxes/Party order PASSed again R6 26186464 A04/A21. In current source the generic sheet (include/UI/ActionSheetModel.h) is never shown in a Gen I-V session: TrainerViewScreenBase.inc:1977 returns early only when genericUiAllowedForSession() is true, which is false for every classic source (include/UI/ClassicGenericUiGuard.h:34 genericUiAllowed = !classic); Gen I-V sheets are presentations of real staged commands only (include/UI/NarrowPokemonActionMenu.h:12-19, 84-92; onlySharedLabels :193-199). Sheet wiring changed after the last PASS (dd69bc93, 6f62b69e, f3959d67), so it needs R12 re-verification. C06/C08 (disabled rows truly inert, separate destructive confirmations) were never ticked on hardware as their own items.",
+   "repair_commits": [
+    "0ea98cc1 safety: lock installed-source UI and harden PLA reads",
+    "85762adc fix(gen1): size actions to visible rows",
+    "1cdbe73c feat(shared-editor): one action order for Gen III-V, no Make Shiny; \"Origin & Legality\" everywhere",
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model, Gen I-V"
+   ],
+   "automated_tests": [
+    "tests/test_action_sheet_model.cpp : generic 9-row sheet order, NotYetSupported dispatch, close/navigate (generic Gen VI+ sheet only)",
+    "tests/test_classic_pokemon_action_menu.cpp : Gen I/II sheet rows are real commands in shared order",
+    "tests/test_hw_round1_regression_gate.py : frozen per-ID guards for owner-PASSed menu items"
+   ],
+   "last_owner_result": "R6 26186464 A04 (E02) / A21 (NEW-20): PASS",
+   "hardware_acceptance_candidate": "accepted PRE 3be4de6b / PR #278 d0a45909 / R6 26186464 A04; must re-verify on 066e1db9 R12 H05",
+   "r12_checklist_item": "H05",
+   "next_action": "Run R12 H05 in every generation; also confirm B/Cancel leave Review empty (zero mutation) since H05 does not state it explicitly.",
+   "occurrences": [
+    {
+     "rid": "A0003",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0004",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0022",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0035",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/SESSION_LOG_2026-09-01.md"
+    },
+    {
+     "rid": "A0036",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/SESSION_LOG_2026-09-01.md"
+    },
+    {
+     "rid": "A0056",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0080",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0103",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0108",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0110",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0111",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0112",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0113",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0114",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0157",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0175",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0176",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "D0250",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": "A ACTION SHEET",
+     "result": "PASS",
+     "src": "issue #8 (comment 2026-09-02)"
+    },
+    {
+     "rid": "A0264",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0265",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0266",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0268",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0269",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0270",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0453",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0454",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0456",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0457",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0458",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0459",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0460",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0461",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0462",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0463",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0464",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0672",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C05",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0673",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C06",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0675",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C08",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0733",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "G06",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0815",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "actions",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0836",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "actions",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "F0069",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Milestone B",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0070",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "C05-C08",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0073",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Action sheet behavior rules / acceptance",
+     "result": "n/a",
+     "src": "docs/UI_FLOW.md"
+    },
+    {
+     "rid": "F0076",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Adapter capability model",
+     "result": "n/a",
+     "src": "docs/SAVE_SAFETY.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0080",
+     "text": "PASS / no lag / no stuck input"
+    },
+    {
+     "rid": "D0250",
+     "text": "A ACTION SHEET: PASS"
+    }
+   ]
+  },
+  {
+   "id": "PBX-ACT-002",
+   "title": "Move to Vault / Add to Master Vault / Add to Bank / Transfer to Game absent from every Gen I-V Actions menu",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "actions-menu",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE 2026-09-01 UI_FLOW.md target action-sheet order (F0007); first hardware sighting PRE 2026-09-02 (3be4de6b) 'Not yet supported'",
+   "status": "Missing Feature",
+   "status_basis": "No Gen I-V Actions sheet can reach AddToMasterVault/AddToBank/TransferToGame. The enum and labels exist only in include/UI/ActionSheetModel.h:24-34,48-56 (dispatch always NotYetSupported :83-89) and are used only by the generic Gen VI+ sheet (StoragePanel.cpp:464-483), which TrainerViewScreenBase.inc:1972-1990 refuses for Gen I-V sessions. Gen IV keeps dead enum values (src/UI/Gen4SharedPokemonSurface.inc:83, status strings :1036-1044) but gen4Actions() (:953-986) never appends them. The shared label table has no Vault row (NarrowPokemonActionMenu.h:97-114, allowed list :196-198); the greyed placeholders were removed in 1cdbe73c (comment :88-89). tests/test_action_sheet_model.cpp:12 only pins the generic enum. Product Home shows Master Vault as 'COMING SOON' (include/UI/AppShellModel.h:41-43). Engineering decision E0099/F0003: hidden until the Vault exists; owner request F0000 (Extra 7) wants 'move to vault' on every menu.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_action_sheet_model.cpp : pins the generic sheet's AddToMasterVault/AddToBank/TransferToGame rows as NotYetSupported (not Gen I-V)",
+    "tests/test_classic_pokemon_action_menu.cpp : Gen I/II sheets contain only real commands (no Vault row)"
+   ],
+   "last_owner_result": "R11 3634d1e6 H43: FAIL ('gen 1 does not have \"move to vault or bank or what ever\"'); Extra 7 request",
+   "hardware_acceptance_candidate": "none (no Vault backend; future Vault build)",
+   "r12_checklist_item": null,
+   "next_action": "Owner to confirm intake Q2 (stay hidden until the Vault exists). Implement only together with PBX-VLT-001: one action row from the shared owner (SharedPokemonEditorContract / NarrowPokemonActionMenu), Copy-to-Vault first.",
+   "occurrences": [
+    {
+     "rid": "F0007",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Pokémon action sheet",
+     "result": "n/a",
+     "src": "docs/UI_FLOW.md"
+    },
+    {
+     "rid": "A0104",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0105",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0106",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "F0005",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Action-sheet integration",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0071",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "A11 / F02",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "E0042",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H43",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0079",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H43",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0000",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Extra 7",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0001",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H43",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0002",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "ACTIONS",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0003",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§4 Actions menu",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0004",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "VAULT gap 3",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "F0000",
+     "text": "gen 2/3 doesnt have 'move or review pending changes in the action menu can we make sure all gens have the same options in the actiion menu, they should all have \"view, edit,clone,move,move to vault, release, origin and legality, export to file, reviewing pending changes, cancel\""
+    },
+    {
+     "rid": "E0042",
+     "text": "gen 1 does not have \"move to vault or bank or what ever\" "
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-ACT-003",
+   "title": "Make Shiny removed from quick Actions (Shiny stays an editor field)",
+   "gens": [
+    "all"
+   ],
+   "area": "actions-menu",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 2026-09-02 extended report Action Sheet 'Make Shiny: Not yet supported' (3be4de6b)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R1 7fea1797 E01 and again R3 62a2f8c3 E01 (B0504). Current source: no Make Shiny label in the shared vocabulary (include/UI/NarrowPokemonActionMenu.h:97-114, onlySharedLabels :193-199). Actions sheet code changed after R3 (dd69bc93, 6f62b69e).",
+   "repair_commits": [
+    "dcd8770c feat(gen1/gen2): Actions sheet lists real commands only; Y re-rolls DVs at once",
+    "1cdbe73c feat(shared-editor): one action order for Gen III-V, no Make Shiny; \"Origin & Legality\" everywhere"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : E01 guard",
+    "QA CG01 (docs/qa/GEN1_5_UI_AUDIT_MATRIX.md) : no Make Shiny quick action, all gens"
+   ],
+   "last_owner_result": "R3 62a2f8c3 E01: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 E01; re-verify on 066e1db9 R12 H05",
+   "r12_checklist_item": "H05",
+   "next_action": "Covered implicitly by H05 row list; no separate action.",
+   "occurrences": [
+    {
+     "rid": "A0109",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0860",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG01",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0942",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "3",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "B0025",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0088",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E01",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0211",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "E01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0278",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "E01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0346",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E01",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0396",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0504",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0634",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E01",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-ACT-004",
+   "title": "Pre-campaign cross-generation Action menu parity (Gen II empty-slot menu, Gen IV oversized dialog, picker/menu sizes)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV"
+   ],
+   "area": "actions-menu",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 2026-09-15 PR #68 Gen II empty-slot menu parity (501093ae)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Fixed forward in cfb70357 / aff41765 / 85762adc; owner then PASSed the Gen I-IV narrow action menus on PR #278 (d0a45909, 2026-10-12, A0939/D0340). Menu builders replaced since (5d9dc8e5, 1cdbe73c, dd69bc93).",
+   "repair_commits": [
+    "cfb70357 fix: address Gen I and II hardware retest regressions",
+    "aff41765 fix(gen4): align create editor with classic parity",
+    "85762adc fix(gen1): size actions to visible rows"
+   ],
+   "automated_tests": [
+    "tests/test_classic_pokemon_action_menu.cpp : Gen I/II rows/order"
+   ],
+   "last_owner_result": "PR #278 d0a45909 (2026-10-12): PASS",
+   "hardware_acceptance_candidate": "d0a45909 PR #278; re-verify 066e1db9 R12 H05",
+   "r12_checklist_item": "H05",
+   "next_action": "None beyond H05.",
+   "occurrences": [
+    {
+     "rid": "D0298",
+     "round": "PRE",
+     "candidate": "501093ae",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-15)"
+    },
+    {
+     "rid": "D0322",
+     "round": "PRE",
+     "candidate": "acfca273",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #95 (comment 2026-09-28)"
+    },
+    {
+     "rid": "D0323",
+     "round": "PRE",
+     "candidate": "a86c8d03",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #92 (comment 2026-09-29)"
+    },
+    {
+     "rid": "D0340",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "PR #278 (comment 2026-10-12)"
+    },
+    {
+     "rid": "A0939",
+     "round": "PRE",
+     "candidate": "d0a45909",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/handoffs/GEN14_FINAL_COMPLETION_PROGRESS.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0298",
+     "text": "- **Gen II Empty Slot menu parity:** current menu lacks `Legality & Provenance` and says `Close` instead of accepted Gen I `Cancel` terminology."
+    },
+    {
+     "rid": "D0340",
+     "text": "Owner's report: **\"other than that its a pass\"** for the Gen I–IV action menu/touch behavior, with a remaining **Gen IV move/pickup visual bug**."
+    }
+   ]
+  },
+  {
+   "id": "PBX-ACT-005",
+   "title": "Gen V Actions parity: Actions/Add menu, Clone/Move/Release on created/cloned/edited slots, Origin & Legality row, Move via shared carry",
+   "gens": [
+    "V"
+   ],
+   "area": "actions-menu",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE 2026-10-15 35cbf163 P3 owner finding",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "Repro B0596 found eligibility based on originalOccupied(). Current: Gen V bridge fills the shared capability model (dd69bc93; include/Integration/Gen5/Gen5SharedEditorBridge.h:54 uses workspace.emptyCloneDestination) and Gen V Move/Clone run through the shared carry (src/UI/ClassicPackedMoveOverlay.inc:1110-1145 placeGen5, handleGen5CarryInput :1414-1430). R6 A04 PASS covered 'each generation' order but not the created/cloned/edited-slot case specifically, so no owner PASS for Part 9 #1 exists.",
+   "repair_commits": [
+    "de22e35f feat(gen5): run Gen V View/Edit/Create through the one shared editor surface",
+    "06a7dce2 Part 9: test Gen V staged-slot Clone/Move/Release, carry and Origin & Legality",
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model, Gen I-V"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_staged_slot_actions.cpp : Clone/Move/Release offered on created/cloned/edited slots; Origin & Legality",
+    "tests/test_ui_clone_carry_host.cpp : Gen V Move/Clone through the shared carry"
+   ],
+   "last_owner_result": "R6 26186464 A04 (order, all gens): PASS — not specific to staged slots",
+   "hardware_acceptance_candidate": "066e1db9 R12 H05 (+H03/H04 for Gen V)",
+   "r12_checklist_item": "H05",
+   "next_action": "In R12 H05 also open Actions on a Gen V created/cloned slot and confirm Clone/Move/Release/Origin & Legality rows.",
+   "occurrences": [
+    {
+     "rid": "A0931",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P3",
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "B0436",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "Part 9 #1",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0596",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #1",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0611",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #1",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    }
+   ],
+   "owner_words": [],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-ACT-006",
+   "title": "One Actions order for every generation (E02) and owner's uniform list: Gen II/III missing Move and Review Pending Changes (R11 Extra 7)",
+   "gens": [
+    "all"
+   ],
+   "area": "actions-menu",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE 2026-10-15 gate C07 / R1 7fea1797 E02",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "E02 PASSed R1, FAILed R3 (B0505), PASSed OCT24/R5/R6 (26186464 A04), then the owner FAILed the menu content again in R11 3634d1e6 (Extra 7: Gen II/III lack Move and Review). dd69bc93 adds canMove to the shared ActionCapabilities and lists Move on Gen II/III Boxes (beginGen2FromAction/beginGen3FromAction; 82d92b69 drives the drop), one canonical order in include/UI/NarrowPokemonActionMenu.h:84-146 (sharedActionRank), Gen IV list src/UI/Gen4SharedPokemonSurface.inc:975-986. Residual policy gaps vs the owner's list: Review Pending Changes is shown only while changes are pending (Gen4SharedPokemonSurface.inc:985; intake Q1 open, owner list implies always), Party sheets never list Clone/Move/Release in Gen I-IV (intake Q3 open), Storage pane never lists Move, and Move to Vault is tracked separately (PBX-ACT-002).",
+   "repair_commits": [
+    "5d9dc8e5 refactor(classic): Gen I/II Actions sheet is the shared NarrowPokemonMenu builder",
+    "1dcf2cc3 WIP: feat(gen1): Box Actions lists Move and starts the Boxes carry (R2-CHECK-009)",
+    "1cdbe73c feat(shared-editor): one action order for Gen III-V, no Make Shiny; \"Origin & Legality\" everywhere",
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model, Gen I-V",
+    "82d92b69 Round 11 review: drive the Gen II / III Actions -> Move drop"
+   ],
+   "automated_tests": [
+    "tests/test_classic_pokemon_action_menu.cpp : exact Gen I/II lists and order",
+    "tests/test_gen12_packed_move.cpp : Gen I box sheet with/without Move",
+    "tests/test_shared_editor_contract (QA matrix 'actions') : exact per-gen lists",
+    "tests/test_hw_round1_regression_gate.py : E02 guard"
+   ],
+   "last_owner_result": "R11 3634d1e6 Extra 7: FAIL (after R6 26186464 A04 PASS)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H05",
+   "r12_checklist_item": "H05",
+   "next_action": "Run H05; get owner answers to intake Q1 (Review always shown, greyed?) and Q3 (Party Clone/Move/Release) before calling the menu uniform.",
+   "occurrences": [
+    {
+     "rid": "A0267",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0455",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0674",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C07",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0951",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "5",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "B0026",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0089",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E02",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0153",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0212",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "E02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0279",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "E02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0347",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E02",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0397",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0424",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E02 (re-check)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0505",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E02",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0635",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0025",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "E02",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0078",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "E02",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0129",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "E02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0179",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "E02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0225",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A04 · E02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0284",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A04 · E02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0367",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "E02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0003",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0058",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 7",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md (Extra bugs and requests)"
+    },
+    {
+     "rid": "E0086",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 7",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0099",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 decisions"
+    },
+    {
+     "rid": "F0072",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "ACTIONS Q1/Q3/Q4",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "D0151",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    },
+    {
+     "rid": "E0092",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §2 shared root causes"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0505",
+     "text": "Some expected Actions menus missing; related to L06/NEW-20."
+    },
+    {
+     "rid": "E0058",
+     "text": "gen 2/3 doesnt have 'move or review pending changes in the action menu can we make sure all gens have the same options in the actiion menu, they should all have \"view, edit,clone,move,move to vault, release, origin and legality, export to file, reviewing pending changes, cancel\""
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-ACT-007",
+   "title": "Gen I-III Party Actions popup (View / Edit / Origin & Legality / Cancel, now + Review while staged) instead of jumping to View",
+   "gens": [
+    "I",
+    "II",
+    "III"
+   ],
+   "area": "actions-menu",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-20 (62a2f8c3)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R3 FAIL fixed by c81853da/be3d965a; owner PASS OCT24, R5 1ca2faec and R6 26186464 A21. Current routing: TrainerViewScreenBase.inc:1990-2000 (Party + gen<=3 -> ClassicPartyActions::open). dd69bc93 added Review Pending Changes to the Gen I-III Party sheet after the last PASS.",
+   "repair_commits": [
+    "c81853da feat(editor): route classic Party Actions to native staged edits",
+    "be3d965a fix(gen3): preserve Party cache on metadata-only edits",
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model, Gen I-V"
+   ],
+   "automated_tests": [
+    "tests/test_classic_party_actions.cpp : Party popup rows/dispatch",
+    "QA CG33 / test_classic_party_review_path : Party review path"
+   ],
+   "last_owner_result": "R6 26186464 A21: PASS",
+   "hardware_acceptance_candidate": "R6 26186464 A21; re-verify 066e1db9 R12 H05",
+   "r12_checklist_item": "H05",
+   "next_action": "H05 Party step (Review row while staged).",
+   "occurrences": [
+    {
+     "rid": "B0569",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-20",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0048",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-20",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0098",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-20",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0149",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-20",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0196",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-20",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0242",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A21 · NEW-20",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0301",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A21 · NEW-20",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0387",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-20",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0020",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A21",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0569",
+     "text": "Gen I–III Party A/touch should show View/Edit/Origin & Legality/Cancel instead of jumping to View."
+    }
+   ]
+  },
+  {
+   "id": "PBX-VLT-001",
+   "title": "Persistent PokeBank-owned Master Vault and named Banks (entity store, stable IDs, SHA-256, provenance, journal/recovery, Bank references)",
+   "gens": [
+    "all"
+   ],
+   "area": "vault",
+   "category": "missing-feature",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "REQ 2026-09-01 docs/MASTER_VAULT_SPEC.md §1 (F0014)",
+   "status": "Missing Feature",
+   "status_basis": "No Vault exists in shipped code: no Vault entity store / Vault ID / SHA-256 manifest anywhere under include/ or src/ (no Vault directory; intake VAULT inventory 'There is NO Vault ID, no SHA-256 entity store and no provenance log'). Product Home 'Master Vault' and 'Banks' are FutureBackend placeholders (include/UI/AppShellModel.h:41-43 'COMING SOON', :50-52 'NO BANKS YET'); opening Master Vault shows only 'Master Vault is coming in a future PokeBank NX update' (src/UI/AppShellScreen.cpp:91-101). The only persistent store is the inherited PKSE Legacy Storage bank.dat (include/Trainer/Bank.h:1-10), explicitly labelled 'app-owned / not Master Vault' (src/UI/Panels/HomeMenuPanel.cpp:119, TrainerViewScreenBase.inc:5603). Deferred out of the Gen I-V gate (FUTURE_AFTER_GEN15_BACKLOG #3/#7/#27, F0038) and out of the Round 11 repair NRO (F0028); still required for v1.0 (V1_ROADMAP, README, MASTER_VAULT_SPEC §22). Unchanged between 3634d1e6 and 066e1db9.",
+   "repair_commits": [],
+   "automated_tests": [
+    "none for a Vault (tests/test_bank_*.cpp cover Legacy Storage bank.dat only)"
+   ],
+   "last_owner_result": "R11 3634d1e6 H41/H42/H43: FAIL (not implemented)",
+   "hardware_acceptance_candidate": "none (not on any checklist; needs a separate Vault build)",
+   "r12_checklist_item": null,
+   "next_action": "Owner to answer intake VAULT Q6 (user-facing name; bank.dat migrate or stay legacy) and approve the separate Vault plan/branch; build per MASTER_VAULT_SPEC §22 minimum milestone with a physical read-only Vault test.",
+   "occurrences": [
+    {
+     "rid": "F0014",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§1 Core invariants",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0015",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§3 On-disk layout",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0016",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§18 Transaction model",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0018",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§20 Schema migration",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0019",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§14 Duplicate detection",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0020",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§15 Banks",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0021",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§21 Performance targets",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0022",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§22 Minimum Vault v1 milestone",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0023",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§23 Non-goals",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0008",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Add to Master Vault",
+     "result": "n/a",
+     "src": "docs/UI_FLOW.md"
+    },
+    {
+     "rid": "F0009",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Add to Bank…",
+     "result": "n/a",
+     "src": "docs/UI_FLOW.md"
+    },
+    {
+     "rid": "F0039",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Vault Home / Master Vault browsing / Banks",
+     "result": "n/a",
+     "src": "docs/UI_FLOW.md"
+    },
+    {
+     "rid": "F0085",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§9 Clone semantics",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0006",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Add to Master Vault",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0036",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Stable v1.0 release gates (Vault)",
+     "result": "n/a",
+     "src": "docs/RELEASE_CHECKLIST.md"
+    },
+    {
+     "rid": "F0037",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Beta / RC gates",
+     "result": "n/a",
+     "src": "docs/RELEASE_CHECKLIST.md"
+    },
+    {
+     "rid": "F0024",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Core invariant / MOVE",
+     "result": "n/a",
+     "src": "docs/POKEMON_IDENTITY_CUSTODY_CONTRACT.md"
+    },
+    {
+     "rid": "F0010",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "v1 target",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0011",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Progressive release contract",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0012",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Phase 6",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0013",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Critical path: Future product layers",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0041",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Milestone progress: Master Vault, Banks, Search",
+     "result": "n/a",
+     "src": "PROJECT_STATUS.md"
+    },
+    {
+     "rid": "F0038",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "#3 / #7 / #27",
+     "result": "n/a",
+     "src": "docs/FUTURE_AFTER_GEN15_BACKLOG.md"
+    },
+    {
+     "rid": "F0034",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "v1.0 target philosophy",
+     "result": "n/a",
+     "src": "docs/FEATURE_FEASIBILITY_MATRIX.md"
+    },
+    {
+     "rid": "F0035",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "#1 / #17",
+     "result": "n/a",
+     "src": "docs/FEATURE_FEASIBILITY_MATRIX.md"
+    },
+    {
+     "rid": "F0040",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Project status: Vault/Banks, v1.0",
+     "result": "n/a",
+     "src": "README.md"
+    },
+    {
+     "rid": "F0028",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§5 / VAULT",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0029",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "VAULT gap 1-2",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0030",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "VAULT gap 3-5",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0033",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "VAULT Q6",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "E0114",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §5 separate from the repair candidate"
+    },
+    {
+     "rid": "F0017",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§19 Crash recovery",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0152",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§1 invariants 10-11",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0162",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Required provenance event classes",
+     "result": "n/a",
+     "src": "docs/POKEMON_IDENTITY_CUSTODY_CONTRACT.md"
+    },
+    {
+     "rid": "F0163",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§5 Raw entity payload",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0164",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "#57",
+     "result": "n/a",
+     "src": "docs/FEATURE_FEASIBILITY_MATRIX.md"
+    }
+   ],
+   "owner_words": [],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-VLT-002",
+   "title": "Search in Bank/Vault with highlight of matching Pokemon/item (PKSE-style) before 1.0",
+   "gens": [
+    "all"
+   ],
+   "area": "vault",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R11 Extra 8 (3634d1e6)",
+   "status": "Missing Feature",
+   "status_basis": "No search/highlight in src/UI/Panels/StoragePanel.cpp or Trainer::Bank; Product Home 'Search' is FutureBackend 'COMING SOON' (include/UI/AppShellModel.h:53-55). Intake notes the PKSE search the owner remembers is not in this repo's PKSE history. v1.0 requirement also stated in search-area REQ records F0062-F0065 ([MANDATORY 4]).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R11 3634d1e6 Extra 8: request (no result)",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner to give the spec (intake VAULT: name/species/item index, highlight); schedule with the Vault index (PBX-VLT-001) or as a Legacy Storage search if wanted earlier.",
+   "occurrences": [
+    {
+     "rid": "E0059",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 8",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md (Extra bugs and requests)"
+    },
+    {
+     "rid": "E0087",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 8",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0062",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Extra 8",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0063",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "VAULT gap 8 / Q5",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0064",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "v1 target / Phase 10",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0065",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "#47 Smart Banks / advanced search",
+     "result": "n/a",
+     "src": "docs/FEATURE_FEASIBILITY_MATRIX.md"
+    },
+    {
+     "rid": "F0066",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§10",
+     "result": "n/a",
+     "src": "docs/PRODUCT_DECISIONS.md"
+    },
+    {
+     "rid": "F0068",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Android companion",
+     "result": "n/a",
+     "src": "docs/V2_ROADMAP.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0059",
+     "text": "pkse has a nice search function in the bank where it highlights the pokemon with the searched letter or the item  could we add just before 1.0."
+    },
+    {
+     "rid": "F0062",
+     "text": "pkse has a nice search function in the bank where it highlights the pokemon with the searched letter or the item  could we add just before 1.0."
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-BNK-001",
+   "title": "Legacy Storage (app-owned bank.dat) opens, browses and persists across games/restarts",
+   "gens": [
+    "app"
+   ],
+   "area": "bank-storage",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE 2026-09-01 test-matrix 'Storage browsing' (3be4de6b)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS on 3be4de6b (Arbok persisted across games, A0217). Only Switch-native/backup-workspace sources were exercised; A0218 (Storage -> other backup) was PARTIAL. R8 H04 Bank restart persistence checklist (D0069) has no recorded result. Bank load/save hardening landed later (159b6c97, 080d7c8b; include/Trainer/Bank.h:28-40 LoadOutcome, buildVerifiedImage :63), so the accepted behaviour needs re-verification. For Gen I-IV sessions the Legacy Storage pane opens (HomeMenuPanel.cpp:119) but holds no Gen I-V Pokemon; Gen V refuses Storage (include/Integration/Gen5/Gen5HubRouting.h:46).",
+   "repair_commits": [
+    "159b6c97 Q01 Bank: only a genuinely missing Bank is a first run; every unusable one blocks saving"
+   ],
+   "automated_tests": [
+    "tests/test_bank_load_policy.cpp : LoadOutcome classification",
+    "tests/test_bank_recovery_contract.cpp / test_bank_fault_injection.cpp : interrupted save recovery, fail-closed writes",
+    "tests/test_bank_format_policy.cpp : box-count migration policy"
+   ],
+   "last_owner_result": "PRE 3be4de6b (2026-09-03): PASS (A0218 PARTIAL)",
+   "hardware_acceptance_candidate": "PRE 3be4de6b; R8 H04 (6ec5ccb9) never reported; not on R12 checklist",
+   "r12_checklist_item": null,
+   "next_action": "Add a Legacy Storage open/save/restart smoke (old R8 H04) to the next checklist, or record it as out of Gen I-V scope.",
+   "occurrences": [
+    {
+     "rid": "A0015",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0047",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/SESSION_LOG_2026-09-01.md"
+    },
+    {
+     "rid": "A0068",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0119",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0214",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0217",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0218",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PARTIAL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "D0262",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": "STORAGE",
+     "result": "PASS",
+     "src": "issue #8 (comment 2026-09-02)"
+    },
+    {
+     "rid": "A0279",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0280",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0281",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "A0282",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "D0069",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": "H04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_6ec5ccb9.md (same items in RETEST_ROUND8_TEMPLATE.md)"
+    },
+    {
+     "rid": "A0228",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "6",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0119",
+     "text": "APP STORAGE PERSISTENCE: PROVEN"
+    },
+    {
+     "rid": "A0217",
+     "text": "PASS / Arbok visible after switching games"
+    },
+    {
+     "rid": "A0218",
+     "text": "REACHABLE WHEN COMPATIBLE; final persistence not exhaustively tested here"
+    }
+   ]
+  },
+  {
+   "id": "PBX-BNK-002",
+   "title": "Legacy Storage pane keeps inherited X/Y controls (Y cycles Menu/Move/Multi, X sorts/moves/duplicates) unlike the Y-pick/A-place box carry",
+   "gens": [
+    "app"
+   ],
+   "area": "bank-storage",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 2026-09-02 extended report (3be4de6b), issue #26",
+   "status": "Open Defect",
+   "status_basis": "Still present: TrainerViewScreenBase.inc:2457-2462 (Y cycles Menu->Move->Multi) and :2561-2581 (X picks up / starts Multi duplicate / sorts the box). Save-pane X/Y are stripped for read-only sources (:2437-2441) but the Bank pane keeps them. Intake Q4 (ROUND11_ENGINEERING_INTAKE.md:1430) asks whether the Bank pickup key should be unified; unanswered.",
+   "repair_commits": [
+    "0ea98cc1 safety: lock installed-source UI and harden PLA reads (save pane only)"
+   ],
+   "automated_tests": [
+    "tests/test_source_mutation_policy.cpp : save pane locked, AppOwnedStorage pane mutable"
+   ],
+   "last_owner_result": "PRE 3be4de6b: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner decision on intake Q4; if unified, route the Bank pane through ClassicCarryRules (Y pick, A place, B cancel).",
+   "occurrences": [
+    {
+     "rid": "A0126",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    }
+   ],
+   "owner_words": [],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-BNK-003",
+   "title": "No Bank deposit/withdraw for Gen I-V saves (H41/H42); bank.dat cannot hold PK1/PK2/PK4/PK5",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "bank-storage",
+   "category": "missing-feature",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R1 7fea1797 documented limitation (Gen IV Bank records refused)",
+   "status": "Missing Feature",
+   "status_basis": "Bank record tags exist only for GG/SWSH/BDSP/PLA/SV/ZA/FRLG (src/Trainer/Bank.cpp:81-116); there is no tag for RBY, GSC, DPPt/HGSS or BW/B2W2. Every classic Gen I-V source is RetroArchLegacy/ExternalLegacy, so save-pane X/Y are stripped (TrainerViewScreenBase.inc:2437-2441; canPerform false, include/Safety/SourceMutationPolicy.h canPerform). Gen V routes the Storage tile to a refusal (Gen5HubRouting.h:46; Gen5SharedReadOnlySurface.inc:1576-1580). Gen II excludes Bank from details (Gen2SharedSurfaceParity.inc:17-20). Gen III FRLG deposit/withdraw exists only in the inherited Switch-backup workspace, not for RetroArch FRLG. Net: deposit/withdraw is reachable only for Switch-native titles + FRLG backup workspaces.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_storage_custody_contract.cpp / test_storage_conversion_custody_contract.cpp : cross-store Move custody (Switch-native groups only)"
+   ],
+   "last_owner_result": "R11 3634d1e6 H41/H42: FAIL ('ui doesnt allow it' / 'not supported yet')",
+   "hardware_acceptance_candidate": "none (Vault build)",
+   "r12_checklist_item": null,
+   "next_action": "Implement inside the Vault plan (intake gaps 2-4: format-neutral raw-bytes entity, COPY-first deposit, withdraw to empty destination with preview/cancel/Review, MoveTransaction journal). Do not extend bank.dat tags.",
+   "occurrences": [
+    {
+     "rid": "B0162",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "E0040",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H41",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0041",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H42",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0077",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H41",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0078",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H42",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0026",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H41",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0027",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H42",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0040",
+     "text": "ui doesnt allow it we havent added any menu or anything in to the legacy storage or \"bank\" yet"
+    },
+    {
+     "rid": "E0041",
+     "text": "not supported yet"
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-BNK-004",
+   "title": "In-save box names cannot be selected/renamed in Gen I-V (only Legacy Storage boxes rename); inconsistent per generation",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "bank-storage",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R11 H40 (3634d1e6)",
+   "status": "Missing Feature",
+   "status_basis": "No Gen II-V native box-name writer exists; header focus is gated on trainer.supportsBoxNames() (TrainerViewScreenBase.inc:2448) and save rename requires a mutable workspace (renameBox, TrainerViewScreenBase.inc ~1540). Gen IV can focus the header then refuses 'source is read-only'; Gen II/III/V show or hide names inconsistently (intake VAULT inventory 4). Bank box rename works (renameBankBox gated by requireMutableStoragePane(1, Rename), TrainerViewScreenBase.inc:1580). Product decision pending (intake Q2: in-save rename in v1.0 or read-only with explanation).",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_source_mutation_policy.cpp : Rename allowed only for BackupOrStaged / AppOwnedStorage"
+   ],
+   "last_owner_result": "R11 3634d1e6 H40: FAIL",
+   "hardware_acceptance_candidate": "none (not on R12 checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner answers intake Q2; at minimum make the read-only state consistent and explained in every generation.",
+   "occurrences": [
+    {
+     "rid": "E0039",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H40",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0076",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H40",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0025",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H40",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0032",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "VAULT gap 6-7 / Q2",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0039",
+     "text": "can rename a box inside the save its doesnt allow me to select it, the only boxes i can rename are bank boxes or as their called right now in the app \"legacy storage\""
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-BNK-005",
+   "title": "Legacy Storage save silently drops an occupied slot whose game group has no bank tag (verify treats it as empty)",
+   "gens": [
+    "app"
+   ],
+   "area": "bank-storage",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R11 intake §3 lead (3634d1e6)",
+   "status": "Open Defect",
+   "status_basis": "Still in source: serialize() skips an occupied slot whose bankTagFor() is BTAG_EMPTY ('unknown group -> can't tag it, skip', src/Trainer/Bank.cpp:212-214) and verifyImage() counts such a slot as unoccupied, so it is not a verify failure (Bank.cpp:497-501). Proposed repair R2 (F0031) is not applied; Bank.cpp unchanged since 159b6c97 (in 3634d1e6). Latent for Gen I-V: no UI path puts an untaggable classic record into the Bank today (PBX-BNK-003), but any future deposit path would lose the Pokemon on save.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_bank_record_validation.cpp : corrupt records rejected on load (does not cover untaggable occupied slots on save)"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (host-test fix; not hardware-observable today)",
+   "r12_checklist_item": null,
+   "next_action": "Apply intake repair R2: count an occupied untaggable slot as a verify FAILURE (fail closed) and add a host test, before any Vault/Bank deposit path is opened.",
+   "occurrences": [
+    {
+     "rid": "E0112",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §3 leads"
+    },
+    {
+     "rid": "F0031",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "VAULT R2",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    }
+   ],
+   "owner_words": [],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-XFR-001",
+   "title": "Gen I-V cross-generation transfer workflow (e.g. Gen I -> Gen V; 'through bank?') with explicit route rules, conversion preflight, provenance and destination-first Move",
+   "gens": [
+    "all"
+   ],
+   "area": "transfer",
+   "category": "missing-feature",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "REQ 2026-09-01 UI_FLOW.md 'Transfer to Game...' (F0056)",
+   "status": "Missing Feature",
+   "status_basis": "No converter for Gen I, II, IV or V: Conversion::convert covers only FRLG <-> GG/SWSH/BDSP/PLA/SV/ZA (include/Conversion/Convert.h:1-33, Result::Unsupported :46-48; intake VAULT inventory 8). Standalone file import refuses other generations ('Only a .pk2 file can go into a Generation II save; Pokemon are not converted between generations', src/Integration/Gen2/Gen2StagedEditor.cpp ~1529), which the owner PASSed as H38. No Transfer to Game action in any Gen I-V sheet (PBX-ACT-002). Rule table (official routes; Gen I->V refused or marked non-canonical) is an open owner decision (intake Q4). Fidelity/RouteEvidence exist only for the FRLG/Switch converter (include/Conversion/Fidelity.h, RouteEvidence.h). Transfer issues were closed as deferred for the Gen I-V gate (F0059) but README/V1_ROADMAP keep them v1.0.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_conversion_entity_golden.cpp / test_conversion_fidelity_golden.cpp / test_conversion_evidence.cpp : FRLG <-> Switch conversion only"
+   ],
+   "last_owner_result": "R11 3634d1e6 H38: PASS (import refusal) with question 'how are we suppose to move a gen 1 pokemon to like gen 5'",
+   "hardware_acceptance_candidate": "none (future Vault/transfer build)",
+   "r12_checklist_item": null,
+   "next_action": "Answer the owner's H38 question in plain words (no route exists today; official routes I<->II, III->IV, IV->V); get owner decision on intake Q4; plan the Transfer Lab after the Vault.",
+   "occurrences": [
+    {
+     "rid": "F0056",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Transfer to Game…",
+     "result": "n/a",
+     "src": "docs/UI_FLOW.md"
+    },
+    {
+     "rid": "F0055",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§12 Conversion semantics",
+     "result": "n/a",
+     "src": "docs/MASTER_VAULT_SPEC.md"
+    },
+    {
+     "rid": "F0045",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Product goal",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0047",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Generation conversion",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0048",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Loss/change reporting; Destination compatibility",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0049",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "True Move: Game -> Vault / Vault -> Game / Game -> Game",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0050",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Minimum pre-live-write transfer milestone",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0052",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Transfer journal",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0053",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "HOME Bridge",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0196",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/HOME_BRIDGE_HISTORICAL_TRANSFER_RESEARCH_2026-09-03.md"
+    },
+    {
+     "rid": "F0054",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "CONVERSION IS NOT CLONING",
+     "result": "n/a",
+     "src": "docs/POKEMON_IDENTITY_CUSTODY_CONTRACT.md"
+    },
+    {
+     "rid": "F0057",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Phase 11",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0058",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "#10 / #19 / #41",
+     "result": "n/a",
+     "src": "docs/FEATURE_FEASIBILITY_MATRIX.md"
+    },
+    {
+     "rid": "F0059",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "#10 / #20 / #40 / #47",
+     "result": "n/a",
+     "src": "docs/FUTURE_AFTER_GEN15_BACKLOG.md"
+    },
+    {
+     "rid": "F0060",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Roadmap step 6 / guardrails",
+     "result": "n/a",
+     "src": "README.md"
+    },
+    {
+     "rid": "E0051",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H38",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0074",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H38",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0042",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H38",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0043",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "VAULT gap 9 / Q4",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0044",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "VAULT gap 10",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0051",
+     "text": "how are we suppose to move a gen 1 pokemon  to like gen 5 ?? does it have to go through bank first or how we doing that ??"
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-XFR-002",
+   "title": "Cross-game True Move locked (installed saves read-only; COPY/import/staged only until per-adapter safety gates pass)",
+   "gens": [
+    "all"
+   ],
+   "area": "transfer",
+   "category": "decision",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "REQ 2026-09-02 docs/TRANSFER_MODEL.md current alpha rule (F0046)",
+   "status": "Intentionally Unsupported",
+   "status_basis": "Recorded permanent safety policy: docs/GAME_SUPPORT_MATRIX.md 'cross-game True Move LOCKED; source injection LOCKED' (F0061), docs/TRANSFER_MODEL.md current-alpha rule and enablement gate (F0046/F0051, tracking #20), README guardrail 'Cross-game True Move is not broadly enabled' (F0060). Enforced in code: a cross-store Move into the save pane of a different game group is refused 'Cross-game true Move is locked until conversion preservation is proven.' (src/UI/TrainerViewScreenBase.inc:879-881); every classic Gen I-V source is legacy read-only (SourceMutationPolicy canPerform). The eventual v1.0 true-Move requirement is tracked under PBX-XFR-001.",
+   "repair_commits": [
+    "0ea98cc1 safety: lock installed-source UI and harden PLA reads"
+   ],
+   "automated_tests": [
+    "tests/test_storage_conversion_custody_contract.cpp : cross-game true Move refused",
+    "tests/test_source_mutation_policy.cpp : legacy/installed sources cannot mutate"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (policy; not a checklist item)",
+   "r12_checklist_item": null,
+   "next_action": "Keep locked; revisit only per adapter after Vault v1 and write/readback verification (TRANSFER_MODEL enablement gate).",
+   "occurrences": [
+    {
+     "rid": "F0046",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Current alpha rule",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0051",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "True Move enablement gate",
+     "result": "n/a",
+     "src": "docs/TRANSFER_MODEL.md"
+    },
+    {
+     "rid": "F0061",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Permanent safety policy",
+     "result": "n/a",
+     "src": "docs/GAME_SUPPORT_MATRIX.md"
+    }
+   ],
+   "owner_words": [],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-CLN-001",
+   "title": "Occupied/unavailable destination safety: Clone, Move and Import never silently overwrite a Pokemon (H32); Gen I/II carry must own the staged save",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "clone",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "REQ 2026-09-01 SAVE_SAFETY.md empty<->occupied slot tests (F0088)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "Clone: decideCloneDrop refuses Occupied/Protected/BoxFull (include/UI/ClassicCarryRules.h:97-108, statuses :116-127). Move: Gen III refuses ('Move destination must be empty; no overwrite', src/Integration/Gen3/Gen3StagedPokemonEditor.cpp:1368-1375), Gen V requires emptyCloneDestination (ClassicPackedMoveOverlay.inc:1124-1128), Gen IV single Move SWAPS losslessly with read-back verification (Gen4StagedPokemonEditor.cpp:743-777; overlay status 'moved/swapped' ClassicPackedMoveOverlay.inc:1100), Gen IV multi refuses occupied (:1066-1070), Gen I/II insert into the packed list (Gen1PackedMove.cpp:80-111). Latent Gen I/II defect from intake (other staged changes accepted mid-carry, discard() left carry active) fixed by 53330345: refuseWhileCarrying (Gen1StagedPokemonEditor.cpp:343-354; Gen2StagedEditor.cpp:730-735) and discard() clears the carry (Gen1 :623, Gen2 :1664-1666). Owner could not test H32 ('dont know how to test this'); R12 Group A row for occupied destinations is NOT TESTED / NO FIXTURE (D0168, other area). NOTE: R12 H03 expects 'A on an occupied slot is refused' for Move in every generation, but Gen IV swaps and Gen I/II insert by design (tests/test_ui_clone_carry_host.cpp:244 'Gen IV swaps losslessly; Gen I / II insert') — the checklist wording will produce a false FAIL.",
+   "repair_commits": [
+    "53330345 H32: Gen I/II carry transaction owns the staged save until place/cancel",
+    "6f62b69e H31 / H23: one shared visual Clone carry for Gen I-V; A places, B cancels"
+   ],
+   "automated_tests": [
+    "tests/test_classic_carry_rules.cpp : occupied/protected/full clone destinations refused, packed next free slot",
+    "tests/test_ui_clone_carry_host.cpp : Clone/Move onto occupied slot never overwrites (Gen III/V refuse, Gen IV swap, Gen I/II insert)",
+    "tests/test_gen12_packed_move.cpp:528-640 : H32 Gen I/II staging refused mid-carry; discard ends carry"
+   ],
+   "last_owner_result": "R11 3634d1e6 H32: NOT TESTED",
+   "hardware_acceptance_candidate": "066e1db9 R12 H03 + H04 (occupied-slot steps)",
+   "r12_checklist_item": "H03",
+   "next_action": "Correct R12 H03 wording per generation (Gen III/V refuse, Gen IV swap, Gen I/II insert) or get an owner decision that Move onto occupied must be refused everywhere; give the owner explicit steps (Clone onto occupied, Import onto occupied).",
+   "occurrences": [
+    {
+     "rid": "F0088",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Required automated tests",
+     "result": "n/a",
+     "src": "docs/SAVE_SAFETY.md"
+    },
+    {
+     "rid": "E0031",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H32",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0072",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H32",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0079",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H32",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0080",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H32",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0031",
+     "text": "dont know how to test this "
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-CLN-002",
+   "title": "Gen I Clone destination browsing should show cached sprites in occupied slots (Cleanup #3 item 4)",
+   "gens": [
+    "I"
+   ],
+   "area": "clone",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 2026-09-13 Gen I Cleanup #3 follow-up item 4 (6ecd9c28)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "The separate Gen I clone destination picker was replaced by the shared visual Clone carry over the normal box grid (6f62b69e; ClassicPackedMoveOverlay.inc beginClone ~:1395-1402, ghost slot ClassicCarryRules.h:110-114), so occupied cells render the box's own sprites and the faded copy shows where it lands. No owner result for the Cleanup #3 item itself; in R11 (before 6f62b69e) the owner said 'gen 1 works perfect' for Clone (E0030).",
+   "repair_commits": [
+    "6f62b69e H31 / H23: one shared visual Clone carry for Gen I-V; A places, B cancels",
+    "153e5aca R11 QA: Gen I/II clone wording is append-only; Gen I shared-Bag Top Up reports partial fits"
+   ],
+   "automated_tests": [
+    "tests/test_ui_clone_carry_host.cpp : clone ghost drawn over box grid, packed append slot"
+   ],
+   "last_owner_result": "none for this item (R11 3634d1e6 H31 owner note: 'gen 1 works perfect')",
+   "hardware_acceptance_candidate": "066e1db9 R12 H04",
+   "r12_checklist_item": "H04",
+   "next_action": "Confirm during H04 on Gen I that occupied slots show sprites and the copy ghost sits after the last Pokemon.",
+   "occurrences": [
+    {
+     "rid": "A0537",
+     "round": "PRE",
+     "candidate": "6ecd9c28",
+     "item_id": "4",
+     "result": "n/a",
+     "src": "docs/GEN1_UX_CLEANUP3_HARDWARE_FOLLOWUP_2026-09-13.md"
+    }
+   ],
+   "owner_words": [],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-CLN-003",
+   "title": "Clone to an available slot must be one flow in every generation (Gen II reopened Actions, Gen III-V numeric keypad that did not work, Gen IV defaulted to the occupied source slot); PKSE-style hover-and-A placement",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "clone",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE 2026-10-15 gate D12 / R11 H31 (3634d1e6)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "6f62b69e moves Clone for all five generations onto the shared carry: Actions -> Clone closes the menu and carries a ghost copy, nothing staged until A on an EMPTY slot, B cancels, no keypad, no Actions reopened (include/UI/ClassicCarryRules.h:14-17, 54-62, 97-108; src/UI/ClassicPackedMoveOverlay.inc:658-760 placeClone/clone target, :1148 place() -> placeClone). Gen I/II append-only wording (E0119) applied in 153e5aca (ClassicCarryRules.h:45-61, 116-118). Gen IV default-to-source-slot keypad (E0106) is gone with the keypad. Clone remains an in-save byte copy; the Vault 'new Vault ID + provenance' semantics (F0083/F0085) depend on PBX-VLT-001. Owner's R11 'gen 1 works perfect' was for the pre-6f62b69e Gen I flow, which has now been replaced by the shared carry.",
+   "repair_commits": [
+    "6f62b69e H31 / H23: one shared visual Clone carry for Gen I-V; A places, B cancels",
+    "153e5aca R11 QA: Gen I/II clone wording is append-only; Gen I shared-Bag Top Up reports partial fits",
+    "91cf155e Round 11 integration: carry comments name A to place (H23)"
+   ],
+   "automated_tests": [
+    "tests/test_ui_clone_carry_host.cpp : per-gen Clone pickup/no keypad/no menu reopen/A places/B cancels with nothing staged",
+    "tests/test_classic_carry_rules.cpp : decideCloneDrop, packed append, statuses",
+    "tests/test_gen2_clone_flow.cpp : Gen II clone backend"
+   ],
+   "last_owner_result": "R11 3634d1e6 H31: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H04",
+   "r12_checklist_item": "H04",
+   "next_action": "Run H04 in every generation, specifically re-checking Gen I because its accepted flow was replaced.",
+   "occurrences": [
+    {
+     "rid": "A0698",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D12",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0856",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "F0082",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "D12-D14 / C09",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0083",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "EXACT CLONE / DERIVED CLONE / COPY",
+     "result": "n/a",
+     "src": "docs/POKEMON_IDENTITY_CUSTODY_CONTRACT.md"
+    },
+    {
+     "rid": "F0086",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Clone",
+     "result": "n/a",
+     "src": "docs/UI_FLOW.md"
+    },
+    {
+     "rid": "E0030",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H31",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0071",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H31",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0106",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §3 leads"
+    },
+    {
+     "rid": "E0119",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "owner message 2026-11-01 (independent Round 11 QA)"
+    },
+    {
+     "rid": "F0077",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H31",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "D0150",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0030",
+     "text": "gen 1 works perfect, gen 2 when i clone a pokemon its creates it in the box and than revert back to the action menu with clone, edit,view,release,oring and legality, it shouldnt do that, it should clone the pokemon and no menu popup like gen 1, gen 3 has the numpad come up when clone is click on and that is completey wrong fix this so it behaves like gen 1 but with being able to select which slot it can on to now that it isnt locked like gen 1/2. ps even when i entered a number on the numpad on gen 3 it didnt work so yeah that broken. gen 4/5 has same problem as gen 3, when they are all fixed they should work like gen 1 but have the ability to select which slot cause it aint like gen 1/2 now, look at PKSE how they clone and also can we have the hover over box feature that PKSE has, so we go to the box/slot we want and than press A to confirm the clone and it pops the pokemon in the slot. "
+    },
+    {
+     "rid": "E0119",
+     "text": "Gen I/II packed boxes only permit appending at the first empty slot. Their destination picker must not advertise arbitrary empty positions."
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-CLN-004",
+   "title": "Open owner decisions: Gen II egg-clone refusal; whether Gen V accepts a slot freed by a staged Release",
+   "gens": [
+    "II",
+    "V"
+   ],
+   "area": "clone",
+   "category": "decision",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R12 PR #332 body 2026-11-01 (066e1db9)",
+   "status": "Needs Investigation",
+   "status_basis": "Current behaviour: Gen II refuses egg cloning ('egg cloning is not enabled in this milestone', src/Integration/Gen2/Gen2StagedEditor.cpp:1297); Gen V refuses a destination with a pending change, including one freed by a staged Release (Gen5StagedPokemonWorkspace.h:383-388 pending_.count). Unknown: the owner's intended policy for both.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_gen2_clone_flow.cpp : Gen II clone refusals"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (owner decision first)",
+   "r12_checklist_item": null,
+   "next_action": "Ask the owner both questions; then pin the answer in tests.",
+   "occurrences": [
+    {
+     "rid": "D0244",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #332 (body 2026-11-01)"
+    }
+   ],
+   "owner_words": [],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-CRY-001",
+   "title": "Inherited Y grab/Move/Multi mutation controls reachable in installed game-save views (read-only alpha contract)",
+   "gens": [
+    "app"
+   ],
+   "area": "move-carry",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE 2026-09-02 session log (3be4de6b), issue #23",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "0ea98cc1 locks installed-source UI: canPerform() allows mutations only for BackupOrStaged/AppOwnedStorage (include/Safety/SourceMutationPolicy.h canPerform); Storage save-pane X/Y are stripped for read-only sources (src/UI/TrainerViewScreenBase.inc:2437-2441). The second device checklist rows that would verify it (A0264-A0282 range, 'NO UNSAFE MOVE/MULTI ON INSTALLED SOURCE' F0090) were never filled. For Gen I-V the Y carry is now an intended staged-copy feature (PBX-CRY-003).",
+   "repair_commits": [
+    "0ea98cc1 safety: lock installed-source UI and harden PLA reads"
+   ],
+   "automated_tests": [
+    "tests/test_source_mutation_policy.cpp : installed/legacy sources refuse DirectMove/Edit/Rename"
+   ],
+   "last_owner_result": "PRE 3be4de6b: FAIL",
+   "hardware_acceptance_candidate": "none (Switch-native titles are outside the Gen I-V R12 checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Verify on an installed Switch-native title when Gen VI+ is tested.",
+   "occurrences": [
+    {
+     "rid": "A0063",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0101",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0172",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0172",
+     "text": "grab/move behavior"
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-CRY-002",
+   "title": "Gen IV Y-carry pickup/placement display (duplicated pickup sprite, Summary showing held PK4) and Y multi-move",
+   "gens": [
+    "IV"
+   ],
+   "area": "move-carry",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 2026-10-12 PR #278 owner comment",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS 61ce32ac ('ok thats a pass for me', D0342), d0a45909 Gen IV Y-carry accepted (A0940), and R3 62a2f8c3 AUD-08 Gen IV Y multi-move PASS. Placement key changed from Y to A for all generations in 6f62b69e (ClassicCarryRules.h:36-42), so re-verification needed.",
+   "repair_commits": [
+    "61ce32ac Fix Gen IV Y-carry ghost source and stale Summary without touching staged PK4",
+    "6f62b69e H31 / H23: one shared visual Clone carry for Gen I-V; A places, B cancels"
+   ],
+   "automated_tests": [
+    "test_gen4_hardware_surface_contract : Gen IV Boxes carry",
+    "tests/test_hw_round1_regression_gate.py : AUD-08 guard (GUARDS_ROUND3)"
+   ],
+   "last_owner_result": "R3 62a2f8c3 AUD-08: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 AUD-08; re-verify 066e1db9 R12 H03",
+   "r12_checklist_item": "H03",
+   "next_action": "H03 Gen IV, including a Y-multi rectangle drop.",
+   "occurrences": [
+    {
+     "rid": "A0613",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D7",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0676",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C09",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "D0341",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #278 (comment 2026-10-12)"
+    },
+    {
+     "rid": "D0342",
+     "round": "PRE",
+     "candidate": "61ce32ac",
+     "item_id": null,
+     "result": "PASS",
+     "src": "PR #278 (comment 2026-10-12)"
+    },
+    {
+     "rid": "A0940",
+     "round": "PRE",
+     "candidate": "d0a45909",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/handoffs/GEN14_FINAL_COMPLETION_PROGRESS.md"
+    },
+    {
+     "rid": "B0577",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-08",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0689",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-08",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0341",
+     "text": "the remaining issue is Gen IV Diamond **duplicated pickup/source sprite and Summary showing the still-held PK4**, unlike Gen III Emerald."
+    },
+    {
+     "rid": "D0342",
+     "text": "**\"ok thats a pass for me\"**"
+    }
+   ]
+  },
+  {
+   "id": "PBX-CRY-003",
+   "title": "Move controls: Y picks up, A places, B cancels in every generation with footer/Help updated (H23 request); Move is an atomic staged copy/remove with the source kept until the destination is verified",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "move-carry",
+   "category": "request",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE 2026-10-15 gate D13 / R11 H23 request (3634d1e6)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "Shared rules: carryKey() B=Cancel, A=Place, Y/X refused with hint and consumed (include/UI/ClassicCarryRules.h:36-52, static_asserts :133-136); footer 'A Place / L/R Box / B Cancel' (:74-77); used by Gen I-IV handleInput and Gen V handleGen5CarryInput (src/UI/ClassicPackedMoveOverlay.inc:1414-1430). Atomicity: each backend stages on a copy and rolls back on failed read-back (Gen4StagedPokemonEditor.cpp:743-777; Gen3StagedPokemonEditor.cpp:1378-1389; Gen IV overlay restores backup on presentation failure ClassicPackedMoveOverlay.inc:1086-1094; Gen V dropCarriedPokemon re-checks the carried record :1129-1140). No owner result yet for A-to-place.",
+   "repair_commits": [
+    "6f62b69e H31 / H23: one shared visual Clone carry for Gen I-V; A places, B cancels",
+    "91cf155e Round 11 integration: carry comments name A to place (H23)",
+    "3cacfa98 Round 11 integration: Pokemon Help keeps 10 rows; carry contract follows the shared footer model"
+   ],
+   "automated_tests": [
+    "tests/test_classic_carry_rules.cpp : key mapping, footer, refuse hints",
+    "tests/test_ui_clone_carry_host.cpp : per-gen Y pick, Y refused, B restores exact staged state, A places, no Actions after move",
+    "tests/test_classic_packed_move_recovery_contract.cpp : packed move recovery"
+   ],
+   "last_owner_result": "R11 3634d1e6 H23: PASS (with this request)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H03",
+   "r12_checklist_item": "H03",
+   "next_action": "Run H03 per generation; check Help pages mention A to place.",
+   "occurrences": [
+    {
+     "rid": "A0699",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D13",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0084",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "MOVE transaction",
+     "result": "n/a",
+     "src": "docs/POKEMON_IDENTITY_CUSTODY_CONTRACT.md"
+    },
+    {
+     "rid": "E0049",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H23",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0066",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H23",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0101",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 decisions"
+    },
+    {
+     "rid": "F0078",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H23",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0081",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§4 Box controls / §2 carry",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "D0149",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    },
+    {
+     "rid": "E0088",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §2 shared root causes"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0049",
+     "text": "it works, can we fix for all gens when we pick up a pokemon can we change the drop control to A, so it would be moving the pokemon to the spot you want and pressing and and that would set the pop there instead of pressing Y again to drop it, can we also fix the footer and all the help menu and anything else that would need to be changed for this to work "
+    }
+   ],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-CRY-004",
+   "title": "Gen I (Yellow) Box Actions -> Move reachable and starts the Boxes carry (R2-CHECK-009)",
+   "gens": [
+    "I"
+   ],
+   "area": "move-carry",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 R2-CHECK-009 (62a2f8c3)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R3 62a2f8c3 R2-CHECK-009 ('Y move works in Gen I.'). Drop key changed from Y to A (6f62b69e) and Gen I sheet rebuilt (dd69bc93).",
+   "repair_commits": [
+    "1dcf2cc3 WIP: feat(gen1): Box Actions lists Move and starts the Boxes carry (R2-CHECK-009)",
+    "9d4b8b71 Merge audit/app-qa-20261014 (d98d250, C 114a22f3 R2-CHECK-009/R2-BUG-008 + E02 pins; every contract enforced) into the Gen V integration branch"
+   ],
+   "automated_tests": [
+    "tests/test_gen12_packed_move.cpp : Gen I sheet with/without Move; Move -> drop stages one verified move; B leaves box byte-identical"
+   ],
+   "last_owner_result": "R3 62a2f8c3 R2-CHECK-009: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3; re-verify 066e1db9 R12 H03/H05",
+   "r12_checklist_item": "H03",
+   "next_action": "H03 Gen I via Actions -> Move and via Y.",
+   "occurrences": [
+    {
+     "rid": "B0425",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-009",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0544",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-009",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0545",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-009",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0681",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-009",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0544",
+     "text": "Y move works in Gen I."
+    }
+   ]
+  },
+  {
+   "id": "PBX-CRY-005",
+   "title": "Gen II (Gold/Silver/Crystal) PC box Move pickup/drop/between boxes not completing (NEW-04)",
+   "gens": [
+    "II"
+   ],
+   "area": "move-carry",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R3 NEW-04 (62a2f8c3)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R3 FAIL; fixed (c3807c63 grid refresh mid-carry); owner PASS OCT24, R5 1ca2faec, R6 26186464 A08 and again R11 3634d1e6 H23 ('it works'). Place key changed to A after R11 (6f62b69e) and Gen II Actions now offer Move (dd69bc93).",
+   "repair_commits": [
+    "c3807c63 WIP: fix(gen2): PC box Move refreshes the grid mid-carry (NEW-04)",
+    "6f62b69e H31 / H23: one shared visual Clone carry for Gen I-V; A places, B cancels"
+   ],
+   "automated_tests": [
+    "tests/test_gen2_box_move_presentation.cpp : Gen II move presentation (CG56)",
+    "tests/test_gen12_packed_move.cpp : Gen II packed move/cancel"
+   ],
+   "last_owner_result": "R11 3634d1e6 H23: PASS",
+   "hardware_acceptance_candidate": "R11 3634d1e6 H23; re-verify 066e1db9 R12 H03",
+   "r12_checklist_item": "H03",
+   "next_action": "H03 Gen II between boxes with A to place.",
+   "occurrences": [
+    {
+     "rid": "B0553",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-04",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0590",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0032",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-04",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0084",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-04",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0135",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0183",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0229",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A08 · NEW-04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0288",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A08 · NEW-04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0373",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-04",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0007",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0022",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H23",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0553",
+     "text": "Gold/Silver/Crystal PC box pickup/drop/move between slots/boxes not completing. **Gen I and Gen III move work—do not rewrite them.**"
+    },
+    {
+     "rid": "E0022",
+     "text": "it works, can we fix for all gens when we pick up a pokemon can we change the drop control to A, so it would be moving the pokemon to the spot you want and pressing and and that would set the pop there instead of pressing Y again to drop it, can we also fix the footer and all the help menu and anything else that would need to be changed for this to work "
+    }
+   ]
+  },
+  {
+   "id": "PBX-CRY-006",
+   "title": "Gen IV Storage view save pane: Y carry stripped, drop at Boxes-tab cursor, carry not drawn (Part 9 #8)",
+   "gens": [
+    "IV"
+   ],
+   "area": "move-carry",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 Part 9 #8 (62a2f8c3 / repro 0faf7e9c)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "Current overlay drops in the grid the Pokemon came from, Boxes or the Storage save pane (src/UI/ClassicPackedMoveOverlay.inc:1015-1017 cursorBox/cursorSlot). Fixed on lane S (83e3d004/60243fcf). No owner result for Part 9 #8 in R3 results or later; not on R12 checklist.",
+   "repair_commits": [
+    "83e3d004 Part 9 item 8: test the Gen IV Storage save-pane Move / Y carry (130 checks)",
+    "60243fcf Thread S handoff: Part 9 item 8, pin folds, CG13 hand-off to P"
+   ],
+   "automated_tests": [
+    "tests/test_gen4_storage_carry.cpp : Storage save-pane pickup, drop at visible cursor, drawn carry"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on R12 checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Add a Gen IV Storage-view carry step (Y pick, A place, B cancel) to the next checklist.",
+   "occurrences": [
+    {
+     "rid": "B0439",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "Part 9 #8",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0603",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #8",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0610",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #8",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    }
+   ],
+   "owner_words": [],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-REL-001",
+   "title": "Inherited Release (X) reachable in installed game-save views",
+   "gens": [
+    "app"
+   ],
+   "area": "release",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE 2026-09-02 session log (3be4de6b), issue #23",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "0ea98cc1 source-mutation lock (canPerform false for installed/legacy sources). In Gen III/IV the Boxes grid now consumes X so it cannot fall through to the inherited X=Release handler (dd69bc93); intake notes the legacy handler is still stopped by requireMutableWorkspace() when reached. 'NO RELEASE ON INSTALLED SOURCE' (F0090) never received an owner result.",
+   "repair_commits": [
+    "0ea98cc1 safety: lock installed-source UI and harden PLA reads",
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model, Gen I-V"
+   ],
+   "automated_tests": [
+    "tests/test_source_mutation_policy.cpp : installed source refuses mutations"
+   ],
+   "last_owner_result": "PRE 3be4de6b: FAIL",
+   "hardware_acceptance_candidate": "none (Switch-native titles outside Gen I-V R12)",
+   "r12_checklist_item": null,
+   "next_action": "Verify X on an installed Switch-native title when Gen VI+ is tested; R12 H05 X steps cover Gen I-V.",
+   "occurrences": [
+    {
+     "rid": "A0061",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0098",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "F0090",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Second physical Switch matrix",
+     "result": "n/a",
+     "src": "docs/RELEASE_CHECKLIST.md"
+    }
+   ],
+   "owner_words": [],
+   "rechecked_needed": false
+  },
+  {
+   "id": "PBX-REL-002",
+   "title": "Release/Remove needs a separate Y confirmation; A is not destructive; B/cancel preserves the Pokemon; no original-source write",
+   "gens": [
+    "all"
+   ],
+   "area": "release",
+   "category": "requirement",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE gate D5/D14 (Gen I-IV checklist) / R1 7fea1797 C08",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R1 7fea1797 C08 and R3 62a2f8c3 C08 (B0491). Current: Y confirms (src/UI/ClassicReleaseActionFix.inc:173 confirmRelease, :319 Y -> confirmRelease; Gen III confirmRelease state Gen3SharedPokemonSurface.inc:119). The Release sheet wiring in ClassicReleaseActionFix.inc changed after R3 (dd69bc93, 6f62b69e, 91cf155e).",
+   "repair_commits": [
+    "c81853da feat(editor): route classic Party Actions to native staged edits",
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model, Gen I-V"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : C08 guard",
+    "test_shared_editor_unit / CG06 / test_touch_pokemon_editor_direct_rows_contract.py : Release confirmation"
+   ],
+   "last_owner_result": "R3 62a2f8c3 C08: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 C08; re-verify on 066e1db9 (no explicit R12 item; H05 only lists the row)",
+   "r12_checklist_item": null,
+   "next_action": "Add a one-line Release Y-confirm / B-cancel regression step to R12 (per generation).",
+   "occurrences": [
+    {
+     "rid": "A0611",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D5",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0700",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D14",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "B0007",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C08",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0075",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C08",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0198",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "C08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0265",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "C08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0333",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C08",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0383",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0491",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C08",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0621",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C08",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "F0091",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Permanent guardrails",
+     "result": "n/a",
+     "src": "README.md"
+    }
+   ],
+   "owner_words": []
+  }
+ ],
+ "accepted_features": [
+  {
+   "gen": "app",
+   "feature": "Generic Pokemon Action Sheet open / B / Cancel / ~100x stability (Switch-native titles)",
+   "latest_pass": "PRE 3be4de6b 2026-09-03 (A0157/A0175)",
+   "code_changed_since": true,
+   "evidence": "No longer used in Gen I-V (TrainerViewScreenBase.inc:1977); ActionSheetModel.h unchanged in R11"
+  },
+  {
+   "gen": "I-IV",
+   "feature": "Narrow native Actions menus / touch",
+   "latest_pass": "PR #278 d0a45909 2026-10-12 (A0939/D0340)",
+   "code_changed_since": true,
+   "evidence": "dd69bc93, 1cdbe73c rebuilt sheets"
+  },
+  {
+   "gen": "all",
+   "feature": "Make Shiny not a quick action (E01)",
+   "latest_pass": "R3 62a2f8c3 E01",
+   "code_changed_since": true,
+   "evidence": "NarrowPokemonActionMenu.h:193-199"
+  },
+  {
+   "gen": "all",
+   "feature": "Actions order consistent, Party View/Edit/Origin & Legality/Cancel (E02/A04)",
+   "latest_pass": "R6 26186464 A04",
+   "code_changed_since": true,
+   "evidence": "Superseded by R11 Extra 7 FAIL; dd69bc93"
+  },
+  {
+   "gen": "I,II,III",
+   "feature": "Party Actions popup (NEW-20/A21)",
+   "latest_pass": "R6 26186464 A21",
+   "code_changed_since": true,
+   "evidence": "dd69bc93 adds Review row"
+  },
+  {
+   "gen": "all",
+   "feature": "Release requires Y confirmation; cancel preserves (C08)",
+   "latest_pass": "R3 62a2f8c3 C08",
+   "code_changed_since": true,
+   "evidence": "ClassicReleaseActionFix.inc changed in R11"
+  },
+  {
+   "gen": "IV",
+   "feature": "Y-carry display (no duplicated source sprite) and Y multi-move",
+   "latest_pass": "R3 62a2f8c3 AUD-08 (display: 61ce32ac PR #278)",
+   "code_changed_since": true,
+   "evidence": "Place key now A (6f62b69e)"
+  },
+  {
+   "gen": "I",
+   "feature": "Box Actions -> Move starts Boxes carry",
+   "latest_pass": "R3 62a2f8c3 R2-CHECK-009",
+   "code_changed_since": true,
+   "evidence": "6f62b69e, dd69bc93"
+  },
+  {
+   "gen": "II",
+   "feature": "PC box Move between slots and boxes",
+   "latest_pass": "R11 3634d1e6 H23",
+   "code_changed_since": true,
+   "evidence": "6f62b69e (A places)"
+  },
+  {
+   "gen": "V",
+   "feature": "Create / Clone / Move / Release work (S03, create-area record B0305)",
+   "latest_pass": "R2 e10f307f S03",
+   "code_changed_since": true,
+   "evidence": "Gen V Move/Clone moved to shared carry (06a7dce2, 6f62b69e)"
+  },
+  {
+   "gen": "all",
+   "feature": "Cross-generation .pkN import refused (H38)",
+   "latest_pass": "R11 3634d1e6 H38",
+   "code_changed_since": true,
+   "evidence": "import/file code touched in R11 (src/UI/PokemonFileDialog.cpp, src/Integration); refusal strings unchanged"
+  },
+  {
+   "gen": "app",
+   "feature": "Legacy Storage persistence across games (Arbok)",
+   "latest_pass": "PRE 3be4de6b 2026-09-03 (A0217)",
+   "code_changed_since": true,
+   "evidence": "Bank load/save hardening 080d7c8b, 159b6c97"
+  }
+ ],
+ "noise": [],
+ "misfiled": []
+}

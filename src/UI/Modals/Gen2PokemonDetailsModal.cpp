@@ -215,11 +215,11 @@ void drawGen2PokemonDetailsModal(TrainerViewScreen& screen, PKSEFramebuffer& fb,
         fb.drawText(midX + 96, y, std::to_string(dvs[static_cast<std::size_t>(i)]) + (i == 0 ? " *" : ""),
                     cellColor(i, 0), TextStyle::Caption);
         fb.drawText(midX + 192, y, std::to_string(statExp[static_cast<std::size_t>(i)]), cellColor(i, 1), TextStyle::Caption);
-        // Round 7 (owner A22 / C01, Gen I reference): plain numbers only; the Special row's Stat
-        // cell stays empty and Sp. Atk / Sp. Def get their own line below.
-        if (i < 4)
-            fb.drawText(midX + 290, y, std::to_string(battleStats[static_cast<std::size_t>(i)]), cellColor(i, 2),
-                        TextStyle::Caption);
+        // Round 7 (owner A22 / C01, Gen I reference): plain numbers only, and Sp. Atk / Sp. Def get
+        // their own labelled line below. Round 11 (owner H22): the Special row's Stat cell shows both
+        // numbers too, from the one Gen II cell rule every STATS painter uses.
+        fb.drawText(midX + 290, y, PokeBank::UIModel::Gen2Workspace::calculatedCell(battleStats, i), cellColor(i, 2),
+                    TextStyle::Caption);
     }
     fb.drawText(midX + 16, contentY + 322, "* HP DV derived", Colors::TextDim, TextStyle::Caption);
     compactRow(fb, midX + 16, contentY + 356, "Shiny", p.isShiny(0, {}) ? "Yes" : "No", 124);

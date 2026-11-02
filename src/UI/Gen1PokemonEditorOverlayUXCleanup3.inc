@@ -7,6 +7,7 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicFieldColor.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/CreateRequiredFields.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1Shiny.h"
@@ -128,11 +129,10 @@ bool ux3SetExistingShiny(TrainerViewScreen& screen, bool shiny) {
         dvs = ux3.preShinyEditDVs.value_or(ShinyDVs::makeNormalFallback(dvs));
         ux3.preShinyEditDVs.reset();
     }
+    // Round 11 H22: the Shiny value and sprite are the feedback (as in Create); no success toast.
     BoxPokemonEdit edit;
     edit.dvs = dvs;
-    return ux2CommitEdit(screen, edit, shiny
-        ? "Shiny appearance staged through Generation I DVs; source .srm unchanged"
-        : "Normal appearance staged through Generation I DVs; source .srm unchanged");
+    return ux2CommitEdit(screen, edit, nullptr, PokeBank::UIModel::EditFeedback::Kind::Shiny);
 }
 
 std::vector<uint8_t> ux3MoveChoices(TrainerViewScreen& screen) {
@@ -179,12 +179,14 @@ void ux3OpenSpeciesPicker(TrainerViewScreen& screen, uint16_t current, bool shin
 constexpr auto ux3SpeciesAvailable = [](uint16_t) { return true; };
 constexpr auto ux3SpeciesName = [](uint16_t species) { return std::string(Names::getSpeciesName(species)); };
 
-// R2-BUG-004: a real species change replaces all four moves with the new species' native
-// Gen I default moveset at the draft level (base moves + evos_moves, pret WriteMonMoves; Yellow
-// has its own table), base PP and no PP Ups. The old species' moves are never kept.
-PokeBank::UIModel::SpeciesMoveDefaults::Slots ux3SpeciesChangeMoves(TrainerViewScreen& screen,
-                                                                   uint16_t species, uint8_t level) {
-    return PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), species, level);
+// Round 11 (owner H28): a real species change keeps each current move the new species can use in
+// this exact Red / Blue / Yellow ruleset, with its PP and PP Ups, and clears the rest. It never adds
+// a move: a blank Create draft stays blank, and an incompatible move never survives (R2-BUG-004).
+PokeBank::UIModel::SpeciesMoveDefaults::Slots ux3SpeciesChangeMoves(TrainerViewScreen& screen, uint16_t species,
+                                                                   const std::array<uint8_t, 4>& moves,
+                                                                   const std::array<uint8_t, 4>& pp,
+                                                                   const std::array<uint8_t, 4>& ppUps) {
+    return PokeBank::UIModel::SpeciesMoveDefaults::gen1(editor(screen), species, moves, pp, ppUps);
 }
 
 bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
@@ -198,7 +200,7 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
                 screen.sourceGameId, species);
             state.draft.experience.reset();
             PokeBank::UIModel::SpeciesMoveDefaults::writeArrays(
-                ux3SpeciesChangeMoves(screen, species, state.draft.level),
+                ux3SpeciesChangeMoves(screen, species, state.draft.moves, state.draft.pp, state.draft.ppUps),
                 state.draft.moves, state.draft.pp, state.draft.ppUps);
         }
         state.draft.nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(state.draft.nickname, state.draft.species, species);
@@ -221,7 +223,14 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
             edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
                 screen.sourceGameId, species);
             PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(
-                ux3SpeciesChangeMoves(screen, species, *edit.level), edit);
+                ux3SpeciesChangeMoves(screen, species, pokemon->moves, pokemon->pp, pokemon->ppUps), edit);
+            // Gen I stages an Edit at once, so this IS its Keep: refuse a change that would leave
+            // the Pokemon with no move (CreateRequiredFields), staging nothing.
+            if (PokeBank::UIModel::CreateRequiredFields::forEdit(pokemon->moves, *edit.moves).move) {
+                screen.postStatus(Names::getSpeciesName(species) + std::string(" can't use any of these moves. ") +
+                                  PokeBank::UIModel::CreateRequiredFields::message({false, true}), 420);
+                return false;
+            }
         }
         const auto nickname = PokeBank::UIModel::nicknameAfterSpeciesChange(pokemon->nickname, pokemon->species, species);
         if (nickname != pokemon->nickname) edit.nickname = nickname;
@@ -780,6 +789,8 @@ uint64_t ux3DirectTouchInput(TrainerViewScreen& screen, uint64_t down, const Tou
             state.speciesChooser, SharedSearchInput::sample(touch), chosen, 151,
             SharedSpeciesPicker::ModalX, SharedSpeciesPicker::ModalY, ux3SpeciesAvailable, ux3SpeciesName);
         state.pickerValue = chosen;
+        // Round 11 SPRITE: a tap on the preview artwork previews the other appearance, as Y does.
+        if (handled.previewShinyTapped) down |= HidNpadButton_Y;
         if (handled.touch) return down;
         // Keep the existing preview steady while a contact may become a swipe.
         // The release-confirmed row target is the only direct-tap selection.

@@ -67,6 +67,56 @@ int main() {
                              "src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc",
                              "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc"})
         assert(read(path).find("Met Location") == std::string::npos);
+    // Round 11 (the FRLG closed-list failure, Crystal path): a species with no Crystal catch
+    // template (Charizard, Rayquaza-like traded-in species) used to get "No supported Crystal
+    // encounter templates for this species" and no chooser. Now: templates first, then every other
+    // native Crystal landmark, labelled as unverified history, never as a catch.
+    {
+        namespace Rows = PokeBank::UIModel::ExactGameMetLocations;
+        assert(E::forGameSpecies("crystal_gbc", 6).empty());
+        P::Model none;
+        none.openLocation("crystal_gbc", 6, 0, 0);
+        assert(none.locationCount() == static_cast<int>(Rows::crystalOfferedLocations().size()));
+        assert(none.locationCount() == 0x5F + 2);                     // landmarks 1..0x5F + Gift + Event
+        assert(none.index == 0 && none.locationChoice() == nullptr);
+        assert(none.otherLocationChoice() && *none.otherLocationChoice() == 1);   // New Bark Town
+        for (int i = 0; i < none.locationCount(); ++i) {
+            const auto text = P::locationRowTextAt(none, i);
+            assert(!text.place.empty() && text.place != "Unused / invalid" && text.place != "Unknown");
+            assert(text.detail.find("unverified") != std::string::npos);
+            assert(text.detail.find(" · Lv. ") == std::string::npos);   // never presented as a catch
+        }
+        assert(P::locationRowTextAt(none, none.locationCount() - 2).detail == Rows::kGiftMarkerDetail);
+        assert(P::locationRowTextAt(none, none.locationCount() - 1).detail == Rows::kEventMarkerDetail);
+        // A stored non-template landmark is focused on its own row.
+        P::Model stored;
+        stored.openLocation("crystal_gbc", 6, 48, 30);                  // Route 1
+        assert(stored.otherLocationChoice() && *stored.otherLocationChoice() == 48);
+
+        // Pidgey has Crystal templates: they come first, and their landmarks are not repeated.
+        const auto templates = E::forGameSpecies("crystal_gbc", 16);
+        assert(!templates.empty());
+        P::Model pidgey;
+        pidgey.openLocation("crystal_gbc", 16, 0, 0);
+        assert(pidgey.locationCount() > static_cast<int>(templates.size()));
+        for (int i = 0; i < static_cast<int>(templates.size()); ++i) {
+            pidgey.index = i;
+            assert(pidgey.locationChoice() && !pidgey.otherLocationChoice());
+            assert(P::locationRowTextAt(pidgey, i).detail == P::locationRowText(templates[static_cast<std::size_t>(i)]).detail);
+        }
+        for (const auto id : pidgey.otherLocations)
+            for (const auto& t : templates) assert(t.location != id);
+        pidgey.index = pidgey.locationCount() - 1;
+        assert(!pidgey.locationChoice() && pidgey.otherLocationChoice() && *pidgey.otherLocationChoice() == 0x7F);
+        pidgey.close();
+        assert(pidgey.otherLocations.empty() && pidgey.locationCount() == 0);
+
+        const auto unified = read("src/UI/Gen2UnifiedPokemonWorkspace.inc");
+        assert(unified.find("No supported Crystal encounter templates for this species") == std::string::npos);
+        assert(unified.find("Met Level (not a listed Crystal encounter)") != std::string::npos);
+        assert(overlay.find("Gen2Picker::locationRowTextAt(model, i)") != std::string::npos);
+        assert(overlay.find("picker.model.otherLocationChoice()") != std::string::npos);
+    }
     std::cout << "Crystal Met Location chooser: proportional, one geometry, names only PASS\n";
     return 0;
 }

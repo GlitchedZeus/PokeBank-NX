@@ -103,6 +103,22 @@ $(HOST_UI_CLASSIC_DISMISS_SANITIZE): $(HOST_UI_CLASSIC_DISMISS_INPUTS) $(HOST_UI
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_classic_picker_dismiss_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 
+# Round 11 (HOME card): region scenery is drawn as rounded shapes, never through a rectangular clip.
+HOST_UI_HOME_SCENERY_TEST := $(HOST_BUILD)/test_ui_home_card_scenery_host
+HOST_UI_HOME_SCENERY_SANITIZE := $(HOST_BUILD)/test_ui_home_card_scenery_host_sanitize
+HOST_UI_HOME_SCENERY_INPUTS := tests/test_ui_home_card_scenery_host.cpp tests/host-ui/HostUi.h \
+	include/UI/CardScenery.h include/UI/RoundedArtwork.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_HOME_SCENERY_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_HOME_SCENERY_SANITIZE)
+host-test: $(HOST_UI_HOME_SCENERY_TEST)
+host-sanitize: $(HOST_UI_HOME_SCENERY_SANITIZE)
+$(HOST_UI_HOME_SCENERY_TEST): $(HOST_UI_HOME_SCENERY_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_home_card_scenery_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_HOME_SCENERY_SANITIZE): $(HOST_UI_HOME_SCENERY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_home_card_scenery_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
 # Round 7 C04 (lane P): Quick Games and Product Home Help close on an outside tap, through the
 # real SaveSelectScreen (Product Home builds on the host with no account or saves, switch.h).
 HOST_UI_QUICK_GAMES_TEST := $(HOST_BUILD)/test_ui_quick_games_host
@@ -162,7 +178,8 @@ HOST_UI_RECOVERY_TEST := $(HOST_BUILD)/test_ui_recovery_files_host
 HOST_UI_RECOVERY_SANITIZE := $(HOST_BUILD)/test_ui_recovery_files_host_sanitize
 HOST_UI_RECOVERY_INPUTS := tests/test_ui_recovery_files_host.cpp tests/host-ui/HostUi.h \
 	tests/host-ui/switch.h tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS) \
-	include/UI/RecoveryManagementModel.h include/UI/RecoveryManagementFs.h
+	include/UI/RecoveryManagementModel.h include/UI/RecoveryManagementFs.h include/UI/SharedBoxedRows.h \
+	include/UI/BackupBrowserChrome.h
 HOST_TESTS += $(HOST_UI_RECOVERY_TEST)
 HOST_SANITIZE_TESTS += $(HOST_UI_RECOVERY_SANITIZE)
 host-test: $(HOST_UI_RECOVERY_TEST)
@@ -186,6 +203,19 @@ $(HOST_UI_KANA_TEST): tests/test_ui_kana_keyboard_host.cpp include/Utils/Gen12Ka
 $(HOST_UI_KANA_SANITIZE): tests/test_ui_kana_keyboard_host.cpp include/Utils/Gen12KanaText.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_kana_keyboard_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Round 11 H27: the keyboard's Hangul page (Korean-language Gen IV names) through the real KeyboardState.
+HOST_UI_HANGUL_TEST := $(HOST_BUILD)/test_ui_hangul_keyboard_host
+HOST_UI_HANGUL_SANITIZE := $(HOST_BUILD)/test_ui_hangul_keyboard_host_sanitize
+HOST_TESTS += $(HOST_UI_HANGUL_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_HANGUL_SANITIZE)
+host-test: $(HOST_UI_HANGUL_TEST)
+host-sanitize: $(HOST_UI_HANGUL_SANITIZE)
+$(HOST_UI_HANGUL_TEST): tests/test_ui_hangul_keyboard_host.cpp include/Utils/HangulComposer.h include/Utils/Gen4Text.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_hangul_keyboard_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_HANGUL_SANITIZE): tests/test_ui_hangul_keyboard_host.cpp include/Utils/HangulComposer.h include/Utils/Gen4Text.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_hangul_keyboard_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 # Owner Oct 28 (Feature B): Top Up / Add Missing through the real Gen III / IV / V Bag screens
 # (ZR -> SETUP -> numpad -> PREVIEW rows inside the modal -> B stages nothing -> A stages -> Review).
 HOST_UI_BAG_TOP_UP_TEST := $(HOST_BUILD)/test_ui_bag_top_up_host

@@ -47,9 +47,11 @@ constexpr std::array<uint16_t, 19> kG1Items{{
     10,29,30,32,33,34,46,47,49,51,55,56,57,58,65,66,67,68,75,
 }};
 // Id 50 is pokered's unused duplicate "PP UP" (the real PP Up is 79); PKHeX does not offer it,
-// so it is not addable here either.
-constexpr std::array<uint16_t, 26> kG1Medicines{{
-    11,12,13,14,15,16,17,18,19,20,35,36,37,38,39,40,52,53,54,60,61,62,79,80,81,82,
+// so it is not addable here either. 83 is Max Elixer (pret pokered constants/item_constants.asm
+// MAX_ELIXER = $53; PKHeX ItemStorage1 lists it): it was in the PC list only, so a Max Elixer in
+// the Bag showed on no category yet still took one of the 20 shared slots (Round 11 H34 skeptic).
+constexpr std::array<uint16_t, 27> kG1Medicines{{
+    11,12,13,14,15,16,17,18,19,20,35,36,37,38,39,40,52,53,54,60,61,62,79,80,81,82,83,
 }};
 constexpr std::array<uint16_t, 4> kG1Balls{{1,2,3,4}};
 constexpr std::array<uint16_t, 19> kG1Keys{{

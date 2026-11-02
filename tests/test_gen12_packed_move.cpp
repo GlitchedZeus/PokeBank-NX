@@ -456,7 +456,7 @@ std::string readText(const char* path) {
 
 // R2-CHECK-009: Gen I Box Actions lists Move (between Clone and Release, the shared E02 order)
 // where the Boxes-view carry exists, and Move starts that carry with the Pokemon picked up:
-// Y drops it as ONE verified staged move, B leaves the source untouched.
+// A places it (Round 11 H23; Y before) as ONE verified staged move, B leaves the source untouched.
 void runGen1BoxActionsMove(G1::SourceGame game) {
     namespace Gen1 = PokeBank::UIModel::Gen1Editor;
     namespace Menu = PokeBank::UIModel::NarrowPokemonMenu;
@@ -525,14 +525,141 @@ void runGen1BoxActionsMove(G1::SourceGame game) {
     assert(ux.find("screen.selectedMode == TrainerViewScreen::ViewMode::Boxes;") != std::string::npos);
 }
 
+// Round 11 H32 (skeptic, scratchpad probe): the Gen I carry transaction owns the staged image from
+// pickup to place / cancel. Before the fix stageEdit / stageAdd / stageClone / stageRemove were all
+// accepted mid-carry and cancelPackedMove then silently threw those changes away; discard() left the
+// carry active, so a later cancel brought discarded changes back.
+void runGen1CarryGuards(G1::SourceGame game) {
+    const auto raw = Gen1Fixture::make(game);
+    std::string error;
+    {   // Every public box mutation is refused while carrying; nothing changes; cancel restores.
+        auto editor = makeGen1Editor(raw, game);
+        setupGen1Five(*editor);
+        const auto beforePickup = staged(*editor);
+        const auto changesBefore = editor->pendingChanges().size();
+        assert(editor->beginPackedMove(2, 1, error));
+        const auto carrying = staged(*editor);
+        G1::BoxPokemonEdit edit;
+        edit.nickname = "LOST";
+        G1::BoxPokemonCreate create;
+        create.species = 7;
+        create.otName = "RED";
+        assert(!editor->stageEdit(2, 0, edit, error) && !error.empty());
+        assert(!editor->stageAdd(3, 0, create, error));
+        assert(!editor->stageClone(2, 0, 3, 0, error));
+        assert(!editor->stageRemove(2, 0, error));
+        assert(!editor->revertPokemon(2, 0, error));
+        assert(staged(*editor) == carrying && editor->packedMoveActive());
+        assert(editor->cancelPackedMove(error) && staged(*editor) == beforePickup);
+        assert(editor->pendingChanges().size() == changesBefore && gen1Order(*editor, 3).empty());
+        // Idle again: the same calls work (pickup and Release paths are unchanged).
+        assert(editor->stageClone(2, 0, 3, 0, error) && gen1Order(*editor, 3).size() == 1);
+        assert(editor->stageRemove(3, 0, error) && gen1Order(*editor, 3).empty());
+        assertOriginal(*editor, raw);
+    }
+    {   // Clone onto an occupied slot (inside the list) or a non-contiguous slot: refused, bytes unchanged.
+        auto editor = makeGen1Editor(raw, game);
+        setupGen1Five(*editor);
+        const auto before = staged(*editor);
+        assert(!editor->stageClone(2, 0, 2, 1, error));   // occupied (count 5)
+        assert(!editor->stageClone(2, 0, 2, 7, error));   // past the next free slot
+        assert(staged(*editor) == before);
+        assert(editor->stageClone(2, 0, 2, 5, error) && gen1Order(*editor, 2).size() == 6);
+    }
+    {   // Discard during a carry ends it: a later cancel or place cannot restore discarded changes.
+        auto editor = makeGen1Editor(raw, game);
+        setupGen1Five(*editor);
+        assert(editor->beginPackedMove(2, 1, error));
+        editor->discard();
+        assert(!editor->packedMoveActive());
+        assert(std::equal(editor->stagedBytes().begin(), editor->stagedBytes().end(), raw.begin(), raw.end()));
+        assert(editor->cancelPackedMove(error));
+        std::size_t placed = 0;
+        assert(!editor->placePackedMove(2, 0, placed, error));
+        assert(std::equal(editor->stagedBytes().begin(), editor->stagedBytes().end(), raw.begin(), raw.end()));
+        assert(editor->pendingChanges().empty());
+        // The editor is usable again: a new pickup works.
+        assert(editor->beginPackedMove(2, 0, error) && editor->cancelPackedMove(error));
+        assertOriginal(*editor, raw);
+    }
+}
+
+// Round 11 H32: the same transaction rule for Gen II. Every public staging entry point refuses while
+// a Pokemon is carried (the skeptic found the trainer name / money cache left stale by a cancel, which
+// then blocked finalize), cancel restores the cached trainer name and money with the bytes, and
+// discard() ends the carry.
+template <class L>
+void runGen2CarryGuards(const L& layoutFixture, G2::SourceGame game) {
+    const auto raw = fixture(layoutFixture);
+    std::string error;
+    {
+        auto editor = makeGen2Editor(raw, game);
+        setupGen2Five(*editor);
+        const auto beforePickup = staged(*editor);
+        const auto changesBefore = editor->pendingChanges().size();
+        const std::string name = editor->trainerName();
+        const uint32_t money = editor->money();
+        assert(editor->beginPackedMove(0, 1, error));
+        const auto carrying = staged(*editor);
+        G2::BoxPokemonEdit edit;
+        edit.nickname = "LOST";
+        G2::BoxPokemonCreate create;
+        create.species = 152;
+        create.level = 5;
+        create.otName = "ASH";
+        std::size_t slot = 99;
+        assert(!editor->stageBoxPokemonEdit(0, 0, edit, error) && !error.empty());
+        assert(!editor->stageBoxPokemonShiny(0, 0, true, error));
+        assert(!editor->stageCloneBoxPokemon(0, 0, 2, slot, error));
+        assert(!editor->stageAddBoxPokemon(2, create, slot, error));
+        assert(!editor->stageTrainerName("LOST", error));
+        assert(!editor->stageMoney(1234, error));
+        assert(!editor->stageTrainerEdit("LOST", 1234, error));
+        assert(!editor->stagePlayTime({1, 2, 3}, error));
+        assert(!editor->stageTrainerGender(1, error));
+        assert(!editor->stageItemQuantity(G2::InventoryPocket::Items, 18, 3, error));
+        assert(!editor->stageInventoryQuantity(G2::InventoryPocket::Items, 18, 3, error));
+        assert(!editor->stageInventorySlotQuantity(G2::InventoryPocket::Items, 0, 18, 3, error));
+        assert(!editor->stageReleaseBoxPokemon(0, 0, error));
+        assert(staged(*editor) == carrying && editor->packedMoveActive());
+        assert(editor->trainerName() == name && editor->money() == money);
+        assert(editor->cancelPackedMove(error) && staged(*editor) == beforePickup);
+        assert(editor->pendingChanges().size() == changesBefore);
+        assert(editor->trainerName() == name && editor->money() == money);
+        assert(!editor->finalizedBytes(error).empty() && error.empty());
+        // Idle again: trainer edits and Release work.
+        assert(editor->stageMoney(1234, error) && editor->money() == 1234);
+        assert(editor->stageReleaseBoxPokemon(0, 4, error));
+        assertOriginal(*editor, raw);
+    }
+    {   // Discard during a carry ends it; nothing discarded can come back.
+        auto editor = makeGen2Editor(raw, game);
+        setupGen2Five(*editor);
+        assert(editor->stageMoney(4321, error));
+        assert(editor->beginPackedMove(0, 1, error));
+        editor->discard();
+        assert(!editor->packedMoveActive());
+        assert(std::equal(editor->stagedBytes().begin(), editor->stagedBytes().end(), raw.begin(), raw.end()));
+        assert(editor->cancelPackedMove(error));
+        std::size_t placed = 0;
+        assert(!editor->placePackedMove(0, 0, placed, error));
+        assert(std::equal(editor->stagedBytes().begin(), editor->stagedBytes().end(), raw.begin(), raw.end()));
+        assert(editor->pendingChanges().empty() && editor->money() != 4321);
+        assertOriginal(*editor, raw);
+    }
+}
+
 int main() {
     for (const auto game : {G1::SourceGame::Red, G1::SourceGame::Blue, G1::SourceGame::Yellow}) {
         runGen1(game);
         runGen1BoxActionsMove(game);
+        runGen1CarryGuards(game);
     }
 
     runGen2(GS, G2::SourceGame::Gold);
     runGen2(C, G2::SourceGame::Crystal);
+    runGen2CarryGuards(GS, G2::SourceGame::Gold);
+    runGen2CarryGuards(C, G2::SourceGame::Crystal);
 
     std::cout << "Gen I/II packed single Y move tests passed\n";
     return 0;

@@ -1,8 +1,9 @@
 // R2-LAUNCH: the leave decision ("Quit PokeBank NX?" / "Launch <game>?") is sized by
 // SharedMenuGeometry::LaunchConfirm and every line fits it, measured with the bundled font:
 // - all four emulator quit-route notices and long Gen I-V game names fit without clipping;
-// - the frame sits above the footer, its button row holds three buttons (B Back, A Stay, Y Launch)
-//   inside the frame, and the frame is far smaller than the former fixed 1040x250 box;
+// - the frame sits above the footer, its button row holds two buttons (B Cancel, Y Quit / Launch;
+//   Round 11 QUIT removed the redundant A Stay) inside the frame, each wide enough for its glyph and
+//   label, and the frame is far smaller than the former fixed 1040x250 box;
 // - the decision semantics stay frozen (only Y commits, A / B stay; HomeQuit::decide).
 #include "UI/GameLaunchModel.h"
 #include "UI/HomeQuitConfirm.h"
@@ -23,10 +24,13 @@ int main() {
     assert(G::wellFormed(layout));
     assert(layout.rule.bodyLines == L::kLines);
     assert(layout.frame.w < 1040 && layout.frame.h <= 250); // proportional, not the fixed box
-    for (int i = 0; i < 3; ++i) {
-        const G::Rect b = G::buttonRect(layout, i, 3);
+    for (int i = 0; i < 2; ++i) {
+        const G::Rect b = G::buttonRect(layout, i, 2);
         assert(b.w >= 150 && b.inside(layout.frame));
-        if (i) assert(!b.overlaps(G::buttonRect(layout, i - 1, 3)));
+        if (i) assert(!b.overlaps(G::buttonRect(layout, i - 1, 2)));
+        // Glyph badge (~40 px) plus the longest label on either button fits with padding.
+        for (const char* label : {"Cancel", "Launch", "Quit"})
+            assert(G::fitsWidth(label, G::Text::Body, b.w - 64));
     }
     // Message lines sit between the header and the button row.
     assert(G::bodyLineTop(layout, L::kLines - 1) + G::kBodyLineH <= layout.buttons.y);
@@ -69,5 +73,5 @@ int main() {
     assert(Q::decide(Q::kButtonA) == Q::Decision::Stay && Q::decide(Q::kButtonB) == Q::Decision::Stay);
     assert(Q::decide(Q::kButtonA | Q::kButtonY) == Q::Decision::Stay);
     std::cout << "R2-LAUNCH leave decision: SharedMenuGeometry LaunchConfirm frame, every notice and game name "
-                 "fits, B/A/Y buttons in frame, Y-only commit PASS\n";
+                 "fits, B Cancel / Y buttons in frame, Y-only commit PASS\n";
 }

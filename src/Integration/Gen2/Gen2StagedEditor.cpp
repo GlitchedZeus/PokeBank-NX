@@ -11,6 +11,7 @@
 #include "Names/MoveNames.h"
 #include "Integration/Gen1/Gen12CreateReview.h"
 #include "UI/Gen2NativePresentation.h"
+#include "UI/HistoryConsistencyFacts.h"
 #include "Pokemon/Experience.h"
 #include "PokemonFile/NativePokemonFile.h"
 
@@ -727,7 +728,18 @@ void StagedEditor::setChange(std::string key, std::string label,
                         std::move(beforeValue), std::move(afterValue)});
 }
 
+// Round 11 H32: a packed carry owns staged_ / changes_ from pickup to place / cancel (cancel restores
+// its pickup snapshot), so every public staging entry point refuses while one is active, as Gen III
+// does. Before this, a trainer name or money edit made mid-carry left trainerName_ / money_ out of
+// step with the restored bytes and finalize then failed until Discard.
+bool StagedEditor::refuseWhileCarrying(std::string& error) const {
+    if (!packedMove_.active) return false;
+    error = "Place or cancel carried Pokemon first";
+    return true;
+}
+
 bool StagedEditor::stageTrainerEdit(std::string_view name, uint32_t money, std::string& error) {
+    if (refuseWhileCarrying(error)) return false;
     // Validate both fields before changing either. Name encoding can fail; money
     // has no remaining failure path after this range check.
     if (money > kMaxMoney) { error = "Money must be between 0 and 999999"; return false; }
@@ -736,6 +748,7 @@ bool StagedEditor::stageTrainerEdit(std::string_view name, uint32_t money, std::
 }
 
 bool StagedEditor::stageTrainerName(std::string_view name, std::string& error) {
+    if (refuseWhileCarrying(error)) return false;
     std::vector<uint8_t> encoded;
     if (!encodeTrainerName(name, encoded, error)) return false;
     const auto& layout = layoutFor(metadata_);
@@ -748,6 +761,7 @@ bool StagedEditor::stageTrainerName(std::string_view name, std::string& error) {
 
 bool StagedEditor::stageMoney(uint32_t value, std::string& error) {
     error.clear();
+    if (refuseWhileCarrying(error)) return false;
     if (value > kMaxMoney) {
         error = "Generation II money exceeds retail maximum 999999";
         return false;
@@ -790,6 +804,7 @@ bool StagedEditor::playTimeEditable() const noexcept {
 
 bool StagedEditor::stagePlayTime(PlayTime time, std::string& error) {
     error.clear();
+    if (refuseWhileCarrying(error)) return false;
     if (!playTimeEditable()) {
         error = "This save's play time clock is not a native value; it stays read-only";
         return false;
@@ -824,6 +839,7 @@ bool StagedEditor::trainerGenderEditable() const noexcept {
 
 bool StagedEditor::stageTrainerGender(uint8_t gender, std::string& error) {
     error.clear();
+    if (refuseWhileCarrying(error)) return false;
     if (!trainerGenderEditable() || gender > 1) {
         error = metadata_.family == VersionFamily::Crystal
             ? "This save's trainer gender byte is not a native Male / Female value"
@@ -848,6 +864,7 @@ uint8_t StagedEditor::itemQuantity(InventoryPocket pocket, uint8_t itemId) const
 bool StagedEditor::stageItemQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                                      std::string& error) {
     error.clear();
+    if (refuseWhileCarrying(error)) return false;
     if (quantity > kMaxStackQuantity) {
         error = "Generation II item quantities are limited to 99";
         return false;
@@ -965,6 +982,7 @@ bool StagedEditor::stagePartyPokemonEdit(std::size_t slot,const BoxPokemonEdit& 
 
 bool StagedEditor::stageBoxPokemonEdit(std::size_t box, std::size_t slot,
                                        const BoxPokemonEdit& edit, std::string& error) {
+    if (refuseWhileCarrying(error)) return false;
     return stageRecordEdit(false,box,slot,edit,error);
 }
 bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
@@ -1165,6 +1183,19 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
     const std::string labelPrefix = party?"Party "+std::to_string(slot+1)+" ":"Box " + std::to_string(box + 1) + " Slot " + std::to_string(slot + 1) + " ";
     if (before.species != verified->species)
         setChange(prefix + "species", labelPrefix + "Species", Names::getSpeciesName(before.species), Names::getSpeciesName(verified->species));
+    // Round 11 (owner H25 clarification 2): a Crystal Pokemon whose species changed keeps its caught
+    // data; a misfit is one caution note on this entry (value alone), never a change or a refusal.
+    if (before.species != verified->species) {
+        clearChange(prefix + "history_caution");
+        const auto caught = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(verified->caughtData);
+        if (sourceGame_ == SourceGame::Crystal && caught.present) {
+            namespace History = PokeBank::UIModel::HistoryConsistency;
+            const auto caution = History::joined(History::crystalFlags(
+                verified->species, "crystal_gbc", caught.location, caught.levelCode, verified->level));
+            if (!caution.empty())
+                setChange(prefix + "history_caution", labelPrefix + History::kCautionLabel, "", caution);
+        }
+    }
     if (before.nickname != verified->nickname)
         setChange(prefix + "nickname", labelPrefix + "Nickname", before.nickname, verified->nickname);
     if (before.level != verified->level || before.experience != verified->experience)
@@ -1207,6 +1238,7 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
 
 bool StagedEditor::stageBoxPokemonShiny(std::size_t box, std::size_t slot, bool shiny,
                                         std::string& error) {
+    if (refuseWhileCarrying(error)) return false;
     auto currentOpt = boxedPokemon(box, slot, error);
     if (!currentOpt) return false;
     if (currentOpt->isEgg) {
@@ -1258,6 +1290,7 @@ bool StagedEditor::stageCloneBoxPokemon(std::size_t sourceBox, std::size_t sourc
                                         std::size_t destinationBox, std::size_t& destinationSlot,
                                         std::string& error) {
     error.clear();
+    if (refuseWhileCarrying(error)) return false;
     auto source = boxedPokemon(sourceBox, sourceSlot, error);
     if (!source) return false;
     if (source->isEgg) {
@@ -1327,6 +1360,7 @@ bool StagedEditor::stageCloneBoxPokemon(std::size_t sourceBox, std::size_t sourc
 bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokemonCreate& pokemon,
                                       std::size_t& destinationSlot, std::string& error) {
     error.clear();
+    if (refuseWhileCarrying(error)) return false;
     if (pokemon.species == 0 || pokemon.species > kMaxGen2Species || !personalRecord(pokemon.species)) {
         error = "new Pokemon species is outside the Generation II range";
         return false;
@@ -1628,6 +1662,8 @@ std::optional<std::vector<uint8_t>> StagedEditor::exportPartyPokemonFile(std::si
 }
 
 void StagedEditor::discard() noexcept {
+    // Discard also ends a carry: its pickup snapshot predates the discard and must never be restored.
+    packedMove_ = {};
     staged_ = original_;
     trainerName_ = originalTrainerName_;
     money_ = originalMoney_;

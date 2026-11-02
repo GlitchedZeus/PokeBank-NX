@@ -78,20 +78,41 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
                 state, picker.model.speciesChoice(), picker.model.previewShiny,
                 screen.sourceGameId)) return false;
         refreshDerived(state.working);
-        if (screen.sourceGameId == "crystal_gbc") {
-            const auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
-            if (caught.present &&
-                !Encounter::locationAllowed(screen.sourceGameId, state.working.species, caught.location)) {
-                state.working.caughtData = 0;
-                screen.postStatus("Species changed; choose a new legitimate Crystal encounter", 300);
-            }
-        }
+        // Round 11 follow-up (owner H25 clarification 2): Session::setSpecies owns the history
+        // policy. A Create draft's Pokerus and a chosen Crystal location that is no longer a catch of
+        // the new species reset, and the status says so; an EXISTING Pokemon keeps its caught data
+        // (it was cleared here before, in Edit too) and a misfit is flagged in the editor and Review.
+        if (const auto reset = state.speciesChangeResetStatus(); !reset.empty())
+            screen.postStatus(reset, 300);
     } else if (picker.model.kind == Gen2Picker::Kind::Move) {
         if (!Gen2Picker::applyMoveChoice(state, picker.model.moveSlot, picker.model.moveChoice())) return false;
     } else if (picker.model.kind == Gen2Picker::Kind::Location) {
         if (!state.editable() || screen.sourceGameId != "crystal_gbc") return false;
         const auto* encounter = picker.model.locationChoice();
-        if (!encounter) return false;
+        if (!encounter) {
+            // Round 11 (FRLG closed-list fix, Crystal path): a native landmark with no Crystal
+            // catch template for this species (traded / gift / hatched history). Only the location
+            // is the user's choice; recorded met level / time / OT gender are kept, and new caught
+            // history uses the current level (Met Level row edits it), Morning when no time is
+            // pending, and the same Male default as a template choice.
+            const auto other = picker.model.otherLocationChoice();
+            if (!other) return false;
+            auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+            const bool hadHistory = caught.present && caught.levelCode != 0;
+            caught.present = true;
+            caught.location = *other;
+            if (!hadHistory)
+                caught.levelCode = static_cast<uint8_t>(std::clamp<int>(state.working.level, 2, 63));
+            if (caught.timeOfDay < 1 || caught.timeOfDay > 3)
+                caught.timeOfDay = state.crystalMetTime >= 1 && state.crystalMetTime <= 3 ? state.crystalMetTime : 1;
+            state.crystalMetTime = caught.timeOfDay;
+            if (state.crystalOtGender == Gen2Native::CrystalOtGenderChoice::Unknown)
+                state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Male;
+            caught.originalTrainerFemale = Gen2Native::crystalOtGenderFemale(state.crystalOtGender);
+            state.working.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
+            closePicker(screen, picker);
+            return true;
+        }
         auto caught = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
         caught.present = true;
         caught.location = static_cast<uint8_t>(encounter->location);
@@ -207,7 +228,7 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
             appendClippedTouchButton(screen.touchButtons, 2000 + i, g.listX, yy, g.listWidth, g.rowHeight,
                                      g.listX, g.listY, g.listWidth, viewportH);
             SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(g.listX, yy, g.listWidth, g.rowHeight), {selected});  // R2-BUG-012 boxed row
-            const auto text = Gen2Picker::locationRowText(model.encounterChoices[static_cast<std::size_t>(i)]);
+            const auto text = Gen2Picker::locationRowTextAt(model, i);
             fb.drawText(g.listX + 14, yy + 9, text.place, selected ? Colors::SelectedText : Colors::Text);
             int dw = 0, dh = 0;
             fb.measureText(text.detail, dw, dh, TextStyle::Caption);
@@ -315,6 +336,8 @@ bool handlePickerInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             SharedSpeciesPicker::ModalX, SharedSpeciesPicker::ModalY, gen2SpeciesAvailable, gen2SpeciesName);
         picker.model.index = static_cast<int>(chosen) - 1;
         speciesTouchOwned = handled.touch;
+        // Round 11 SPRITE: a tap on the preview artwork previews the other appearance, as Y does.
+        if (handled.previewShinyTapped) down |= HidNpadButton_Y;
         // The shared Species renderer follows the finger pixel-for-pixel while held. Commit the
         // semantic preview cursor only on release so the gesture cannot accidentally activate A.
         const int dy = touch.deltaY();

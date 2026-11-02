@@ -396,6 +396,9 @@ void runRound2Gen3(Row& row, const Spec& spec, const G3::ReadOnlySave& save, con
             SessionModel::Session setup;
             setup.begin(*rec, SessionModel::Mode::Edit);
             if (k.species) e.expect(setup.setSpecies(k.species, spec.gameId), "setSpecies " + str(k.species));
+            // Round 11 (owner H28): Unown keeps none of the old moves and none is filled in; Keep
+            // needs one (CreateRequiredFields), so the start state teaches Hidden Power.
+            if (k.species == 201) { setup.working.moves[0] = 237; setup.working.pp[0] = 15; }
             e.expect(setup.setShiny(k.shiny), "setShiny");
             if (k.gender) e.expect(setup.setGender(*k.gender), "setGender " + str(*k.gender));
             if (!setup.keep(editor, 0, 0, error)) {
@@ -712,6 +715,14 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
             badOt.working.otName = "TOOLONGOT";
             e.expect(!badOt.add(editor, 0, 1, err) && editor.stagedBytes() == stagedBefore,
                      "Create with an 8-character OT was accepted");
+            // Round 11 (owner H07 for all gens / H28): a new Pokemon starts with no moves, and Add
+            // refuses until a move and (where the game lists encounters) a Met Location are chosen.
+            e.expect(create.working.moves == (std::array<uint16_t, 4>{}), "Create draft starts with moves");
+            e.expect(!create.add(editor, 0, 1, err) && err.find("at least one move") != std::string::npos &&
+                         editor.stagedBytes() == stagedBefore, "Create without a move was accepted: " + err);
+            create.working.moves[0] = 84;   // Thunder Shock, as the move picker applies it
+            create.working.pp[0] = 30;
+            create.noteMetLocationChosen();  // the Met picker's choice (its encounter list is pinned elsewhere)
             err.clear();
             e.expect(create.add(editor, 0, 1, err), "Create add: " + err);
             const auto added = editor.boxedPokemon(0, 1, err);
@@ -745,7 +756,10 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
                 edit.working.pokerus = 0x21;
                 edit.working.ball = 2;
                 edit.working.metLevel = 5;
-                edit.working.metLocation = 10;
+                // Round 11 FRLG (deliberately updated from 10 for every game): a changed met location
+                // must be native to the record's origin game; FR/LG take a Kanto id (89 Viridian City).
+                const uint16_t nativeMet = baseRecord->originGame == 4 || baseRecord->originGame == 5 ? 89 : 10;
+                edit.working.metLocation = nativeMet;
                 const bool kept = edit.keep(editor, 0, 0, err);
                 e.expect(kept, "Keep (plain fields): " + err);
                 auto rec = editor.boxedPokemon(0, 0, err);
@@ -755,7 +769,7 @@ void runVersion(qamatrix::Matrix& m, const Spec& spec) {
                                  rec->ppUps == edit.working.ppUps && rec->ivs == edit.working.ivs &&
                                  rec->evs == edit.working.evs && rec->otName == "QAOT" && rec->tid == 1111 &&
                                  rec->friendship == 123 && rec->pokerus == 0x21 && rec->ball == 2 &&
-                                 rec->metLevel == 5 && rec->metLocation == 10,
+                                 rec->metLevel == 5 && rec->metLocation == nativeMet,
                              "plain field values did not round-trip");
                     e.expect(rec->shiny == baseRecord->shiny, "TID edit flipped shininess");
                 }

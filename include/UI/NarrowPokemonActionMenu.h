@@ -223,6 +223,12 @@ static_assert(detail::hasLabel(classic(SharedPokemonEditor::actionsForSlot(false
 static_assert(detail::hasLabel(gen1(Gen1Editor::actionsForSlot(true, true, true, true)), kExportFileLabel));
 static_assert(gen1(Gen1Editor::actionsForSlot(true, true, true, true)).count == 9);
 static_assert(detail::onlySharedLabels(gen1(Gen1Editor::actionsForSlot(true, true, true, true))));
+// Round 11 ACTIONS: the full shared sheet (Move included) is the 9-row owner order and fits.
+static_assert(classic(SharedPokemonEditor::actionsForSlot(
+    true, SharedPokemonEditor::ActionCapabilities{true, true, true, true, true, true}, true)).count == 9);
+static_assert(detail::onlySharedLabels(classic(SharedPokemonEditor::actionsForSlot(
+    true, SharedPokemonEditor::ActionCapabilities{true, true, true, true, true, true}, true))));
+static_assert(geometry(9).height <= 720 - 56);
 static_assert(geometry(12).height <= 720 - 56);
 static_assert(geometry(9).rowHeight == 46 && geometry(8).height == 78 + 8 * 46 + 34,
               "box menu: compact shared rows, content-driven height");

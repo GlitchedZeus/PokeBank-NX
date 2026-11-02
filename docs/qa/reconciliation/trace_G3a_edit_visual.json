@@ -1,0 +1,4219 @@
+{
+ "areas": [
+  "pokemon-edit",
+  "stats",
+  "pokemon-view",
+  "visuals-sprites",
+  "language-names"
+ ],
+ "issues": [
+  {
+   "id": "PBX-VIS-001",
+   "title": "PokeBank NX product identity: inherited PKSE branding/logo dominant",
+   "gens": [
+    "app"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (3be4de6b, DEVICE_TEST_REPORT_2026-09-01)",
+   "occurrences": [
+    {
+     "rid": "A0017",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0030",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0031",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0049",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-01.md"
+    },
+    {
+     "rid": "A0052",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0221",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "D0264",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #8 (comment 2026-09-02)"
+    },
+    {
+     "rid": "D0266",
+     "round": "PRE",
+     "candidate": "af2acf04",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #13 (comment 2026-09-06)"
+    },
+    {
+     "rid": "A0151",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "4",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0226",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "4",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0342",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0264",
+     "text": "The user reports the visible UI remains essentially identical to inherited PKSE, including PKSE branding/logo. The most obvious PokeBank NX identity is the `+` Options menu showing `Exit PokeBank NX`."
+    },
+    {
+     "rid": "A0052",
+     "text": "FAIL / incomplete"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner accepted the red PokeBank NX shell on af2acf04 (D0266, issue #13 comment 2026-09-06: 'UI is good enough for now; the permanent left-edge bar is gone'). No later identity complaint in R1-R11. HOME card scenery changed in R11 (c21d3747) but that is tracked as PBX-VIS-013.",
+   "repair_commits": [
+    "af2acf04 (visual shell candidate, issue #13)"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "PRE af2acf04 (issue #13 comment 2026-09-06): PASS",
+   "hardware_acceptance_candidate": "af2acf04 PRE (issue #13)",
+   "r12_checklist_item": null,
+   "next_action": "None; closed. Keep identity in the R12 H01 HOME-card smoke."
+  },
+  {
+   "id": "PBX-VIS-002",
+   "title": "View/Summary lacks a Pokémon image/sprite",
+   "gens": [
+    "app"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (3be4de6b, SESSION_LOG_2026-09-02)",
+   "occurrences": [
+    {
+     "rid": "A0075",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0115",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0178",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0230",
+     "round": "PRE",
+     "candidate": "0ea98cc1",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md"
+    },
+    {
+     "rid": "B0684",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0178",
+     "text": "FAIL / missing in artifact"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS 'POKEMON ARTWORK' / 'ARTWORK QUALITY: GOOD' on 0ea98cc1 (A0230/A0231); later R3 62a2f8c3 AUD-02 'Species sprites and restrictions' PASS (B0684). Sprites drawn via containSprite in src/UI/PKSEFramebuffer.cpp:655-658.",
+   "repair_commits": [
+    "0ea98cc1 (issue #25 artwork candidate)"
+   ],
+   "automated_tests": [
+    "tests/test_item_sprite_coverage.py : item sprite coverage (species art covered by NRO RomFS gate)"
+   ],
+   "last_owner_result": "R3 62a2f8c3 AUD-02: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 AUD-02",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VIS-003",
+   "title": "Optional Right Stick 3D model rotation in Summary",
+   "gens": [
+    "app"
+   ],
+   "area": "visuals-sprites",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (3be4de6b, SESSION_LOG_2026-09-02)",
+   "occurrences": [
+    {
+     "rid": "A0076",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0076",
+     "text": "Later optional QoL idea only if practical; strong sprite/artwork Summary is sufficient."
+    }
+   ],
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "No 3D model or right-stick rotation code anywhere (grep 'model rotation'/'3D model' in src/include: none). Owner framed it as optional QoL; 'strong sprite/artwork Summary is sufficient' (issue #25). Not reachable from UI.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner to confirm it can be dropped from scope (would then be Intentionally Unsupported); not v1."
+  },
+  {
+   "id": "PBX-VIS-004",
+   "title": "Artificial idle/breathing motion on static Pokémon artwork (must be static, centred, aspect-preserving)",
+   "gens": [
+    "app"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (0ea98cc1, DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05)",
+   "occurrences": [
+    {
+     "rid": "A0232",
+     "round": "PRE",
+     "candidate": "0ea98cc1",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md"
+    },
+    {
+     "rid": "A0233",
+     "round": "PRE",
+     "candidate": "0ea98cc1",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md"
+    },
+    {
+     "rid": "A0341",
+     "round": "PRE",
+     "candidate": "0ea98cc1",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0232",
+     "text": "FAIL / REMOVE"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "PKSEFramebuffer::drawSpriteIdle (src/UI/PKSEFramebuffer.cpp:661-675, bob + squash/stretch) still exists but has NO callers in src/ (grep 'drawSpriteIdle(' finds only the definition); artwork goes through the static containSprite path (PKSEFramebuffer.cpp:655-658). The af2acf04 checklist row 'STATIC ARTWORK REMAINS STILL/UNDISTORTED' (A0238) was never given an owner result; af2acf04 shell acceptance (D0266) does not name it.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE 0ea98cc1: FAIL / REMOVE",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Ask owner to confirm artwork is static during R12 H16/H18 smoke, or add an explicit row; optionally delete dead drawSpriteIdle."
+  },
+  {
+   "id": "PBX-VIS-005",
+   "title": "Yellow labelled as GBA (platform label wrong)",
+   "gens": [
+    "I"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (d9077e2d, BUILD_RECORD)",
+   "occurrences": [
+    {
+     "rid": "A0913",
+     "round": "PRE",
+     "candidate": "d9077e2d",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/BUILD_RECORD.md"
+    },
+    {
+     "rid": "A0906",
+     "round": "PRE",
+     "candidate": "50dac31f",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/BUILD_RECORD.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0913",
+     "text": "Yellow identity detection not weakened; platform behaviour corrected later."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS 'RBY ItemsFix: GB platform label' on 50dac31f (A0906).",
+   "repair_commits": [
+    "50dac31f gen1: add read-only RBY inventory support (ItemsFix candidate)"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "PRE 50dac31f: PASS",
+   "hardware_acceptance_candidate": "50dac31f PRE",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VIS-006",
+   "title": "RSE game-card artwork missing",
+   "gens": [
+    "III"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (46e0c161, issue #6 comment 2026-09-10)",
+   "occurrences": [
+    {
+     "rid": "D0276",
+     "round": "PRE",
+     "candidate": "46e0c161",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #6 (comment 2026-09-10)"
+    },
+    {
+     "rid": "D0277",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #6 (comment 2026-09-10)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0276",
+     "text": "game-card artwork: **FAIL — missing**"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner 'RSE artwork physical = PASS' (D0277) on corrected artifact; tests expect RSE card art (1c96df25).",
+   "repair_commits": [
+    "1c96df25 tests: expect RSE game-card artwork"
+   ],
+   "automated_tests": [
+    "tests/test_game_hub_contract.py : game hub card art contract"
+   ],
+   "last_owner_result": "PRE (1c96df25 artifact): PASS",
+   "hardware_acceptance_candidate": "1c96df25 PRE (issue #48)",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VIS-007",
+   "title": "Gen I draft Pokémon has no live sprite preview while editing species",
+   "gens": [
+    "I"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (574d604b, GEN1_EDITOR_HARDWARE_UX_FOLLOWUP item 3)",
+   "occurrences": [
+    {
+     "rid": "A0524",
+     "round": "PRE",
+     "candidate": "574d604b",
+     "item_id": "3",
+     "result": "FAIL",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0549",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0524",
+     "text": "Show sprite as soon as draft species changes; draft-only, no staging."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Gen I staged editor DEVICE ACCEPTED on 69668bc8 incl. 'generation-correct shiny presentation' (A0549, A0540). Species picker sprite code changed in R11 (eb7fe8c9 touches src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc and include/UI/SharedSpeciesPicker.h).",
+   "repair_commits": [
+    "69668bc8 Gen I editor acceptance candidate",
+    "eb7fe8c9 SPRITE: species picker shows one sprite in the current shiny state"
+   ],
+   "automated_tests": [
+    "tests/test_shared_species_picker_surface_contract.cpp : picker draws one sprite in current shiny state"
+   ],
+   "last_owner_result": "PRE 69668bc8: PASS (DEVICE ACCEPTED)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H16",
+   "r12_checklist_item": "H16",
+   "next_action": "Recheck Gen I species picker/draft sprite in R12 H16."
+  },
+  {
+   "id": "PBX-VIS-008",
+   "title": "Gen II modal/action-sheet shells show full accent outline (Empty Slot, Pokémon Actions)",
+   "gens": [
+    "II"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (issue #84 body 2026-09-28)",
+   "occurrences": [
+    {
+     "rid": "D0308",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #84 (body 2026-09-28)"
+    },
+    {
+     "rid": "D0310",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #84 (comment 2026-09-28)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0308",
+     "text": "1. Gen II still shows full theme-accent/yellow outlines on some modal/action-sheet shells at runtime:\n   - Empty Slot\n   - Pokemon Actions\n   These must match the quiet neutral outer-shell style used by Gen I / Gen III. The selected row may remain theme-accented, but the full modal border must not be."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner retest 'works' (D0310, issue #84 comment 2026-09-28).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE (issue #84 retest): PASS",
+   "hardware_acceptance_candidate": "issue #84 candidate (PRE)",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VIS-009",
+   "title": "Packaged RomFS artwork completeness (Gen V game cards, region backgrounds)",
+   "gens": [
+    "V",
+    "app"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (QA-F1, docs/qa/FINDINGS.md)",
+   "occurrences": [
+    {
+     "rid": "A0787",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F1",
+     "result": "n/a",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "B0605",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #10",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0691",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-10",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0605",
+     "text": "Verdict: Does not reproduce for Gen I-V; the packaged NRO needs CI; owning lane: —. 10. **RomFS.** The referenced regions are covered by the NRO gate (1268 paths). hisui and paldea (Switch-only titles) are fetched at release. `test_qa_regressions_assets.py` (QA-F1), `test_verify_nro_romfs.py` and `test_device_asset_png_validation.py` pass."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "QA-F1 fixed 3b35b3f9 'guard the Gen V covers in the packaged-RomFS gate' (ancestor of 62a2f8c3). Owner R3 62a2f8c3 AUD-10 'Region backgrounds included' PASS (B0691).",
+   "repair_commits": [
+    "3b35b3f9 fix(release): guard the Gen V covers in the packaged-RomFS gate (QA-F1)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_regressions_assets.py : QA-F1 Gen V covers in manifest",
+    "tests/test_verify_nro_romfs.py : RomFS paths present in NRO"
+   ],
+   "last_owner_result": "R3 62a2f8c3 AUD-10: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 AUD-10",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VIS-010",
+   "title": "Compact, uniform menus/pickers across generations (less blank space)",
+   "gens": [
+    "all"
+   ],
+   "area": "visuals-sprites",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 owner request (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0054",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0122",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0664",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-MENUS",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "A0527",
+     "round": "PRE",
+     "candidate": "574d604b",
+     "item_id": "6",
+     "result": "FAIL",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0874",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG13",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0054",
+     "text": "can we shrink box menu if they need it like in the bag menu can we have it so menu dont have so much blank space in the middle so we can easily see the item we wanna add and dont accidently add the item above or below it cause we cant see it properly cause they far away, now if a menu if change for one gen it has to ben constant for all gens, BUT one gen can have different sixed menus, like if to make them look good they have to all bedifferent sizes to fit all theyre stuff cool, but all gens must follow that exact setup, i want it to be uniform, so if the pokeball menu gets shrinked in gen 1 its would be the same size in the gen 5 editor, got it, for example the key item warning menu, all bag menus, dont make them super small but make them a nice size with no massive gaps with the name and than the pictures,sprites, the held item menu just needs a smidge the text and sprites closer and that should be used for like a example or some shit."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner R3 62a2f8c3 R2-MENUS 'Compact selection windows' PASS (B0664).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R3 62a2f8c3 R2-MENUS: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 R2-MENUS",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VIS-011",
+   "title": "Read-only fields (Gen I stats, derived HP DV) gold in both View and Edit",
+   "gens": [
+    "I",
+    "II"
+   ],
+   "area": "visuals-sprites",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 owner request (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0056",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0124",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0666",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-GOLD",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0056",
+     "text": "gen 1 has in the view menu screen the stats that are uneditable are gold and in the editor menun they are white, change we change so both are gold, also can we make the HP DV gold in both since we cant edit that either ?? or would that be weird."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner R3 62a2f8c3 R2-GOLD 'Read-only field colours' PASS (B0666); R11 H21 Gen I DV/EV controls PASS (E0020). Gen II Special part of B0124 tracked in PBX-STA-002.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_classic_stat_field_state.cpp : locked/derived stat cells use read-only style"
+   ],
+   "last_owner_result": "R11 3634d1e6 H21: PASS (R3 62a2f8c3 R2-GOLD: PASS)",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 R2-GOLD",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VIS-012",
+   "title": "Gen V species picker sprites (494-649) and shiny preview",
+   "gens": [
+    "V"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 Part 9 #2 (0faf7e9c repro)",
+   "occurrences": [
+    {
+     "rid": "B0597",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #2",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0597",
+     "text": "Verdict: Does not reproduce in source; sprites for 494-649 need a device check; owning lane: —. 2. **Species picker.** It is the shared picker, species 1-649, with a Y toggle for Normal/Shiny (`SharedSpeciesPicker.h:389-430`). Ineligible picks are refused after the choice (`Gen5SharedScreenState.h:399-419`), the same as Gen III/IV. `tools/check_device_assets.py` checks shiny sprites only for Gen I (lines 178-179), so the Gen V shiny art is unchecked."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner R3 62a2f8c3 AUD-02 'Species sprites and restrictions' PASS (B0684). Picker reworked in R11 eb7fe8c9 (include/UI/SharedSpeciesPicker.h: one sprite in current shiny state).",
+   "repair_commits": [
+    "eb7fe8c9 SPRITE: species picker shows one sprite in the current shiny state"
+   ],
+   "automated_tests": [
+    "tests/test_shared_species_picker_surface_contract.cpp : single sprite / shiny caption"
+   ],
+   "last_owner_result": "R3 62a2f8c3 AUD-02: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H16",
+   "r12_checklist_item": "H16",
+   "next_action": "Run R12 H16 on a Gen V save incl. a 494-649 species."
+  },
+  {
+   "id": "PBX-VIS-013",
+   "title": "Gen V item sprites missing (feathers 565-571, TM/HM disc art)",
+   "gens": [
+    "V"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 Part 9 #6 (0faf7e9c repro)",
+   "occurrences": [
+    {
+     "rid": "B0601",
+     "round": "R3",
+     "candidate": "0faf7e9c",
+     "item_id": "Part 9 #6",
+     "result": "n/a",
+     "src": "docs/qa/ROUND3_PART9_REPRO_0faf7e9c.md"
+    },
+    {
+     "rid": "B0687",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "AUD-06",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0601",
+     "text": "Verdict: **REPRODUCES (Gen V only)**; owning lane: I. 6. **Item sprites.** `test_item_sprite_coverage.py` passes for Gen I-IV: 124/221/307/514 eligible, 0 missing. Gen V is not covered by that test. Findings for Gen V: - 7 feathers have no icon (ids 565-571). The pinned art exists as `*-wing`, so only the aliases are missing. - All 101 TMs/HMs have no icon. `MachineDisplay.cpp:32-112` has no BW/B2W2 case, and `ClassicMachineArtwork.h:109` returns type 0. - HM01-06 (ids 420-425) are labelled \"TM93\"..\"TM98\", the BDSP names, so they read as duplicate TM93-98 (`ItemNames.cpp:429-434`). A host probe printed `game=BW id=420 label='TM93'`. **Fix:** add BW/B2W2 machine mapping (TM01-92 = 328-419, HM01-06 = 420-425, TM93-95 = 618-620) and the feather to wing aliases, and extend coverage to Gen V. Citation to verify against the pinned PKHeX item tables before landing."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Fixed c3b12d2b (ancestor of 62a2f8c3); owner R3 62a2f8c3 AUD-06 'Item sprites' PASS (B0687). CG25 enforced.",
+   "repair_commits": [
+    "c3b12d2b fix(items): Gen V TM/HM labels and disc art, Gen V feather sprites; one machine table (QA Part 9)"
+   ],
+   "automated_tests": [
+    "tests/test_item_sprite_coverage.py : feather -> *-wing aliases (lines 181-182)",
+    "tests/test_hw_round1_regression_gate.py : CG25-gen5-machine-and-feather-art"
+   ],
+   "last_owner_result": "R3 62a2f8c3 AUD-06: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 AUD-06",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VIS-014",
+   "title": "Pokémon editor typography inconsistent across generations (headings)",
+   "gens": [
+    "all"
+   ],
+   "area": "visuals-sprites",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R6 (26186464) owner request",
+   "occurrences": [
+    {
+     "rid": "C0349",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0358",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "Other",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0349",
+     "text": "**Pokémon editor typography is inconsistent.** Older-generation View/Edit screens use large white headings, while newer ones use smaller coloured section labels. Affected labels include:\n  - DETAILS\n  - STATS\n  - MOVES\n  - Origin & Legality\n  - supporting field labels\n\n  The shared Gen IV/V editor is the reference. Keep the green/red Nature colours."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "d88056cc 'one shared panel heading style' (R7, in e88957f2 and 3634d1e6, not in 26186464); include/UI/SharedPanelHeading.h used by Gen1/Gen2/Gen3/Shared surfaces; CG89 enforced. R7 C03 checklist never got owner results; R11 worksheet had no typography item (H15 smoke PASS is not item-specific).",
+   "repair_commits": [
+    "d88056cc R7 P2: one shared panel heading style for the Pokemon editor, Gen I-V",
+    "b9e8e517 CG89 heading misses through the shared helper"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : CG89-one-editor-heading-style"
+   ],
+   "last_owner_result": "R6 26186464 (other request): FAIL/request",
+   "hardware_acceptance_candidate": "none (not on R12 checklist; R7 C03 never tested)",
+   "r12_checklist_item": null,
+   "next_action": "Add an explicit typography check to R12 H18 smoke or next round (compare Gen I/II vs Gen IV/V headings)."
+  },
+  {
+   "id": "PBX-VIS-015",
+   "title": "HOME card region artwork pokes past rounded corners (rectangular clip)",
+   "gens": [
+    "app"
+   ],
+   "area": "visuals-sprites",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 independent QA (owner message 2026-11-01)",
+   "occurrences": [
+    {
+     "rid": "E0122",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "owner message 2026-11-01 (independent Round 11 QA)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0122",
+     "text": "Preserve the HOME region-artwork rounded-corner clipping regression discovered by Sonnet."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "c21d3747 masks scenery with card's rounded path (include/UI/RoundedArtwork.h, src/UI/SaveSelectScreen.cpp).",
+   "repair_commits": [
+    "c21d3747 HOME card: mask region scenery with the card's rounded corners (Round 11)"
+   ],
+   "automated_tests": [
+    "tests/test_rounded_artwork.cpp : rounded path geometry",
+    "tests/test_home_card_scenery_contract.py : no rectangular clip",
+    "tests/test_ui_home_card_scenery_host.cpp : host render"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 H01",
+   "r12_checklist_item": "H01",
+   "next_action": "Owner runs R12 H01 handheld+docked."
+  },
+  {
+   "id": "PBX-EDT-001",
+   "title": "Inherited PKSE mutation UI reachable; edits applied to save outside staged copy",
+   "gens": [
+    "app"
+   ],
+   "area": "pokemon-edit",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE (3be4de6b, SESSION_LOG_2026-09-02)",
+   "occurrences": [
+    {
+     "rid": "A0064",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0066",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0107",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0117",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0179",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0554",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    },
+    {
+     "rid": "E0023",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H24",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0107",
+     "text": "opens inherited editable view"
+    },
+    {
+     "rid": "A0179",
+     "text": "IV edit saved in app flow, reopened, restored; inherited editor must be blocked or copy-based."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Gen I staged-only source-safe editing accepted 69668bc8 (A0554); later every generation edits a staged draft (POKEMON_EDITOR_UI_CONTRACT: 'Create/Edit operate on staged copies/drafts'). Latest owner R11 3634d1e6 H24 'Edit and discard' PASS (E0023). R11 changed editor surfaces (f2cf5954, d1954551) so re-verify.",
+   "repair_commits": [
+    "#23 lock inherited live-save mutation UI",
+    "69668bc8 Gen I staged editor"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : staged-only edit contracts",
+    "docs/qa/SAVE_SAFETY_CHAIN.md Edit stage (qa-matrix reparse)"
+   ],
+   "last_owner_result": "R11 3634d1e6 H24: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17",
+   "r12_checklist_item": "H17",
+   "next_action": "R12 H17 (Review/Discard/Export Copy; original unchanged)."
+  },
+  {
+   "id": "PBX-EDT-002",
+   "title": "Gen I boxed staged editor UX (one-screen workspace, Add/Edit one visual language, Left Stick lists)",
+   "gens": [
+    "I"
+   ],
+   "area": "pokemon-edit",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (574d604b, GEN1_EDITOR_HARDWARE_UX_FOLLOWUP 2026-09-13)",
+   "occurrences": [
+    {
+     "rid": "A0518",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0520",
+     "round": "PRE",
+     "candidate": "574d604b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0528",
+     "round": "PRE",
+     "candidate": "574d604b",
+     "item_id": "7",
+     "result": "FAIL",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0529",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0530",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0533",
+     "round": "PRE",
+     "candidate": "6ecd9c28",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN1_UX_CLEANUP3_HARDWARE_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0539",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN1_UX_CLEANUP3_HARDWARE_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "D0284",
+     "round": "PRE",
+     "candidate": "c3ad2be6",
+     "item_id": null,
+     "result": "PARTIAL",
+     "src": "issue #62 (comment 2026-09-13)"
+    },
+    {
+     "rid": "D0286",
+     "round": "PRE",
+     "candidate": "6ecd9c28",
+     "item_id": null,
+     "result": "n/a",
+     "src": "issue #62 (comment 2026-09-13)"
+    },
+    {
+     "rid": "A0540",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    },
+    {
+     "rid": "E0020",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H21",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0520",
+     "text": "FAIL / RETEST REQUIRED"
+    },
+    {
+     "rid": "D0284",
+     "text": "The one-screen Gen I editor is functionally working on real hardware, but the exact production artifact `PokeBank-NX-Gen1-Editor-c3ad2be6.nro` is **not DEVICE ACCEPTED**."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "DEVICE ACCEPTED on 69668bc8 (A0540, D0287: capability-driven three-panel workspace); latest Gen I editor owner PASS R11 3634d1e6 H21 (E0020). R11 f2cf5954 changed Gen1PokemonEditorOverlay*.inc (toasts) and eb7fe8c9 the picker.",
+   "repair_commits": [
+    "69668bc8 Gen I editor acceptance",
+    "f2cf5954 Gen I-V: no toast after routine edits"
+   ],
+   "automated_tests": [
+    "tests/test_edit_feedback.cpp : routine edits post no toast",
+    "tests/test_gen12_dv_reroll.cpp : Gen I DV reroll"
+   ],
+   "last_owner_result": "R11 3634d1e6 H21: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H13",
+   "r12_checklist_item": "H13",
+   "next_action": "R12 H13 on a Gen I save (reroll/shiny without toast)."
+  },
+  {
+   "id": "PBX-EDT-003",
+   "title": "Party editing (Gen I-III staged editors were box-only; party mutation deferred)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV"
+   ],
+   "area": "pokemon-edit",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE (574d604b, GEN1_EDITOR_HARDWARE_UX_FOLLOWUP: PARTY EDIT DEFERRED)",
+   "occurrences": [
+    {
+     "rid": "A0521",
+     "round": "PRE",
+     "candidate": "574d604b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0555",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    },
+    {
+     "rid": "B0161",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "F0089",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Safety invariants",
+     "result": "n/a",
+     "src": "docs/POKEMON_EDITOR_UI_CONTRACT.md"
+    },
+    {
+     "rid": "D0314",
+     "round": "PRE",
+     "candidate": "84dae170",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #86 (comment 2026-09-28)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0161",
+     "text": "Documented limitation (not a regression): rty in Gen I–III opens the native read-only View; the Gen I and Gen II staged editors are box-only. To edit, move the Pokémon into a box."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Gen IV Party+Box staged View/Edit accepted 84dae170 (D0314); Gen I-III Party routed to native staged edits by c81853da (include/UI/ClassicPartyActions.h); owner PASS R6 26186464 A21·NEW-20 'Gen I–III Party Actions popup' (actions-menu record C0301). R11 dd69bc93 rewrote the box/Actions capability model. NOTE: docs/POKEMON_EDITOR_UI_CONTRACT.md:99 still says 'Party mutation remains deferred' — stale vs code.",
+   "repair_commits": [
+    "c81853da feat(editor): route classic Party Actions to native staged edits",
+    "dd69bc93 Round 11 X-IMPEXP + ACTIONS: one shared box/Actions capability model"
+   ],
+   "automated_tests": [
+    "host-ui party actions tests (NEW-20 contracts)"
+   ],
+   "last_owner_result": "R6 26186464 A21·NEW-20: PASS (actions-menu)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H05",
+   "r12_checklist_item": "H05",
+   "next_action": "R12 H05 plus a Party edit -> Keep -> Export Copy in H17; update the stale contract line."
+  },
+  {
+   "id": "PBX-EDT-004",
+   "title": "Shared Create/Edit/View editor across Gen I–V (owner rule: one PKSE interface, one editor, capability-gated fields)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "pokemon-edit",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE (501093ae, PR #68 comment 2026-09-15)",
+   "occurrences": [
+    {
+     "rid": "D0302",
+     "round": "PRE",
+     "candidate": "501093ae",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #68 (comment 2026-09-15)"
+    },
+    {
+     "rid": "A0928",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "A0854",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0813",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "fields",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0871",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG11",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0875",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG16",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0876",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG17",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0883",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "Edit",
+     "result": "n/a",
+     "src": "docs/qa/SAVE_SAFETY_CHAIN.md"
+    },
+    {
+     "rid": "A0861",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG01b",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "F0074",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Permanent implementation rule",
+     "result": "n/a",
+     "src": "docs/POKEMON_EDITOR_UI_CONTRACT.md"
+    },
+    {
+     "rid": "F0075",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Current priority",
+     "result": "n/a",
+     "src": "PROJECT_STATUS.md"
+    },
+    {
+     "rid": "D0303",
+     "round": "PRE",
+     "candidate": "cfb70357",
+     "item_id": null,
+     "result": "PASS",
+     "src": "PR #68 (body 2026-09-14)"
+    },
+    {
+     "rid": "D0306",
+     "round": "PRE",
+     "candidate": "996e6aa4",
+     "item_id": null,
+     "result": "PASS",
+     "src": "PR #77 (body 2026-09-19)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0928",
+     "text": "Only generation-specific data, restrictions and capabilities may differ."
+    },
+    {
+     "rid": "D0302",
+     "text": "- **Shared future field architecture:** owner likes the richer PKSE-style left/middle panel organization (Ability, Friendship, PID, EXP, Egg, met/origin, Ball, Nature, IV/EV/stat, etc.) as a reference for the universal editor, but fields must remain capability-gated by exact generation/game. For Gen I/II, retain DVs/Stat Exp rather than IV/EV and hide unsupported modern fields."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": true,
+   "status_basis": "Gen I/II accepted cfb70357 (D0303), Gen III 996e6aa4 (D0306), Gen IV 84dae170 (D0314); Gen V ran on shared surface since de22e35 but the last cross-gen parity gap (Gen V Shiny via PID dialog, R11 H29 FAIL) was fixed only in f2cf5954 (src/UI/Gen5SharedReadOnlySurface.inc:632-650). Host matrix PASS rows are not hardware acceptance.",
+   "repair_commits": [
+    "de22e35f feat(gen5): run Gen V View/Edit/Create through the one shared editor surface",
+    "f0419926 test(ui): owner's 14-point shared Pokemon editor contract",
+    "f2cf5954 Gen V Shiny toggles inline"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : CG01b/CG02/CG11/CG16/CG17 cross-gen UI contract",
+    "tests/test_ui_editor_input_host.cpp : shared editor input"
+   ],
+   "last_owner_result": "R11 3634d1e6 H29: FAIL (Gen V parity gap)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H13 + H18",
+   "r12_checklist_item": "H13",
+   "next_action": "After R12 H13/H18, record a per-generation shared-editor acceptance line."
+  },
+  {
+   "id": "PBX-EDT-005",
+   "title": "Gen IV OT / Trainer ID should be editable metadata (SID read-only)",
+   "gens": [
+    "IV"
+   ],
+   "area": "pokemon-edit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (acfca273, issue #95 comment 2026-09-28)",
+   "occurrences": [
+    {
+     "rid": "D0321",
+     "round": "PRE",
+     "candidate": "acfca273",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #95 (comment 2026-09-28)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0321",
+     "text": "- OT / Trainer ID should follow classic editor behavior as editable Pokémon metadata; SID remains read-only."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "aff41765/66312f10 on PR #92; current src/UI/Gen4SharedPokemonSurface.inc:460-516 lists OT and Trainer ID as controls, SID 'visible but not a control' (line 516). The generic Oct 8 '100% pass' on 0760334f (contains aff41765) did not name this row, so not counted.",
+   "repair_commits": [
+    "aff41765 fix(gen4): align create editor with classic parity",
+    "66312f10 test(gen4): fix parity contract source assertion"
+   ],
+   "automated_tests": [
+    "Gen IV parity contract test (66312f10)"
+   ],
+   "last_owner_result": "PRE acfca273: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Add a Gen IV OT/TID edit -> Review check to a future round (R11 H25 touched OT only incidentally)."
+  },
+  {
+   "id": "PBX-EDT-006",
+   "title": "Gen V editor parity (Nature/Gender/Shiny/Ability/PID duplicated, raw-ID controls, oversized menus)",
+   "gens": [
+    "V"
+   ],
+   "area": "pokemon-edit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (35cbf163, GEN5_9_PROGRESS)",
+   "occurrences": [
+    {
+     "rid": "A0927",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "A0930",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P2",
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "A0932",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P4",
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "A0936",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P6",
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "A0938",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P7",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "E0007",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H08",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0927",
+     "text": "Owner tested 35cbf163 on Switch; Gen V failed hardware acceptance on editor parity."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Repaired de22e35/2af2563/6efd8c6/f041992. Latest Gen V editor owner results: R6 26186464 A16 NEW-13 ability names PASS, R11 3634d1e6 H08 Gen V Gender inline PASS (E0007). Gen V surface changed in R11 (f2cf5954 Shiny inline, d1954551 names).",
+   "repair_commits": [
+    "de22e35f feat(gen5): run Gen V View/Edit/Create through the one shared editor surface",
+    "2af25639 PID-coordinated Gender, Shiny and Ability",
+    "6efd8c60 Change PID dialog",
+    "f0419926 owner 14-point contract"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : Gen V shared editor contract"
+   ],
+   "last_owner_result": "R11 3634d1e6 H08: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H13/H14",
+   "r12_checklist_item": "H13",
+   "next_action": "R12 H13+H14 on a Gen V save."
+  },
+  {
+   "id": "PBX-EDT-007",
+   "title": "Gen V PID replay protects gender link only when ability link holds (QA-F4)",
+   "gens": [
+    "V"
+   ],
+   "area": "pokemon-edit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (QA-F4, docs/qa/FINDINGS.md)",
+   "occurrences": [
+    {
+     "rid": "A0788",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F4",
+     "result": "n/a",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "A0772",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F4",
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0788",
+     "text": "Application QA finding (Thread 4), severity Low."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "bc838152 'PID replay protects the gender and ability links independently'; Gen V Gender/Shiny now also re-verified by verifiedPidProbe (src/UI/Gen5SharedReadOnlySurface.inc:625-650). No owner row targets PID replay.",
+   "repair_commits": [
+    "bc838152 fix(gen5): PID replay protects the gender and ability links independently (QA-F4)"
+   ],
+   "automated_tests": [
+    "QA-F4 regression in tests (docs/qa/FINDINGS.md)"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Covered indirectly by R12 H13 (Gen V Shiny keeps gender/nature/ability); no dedicated row needed."
+  },
+  {
+   "id": "PBX-EDT-008",
+   "title": "Gen IV Unown letter (form) cannot be edited (QA-F7)",
+   "gens": [
+    "IV"
+   ],
+   "area": "pokemon-edit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (QA-F7, docs/qa/FINDINGS.md)",
+   "occurrences": [
+    {
+     "rid": "A0791",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F7",
+     "result": "n/a",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "A0775",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F7",
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0791",
+     "text": "Application QA finding (Thread 4), severity Low."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "f17926f9 'Unown's 28 stored letters are editable' (ancestor of all R1+ candidates). No Gen IV Unown owner row exists.",
+   "repair_commits": [
+    "f17926f9 fix(gen4): Unown's 28 stored letters are editable (QA-a)"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Optional: add Gen IV Unown form edit to a later checklist."
+  },
+  {
+   "id": "PBX-EDT-009",
+   "title": "Gen II Create/Edit: one input owner per frame; exit dialog footer its own",
+   "gens": [
+    "II"
+   ],
+   "area": "pokemon-edit",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (GEN14 campaign #320)",
+   "occurrences": [
+    {
+     "rid": "A0941",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "#320",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0941",
+     "text": "Owner campaign (Gen I/II lane) unit; implemented with host tests, not device-tested here."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "ae099c77 'Create/Edit footer and input follow the layer that owns the press'. No owner row isolates it (R1 L05 'no editor panel cursor overlaps' PASS is a different behaviour).",
+   "repair_commits": [
+    "ae099c77 fix(gen2): Create/Edit footer and input follow the layer that owns the press"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Fold into R12 H18 Gen II smoke."
+  },
+  {
+   "id": "PBX-EDT-010",
+   "title": "Inline Shiny Yes/No and Pokérus A-cycle (Gen II campaign)",
+   "gens": [
+    "II",
+    "all"
+   ],
+   "area": "pokemon-edit",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (GEN14 campaign item 10)",
+   "occurrences": [
+    {
+     "rid": "A0944",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "10",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "B0508",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0509",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0944",
+     "text": "Owner campaign (Gen I/II lane) unit; implemented with host tests, not device-tested here."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R3 62a2f8c3 E06 'Shiny toggle' and E07 'Pokérus cycles with A' (B0508/B0509). Shiny paths rewritten in R11 f2cf5954 (src/UI/Gen2PokemonEditorFoundation.inc:424-469 EditFeedback).",
+   "repair_commits": [
+    "e59df023 feat(gen2): inline Shiny/Pokerus/Gender; Data pane text stays inside its pane",
+    "f2cf5954 no toast after routine edits"
+   ],
+   "automated_tests": [
+    "tests/test_edit_feedback.cpp : Shiny applied posts no toast"
+   ],
+   "last_owner_result": "R3 62a2f8c3 E06/E07: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H13",
+   "r12_checklist_item": "H13",
+   "next_action": "R12 H13."
+  },
+  {
+   "id": "PBX-EDT-011",
+   "title": "No 'Row x/y' counters; list editors draw whole rows above status line",
+   "gens": [
+    "I",
+    "all"
+   ],
+   "area": "pokemon-edit",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (GEN14 campaign item 1/5)",
+   "occurrences": [
+    {
+     "rid": "A0947",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "1/5",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "A0862",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG02",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "B0506",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0947",
+     "text": "Owner campaign (Gen I/II lane) unit; implemented with host tests, not device-tested here."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS R3 62a2f8c3 E04 'No obstructive row counters' (B0506).",
+   "repair_commits": [
+    "9d1d03f9 fix(gen1): list editors draw only whole rows above the status line; no row counters"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : CG02 no row counters"
+   ],
+   "last_owner_result": "R3 62a2f8c3 E04: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 E04",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-EDT-012",
+   "title": "Gen II (Crystal) OT Gender opens 3-option popup instead of inline A-cycle",
+   "gens": [
+    "II"
+   ],
+   "area": "pokemon-edit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-07 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0556",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-07",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0587",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0291",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A11 · NEW-07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0556",
+     "text": "A cycles native-supported values inline rather than opening 3-option popup; do not fabricate absent native fields."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS OCT24 c60d4da0, R5 1ca2faec and R6 26186464 A11 (C0291).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R6 26186464 A11·NEW-07: PASS",
+   "hardware_acceptance_candidate": "R6 26186464 A11",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-EDT-013",
+   "title": "Ball picker scrollbar crowds rows",
+   "gens": [
+    "all"
+   ],
+   "area": "pokemon-edit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-08 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0557",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-08",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0292",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A12 · NEW-08",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0557",
+     "text": "Rebalance row padding/scrollbar space."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS OCT24, R5 and R6 26186464 A12 (C0292).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R6 26186464 A12·NEW-08: PASS",
+   "hardware_acceptance_candidate": "R6 26186464 A12",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-EDT-014",
+   "title": "Ability picker shows 'Slot 1/2' instead of names and effects",
+   "gens": [
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "pokemon-edit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-13 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0562",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-13",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0296",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A16 · NEW-13",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0562",
+     "text": "Show ability names and short accurate effect descriptions; green/red only when meaningful; respect slot restrictions."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS OCT24, R5, R6 26186464 A16 (C0296). include/UI/SharedAbilityPicker.h / AbilityEffects.h unchanged since 26186464.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R6 26186464 A16·NEW-13: PASS",
+   "hardware_acceptance_candidate": "R6 26186464 A16",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-EDT-015",
+   "title": "Pokérus fails in Gen III/V; Held Item selection unreliable with A/touch",
+   "gens": [
+    "III",
+    "V",
+    "all"
+   ],
+   "area": "pokemon-edit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R5 L06 (1ca2faec)",
+   "occurrences": [
+    {
+     "rid": "C0165",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "L06",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0207",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P1",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0312",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B01 · L06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0165",
+     "text": "Pokérus works in Gen II and IV but not in Gen III or V. Held Item selection is unreliable: in Gen III, neither A nor touch selected an item, and some taps do nothing."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS R6 26186464 B01 'Gen III/V Pokérus and Held Item activation work' (C0312) and OCT26 (C0398).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R6/OCT26 26186464 B01: PASS",
+   "hardware_acceptance_candidate": "R6 26186464 B01",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-EDT-016",
+   "title": "Gen III held items follow PKHeX legality (Safari Ball / Berry Juice never held)",
+   "gens": [
+    "III"
+   ],
+   "area": "pokemon-edit",
+   "category": "decision",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R5 owner decision (1ca2faec, Oct 25)",
+   "occurrences": [
+    {
+     "rid": "C0220",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0421",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/MAIN_ACTIVE_HANDOFF.md"
+    },
+    {
+     "rid": "C0327",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C08 · Held-item policy",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0334",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C15 · Unreleased label",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "F0101",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Native restrictions",
+     "result": "n/a",
+     "src": "README.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0327",
+     "text": "On LeafGreen:<br>• Safari Ball and Berry Juice cannot be chosen as new held items.<br>• Safari Ball can be chosen as a caught Ball."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Fix 15c77226; owner PASS R6 26186464 C08 on LeafGreen (C0327) and C15 unreleased label kept (C0334).",
+   "repair_commits": [
+    "15c77226 fix(gen3): never offer or write unreleased held items (Safari Ball, Berry Juice)"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "R6 26186464 C08: PASS",
+   "hardware_acceptance_candidate": "R6 26186464 C08",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-EDT-017",
+   "title": "Routine successful edits (Unown letter, Y reroll, Shiny) post bottom-centre toasts in every generation",
+   "gens": [
+    "all"
+   ],
+   "area": "pokemon-edit",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 H22 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0065",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H22",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0090",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §2 shared root causes"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0065",
+     "text": "we still dont have a number in the calculated column for special calculated stat, add it when i swithc unowns i get a pop in middle bottom about stat changes and i dont need it … i also get the pop uo for rerolling the de/ev/iv/ev's can we fix this for all gens … when im in gen 5 and go to choose shiny … i get a pop up menu instead of a inline choose"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Shared rule include/UI/EditFeedback.h:29-34 (routine Applied outcomes post nothing; static_asserts) used by Gen1 (Gen1PokemonEditorOverlayFoundation.inc:216-221), Gen2 (Gen2PokemonEditorFoundation.inc:424-469), Gen III/IV/V reroll and Gen V Shiny.",
+   "repair_commits": [
+    "f2cf5954 Gen I-V: no toast after routine edits; Gen V Shiny toggles inline (H22, H29)"
+   ],
+   "automated_tests": [
+    "tests/test_edit_feedback.cpp : postsStatus rule per kind/outcome",
+    "tests/test_ui_unown_letter_host.cpp : Unown letter silent",
+    "tests/test_ui_editor_input_host.cpp : reroll silent"
+   ],
+   "last_owner_result": "R11 3634d1e6 H22: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H13",
+   "r12_checklist_item": "H13",
+   "next_action": "Owner runs R12 H13 in every generation."
+  },
+  {
+   "id": "PBX-EDT-018",
+   "title": "Gen V Shiny opens 'Change PID?' popup instead of inline toggle",
+   "gens": [
+    "V"
+   ],
+   "area": "pokemon-edit",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 H29 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0028",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H29",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0070",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H29",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0109",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §3 leads"
+    },
+    {
+     "rid": "E0091",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §2 shared root causes"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0028",
+     "text": "gen 5 in the editor view doesnt have inline selcetion for shiny option, it opens a menu and warns about pid, this needs changed to be inline like eveery other gen (1-4)"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "src/UI/Gen5SharedReadOnlySurface.inc:632-650: ShinyRow toggles in place through verifiedPidProbe, no offer()/PendingPidChange5 dialog; withShiny5 keeps low PID half (gender), ability bit.",
+   "repair_commits": [
+    "f2cf5954 Gen I-V: no toast after routine edits; Gen V Shiny toggles inline (H22, H29)"
+   ],
+   "automated_tests": [
+    "tests/test_ui_editor_input_host.cpp : Gen V Shiny inline, no PID dialog",
+    "tests/test_qa_cross_gen_contract.py : H29 contract"
+   ],
+   "last_owner_result": "R11 3634d1e6 H29: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H13",
+   "r12_checklist_item": "H13",
+   "next_action": "Owner runs R12 H13 Gen V part."
+  },
+  {
+   "id": "PBX-STA-001",
+   "title": "Gen I Summary/radar correctness (zero stats, modern rows, isShiny false, stray text, radar layout/scale)",
+   "gens": [
+    "I"
+   ],
+   "area": "stats",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (69668bc8, GEN1_EDITOR_DEVICE_ACCEPTANCE / GEN1_SUMMARY_RADAR_RETEST)",
+   "occurrences": [
+    {
+     "rid": "A0541",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    },
+    {
+     "rid": "A0556",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "1",
+     "result": "n/a",
+     "src": "docs/GEN1_SUMMARY_RADAR_RETEST.md"
+    },
+    {
+     "rid": "A0557",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "2",
+     "result": "n/a",
+     "src": "docs/GEN1_SUMMARY_RADAR_RETEST.md"
+    },
+    {
+     "rid": "A0558",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "3",
+     "result": "n/a",
+     "src": "docs/GEN1_SUMMARY_RADAR_RETEST.md"
+    },
+    {
+     "rid": "A0559",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "4",
+     "result": "n/a",
+     "src": "docs/GEN1_SUMMARY_RADAR_RETEST.md"
+    },
+    {
+     "rid": "A0560",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "5",
+     "result": "n/a",
+     "src": "docs/GEN1_SUMMARY_RADAR_RETEST.md"
+    },
+    {
+     "rid": "A0561",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "6",
+     "result": "n/a",
+     "src": "docs/GEN1_SUMMARY_RADAR_RETEST.md"
+    },
+    {
+     "rid": "A0550",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    },
+    {
+     "rid": "A0551",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    },
+    {
+     "rid": "A0553",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0541",
+     "text": "Owner asked whether very low DVs produce displayed stats; authentic formulas give HP 24/Atk 13/Def 13/Spe 13/Spc 15, matching device."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner accepted real Gen I summary stats, five-axis radar, unfocusable calc cells, shiny presentation on 69668bc8 (A0549-A0553); Pokemon1ReadOnly::isShiny delegates to ShinyDVs (include/Pokemon/Pokemon1ReadOnly.h:89-90); R11 H21 PASS. Box quick view routing rewritten in 9a29863f (BoxSummaryRadar Route::Gen1Special, src/UI/Panels/BoxPokemonPanel.cpp:315-326).",
+   "repair_commits": [
+    "PR #66 Gen I summary/radar correction",
+    "9a29863f G5-RADAR: Gen V box quick view draws the editor's radar"
+   ],
+   "automated_tests": [
+    "tests/test_gen1_radar_render.cpp : radar layout/scale",
+    "tests/test_box_summary_radar.cpp : per-generation radar route"
+   ],
+   "last_owner_result": "R11 3634d1e6 H21: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H18",
+   "r12_checklist_item": "H18",
+   "next_action": "Include a Gen I box quick-view glance in R12 H18."
+  },
+  {
+   "id": "PBX-STA-002",
+   "title": "Gen II Special: calculated Sp. Atk / Sp. Def presentation (cramped '10/9', blank cell, detached block)",
+   "gens": [
+    "II"
+   ],
+   "area": "stats",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (91a42970, PR #68 comment 2026-09-14)",
+   "occurrences": [
+    {
+     "rid": "D0292",
+     "round": "PRE",
+     "candidate": "91a42970",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-14)"
+    },
+    {
+     "rid": "B0058",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "A0824",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "special-stat",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "B0474",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-SPECIAL",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0581",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0006",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0007",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0099",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-SPECIAL",
+     "result": "FAIL",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0210",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-SPECIAL",
+     "result": "FAIL",
+     "src": "issue #324 (body 2026-10-24)"
+    },
+    {
+     "rid": "C0213",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "7A",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0302",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A22 · R2-SPECIAL",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0320",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C01 · 7A",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "E0021",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H22",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "C0197",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-SPECIAL",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0354",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A22, C01",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0021",
+     "text": "we still dont have a number in the calculated column for special calculated stat, add it when i swithc unowns i get a pop in middle bottom about stat changes and i dont need it, its like the language thing we fixed in another problem i also get the pop uo for rerolling the de/ev/iv/ev's can we fix this for all gens and while w are at it when im in gen 5 and go to choose shiny on a pokmon in the middle colum i get a pop up menu instead of a inline choose like we have for pokerus and language and gender,"
+    },
+    {
+     "rid": "C0302",
+     "text": "The calculated Special values are still in the wrong place. Do not squeeze them into the numeric STATS column. Use the Gen I calculated-Special presentation as the reference, in the lower-middle of the centre STATS panel."
+    },
+    {
+     "rid": "D0210",
+     "text": "### 1. Gen II Special Values layout — FAIL\nThe owner rejects the Round 4 change that left **Special's Calculated cell blank** and moved both derived Sp. Atk / Sp. Def numbers to an unrelated block below the DV/Stat Exp/Calculated grid. Wants the calculated stat **back inside the correct column**, with readable aligned Special Defense alongside/below, no cramped `10/9` and no empty cell or duplicate unrelated readouts."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "ACCEPTED THEN RE-REJECTED: R5 1ca2faec R2-SPECIAL PASS (C0197/C0388) -> R6 26186464 A22/C01 FAIL ('do not squeeze them into the numeric STATS column') -> R7 0e58157b emptied the cell -> R11 H22 FAIL ('we still dont have a number in the calculated column'). Current: include/UI/Gen2WorkspacePresentation.h:37-39 calculatedCell(row 4) = SpA + gap + SpD; src/UI/Gen2UnifiedPokemonWorkspace.inc:930 loop row <= kSpecialRow; View modal src/UI/Modals/Gen2PokemonDetailsModal.cpp:232-234; lower 'CALCULATED SPECIAL STATS' block kept (:938-941).",
+   "repair_commits": [
+    "baada873 Gen II: show calculated Sp. Atk and Sp. Def in the Special row's Calculated cell (H22)",
+    "0e58157b feat(gen2): Special shown like Gen I, plain STATS columns (round 7 A22 / C01)"
+   ],
+   "automated_tests": [
+    "tests/test_gen2_special_stat.cpp : Special cell == SpA + '  ' + SpD, no '/' (lines 58-65)",
+    "tests/test_gsc_editor_surface_contract.cpp",
+    "tests/test_ui_layout_host.cpp"
+   ],
+   "last_owner_result": "R11 3634d1e6 H22: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H12",
+   "r12_checklist_item": "H12",
+   "next_action": "R12 H12. Risk: the R12 cell again holds two numbers in the numeric column, which the owner rejected in R3 ('cramped 10/9') and R6; get an explicit owner verdict on this exact layout."
+  },
+  {
+   "id": "PBX-STA-003",
+   "title": "Gen V boxed Pokémon show HP/stats 0",
+   "gens": [
+    "V"
+   ],
+   "area": "stats",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (35cbf163, GEN5_9_PROGRESS P6)",
+   "occurrences": [
+    {
+     "rid": "A0934",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P6",
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "B0528",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0934",
+     "text": "Owner finding from 35cbf163 hardware test; fixed in editor-parity repair."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Fixed de22e35; owner R3 62a2f8c3 S02 'Gen V shows real saved data' PASS (B0528). Box quick view for Gen V switched to shared radar in 9a29863f.",
+   "repair_commits": [
+    "de22e35f feat(gen5): run Gen V View/Edit/Create through the one shared editor surface"
+   ],
+   "automated_tests": [
+    "tests/test_box_summary_radar.cpp"
+   ],
+   "last_owner_result": "R3 62a2f8c3 S02: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H15",
+   "r12_checklist_item": "H15",
+   "next_action": "R12 H15."
+  },
+  {
+   "id": "PBX-STA-004",
+   "title": "Shiny vs non-shiny reroll stat legitimacy (E11 / R2-REROLL general)",
+   "gens": [
+    "all"
+   ],
+   "area": "stats",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 E11 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "A0753",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E11",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0035",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E11",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0065",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0118",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E11",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0133",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0308",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "E11",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0322",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E11",
+     "result": "NOT TESTED",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0368",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E11",
+     "result": "n/a",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0466",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E11",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0480",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-REROLL",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0513",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E10",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "D0231",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E11",
+     "result": "NOT TESTED",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "A0826",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "reroll",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0844",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "reroll",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0065",
+     "text": "the reroll iv/ev i dont know if the info is correct cause i can have a shiny and non shiny pokemon with the exaclt same stats and i dont thnk that is possible, i think shinies have to have a certain amout of points this needs fixed for all gens."
+    },
+    {
+     "rid": "B0480",
+     "text": "Owner questions whether shiny stats are game-legitimate; independently audit DV/PID/shiny/Unown form calculations without asserting an unproven defect."
+    }
+   ],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Owner never PASSed E11 (NOT VERIFIED R1/R2/R3) and FAILed R3 R2-REROLL ('questions whether shiny stats are game-legitimate'). Engineering (docs/REROLL_MECHANICS.md, B0368): Gen I/II shiny is a DV pattern (enforced), Gen III-V shiny is PID^TID^SID<8 so identical IVs are valid; real Gen III rerollPreservingShiny / Gen IV rerollPid defects fixed in 951a8993 (src/Pokemon/Pokemon3FRLG.cpp:239). Unknown: whether the owner accepts the mechanics explanation; E11 has not been on any checklist since R3 and no hardware row checks shiny/gender/nature preservation after reroll.",
+   "repair_commits": [
+    "951a8993 Merge reroll-mechanics lane (Gen III rerollPreservingShiny, Gen IV rerollPid fixes)"
+   ],
+   "automated_tests": [
+    "tests/test_reroll_mechanics_gen15.cpp : 100 rerolls per case keep shiny/gender/nature/Unown per gen",
+    "tests/test_shared_stat_reroll.cpp",
+    "tests/test_gen12_dv_reroll.cpp"
+   ],
+   "last_owner_result": "R3 62a2f8c3 R2-REROLL: FAIL",
+   "hardware_acceptance_candidate": "none (not on R12 checklist; H13 only checks no toast)",
+   "r12_checklist_item": null,
+   "next_action": "Send owner the REROLL_MECHANICS explanation and add a row: reroll shiny Gen III/IV/V Pokémon 5x, confirm Shiny/Gender/Nature/Ability kept."
+  },
+  {
+   "id": "PBX-STA-005",
+   "title": "Y rerolls DVs/IVs/EVs immediately without confirmation",
+   "gens": [
+    "all"
+   ],
+   "area": "stats",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (GEN14 campaign item 6)",
+   "occurrences": [
+    {
+     "rid": "A0943",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "6",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "A0866",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG06",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "B0512",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E10",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "A0545",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0943",
+     "text": "Owner campaign (Gen I/II lane) unit; implemented with host tests, not device-tested here."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R1 and R3 62a2f8c3 E10 (B0512, with a mechanics note tracked in PBX-STA-004); Gen I Y DV randomization accepted 69668bc8 (A0545). Reroll feedback changed in R11 f2cf5954 (no success toast).",
+   "repair_commits": [
+    "dcd8770c feat(gen1/gen2): Y re-rolls DVs at once",
+    "f2cf5954 no toast after routine edits"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : CG06 no confirmation on reroll",
+    "tests/test_edit_feedback.cpp"
+   ],
+   "last_owner_result": "R3 62a2f8c3 E10: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H13",
+   "r12_checklist_item": "H13",
+   "next_action": "R12 H13."
+  },
+  {
+   "id": "PBX-STA-006",
+   "title": "Nature stat colours (raised green / lowered red) in Gen III–V View/Edit",
+   "gens": [
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "stats",
+   "category": "decision",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-09 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0558",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-09",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0008",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0009",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0211",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #324 (body 2026-10-24)"
+    },
+    {
+     "rid": "D0212",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "PASS",
+     "src": "issue #324 (comment 2026-10-24)"
+    },
+    {
+     "rid": "C0340",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A13 · NEW-09",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0293",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A13 · NEW-09",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0212",
+     "text": "Owner correction (Oct 23): Gen IV nature-linked green/red stat text in View/Edit is intentional and ACCEPTED; restore and keep it as an at-a-glance raised/lowered Nature effect. Revert only the stat-neutralization patch; keep the separate Gen II Special-column repair. Do not treat nature coloring as a bug."
+    },
+    {
+     "rid": "C0340",
+     "text": "Keep the green/red Nature colours"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner correction (issue #324, D0212) withdrew the neutral-colour complaint; owner PASS R6 26186464 A13 'Keep the green/red Nature colours' (C0293). include/UI/NatureStatEffect.h unchanged since 26186464.",
+   "repair_commits": [
+    "1241c2b8 fix(ui): retain nature-tinted stats (#324)"
+   ],
+   "automated_tests": [
+    "tests/test_nature_stat_effect.cpp : 25 natures +/- stat",
+    "tests/test_nature_picker_layout.cpp"
+   ],
+   "last_owner_result": "R6 26186464 A13·NEW-09: PASS",
+   "hardware_acceptance_candidate": "R6 26186464 A13",
+   "r12_checklist_item": null,
+   "next_action": "None; do not neutralize colours."
+  },
+  {
+   "id": "PBX-STA-007",
+   "title": "Gen II Unown: letter, shiny state, DVs and sprite disagree; letter selector confusing",
+   "gens": [
+    "II"
+   ],
+   "area": "stats",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 screenshot observations 3-4 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0582",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0583",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0106",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-REROLL",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0171",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-REROLL",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0212",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P6",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0318",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B07 · R2-REROLL",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0328",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C09 · UNOWN-LETTER",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0355",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B07, C09",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0318",
+     "text": "Gen II Unown:<br>• Shiny restricts the available letters.<br>• Turning Shiny off and choosing a letter changes the DVs and the form.<br>• Turning Shiny on again changes the form.<br>• Reroll seems not to work, shiny or not.<br>• Choosing a letter does not explain whether the result should be shiny.<br>Overall it is confusing and feels broken."
+    },
+    {
+     "rid": "C0171",
+     "text": "Gen II Unown: making it shiny changed A to something that looks like I or V. It is unclear how letter, shiny state and DVs relate."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "fd30e0fc/e0d5102f (sprite follows DVs), 8613b13d letter selector, 2dfad968+47b8097e (R7 B07/C09 letter grid, shiny questions, explained reroll) and f2cf5954 (silent Unown letter apply). Last owner verdict R6 26186464 B07/C09 FAIL. R7-R9 had no owner results; R11 H22 listed Unown comparison in its steps but the owner commented only on the toast — not a PASS.",
+   "repair_commits": [
+    "fd30e0fc fix(gen2): Unown sprite and draft letter follow the DVs",
+    "8613b13d feat(gen2): Unown letter selector",
+    "2dfad968 wip(gen2): Unown Letter grid, Shiny/letter questions, Reroll status (R7 B07/C09)",
+    "f2cf5954 no toast after routine edits"
+   ],
+   "automated_tests": [
+    "tests/test_gen2_unown_letter.cpp",
+    "tests/test_gen2_unown_letter_selector.cpp : letter/shiny/DV agreement",
+    "tests/test_ui_unown_letter_host.cpp"
+   ],
+   "last_owner_result": "R6 26186464 B07·R2-REROLL / C09: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H13 (letter change) + H16 (Gen II Unown in picker)",
+   "r12_checklist_item": "H13",
+   "next_action": "Ask owner explicitly in R12 H13 whether letter/shiny/DV behaviour is now clear (not just toast-free)."
+  },
+  {
+   "id": "PBX-STA-008",
+   "title": "Gen V box quick-view stat graph not updated / smaller than editor radar",
+   "gens": [
+    "V"
+   ],
+   "area": "stats",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 Extra 3 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0054",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 3",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md (Extra bugs and requests)"
+    },
+    {
+     "rid": "E0082",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 3",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0107",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §3 leads"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0054",
+     "text": "gen 5 quick view graph or whatever we call it, the graph when you are in a save in the box and can see all the pokemon in the box moving between pokemon the graph on the quick view doesn't work and isn't updated with the graph that is in the editor and view mode, it also looks smaller in the quick view. "
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "src/UI/Panels/BoxPokemonPanel.cpp:315-326 now routes every Gen I-V record through UI/BoxSummaryRadar.h shared radar; Gen V no longer falls into the inherited drawStatHexagon branch (kept only for later formats, :345-356).",
+   "repair_commits": [
+    "9a29863f G5-RADAR: Gen V box quick view draws the editor's radar"
+   ],
+   "automated_tests": [
+    "tests/test_box_summary_radar.cpp : route + scale per generation"
+   ],
+   "last_owner_result": "R11 3634d1e6 Extra 3: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H15",
+   "r12_checklist_item": "H15",
+   "next_action": "Owner runs R12 H15."
+  },
+  {
+   "id": "PBX-VEW-001",
+   "title": "Party / Boxes browsing and data sanity across saves",
+   "gens": [
+    "all"
+   ],
+   "area": "pokemon-view",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (DEVICE_TEST_REPORT_2026-09-01 acceptance target)",
+   "occurrences": [
+    {
+     "rid": "A0027",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0139",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0140",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0807",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "party",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0808",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "boxes",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0853",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0013",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0014",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0139",
+     "text": "Left mostly incomplete in the extended pass."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Repeated owner PASS since 3be4de6b (A0013/A0014); latest R11 3634d1e6 H02 'One save per generation' PASS (open-save record E0001) and H15 smoke PASS. R11 changed box/Actions/carry code.",
+   "repair_commits": [],
+   "automated_tests": [
+    "docs/qa/GEN1_5_MATRIX.md party/boxes host cells (not hardware)"
+   ],
+   "last_owner_result": "R11 3634d1e6 H02: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H18",
+   "r12_checklist_item": "H18",
+   "next_action": "R12 H18 smoke."
+  },
+  {
+   "id": "PBX-VEW-002",
+   "title": "Summary should show Species and Type explicitly (tester read SPECIES as type)",
+   "gens": [
+    "app"
+   ],
+   "area": "pokemon-view",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (3be4de6b, DEVICE_TEST_FOLLOWUP_2026-09-03)",
+   "occurrences": [
+    {
+     "rid": "A0186",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0186",
+     "text": "Tester read SPECIES as type; future Summary should show Species and Type explicitly."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Editors/View label 'Species' rows (e.g. src/UI/Gen1PokemonEditorFoundationHardwareFix.inc:212, src/UI/Gen2HardwareFinalFix.inc:99) and draw type icons (src/UI/Panels/BoxPokemonPanel.cpp drawTypeIcon). Gen I passive View accepted 5a2642ac (D0288).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE 5a2642ac: PASS",
+   "hardware_acceptance_candidate": "5a2642ac PRE",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VEW-003",
+   "title": "View/Pokédex with cry, Pokédex description and location",
+   "gens": [
+    "app"
+   ],
+   "area": "pokemon-view",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (3be4de6b, DEVICE_TEST_FOLLOWUP_2026-09-03)",
+   "occurrences": [
+    {
+     "rid": "A0187",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0187",
+     "text": "Tester wants these in future View/Pokédex; product work, not a blocker."
+    }
+   ],
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "No cry playback or Pokédex flavour text in Gen I-V View (grep cry/flavorText/dexEntry: only SV/SWSH regional dex tables, not shown in Gen I-V). Visual part delivered (PBX-VIS-002).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Owner to decide whether cry/Pokédex text is in v1 scope."
+  },
+  {
+   "id": "PBX-VEW-004",
+   "title": "Read-only View reuses PKSE-style detail experience; keep five-stat radar",
+   "gens": [
+    "I"
+   ],
+   "area": "pokemon-view",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (6ecd9c28, GEN1_UX_CLEANUP3 item 3)",
+   "occurrences": [
+    {
+     "rid": "A0536",
+     "round": "PRE",
+     "candidate": "6ecd9c28",
+     "item_id": "3",
+     "result": "n/a",
+     "src": "docs/GEN1_UX_CLEANUP3_HARDWARE_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "D0288",
+     "round": "PRE",
+     "candidate": "5a2642ac",
+     "item_id": null,
+     "result": "PASS",
+     "src": "PR #67 (comment 2026-09-14)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0536",
+     "text": "Focused Cleanup #3 requirement."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Gen I Party/Storage passive View accepted 5a2642ac (D0288); five-axis radar accepted 69668bc8 (A0551).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE 5a2642ac: PASS",
+   "hardware_acceptance_candidate": "5a2642ac PRE",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VEW-005",
+   "title": "Gen II Create/View native fields (Friendship, EXP, Egg, Crystal caught); no fabricated modern fields",
+   "gens": [
+    "II"
+   ],
+   "area": "pokemon-view",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (501093ae, PR #68 comment 2026-09-15)",
+   "occurrences": [
+    {
+     "rid": "D0301",
+     "round": "PRE",
+     "candidate": "501093ae",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #68 (comment 2026-09-15)"
+    },
+    {
+     "rid": "B0516",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0301",
+     "text": "- **Gen II Create/View data:** current dedicated GEN II DATA/BATTLE STATS layout is much better. Continue this layout and add only native fields that actually exist in Gen II. Candidate requested references include Friendship and EXP (native), Egg status where truly represented, and Crystal caught/met data. Do **not** fabricate Ability, PID, Nature, Ball, dates, or other later-gen fields in Gen I/II."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Gen II shared editor milestone accepted cfb70357 (D0303); Gen II DATA layout PASS R3 62a2f8c3 L01 (B0516).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R3 62a2f8c3 L01: PASS",
+   "hardware_acceptance_candidate": "cfb70357 PRE (PR #68)",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VEW-006",
+   "title": "Platinum party-only save: no editable target; Party opened inherited read-only details (G4-03)",
+   "gens": [
+    "IV"
+   ],
+   "area": "pokemon-view",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (5e79e9f8, issue #86 comment 2026-09-28)",
+   "occurrences": [
+    {
+     "rid": "D0313",
+     "round": "PRE",
+     "candidate": "5e79e9f8",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #86 (comment 2026-09-28)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0313",
+     "text": "Result: **HARDWARE FAIL / DO NOT ACCEPT**"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS for G4-03 Party + Box staged View/Edit on 84dae170 (D0314).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE 84dae170: PASS",
+   "hardware_acceptance_candidate": "84dae170 PRE",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VEW-007",
+   "title": "Gen II DATA pane text wraps/clips inside its pane (SharedDataPane::layoutRows)",
+   "gens": [
+    "II"
+   ],
+   "area": "pokemon-view",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (GEN14 campaign item 9)",
+   "occurrences": [
+    {
+     "rid": "A0945",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "9",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "A0954",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "item 6",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0945",
+     "text": "Owner campaign (Gen I/II lane) unit; implemented with host tests, not device-tested here."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS R1 7fea1797 and R3 62a2f8c3 L01 'Gen II DATA layout' (B0516).",
+   "repair_commits": [
+    "e59df023 Data pane text stays inside its pane"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "R3 62a2f8c3 L01: PASS",
+   "hardware_acceptance_candidate": "R3 62a2f8c3 L01",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-VEW-008",
+   "title": "Selected species shows '25 Pikachu' instead of name first",
+   "gens": [
+    "all"
+   ],
+   "area": "pokemon-view",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-11 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0560",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-11",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0294",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A14 · NEW-11",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0013",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A14",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0560",
+     "text": "Selected left panel show Pikachu or Pikachu #25, not leading 25 Pikachu; keep Dex numbers in lists."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS OCT24, R5 and R6 26186464 A14 (C0294).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R6 26186464 A14·NEW-11: PASS",
+   "hardware_acceptance_candidate": "R6 26186464 A14",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-LNG-001",
+   "title": "Gen II raw item 5 shown as '# BALL'",
+   "gens": [
+    "II"
+   ],
+   "area": "language-names",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (fc1e6de2, DEVICE_TEST_CHECKLIST)",
+   "occurrences": [
+    {
+     "rid": "A0516",
+     "round": "PRE",
+     "candidate": "fc1e6de2",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0516",
+     "text": "Reported label was ordinary Poké Ball; shared name table now shows `Poké Ball`; GS BALL stays ID 115."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "src/Integration/Gen2/Gen2ReadOnlyInventory.cpp:40 table entry 5 = 'Poké Ball' (GS BALL stays 115, :54/:99). No owner row re-checks this label.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_gsc_inventory.cpp / tests/test_classic_inventory_ui_model.cpp : Poké Ball label"
+   ],
+   "last_owner_result": "PRE fc1e6de2: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Glance at a Gen II Poké Ball in R12 H18 Bag smoke."
+  },
+  {
+   "id": "PBX-LNG-002",
+   "title": "Gen V Language: read-only, then modal chooser; must A-cycle inline, staged, no toast",
+   "gens": [
+    "V"
+   ],
+   "area": "language-names",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 documented limitation (7fea1797 RETEST)",
+   "occurrences": [
+    {
+     "rid": "B0163",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0563",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-14",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0011",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-14",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0104",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-14",
+     "result": "FAIL",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0213",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "n/a",
+     "src": "issue #325 (body 2026-10-24)"
+    },
+    {
+     "rid": "C0215",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "7C",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0307",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A27 · NEW-14",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0322",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C03 · 7C",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0213",
+     "text": "Owner hardware feedback: in the Gen V shared Pokémon Edit details, pressing A on Language currently opens a modal chooser. Requested: A cycles directly through the native Pokémon language IDs (1 Japanese, 2 English, 3 French, 4 Italian, 5 German, 7 Spanish, 8 Korean), wrapping after Korean;"
+    },
+    {
+     "rid": "C0215",
+     "text": "Follow-up request attached to PASS item NEW-14."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R5 1ca2faec NEW-14, R6 26186464 A27 and C03 'No Gen V Language toast' (C0307, C0322), OCT26 (C0402). Current src/UI/Gen5SharedReadOnlySurface.inc:491-496 stage(Field::Language, Gen5LanguageCycle::next) without toast. Gen V surface name display changed in R11 d1954551.",
+   "repair_commits": [
+    "1241c2b8 cycle Gen V Pokémon language inline (#325)",
+    "64fe8f9c CG79: Gen V Language cycles inline without a status toast"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_language_cycle.cpp : 1,2,3,4,5,7,8 wrap"
+   ],
+   "last_owner_result": "R6 26186464 A27/C03: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H14",
+   "r12_checklist_item": "H14",
+   "next_action": "R12 H14."
+  },
+  {
+   "id": "PBX-LNG-003",
+   "title": "Multilingual naming defects M1 D1–D4 (Gen III language+nickname encoding, Gen III/IV Create English defaults, Gen V language default name, Gen I/II accents)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "language-names",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "M1 (feature/multilingual-gen15, host only)",
+   "occurrences": [
+    {
+     "rid": "A0757",
+     "round": "M1",
+     "candidate": null,
+     "item_id": "D1",
+     "result": "n/a",
+     "src": "docs/multilingual/M1_NAMING_DEFECTS.md"
+    },
+    {
+     "rid": "A0758",
+     "round": "M1",
+     "candidate": null,
+     "item_id": "D2",
+     "result": "n/a",
+     "src": "docs/multilingual/M1_NAMING_DEFECTS.md"
+    },
+    {
+     "rid": "A0759",
+     "round": "M1",
+     "candidate": null,
+     "item_id": "D3",
+     "result": "n/a",
+     "src": "docs/multilingual/M1_NAMING_DEFECTS.md"
+    },
+    {
+     "rid": "A0760",
+     "round": "M1",
+     "candidate": null,
+     "item_id": "D4",
+     "result": "n/a",
+     "src": "docs/multilingual/M1_NAMING_DEFECTS.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0757",
+     "text": "Fixed with regression test on feature/multilingual-gen15; NOT DEVICE TESTED (host only, no NRO built)."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Merged 8c63957a (ancestor of 3634d1e6 and HEAD); include/Names/DefaultSpeciesName.h used by Gen3StagedPokemonEditor.cpp, Pokemon4Mutable.cpp, Gen5StagedPokemonRecord.h. D3 display was masked in R11 by the ASCII-only header (see PBX-LNG-004). R11 H13 note ('when i swap languages it has the proper text') is not item-specific acceptance.",
+   "repair_commits": [
+    "8c63957a Merge feature/multilingual-gen15",
+    "e6bdbebb M1 D4 Gen I/II: international names accept European accents"
+   ],
+   "automated_tests": [
+    "tests/test_default_species_names.cpp : per-language defaults",
+    "tests/test_gen5_language_default_name.cpp : Pikachu -> ピカチュウ/피카츄 bytes"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 H14 (D3 only); D1/D2/D4 none",
+   "r12_checklist_item": null,
+   "next_action": "Add Gen III/IV Create in non-English language and Gen I/II accented nickname rows to a later round."
+  },
+  {
+   "id": "PBX-LNG-004",
+   "title": "Gen V header name does not follow Language; Korean names render as '[][][][][]'",
+   "gens": [
+    "IV",
+    "V"
+   ],
+   "area": "language-names",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R11 H27 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0026",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H27",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0125",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H27",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0095",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §2 shared root causes"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0026",
+     "text": "language changes but the top names doesnt change like in gen 1-4, all gens need the proper names for their language and also we need to add the korean letters in cause they look like this \"[][][][][]\" also in our keyboards we need to add the proper letters and charcters for japenese and korean and all languges is that possible in the nanog kayboard and is it possible to add a new button in our custom search bar that would also change the letters or would it be easier to have when we can the language everyhting would get change to that language?? feedback ??"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Header uses displayName5 (src/UI/Gen5SharedReadOnlySurface.inc:880-883) instead of asciiName5; Korean shared font registered as last fallback (src/UI/PKSEFramebuffer.cpp:95-121, include/UI/SystemFontFallbacks.h:14-16). Write gate still ASCII (:440-445).",
+   "repair_commits": [
+    "d1954551 H27: Gen V names show their stored language; Hangul renders via the Korean system font"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_display_name.cpp : decoded native names",
+    "tests/test_korean_font_contract.py : PlSharedFontType_KO requested",
+    "tests/test_system_font_fallbacks.cpp : font order"
+   ],
+   "last_owner_result": "R11 3634d1e6 H27: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H14",
+   "r12_checklist_item": "H14",
+   "next_action": "R12 H14 incl. a Korean Gen IV/V Pokémon; watch for atlas/memory regressions on mixed-script screens."
+  },
+  {
+   "id": "PBX-LNG-005",
+   "title": "Name entry for all languages: accented keys, Japanese kana and Korean Hangul keyboards, Gen V Unicode entry, app-wide display language",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "language-names",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "M1 known limits (owner-approved order)",
+   "occurrences": [
+    {
+     "rid": "A0763",
+     "round": "M1",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/multilingual/M1_NAMING_DEFECTS.md"
+    },
+    {
+     "rid": "A0764",
+     "round": "M1",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/multilingual/M1_NAMING_DEFECTS.md"
+    },
+    {
+     "rid": "E0068",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H27",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0127",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H27",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0068",
+     "text": "language changes but the top names doesnt change like in gen 1-4 … korean letters … look like this \"[][][][][]\" … keyboards … japenese and korean and all languges … feedback ??"
+    }
+   ],
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "Partially built: Accents page and Gen I/II kana pages (src/UI/Dialogs/KeyboardDialog.cpp), Hangul page only for Korean-language Gen IV names (db414ae7, KeyboardDialog.cpp:193-195, Gen4SharedPokemonSurface.inc:819). Gen V name entry still ASCII-only ('1-10 ASCII characters', Gen5SharedReadOnlySurface.inc:440-445); no Japanese kana for Gen III-V; no app display-language setting. Owner questions in intake H27 (per-record vs global language, Hangul in v1) unanswered.",
+   "repair_commits": [
+    "db414ae7 H27: Hangul keyboard page for Korean-language Gen IV names; Gen V stays ASCII"
+   ],
+   "automated_tests": [
+    "tests/test_hangul_composer.cpp",
+    "tests/test_ui_hangul_keyboard_host.cpp"
+   ],
+   "last_owner_result": "R11 3634d1e6 H27: FAIL",
+   "hardware_acceptance_candidate": "none (R12 H14 checks display only)",
+   "r12_checklist_item": null,
+   "next_action": "Owner decision on the H27 questions (keyboard follows record language? global display language? Hangul/kana entry in v1?), then schedule Gen III-V kana and Gen V Unicode writers."
+  },
+  {
+   "id": "PBX-LNG-006",
+   "title": "Gen II decodes text with the English table only (French/German/Italian/Spanish saves show wrong letters)",
+   "gens": [
+    "II"
+   ],
+   "area": "language-names",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "M1 known limit (carried to M2)",
+   "occurrences": [
+    {
+     "rid": "A0761",
+     "round": "M1",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/multilingual/M1_NAMING_DEFECTS.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0761",
+     "text": "Known limit carried into M2."
+    }
+   ],
+   "status": "Open Defect",
+   "rechecked_needed": false,
+   "status_basis": "include/Utils/Gen2Text.h has only GEN2_EN (:30) and GEN2_JP (:65) tables; gen2ToChar(b, japanese) (:100) — no per-save European table. M2 never landed.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Implement M2 per-save European table choice for Gen II, with a French/German Crystal fixture."
+  },
+  {
+   "id": "PBX-LNG-007",
+   "title": "Gen I/II localized default species names",
+   "gens": [
+    "I",
+    "II"
+   ],
+   "area": "language-names",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "M1 known limit (M2/M3)",
+   "occurrences": [
+    {
+     "rid": "A0762",
+     "round": "M1",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/multilingual/M1_NAMING_DEFECTS.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0762",
+     "text": "Known limit carried into M2."
+    }
+   ],
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "Names::defaultSpeciesName is only called from Gen III/IV/V paths (Gen3StagedPokemonEditor.cpp, Pokemon4Mutable.cpp, Gen5StagedPokemonRecord.h); no Gen I/II caller.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Schedule M2/M3 or record an owner decision."
+  },
+  {
+   "id": "PBX-LNG-008",
+   "title": "Japanese Gen I/II saves stay read-only (never hardware-tested with a real Japanese save)",
+   "gens": [
+    "I",
+    "II"
+   ],
+   "area": "language-names",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R10/R11 H13 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0064",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H13",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0126",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H13",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0130",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Added since Round 6",
+     "result": "n/a",
+     "src": "README.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "F0126",
+     "text": "i guess this passes i didnt test a japenese save but when i swap languages it has the proper text"
+    }
+   ],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Gate include/Integration/Common/JapaneseEditingGate.h exists; owner marked R11 H13 PASS but wrote 'i didnt test a japenese save' (intake: recorded as NOT TESTED). Unknown: real Japanese-save behaviour on hardware; also Gen5SharedScreenState.h:542 empties a non-ASCII OT on Create species rebuild (intake H27 note, unverified).",
+   "repair_commits": [],
+   "automated_tests": [
+    "Group A Japanese kit-save rows (synthetic; not hardware)"
+   ],
+   "last_owner_result": "R11 3634d1e6 H13: PASS note, not evidence (no Japanese save)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17 (Japanese save if owner has one)",
+   "r12_checklist_item": "H17",
+   "next_action": "Owner tests a real Japanese Gen I/II save in R12 H17; if none available, keep NOT TESTED."
+  },
+  {
+   "id": "PBX-LNG-009",
+   "title": "Language shown only where the exact format stores it; never fabricated",
+   "gens": [
+    "all"
+   ],
+   "area": "language-names",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ (docs/POKEMON_EDITOR_UI_CONTRACT.md)",
+   "occurrences": [
+    {
+     "rid": "F0128",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Language / Provenance rules",
+     "result": "n/a",
+     "src": "docs/POKEMON_EDITOR_UI_CONTRACT.md"
+    },
+    {
+     "rid": "B0511",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E09",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "F0128",
+     "text": "\"If the exact current format stores the field, show it ... If the exact current format does not store it, hide it.\" \"Language/origin information that is not independently stored by an old format may still be displayed from trusted source/provenance metadata, but must not be presented as a fabricated editable field in that old save.\""
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Gen I/II have no Language row (intake H27: 'Gen I/II records have no language byte and no Language row'); Gen III Language PASS R3 E09 (B0511), Gen V Language PASS R6 A27 (C0307). Gen V language display changed in R11.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R6 26186464 A27: PASS (Gen V); R3 62a2f8c3 E09: PASS (Gen III)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H14",
+   "r12_checklist_item": "H14",
+   "next_action": "R12 H14."
+  },
+  {
+   "id": "PBX-LNG-010",
+   "title": "Nickname entry bounds (clear, invalid chars, max length, cancel); trainer native name/language display",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "language-names",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ (GEN15_HARDWARE_ACCEPTANCE_GATE_20261015 D03/E01/E03)",
+   "occurrences": [
+    {
+     "rid": "F0129",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "D03 / E01 / E03",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "F0129",
+     "text": "D03 \"Nickname text, clear, invalid chars, max length and cancel\"; E01 \"Trainer view native Name, TID/SID, gender, badges, version, language\"; E03 \"Trainer unknown/new-game shown neutral not male or unsupported glyphs\"."
+    }
+   ],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Limits exist in source (Gen V '1-10 ASCII' guide, Gen5SharedReadOnlySurface.inc:443; Gen II encodable-accent refusal from M1 D4) but no owner hardware result exists for D03 nickname entry (checklist A0689 never answered) — acceptance unknown.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_default_species_names.cpp"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Add a nickname-entry row (max length, invalid char, cancel) per generation."
+  },
+  {
+   "id": "PBX-VEW-009",
+   "title": "View-only notice (L06 follow-up): A or a tap on a field in View must say why nothing changes - accepted for Gen III-V, never implemented for Gen I/II (silent dead taps); Gen IV lock rules lacked a harness fixture",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "pokemon-view",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R6 C11 (26186464)",
+   "occurrences": [
+    {
+     "rid": "C0271",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C11",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0330",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C11 · View-only notice",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0425",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/MAIN_ACTIVE_HANDOFF.md"
+    },
+    {
+     "rid": "C0426",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/MAIN_ACTIVE_HANDOFF.md"
+    },
+    {
+     "rid": "C0408",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "C11",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0040",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A41",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Open Defect",
+   "rechecked_needed": false,
+   "status_basis": "Gen III-V part: 552658dc (2026-10-26, in 26186464) added include/UI/SharedViewOnlyNotice.h ('One wording for Gen III, IV and V', :4-5), posted by viewOnlyActivate in src/UI/SharedPokemonEditorSurface.inc:643-671 (Gen IV/V adapters) and src/UI/Gen3SharedPokemonSurface.inc:525; owner PASS R6 26186464 C11 'View-only notice' (C0330, Oct 26 C0408); git log -L shows no change to either function since 26186464. Gen I/II part (C0425, still open): the R6/R7 checklists state 'Gen I/II use different screens and are not covered' (C0271, D0040); Gen I View (src/UI/Gen1PokemonEditorPassiveView.inc:12-31) and Gen II View (src/UI/Gen2SharedPokemonSurface.inc:505-509) only move focus and handle B/Back, so A or a tap on a field posts nothing. No commit after 552658dc adds the notice to Gen I/II. Gen IV harness gap (C0426) is resolved in tests only: a6eb6242 adds gen4ViewOnly (tests/test_ui_editor_input_host.cpp:1212-1256) exercising pidRowLocked (src/UI/Gen4SharedPokemonSurface.inc:1413-1418) through the real screen.",
+   "repair_commits": [
+    "552658dc L06 View: A or a tap on a field says why nothing changes (Gen III / IV / V)",
+    "a6eb6242 Harness: Gen IV View lock rules through the real screen"
+   ],
+   "automated_tests": [
+    "tests/test_ui_editor_input_host.cpp:1145-1256 : Gen III/IV/V View A/tap posts 'View only: choose Edit to change ...' or '... is read-only for this Pokemon', opens no prompt and stages nothing (no Gen I/II case)"
+   ],
+   "last_owner_result": "R6/26186464/C11 (Gen III-V only): PASS; Gen I/II: none",
+   "hardware_acceptance_candidate": "Gen III-V accepted 26186464 R6 C11; Gen I/II: none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Route Gen I and Gen II passive View A/tap through PokeBank::UIModel::ViewOnlyNotice (editHint/lockedHint) with host tests, then add a View-only notice item for Gen I/II to the next hardware checklist."
+  },
+  {
+   "id": "PBX-LNG-011",
+   "title": "No Japanese Gen V save is tested: Gen V species/PID gender and names are checked only at record level, never through a Japanese Black/White/B2W2 save",
+   "gens": [
+    "V"
+   ],
+   "area": "language-names",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R8 automated compatibility matrix known gaps (6ec5ccb9)",
+   "occurrences": [
+    {
+     "rid": "D0185",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md (Known gaps)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md:93 records the gap. Current tests still have no Japanese Gen V save fixture: Japanese coverage exists for Gen I/II (.pk1/.pk2 lists, tests/test_native_pokemon_file.cpp:49-118; real-save round trip refuses Japanese Gen I/II, tests/test_real_save_roundtrip.cpp:9), while Gen V language handling is tested on records only (tests/test_gen5_language_default_name.cpp:63-77, added 2f9745e3). d1954551 (H27) changed Gen V name decoding after R11. Unknown: whether a real Japanese Gen V save opens, shows names in Japanese script, keeps PID gender and exports byte-correctly. No owner hardware result exists.",
+   "repair_commits": [
+    "2f9745e3 M1 D3 Gen V: a language change renames an unnicknamed Pokemon to its default name in that language",
+    "d1954551 H27: Gen V names show their stored language; Hangul renders via the Korean system font"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_language_default_name.cpp:63-77 : record-level Gen V default names per language (no Japanese save)"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 H14 (only if the owner has a Japanese Gen V save)",
+   "r12_checklist_item": "H14",
+   "next_action": "Add a Japanese Gen V save fixture (open, names, PID gender, export + strict reparse) to the host suite; ask the owner to note in R12 H14 whether a Japanese Gen V save was used."
+  }
+ ],
+ "accepted_features": [
+  {
+   "gen": "app",
+   "feature": "PokeBank NX red shell identity",
+   "latest_pass": "PRE af2acf04 (issue #13 comment 2026-09-06)",
+   "code_changed_since": false,
+   "evidence": "D0266"
+  },
+  {
+   "gen": "app",
+   "feature": "Pokémon artwork in View/Summary",
+   "latest_pass": "R3 62a2f8c3 AUD-02",
+   "code_changed_since": true,
+   "evidence": "A0230 (0ea98cc1), B0684; picker changed eb7fe8c9 -> R12 H16"
+  },
+  {
+   "gen": "app",
+   "feature": "Region backgrounds / RomFS artwork incl. Gen V covers",
+   "latest_pass": "R3 62a2f8c3 AUD-10",
+   "code_changed_since": true,
+   "evidence": "B0691; HOME card scenery masking changed c21d3747 -> R12 H01"
+  },
+  {
+   "gen": "all",
+   "feature": "Item sprites (incl. Gen V feathers/TM discs)",
+   "latest_pass": "R3 62a2f8c3 AUD-06",
+   "code_changed_since": false,
+   "evidence": "B0687"
+  },
+  {
+   "gen": "all",
+   "feature": "Compact selection windows",
+   "latest_pass": "R3 62a2f8c3 R2-MENUS",
+   "code_changed_since": false,
+   "evidence": "B0664"
+  },
+  {
+   "gen": "all",
+   "feature": "Read-only fields gold",
+   "latest_pass": "R3 62a2f8c3 R2-GOLD",
+   "code_changed_since": false,
+   "evidence": "B0666"
+  },
+  {
+   "gen": "all",
+   "feature": "Clickable popup rows boxed",
+   "latest_pass": "R3 62a2f8c3 R2-BUG-012",
+   "code_changed_since": false,
+   "evidence": "B0678"
+  },
+  {
+   "gen": "all",
+   "feature": "No row counters",
+   "latest_pass": "R3 62a2f8c3 E04",
+   "code_changed_since": false,
+   "evidence": "B0506"
+  },
+  {
+   "gen": "all",
+   "feature": "Editor border/cursor alignment",
+   "latest_pass": "R3 62a2f8c3 L05",
+   "code_changed_since": false,
+   "evidence": "B0523"
+  },
+  {
+   "gen": "all",
+   "feature": "Shiny shows Yes/No (inline toggle)",
+   "latest_pass": "R3 62a2f8c3 E06",
+   "code_changed_since": true,
+   "evidence": "B0508; shiny feedback changed f2cf5954 -> R12 H13"
+  },
+  {
+   "gen": "all",
+   "feature": "Pokérus cycles inline with A",
+   "latest_pass": "R3 62a2f8c3 E07",
+   "code_changed_since": false,
+   "evidence": "B0509"
+  },
+  {
+   "gen": "all",
+   "feature": "Gender editing without huge picker",
+   "latest_pass": "R3 62a2f8c3 E08",
+   "code_changed_since": false,
+   "evidence": "B0510"
+  },
+  {
+   "gen": "all",
+   "feature": "Y rerolls DVs/IVs/EVs immediately",
+   "latest_pass": "R3 62a2f8c3 E10",
+   "code_changed_since": true,
+   "evidence": "B0512; reroll toast removed f2cf5954 -> R12 H13"
+  },
+  {
+   "gen": "all",
+   "feature": "Ball picker scrollbar gutter",
+   "latest_pass": "R6 26186464 A12",
+   "code_changed_since": false,
+   "evidence": "C0292"
+  },
+  {
+   "gen": "all",
+   "feature": "Selected species name first",
+   "latest_pass": "R6 26186464 A14",
+   "code_changed_since": false,
+   "evidence": "C0294"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I boxed staged editor (DEVICE ACCEPTED)",
+   "latest_pass": "R11 3634d1e6 H21 (accepted 69668bc8)",
+   "code_changed_since": true,
+   "evidence": "A0540, E0020; Gen1 overlays changed f2cf5954/eb7fe8c9 -> R12 H13"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I summary stats, five-axis radar, unfocusable calc cells",
+   "latest_pass": "PRE 69668bc8",
+   "code_changed_since": true,
+   "evidence": "A0550/A0551/A0553; box radar routing changed 9a29863f -> R12 H18"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I Party/Storage passive View",
+   "latest_pass": "PRE 5a2642ac",
+   "code_changed_since": false,
+   "evidence": "D0288"
+  },
+  {
+   "gen": "I",
+   "feature": "GB platform label for RBY",
+   "latest_pass": "PRE 50dac31f",
+   "code_changed_since": false,
+   "evidence": "A0906"
+  },
+  {
+   "gen": "II",
+   "feature": "Gen II shared editor milestone",
+   "latest_pass": "PRE cfb70357",
+   "code_changed_since": true,
+   "evidence": "D0303; Gen II workspace changed baada873/f2cf5954"
+  },
+  {
+   "gen": "II",
+   "feature": "Gen II DATA pane layout",
+   "latest_pass": "R3 62a2f8c3 L01",
+   "code_changed_since": false,
+   "evidence": "B0516"
+  },
+  {
+   "gen": "II",
+   "feature": "Crystal OT Gender inline",
+   "latest_pass": "R6 26186464 A11",
+   "code_changed_since": false,
+   "evidence": "C0291"
+  },
+  {
+   "gen": "III",
+   "feature": "Gen III shared editor",
+   "latest_pass": "PRE 996e6aa4; latest R11 3634d1e6 H24 Edit and discard",
+   "code_changed_since": true,
+   "evidence": "D0306, E0023"
+  },
+  {
+   "gen": "III",
+   "feature": "Gen III Language cycles inline",
+   "latest_pass": "R3 62a2f8c3 E09",
+   "code_changed_since": false,
+   "evidence": "B0511"
+  },
+  {
+   "gen": "III",
+   "feature": "Gen III PID-linked fields and Unown editing",
+   "latest_pass": "R3 62a2f8c3 E13",
+   "code_changed_since": false,
+   "evidence": "B0515"
+  },
+  {
+   "gen": "III",
+   "feature": "Gen III held-item policy; unreleased item labelled and kept",
+   "latest_pass": "R6 26186464 C08/C15 (OCT26)",
+   "code_changed_since": false,
+   "evidence": "C0327, C0334"
+  },
+  {
+   "gen": "III-V",
+   "feature": "Ability names and effects",
+   "latest_pass": "R6 26186464 A16",
+   "code_changed_since": false,
+   "evidence": "C0296"
+  },
+  {
+   "gen": "III-V",
+   "feature": "Nature stat colours green/red",
+   "latest_pass": "R6 26186464 A13",
+   "code_changed_since": false,
+   "evidence": "C0293"
+  },
+  {
+   "gen": "III-V",
+   "feature": "View-only notice instead of silent no-op",
+   "latest_pass": "R6 26186464 C11",
+   "code_changed_since": false,
+   "evidence": "C0330"
+  },
+  {
+   "gen": "III,V",
+   "feature": "Pokérus and Held Item activation",
+   "latest_pass": "R6 26186464 B01",
+   "code_changed_since": false,
+   "evidence": "C0312"
+  },
+  {
+   "gen": "I-III",
+   "feature": "Party Actions popup with staged Edit",
+   "latest_pass": "R6 26186464 A21 (actions-menu)",
+   "code_changed_since": true,
+   "evidence": "C0301; Actions model rewritten dd69bc93 -> R12 H05"
+  },
+  {
+   "gen": "IV",
+   "feature": "G4-03 Party + Box staged View/Edit",
+   "latest_pass": "PRE 84dae170",
+   "code_changed_since": true,
+   "evidence": "D0314"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V shows real saved data",
+   "latest_pass": "R3 62a2f8c3 S02",
+   "code_changed_since": true,
+   "evidence": "B0528; box radar changed 9a29863f -> R12 H15"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Language inline, no toast",
+   "latest_pass": "R6 26186464 A27/C03 (OCT26)",
+   "code_changed_since": true,
+   "evidence": "C0307, C0322; Gen V display names changed d1954551 -> R12 H14"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Pokérus Keep keeps strain",
+   "latest_pass": "R6 26186464 C12",
+   "code_changed_since": false,
+   "evidence": "C0331"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Gender inline",
+   "latest_pass": "R11 3634d1e6 H08",
+   "code_changed_since": true,
+   "evidence": "E0007; Gen V surface changed f2cf5954"
+  },
+  {
+   "gen": "II",
+   "feature": "Gen II one Special DV/Stat Exp, separate SpA/SpD (R5 layout)",
+   "latest_pass": "R5 1ca2faec R2-SPECIAL",
+   "code_changed_since": true,
+   "evidence": "C0197 — later re-rejected R6/R11, see PBX-STA-002"
+  },
+  {
+   "gen": "III-V",
+   "feature": "View-only notice: A or a tap on a field in View explains instead of doing nothing (C11)",
+   "latest_pass": "R6 26186464 C11 (Oct 26 PASS)",
+   "code_changed_since": false,
+   "evidence": "viewOnlyActivate (SharedPokemonEditorSurface.inc:643-671, Gen3SharedPokemonSurface.inc:525) unchanged since 26186464 per git log -L (PBX-VEW-009)"
+  }
+ ],
+ "noise": [],
+ "misfiled": []
+}

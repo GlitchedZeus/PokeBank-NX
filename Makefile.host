@@ -37,6 +37,7 @@ include Makefile.host.jp-gen1
 include Makefile.host.jp-gen2
 include Makefile.host.bag-top-up
 include Makefile.host.pokemon-file-menus
+include Makefile.host.carry
 
 include Makefile.host.machine
 

@@ -22,16 +22,16 @@ struct BoxPokemonEdit {
     std::optional<std::array<uint8_t,4>> moves, pp, ppUps, dvs;
     std::optional<std::array<uint16_t,5>> statExperience;
 };
-// Create default is #25 Pikachu at L5, the same default as the Gen II-V editors. Its moves are
-// Pikachu's pret/pokered base moves (data/pokemon/base_stats/pikachu.asm: THUNDERSHOCK, GROWL)
-// at their base PP (data/moves/moves.asm: Thunder Shock 30, Growl 40).
+// Create default is #25 Pikachu at L5, the same default as the Gen II-V editors. Round 11 (owner
+// H28 / Extra 5 / Extra 6): it starts with NO moves; the user picks them, and the UI's shared
+// Create rule (UI/CreateRequiredFields.h) refuses Add until at least one is chosen.
 struct BoxPokemonCreate {
     uint16_t species = 25;
     uint8_t level = 5;
     std::optional<uint32_t> experience;
     std::string nickname, otName;
     std::optional<uint16_t> trainerId;
-    std::array<uint8_t,4> moves{84,45,0,0}, pp{30,40,0,0}, ppUps{}, dvs{};
+    std::array<uint8_t,4> moves{}, pp{}, ppUps{}, dvs{};
     std::array<uint16_t,5> statExperience{};
 };
 struct BattleStats {
@@ -146,6 +146,10 @@ private:
 
     explicit StagedPokemonEditor(std::shared_ptr<const ReadOnlySave> source);
     bool destination(size_t box, size_t slot, std::string& error) const;
+    // Round 11 H32: true (with the reason) while a packed carry is active.
+    bool refuseWhileCarrying(std::string& error) const;
+    // stageRemove without the carry guard: the pickup itself removes the carried slots.
+    bool removeBoxedSlot(size_t box, size_t slot, std::string& error);
     bool commit(std::vector<uint8_t> candidate, std::string& error);
     bool stageRecordEdit(bool party, size_t box, size_t slot, const BoxPokemonEdit&, std::string& error);
     void rebuildChanges();

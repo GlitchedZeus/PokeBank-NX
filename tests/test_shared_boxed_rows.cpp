@@ -78,15 +78,18 @@ int main() {
                             Site{"src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc", 2},
                             Site{"src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc", 2},
                             Site{"src/UI/Gen2HardwarePickerFix.inc", 1}, Site{"src/UI/Gen2PokemonPickerOverlay.inc", 1},
-                            Site{"src/UI/Gen2SharedPokemonSurface.inc", 1}, Site{"src/UI/Gen2SharedSurfaceParity.inc", 1},
                             Site{"src/UI/Gen2UnifiedPokemonWorkspace.inc", 3},
                             Site{"src/UI/TrainerViewScreenGSCOverlay.inc", 1},
                             Site{"src/UI/ClassicInventoryOverlay.cpp", 1}}) {
         require(count(read(site.path), "SharedBoxedRows::drawBox(") >= site.boxes,
                 std::string("R2-BUG-012 boxed modal rows in ") + site.path);
     }
-    // Gen II's noninteractive Review rows now use the accepted shared panel;
-    // its interactive Clone grid still requires its own boxed cells above.
+    // Gen II's noninteractive Review rows now use the accepted shared panel. Round 11 H31 removed the
+    // Gen II Clone destination grid (its two boxed-cell sites, Gen2SharedPokemonSurface.inc and
+    // Gen2SharedSurfaceParity.inc): Clone is now the shared box carry drawn on the real box grid.
+    require(read("src/UI/Gen2SharedPokemonSurface.inc").find("drawSharedCloneSurface") == std::string::npos &&
+                read("src/UI/Gen2SharedSurfaceParity.inc").find("drawParityGen2Clone") == std::string::npos,
+            "Round 11 H31: no Gen II Clone grid left to box");
     require(read("src/UI/Gen2SharedSurfaceParity.inc").find("drawSharedReviewSurface(screen,fb);")!=std::string::npos &&
             read("src/UI/Gen2SharedPokemonSurface.inc").find("SharedEditorChrome::drawReviewPanel(fb,screen.touchButtons,rows,")!=std::string::npos &&
             read("include/UI/SharedEditorChrome.h").find("fb.drawFilledRoundedRect(x+18,yy,w-36,94,10,Colors::PanelAlt);")!=std::string::npos,
@@ -138,6 +141,26 @@ int main() {
     }
     require(read("src/UI/Gen4SharedPokemonSurface.inc").find("{{{\"B\", \"Cancel\"}, {\"Y\", \"Confirm Release\"}}}") !=
                 std::string::npos, "Release still commits on Y only (B cancels)");
+
+    // Round 11 H12: a multi-select "marked" style, separate from focus and from the pressed tint.
+    // `marked` is the LAST State member and defaults to false, so every `{focused}` / `{}` State
+    // (19 boxed-row users) and the other BackupBrowserChrome lists draw exactly as before.
+    require(boxed.find("    bool enabled = true;\n    bool marked = false;   ") != std::string::npos,
+            "State gains marked as its last member, default false");
+    require(boxed.find("pressed ? tint : s.marked ? markedFill() : Colors::Surface") != std::string::npos,
+            "a marked box has its own fill (pressed tint still wins under a fingertip)");
+    require(boxed.find("inline Color markedFill() { return Colors::AccentSecondary; }") != std::string::npos &&
+            boxed.find("Colors::Success") != std::string::npos && boxed.find("kMarkBarWidth") != std::string::npos,
+            "marked: accent fill plus a Success bar, unlike the yellow focus outline and pressed tint");
+    const std::string backupChrome = read("include/UI/BackupBrowserChrome.h");
+    require(backupChrome.find("bool selected,bool marked=false)") != std::string::npos &&
+            backupChrome.find("SharedBoxedRows::drawBox(fb,SharedBoxedRows::rect(x,y,w,h),{selected,true,marked});") !=
+                std::string::npos,
+            "BackupBrowserChrome::drawRow passes marked (default false) into the shared box");
+    require(read("src/UI/BackupSelectionScreen.cpp").find("BackupBrowserChrome::drawRow(fb,LIST_X,itemY,LIST_W,LIST_ROW_H-10,") !=
+                std::string::npos &&
+            read("src/UI/SaveSelectScreen.cpp").find("title,detail,badge,i==emuBackupIndex);") != std::string::npos,
+            "Switch-save and emulator Backups lists call drawRow without marked (unchanged look)");
 
     if (failures) {
         std::cerr << failures << " failure(s)\n";

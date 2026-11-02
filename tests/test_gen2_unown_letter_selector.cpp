@@ -155,6 +155,9 @@ int main() {
         require(crystalShiny(pick.dvs) == crystalShiny(c.start), "staged pick keeps shiny state");
         s.working.dvs = {StagedEditor::derivedHPDV(pick.dvs), pick.dvs[0], pick.dvs[1], pick.dvs[2], pick.dvs[3]};
         s.working.form = static_cast<uint8_t>(DV::unownLetter(pick.dvs)); // what applyEditableDVs stores
+        // Round 11 (owner H28): Unown keeps none of Pikachu's moves and none is filled in; the user
+        // picks Hidden Power, the only move Unown has, before Keep (CreateRequiredFields).
+        require(s.setMove(0, 237), "Hidden Power");
         require(s.keep(*editor, 1, 0, error), "keep: " + error);
         const auto back = editor->boxedPokemon(1, 0, error);
         require(back && back->species == 201 && back->form == l,

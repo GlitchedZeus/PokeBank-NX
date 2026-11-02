@@ -14,7 +14,8 @@
 //     Gen4BagQuantity, Gen V Gen5BagScreen availability); unique items keep 1;
 //   - X adds from the exact game's catalog; Y asks to remove; A / B answer that question
 //   - ZR opens Top Up / Add Missing (UI/SharedBagTopUp.h; owner Oct 28, Feature B): a preview,
-//     then A stages it, B stages nothing;
+//     then A stages it, B stages nothing; Round 11 (H04 / H34): the row names the scopes it offers
+//     (Gen I-III this pocket, the whole Bag or PC Items; Gen IV / V have no PC item storage);
 //     (classicRemoveConfirmStep, the Gen IV item-remove confirm, Gen V ConfirmRemove);
 //   - L / R change category (Gen I-III) or pocket (Gen IV / V);
 //   - + opens the shared Review (ReviewEntry: + is the Bag's Review key in every generation; the
@@ -35,7 +36,8 @@ inline std::vector<std::string> lines(int generation) {
         classic ? "L / R   Previous / next category" : "L / R   Previous / next pocket",
         "A   Edit the quantity (items with an editable quantity; unique items stay at 1)",
         "X   Add an item from this game's catalog     Y   Ask to remove the selected item",
-        "ZR   Top Up / Add Missing (preview first; Key Items and HMs never change)",
+        classic ? "ZR   Top Up / Add Missing: pocket, Bag or PC (preview first; no Key Items / HMs)"
+                : "ZR   Top Up / Add Missing: pocket or whole Bag (preview first; no Key Items / HMs)",
         "A / B   Remove question: A removes, B cancels",
         generation == 5 ? "+   Review staged changes (shown once something is staged)"
                         : "+   Review staged changes (Export Copy and Discard All are there)",

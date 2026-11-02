@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <string>
 
 using namespace PokeBank::UIModel::SharedPokemonEditor;
 
@@ -107,10 +108,55 @@ int main() {
     assert(gen2OccupiedDirty[4] == Action::Review);
     assert(gen2OccupiedDirty[5] == Action::Close);
 
-    assert(boxActivation(false, true, false) == BoxActivation::Actions);
-    assert(boxActivation(true, true, false) == BoxActivation::Actions);
-    assert(boxActivation(false, false, true) == BoxActivation::Add);
-    assert(boxActivation(true, false, true) == BoxActivation::None);
+    // Round 11 ACTIONS (owner Extra 7): ONE capability model, ONE order for every generation:
+    // View, Edit, Clone, Move, Release, Origin & Legality, Export to file, Review, Cancel. Move is
+    // listed only with canMove and never on an empty slot; Add only with canAdd (default on).
+    {
+        ActionCapabilities all{true, true, true, true, true};
+        all.canMove = true;
+        const auto full = actionsForSlot(true, all, true);
+        const Action order[] = {Action::View, Action::Edit, Action::Clone, Action::Move, Action::Remove,
+                                Action::LegalityProvenance, Action::ExportFile, Action::Review, Action::Close};
+        assert(full.count == 9);
+        for (std::size_t i = 0; i < 9; ++i) assert(full[i] == order[i]);
+        const auto emptySlot = actionsForSlot(false, all, true);
+        assert(emptySlot.count == 4 && emptySlot[0] == Action::Add && emptySlot[1] == Action::ImportFile &&
+               emptySlot[2] == Action::Review && emptySlot[3] == Action::Close);
+        for (std::size_t i = 0; i < emptySlot.count; ++i) assert(emptySlot[i] != Action::Move);
+        ActionCapabilities noAdd = all;
+        noAdd.canAdd = false;
+        noAdd.canImportFile = false;
+        const auto inert = actionsForSlot(false, noAdd, false);
+        assert(inert.count == 1 && inert[0] == Action::Close);
+        // Without canMove the accepted sheets are unchanged (Gen II / III before Round 11).
+        ActionCapabilities noMove{true, true, true, true, true};
+        assert(actionsForSlot(true, noMove, false).count == 7);
+        static_assert(ActionCapabilities{}.canAdd && !ActionCapabilities{}.canMove);
+    }
+
+    // Round 11 X-IMPEXP (owner request; deliberately replaces "X Add on an empty cell"): A opens
+    // Actions; X exports an occupied slot / imports into an empty one, only with the capability,
+    // and the footer label (boxXLabel) is derived from the same decision. X never means Add.
+    for (const bool canImport : {false, true})
+        for (const bool canExport : {false, true}) {
+            ActionCapabilities caps;
+            caps.canImportFile = canImport;
+            caps.canExportFile = canExport;
+            for (const bool occupied : {false, true}) {
+                assert(boxActivation(occupied, true, false, caps) == BoxActivation::Actions);
+                assert(boxActivation(occupied, false, false, caps) == BoxActivation::None);
+                const auto x = boxActivation(occupied, false, true, caps);
+                const auto expected = occupied ? (canExport ? BoxActivation::ExportFile : BoxActivation::None)
+                                               : (canImport ? BoxActivation::ImportFile : BoxActivation::None);
+                assert(x == expected);
+                const char* label = boxXLabel(occupied, caps);
+                assert((label != nullptr) == (x != BoxActivation::None));
+                if (x == BoxActivation::ExportFile) assert(std::string(label) == "Export");
+                if (x == BoxActivation::ImportFile) assert(std::string(label) == "Import");
+                // Add stays reachable from A: the empty-slot sheet still lists Add Pokemon first.
+                if (!occupied) assert(actionsForSlot(false, caps)[0] == Action::Add);
+            }
+        }
     const auto afterAdd = postAddSelection(6, 3);
     assert(afterAdd.box == 6 && afterAdd.slot == 3 && !afterAdd.openActions);
 

@@ -112,6 +112,25 @@ namespace Utils
         return result;
     }
 
+    KeyboardResult promptKoreanName(const std::string &header, const std::string &guide, const std::string &initial,
+                                    int maxChars)
+    {
+        if (!g_keyboardPresenter)
+            return promptSystemText(header, guide, initial, maxChars);
+        if (maxChars <= 0)
+            return KeyboardResult{};
+        KeyboardRequest request;
+        request.header = header;
+        request.guide = guide;
+        request.initialText = initial;
+        request.maxChars = maxChars;
+        request.koreanHangul = true;
+        KeyboardResult result = g_keyboardPresenter(request);
+        if (!result.accepted)
+            result.text.clear();
+        return result;
+    }
+
     NumberResult promptNumber(const std::string &header, int initial, int minValue, int maxValue)
     {
         NumberResult result;

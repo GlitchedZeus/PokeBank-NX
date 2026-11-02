@@ -20,7 +20,12 @@
 //     invalid, unreleased or event-only id can be proposed.
 //   * Pockets that are views of ONE native list (Gen I: Items / Medicine / Balls / Key Items / TMs
 //     share the 20-slot Bag) carry the same slotGroup; their free slots are counted once, for the
-//     whole list, whichever pockets are planned.
+//     whole list, whichever pockets are planned. A list that runs out of free slots is reported once
+//     in Plan::full (its slots, how many were free, how many did not fit), and each item that did
+//     not fit names the list's slot count, so the preview says WHY (Round 11 H04 / H34).
+//   * PC Items is its own scope (Round 11 H34): bagPockets() never includes it, pcPockets() is only
+//     it. An ordinary item may natively sit in the Bag AND the PC, so each list is planned on its
+//     own; an item the game allows only once is never added while it is held (or added) anywhere.
 //   * A generation whose writer sets an item's quantity by id (it merges or clears further stacks of
 //     that item: Gen I, Gen III) sets perSlotTopUp = false; an item held in several stacks there is
 //     reported and left alone, so a top-up can never lower the item's total.
@@ -31,6 +36,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -75,12 +81,28 @@ enum class SkipReason : uint8_t {
 
 struct TopUp { Pocket pocket; std::size_t slot; uint16_t itemId; uint16_t from; uint16_t to; };
 struct Add { Pocket pocket; uint16_t itemId; uint16_t quantity; };
-struct Skip { Pocket pocket; uint16_t itemId; SkipReason reason; };
+struct Skip {
+    Pocket pocket;
+    uint16_t itemId;
+    SkipReason reason;
+    std::size_t slots = 0;      // PocketFull: native slots of the list that ran out (0 = not known)
+    bool sharedList = false;    // PocketFull: that list is shared by several pockets (Gen I Bag)
+};
+// A native list that ran out of free slots for new stacks while this plan was built: every slot that
+// was free (freeBefore) now takes a new stack, and notFitted more candidates were reported PocketFull.
+struct FullList {
+    Pocket pocket;              // the first planned pocket of that list
+    std::size_t slots = 0;      // native slots of the list
+    std::size_t freeBefore = 0; // free slots before this plan
+    std::size_t notFitted = 0;  // candidates reported PocketFull
+    bool sharedList = false;    // a slotGroup list (Gen I: one 20-slot Bag for every category)
+};
 
 struct Plan {
     std::vector<TopUp> topUps;
     std::vector<Add> adds;
     std::vector<Skip> skipped;
+    std::vector<FullList> full;
     [[nodiscard]] bool empty() const noexcept { return topUps.empty() && adds.empty(); }
 };
 
@@ -96,6 +118,14 @@ struct Plan {
     }
     return "skipped";
 }
+// The preview text of one skip: a full list names its native slot count, and a list that several
+// pockets share says so (Gen I: every Bag category is a view of ONE 20-slot list).
+[[nodiscard]] inline std::string skipText(const Skip& s) {
+    if (s.reason != SkipReason::PocketFull || s.slots == 0) return std::string(skipReasonText(s.reason));
+    if (s.sharedList)
+        return "Bag full: its " + std::to_string(s.slots) + " slots are shared by every category";
+    return "pocket full (" + std::to_string(s.slots) + " slots)";
+}
 
 [[nodiscard]] inline bool storySensitive(const QuantityPolicy::ItemQuantityRule& rule) noexcept {
     return rule.kind == ItemKind::KeyItem || rule.kind == ItemKind::HM;
@@ -107,6 +137,16 @@ struct Plan {
     for (const auto& p : state)
         if (p.pocket != Pocket::PCItems) out.push_back(p.pocket);
     return out;
+}
+// The PC item storage alone (Gen I-III); empty where the save has none (Gen IV / V).
+[[nodiscard]] inline std::vector<Pocket> pcPockets(std::span<const PocketState> state) {
+    std::vector<Pocket> out;
+    for (const auto& p : state)
+        if (p.pocket == Pocket::PCItems) out.push_back(p.pocket);
+    return out;
+}
+[[nodiscard]] inline bool hasPcItems(std::span<const PocketState> state) noexcept {
+    return std::any_of(state.begin(), state.end(), [](const PocketState& p) { return p.pocket == Pocket::PCItems; });
 }
 
 [[nodiscard]] inline Plan plan(Game game, const Request& request, std::span<const PocketState> state) {
@@ -133,6 +173,7 @@ struct Plan {
         for (const auto& q : state) if (q.slotGroup == p.slotGroup) used += q.held.size();
         groupFree.push_back({p.slotGroup, p.slotCapacity > used ? p.slotCapacity - used : 0});
     }
+    const auto groupStart = groupFree;
 
     for (const auto& p : state) {
         if (!wanted(p.pocket)) continue;
@@ -158,9 +199,19 @@ struct Plan {
         }
         if (addMissing) {
             std::size_t ownFree = p.slotCapacity > p.held.size() ? p.slotCapacity - p.held.size() : 0;
+            std::size_t freeBefore = ownFree;
             std::size_t* free = &ownFree;
             for (auto& g : groupFree) if (g.first == p.slotGroup) free = &g.second;
+            for (const auto& g : groupStart) if (g.first == p.slotGroup) freeBefore = g.second;
             std::size_t& freeSlots = *free;
+            const bool shared = p.slotGroup >= 0;
+            // One FullList per native list: a shared list keeps the record its first pocket opened.
+            const auto sameList = [&](Pocket q) {
+                if (q == p.pocket) return true;
+                const auto o = std::find_if(state.begin(), state.end(),
+                                            [q](const PocketState& x) { return x.pocket == q; });
+                return shared && o != state.end() && o->slotGroup == p.slotGroup;
+            };
             std::vector<uint16_t> candidates(p.addableItems.begin(), p.addableItems.end());
             std::sort(candidates.begin(), candidates.end());
             candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
@@ -179,7 +230,20 @@ struct Plan {
                     if (other != id && std::find(heldAnywhere.begin(), heldAnywhere.end(), other) != heldAnywhere.end())
                         exclusive = true;
                 if (exclusive) { out.skipped.push_back({p.pocket, id, SkipReason::Exclusive}); continue; }
-                if (freeSlots == 0) { out.skipped.push_back({p.pocket, id, SkipReason::PocketFull}); continue; }
+                // Unique: one in the whole save (Bag + PC), never a second copy in another list.
+                if (rule.unique && std::find(heldAnywhere.begin(), heldAnywhere.end(), id) != heldAnywhere.end()) {
+                    out.skipped.push_back({p.pocket, id, SkipReason::OnlyOnce});
+                    continue;
+                }
+                if (freeSlots == 0) {
+                    out.skipped.push_back({p.pocket, id, SkipReason::PocketFull, p.slotCapacity, shared});
+                    auto room = std::find_if(out.full.begin(), out.full.end(),
+                                             [&](const FullList& f) { return sameList(f.pocket); });
+                    if (room == out.full.end())
+                        room = out.full.insert(out.full.end(), FullList{p.pocket, p.slotCapacity, freeBefore, 0, shared});
+                    ++room->notFitted;
+                    continue;
+                }
                 const uint16_t quantity = rule.unique ? 1 : std::min<uint16_t>(request.quantity, rule.maximum);
                 out.adds.push_back({p.pocket, id, quantity});
                 heldAnywhere.push_back(id);

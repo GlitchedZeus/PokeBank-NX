@@ -1,14 +1,18 @@
-// R2-BUG-004, Generation I: Red, Blue, Yellow. The owner's hardware case (Yellow Create Pikachu
-// Lv5 -> Fearow kept Thunder Shock / Growl, Thunder Shock flagged Invalid) through the real Gen I
-// staged editor, with the request built by the one Gen I binding every Gen I species-apply path
-// calls (Gen1SpeciesChangeMoves.h gen1: Yellow vs Red/Blue table from the editor's own source
-// game, Gen I base PP, then writeArrays / writeEdit). test_species_change_moves_gen15 pins that
-// ux3 / ux2 ApplySpeciesPicker and both older applyPicker overlays call it. Add and Edit, Review rows, Discard, export -> reparse,
-// byte scope, the Create default, and Gen I move compatibility after the change.
+// Generation I species change and Create moves: Red, Blue, Yellow. Round 11 (owner H28 / Extra 5 /
+// Extra 6) replaces the round 3 R2-BUG-004 refill: a new Create draft starts with NO moves, and a
+// species change never adds one. The owner's original hardware case (Yellow Pikachu Thunder Shock /
+// Growl -> Fearow kept Thunder Shock, flagged Invalid) stays fixed: the incompatible Thunder Shock
+// is cleared, the compatible Growl is kept with its own PP and PP Ups. Through the real Gen I staged
+// editor, with the request built by the one Gen I binding every Gen I species-apply path calls
+// (Gen1SpeciesChangeMoves.h gen1: Gen1MoveCompatibility for the editor's own game, then writeArrays /
+// writeEdit). test_species_change_moves_gen15 pins that ux3 / ux2 ApplySpeciesPicker and both older
+// applyPicker overlays call it. Add and Edit, Review rows, Discard, export -> reparse, byte scope,
+// the blank Create default, and the at-least-one-move rule.
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Pokemon/SpeciesMoveDefaults.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "UI/CreateRequiredFields.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 
 #include <algorithm>
@@ -86,62 +90,112 @@ void run(SourceGame game) {
     const auto before = *editor->boxedPokemon(2, 0, error);
     require(before.species == 25, "fixture Pikachu");
 
-    // Create default stays the accepted Pikachu Lv5 Thunder Shock / Growl, and it IS the
-    // native default (pret base_stats/pikachu.asm).
+    // Round 11: the Create default is Pikachu Lv5 with NO moves (the user picks them), and Add
+    // with no move is refused by the shared Create rule before anything is staged.
     const BoxPokemonCreate createDefault;
     require(createDefault.species == 25 && createDefault.level == 5 &&
-            createDefault.moves == (std::array<uint8_t, 4>{84, 45, 0, 0}) &&
-            createDefault.pp == (std::array<uint8_t, 4>{30, 40, 0, 0}), "Create default unchanged");
-    const auto pikachu = Reset::gen1(editor.get(), 25, 5);
-    require(pikachu.moves == (std::array<uint16_t, 4>{84, 45, 0, 0}), "native Pikachu Lv5 = Create default");
+            createDefault.moves == (std::array<uint8_t, 4>{}) &&
+            createDefault.pp == (std::array<uint8_t, 4>{}) && createDefault.ppUps == (std::array<uint8_t, 4>{}),
+            "Create default starts blank");
+    namespace Required = PokeBank::UIModel::CreateRequiredFields;
+    require(Required::message(Required::forCreate(1, false, createDefault.moves), "Add") ==
+            "Choose at least one move before Add", "blank Gen I Add names the missing move (no Met rule)");
 
-    // Add draft: Pikachu Lv5 -> Fearow, as the Add branch does (level policy, then moves).
+    // Add draft: a blank Pikachu -> Fearow stays blank; nothing is filled in.
     BoxPokemonCreate draft;
     draft.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId(game), 22);
-    Reset::writeArrays(Reset::gen1(editor.get(), 22, draft.level), draft.moves, draft.pp, draft.ppUps);
+    Reset::writeArrays(Reset::gen1(editor.get(), 22, draft.moves, draft.pp, draft.ppUps),
+                       draft.moves, draft.pp, draft.ppUps);
+    require(draft.moves == (std::array<uint8_t, 4>{}) && draft.pp == (std::array<uint8_t, 4>{}),
+            "blank Create draft: a species change adds no move");
+    // The user's own moves: Thunder Shock (Fearow cannot learn it) and Growl (Fearow can).
+    draft.moves = {84, 45, 0, 0};
+    draft.pp = {30, 38, 0, 0};
+    draft.ppUps = {1, 2, 0, 0};
+    Reset::writeArrays(Reset::gen1(editor.get(), 22, draft.moves, draft.pp, draft.ppUps),
+                       draft.moves, draft.pp, draft.ppUps);
     draft.species = 22;
     draft.nickname = "FEAROW";
-    require(std::find(draft.moves.begin(), draft.moves.end(), 84) == draft.moves.end(),
-            "Thunder Shock is gone after Pikachu -> Fearow");
+    require(draft.moves == (std::array<uint8_t, 4>{45, 0, 0, 0}) && draft.pp == (std::array<uint8_t, 4>{38, 0, 0, 0}) &&
+            draft.ppUps == (std::array<uint8_t, 4>{2, 0, 0, 0}),
+            "Thunder Shock cleared, Growl kept with its PP and PP Ups, nothing added");
     require(!MoveCompatibility::firstIncompatible(editor->metadata().sourceGame, draft.species, draft.moves),
             "no move is flagged Invalid after the change");
-    require(draft.moves[0] == 64 && draft.moves[1] == 45 && draft.moves[2] == 43, "Fearow: Peck, Growl, Leer");
-    for (size_t i = 0; i < 4; ++i) {
-        require(draft.ppUps[i] == 0, "PP Ups 0");
-        require(draft.pp[i] == StagedPokemonEditor::moveBasePP(draft.moves[i]), "base PP");
-    }
+    require(!Required::forCreate(1, false, draft.moves).any(), "one move: Add allowed");
     const auto addSlot = editor->appendSlot(2, error);
     require(addSlot && editor->stageAdd(2, *addSlot, draft, error), "stage Add: " + error);
     const auto added = editor->boxedPokemon(2, *addSlot, error);
-    require(added && added->species == 22 && added->moves == draft.moves && added->pp == draft.pp, "added Fearow");
+    require(added && added->species == 22 && added->moves == draft.moves && added->pp == draft.pp &&
+            added->ppUps == draft.ppUps, "added Fearow");
     editor->discard();
     require(!editor->hasPendingChanges(), "Discard after Add");
 
-    // Edit: several transitions with different learnsets; each stages exactly what the UI does.
-    for (const uint16_t species : {22, 1, 150, 129, 25}) {
+    // Edit: teach the fixture Pikachu Thunder Shock / Growl / Thunderbolt / Thunder Wave first, then
+    // walk several species. Each step keeps only moves the new species can use (a subset of the
+    // previous moves, never a new one) with their PP and PP Ups, exactly as the UI stages it.
+    BoxPokemonEdit teach;
+    teach.moves = std::array<uint8_t, 4>{84, 45, 85, 86};
+    teach.pp = std::array<uint8_t, 4>{30, 40, 15, 20};
+    teach.ppUps = std::array<uint8_t, 4>{0, 1, 2, 3};
+    require(editor->stageEdit(2, 0, teach, error), "teach moves: " + error);
+    for (const uint16_t species : {26, 22, 1, 150, 129, 25}) {
+        const auto was = *editor->boxedPokemon(2, 0, error);
         BoxPokemonEdit edit;
         edit.species = species;
         edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId(game), species);
-        Reset::writeEdit(Reset::gen1(editor.get(), species, *edit.level), edit);
+        const auto slots = Reset::gen1(editor.get(), species, was.moves, was.pp, was.ppUps);
+        Reset::writeEdit(slots, edit);
+        if (Required::forEdit(was.moves, *edit.moves).move) {
+            // Nothing usable is left: the UI refuses this Keep (CreateRequiredFields) and stages nothing.
+            for (const auto move : was.moves)
+                require(move == 0 || !MoveCompatibility::canLearnMove(editor->metadata().sourceGame, species, move),
+                        "refused only when no old move is usable");
+            continue;
+        }
         require(editor->stageEdit(2, 0, edit, error), "stage Edit " + std::to_string(species) + ": " + error);
         const auto now = *editor->boxedPokemon(2, 0, error);
         require(now.species == species && now.moves == *edit.moves && now.pp == *edit.pp &&
-                now.ppUps == (std::array<uint8_t, 4>{}), "edited record carries the native moves");
+                now.ppUps == *edit.ppUps, "edited record carries the kept moves");
+        for (std::size_t i = 0; i < 4; ++i) {
+            if (now.moves[i] == 0) continue;
+            const auto at = std::find(was.moves.begin(), was.moves.end(), now.moves[i]);
+            require(at != was.moves.end(), "no move is ever added");
+            const auto from = static_cast<std::size_t>(at - was.moves.begin());
+            require(now.pp[i] == was.pp[from] && now.ppUps[i] == was.ppUps[from], "PP and PP Ups travel with the move");
+        }
         require(!MoveCompatibility::firstIncompatible(editor->metadata().sourceGame, species, now.moves),
-                "native moves are compatible");
+                "kept moves are compatible");
+    }
+    // Pikachu -> Raichu keeps all four electric moves; Raichu -> Magikarp would keep none (refused).
+    editor->discard();
+    require(editor->stageEdit(2, 0, teach, error), "teach again: " + error);
+    {
+        const auto was = *editor->boxedPokemon(2, 0, error);
+        const auto raichu = Reset::gen1(editor.get(), 26, was.moves, was.pp, was.ppUps);
+        require(raichu.moves == (std::array<uint16_t, 4>{84, 45, 85, 86}), "Raichu keeps Pikachu's moves");
+        std::array<uint8_t, 4> raichuMoves{};
+        for (std::size_t i = 0; i < 4; ++i) raichuMoves[i] = static_cast<uint8_t>(raichu.moves[i]);
+        const auto magikarp = Reset::gen1(editor.get(), 129, raichuMoves, was.pp, was.ppUps);
+        require(magikarp.moves == (std::array<uint16_t, 4>{}) &&
+                Required::forEdit(was.moves, magikarp.moves).move &&
+                Required::message(Required::forEdit(was.moves, magikarp.moves)) == "Choose at least one move before Keep",
+                "Magikarp can use none of them: the change is refused with the shared message");
     }
 
     // Pikachu -> Fearow Edit, Review rows, export -> strict reparse, byte scope.
     editor->discard();
+    require(editor->stageEdit(2, 0, teach, error), "teach: " + error);
+    const auto taught = *editor->boxedPokemon(2, 0, error);
     BoxPokemonEdit edit;
     edit.species = 22;
     edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId(game), 22);
-    Reset::writeEdit(Reset::gen1(editor.get(), 22, *edit.level), edit);
+    Reset::writeEdit(Reset::gen1(editor.get(), 22, taught.moves, taught.pp, taught.ppUps), edit);
+    require(*edit.moves == (std::array<uint8_t, 4>{45, 0, 0, 0}), "Fearow keeps Growl only");
     require(editor->stageEdit(2, 0, edit, error), "stage Fearow: " + error);
     bool moveRow = false, ppRow = false;
     for (const auto& c : editor->pendingChanges()) {
         moveRow = moveRow || (c.key == "2/0/move1" && c.label == "Box 3 Slot 1: Move 1");
-        ppRow = ppRow || c.key.starts_with("2/0/pp");  // PP 1 equals the fixture's 35 = Peck's base PP
+        ppRow = ppRow || c.key.starts_with("2/0/pp");
     }
     require(moveRow && ppRow, "Review lists the move and PP changes");
     const auto out = editor->finalizedBytes(error);
@@ -153,7 +207,7 @@ void run(SourceGame game) {
     auto check = StagedPokemonEditor::create(*reparsed.save, error);
     const auto back = check->boxedPokemon(2, 0, error);
     require(back && back->species == 22 && back->moves == *edit.moves && back->pp == *edit.pp &&
-            back->ppUps == (std::array<uint8_t, 4>{}), "reparsed Fearow");
+            back->ppUps == *edit.ppUps, "reparsed Fearow");
     require(back->trainerId == before.trainerId && back->originalTrainer == before.originalTrainer &&
             back->dvs == before.dvs &&
             back->statExperience == before.statExperience, "trainer ID, DVs and Stat Exp untouched");
@@ -169,7 +223,7 @@ int main() {
     run(SourceGame::Red);
     run(SourceGame::Blue);
     run(SourceGame::Yellow);
-    std::cout << "Gen I species change resets moves (Red, Blue, Yellow; Pikachu -> Fearow, Add, Edit, Review, "
-                 "export, reparse, Discard): PASS\n";
+    std::cout << "Gen I blank Create and species change keeps only compatible moves (Red, Blue, Yellow; "
+                 "Pikachu -> Fearow, Add, Edit, Review, export, reparse, Discard): PASS\n";
     return 0;
 }

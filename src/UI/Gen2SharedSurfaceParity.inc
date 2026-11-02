@@ -113,7 +113,7 @@ void drawParityGen2Actions(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                                static_cast<std::size_t>(legacy.pokemonSlot), error);
     const auto actions = SharedEditor::actionsForSlot(
-        static_cast<bool>(pokemon), gen2ActionCapabilities(),
+        static_cast<bool>(pokemon), gen2ActionCapabilities(screen),
         !editor->pendingChanges().empty());
     legacy.pokemonRow = std::clamp(
         legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
@@ -134,43 +134,6 @@ void drawParityGen2Review(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     drawSharedReviewSurface(screen,fb);
 }
 
-void drawParityGen2Clone(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    auto& shared = sharedSurfaceStateFor(screen);
-    auto* editor = stagedEditor(screen);
-    if (!editor) return;
-    const int destination = firstEmptyGen2Slot(*editor, shared.cloneBox);
-    constexpr int w = 930, h = 540;
-    constexpr int x = (1280 - w) / 2;
-    constexpr int y = (672 - h) / 2;
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 105));
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 24, y + 18, "Clone Pokemon — Destination", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 24, y + 52,
-        "Box " + std::to_string(shared.cloneBox + 1) + "  •  first writable slot  •  staged copy only",
-        Colors::TextDim, TextStyle::Caption);
-
-    constexpr int cols = 5;
-    constexpr int cellW = 164, cellH = 72;
-    const int startX = x + 48, startY = y + 96;
-    for (int slot = 0; slot < static_cast<int>(editor->metadata().boxCapacity); ++slot) {
-        const int col = slot % cols, row = slot / cols;
-        const int xx = startX + col * cellW, yy = startY + row * cellH;
-        std::string error;
-        const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(shared.cloneBox),
-                                                   static_cast<std::size_t>(slot), error);
-        const bool target = slot == destination;
-        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(xx, yy, cellW - 10, cellH - 10), {target});  // R2-BUG-012 boxed row
-        fb.drawRoundedRect(xx, yy, cellW - 10, cellH - 10, 8, target ? Colors::Accent : Colors::Divider, 1);
-        fb.drawText(xx + 10, yy + 8, "Slot " + std::to_string(slot + 1), Colors::TextDim, TextStyle::Caption);
-        fb.drawText(xx + 10, yy + 34,
-            pokemon ? std::string(Names::getSpeciesName(pokemon->species)) : (target ? "Clone here" : "Empty"),
-            target ? Colors::Accent : Colors::Text, TextStyle::Caption);
-    }
-    if (destination < 0)
-        fb.drawText(x + 24, y + h - 44, "This box is full — choose another box with L/R", Colors::Error, TextStyle::Caption);
-    drawNavBar(fb, {{"L/R", "Box"}, {"A", "Stage Clone"}, {"B", "Cancel"}});
-}
-
 } // namespace
 
 bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -186,7 +149,6 @@ bool drawFinalGen2Surface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
         return true;
     }
     if (shared.provenanceActive) { drawSharedProvenanceSurface(screen, fb); return true; }
-    if (shared.cloneActive) { drawParityGen2Clone(screen, fb); return true; }
     if (legacy.active && legacy.review) { drawParityGen2Review(screen, fb); return true; }
     if (legacy.active && legacy.pokemonActions) { drawParityGen2Actions(screen, fb); return true; }
     return false;
@@ -252,15 +214,24 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         legacy.reviewRow = 0;
         return true;
     }
-    // Gen II Boxes now use the same primary interaction language as accepted Gen I:
-    // A opens Empty Slot/Pokemon Actions; X is a direct Add shortcut only on an empty cell.
+    // Gen II Boxes use the same primary interaction language as every Gen I-V box grid:
+    // A opens Empty Slot/Pokemon Actions; X exports an occupied slot / imports into an empty one
+    // (Round 11 X-IMPEXP; Add Pokemon stays on the A sheet).
     if (caps.canEditStagedCopy && surface == Access::Surface::Boxes && screen.detailViewActive && !blocked && validSlot) {
         std::string error;
         const bool occupied = editor->boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error).has_value();
         const auto activation = SharedEditor::boxActivation(occupied,
-            (down & HidNpadButton_A) != 0 || boxTap, (down & HidNpadButton_X) != 0);
-        if (activation == SharedEditor::BoxActivation::Add) {
-            return beginCreate(screen, box);
+            (down & HidNpadButton_A) != 0 || boxTap, (down & HidNpadButton_X) != 0,
+            SharedEditor::fileCapabilities(true));
+        if (activation == SharedEditor::BoxActivation::ImportFile) {
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginImport(screen, 2, box, slot);
+            return true;
+        }
+        if (activation == SharedEditor::BoxActivation::ExportFile) {
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::exportPokemon(screen, 2, false, box, slot);
+            return true;
         }
         if (activation == SharedEditor::BoxActivation::Actions) {
             auto& legacy = editorOverlayState(screen);
@@ -276,7 +247,7 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
             screen.controllerNavigation.reset();
             return true;
         }
-        if (down & HidNpadButton_X) return true; // occupied X is intentionally not a hidden edit/add action.
+        if (down & HidNpadButton_X) return true; // X is only Import / Export here, never a hidden edit / add.
     }
 
     // Save-side Storage retains the same contextual action menu; it has no direct-X shortcut contract.

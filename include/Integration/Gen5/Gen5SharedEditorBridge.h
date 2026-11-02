@@ -35,55 +35,64 @@ struct SharedEditorSlot {
 [[nodiscard]] inline Shared::ActionSet actions(
     const Gen5StagedPokemonWorkspace& workspace,
     const SharedEditorSlot& slot) {
+    // Round 11 ACTIONS: Gen V fills in the ONE shared capability model
+    // (SharedPokemonEditor::actionsForSlot), which owns the order every
+    // generation lists: View, Edit, Clone, Move, Release, Origin & Legality,
+    // Export to file, Review, Cancel (empty: Add Pokemon, Import from file,
+    // Review, Cancel). Only the capabilities below are Gen V's own.
+    // Re-read the live workspace; cached picker flags never grant edit access.
+    const auto live=selectedSlot(workspace,slot.location);
+    const bool box=slot.location.region==Gen5StagedPokemonWorkspace::Region::Box;
+    Shared::ActionCapabilities caps;
     // The existing shared Add action is available only for a physically
     // zero-filled, checksum-validated EMPTY box cell. Party append, invalid
     // slots and already-staged replacements cannot fabricate Add authority.
-    Shared::ActionSet result{};
-    const auto append=[&](Shared::Action action) {
-        result.values[result.count++]=action;
-    };
-    // Re-read the live workspace; cached picker flags never grant edit access.
-    const auto live=selectedSlot(workspace,slot.location);
-    if(live.validated && !live.occupied &&
-       slot.location.region==Gen5StagedPokemonWorkspace::Region::Box &&
-       workspace.emptyCloneDestination(slot.location.box,slot.location.slot)) {
-        append(Shared::Action::Add);
-        // Feature A (owner Oct 28): a .pk5 / .ek5 file into the same verified empty box cell
-        // (Gen5PokemonFile.h importPokemonFile5; the UI runs the shared file dialog).
-        append(Shared::Action::ImportFile);
+    // Feature A (owner Oct 28): a .pk5 / .ek5 file into the same verified empty
+    // box cell (Gen5PokemonFile.h importPokemonFile5; the UI runs the shared
+    // file dialog).
+    caps.canAdd=live.validated && !live.occupied && box &&
+                workspace.emptyCloneDestination(slot.location.box,slot.location.slot);
+    caps.canImportFile=caps.canAdd;
+    // Move Pokemon matches Gen IV's box action: an exact clone into a
+    // verified empty box slot plus removal of the source slot. Round 3
+    // Part 9: like Gen IV (which works from its reparsed staged buffer) these
+    // follow the STAGED slot, so a Pokemon created, cloned or edited this
+    // session keeps them. Untouched originals use the strict primitives;
+    // staged slots use the certificate-preserving companions
+    // (Gen5StagedPokemonWorkspace.h).
+    const bool operand=live.validated && live.occupied &&
+                       (workspace.originalOccupied(slot.location) ||
+                        workspace.stagedOperand(slot.location));
+    const bool destination=workspace.firstEmptyCloneDestination()<720;
+    caps.canClone=operand && destination;
+    caps.canMove=box && operand && destination;
+    caps.canRemove=box && operand;
+    // Neutral Origin & Legality (Gen I-IV row): structure and origin only,
+    // never a legality verdict.
+    caps.hasLegalityProvenance=true;
+    // Feature A: a new .pk5 file of the record as staged
+    // (exportStagedPokemonFile5); never a workspace change. Native Create /
+    // Clone results use the SAME shared Edit surface; only app-owned PK5
+    // fields can be staged, never source-save writes.
+    caps.canExportFile=true;
+    // live.occupied is false for an unverified cell, and canAdd needs a verified
+    // one, so such a cell lists only [Review] / Cancel.
+    return Shared::actionsForSlot(live.occupied,caps,workspace.hasChanges());
+}
+
+// Round 11 X-IMPEXP: the Boxes X shortcut (Export on an occupied slot, Import on an
+// empty one) takes its capability from the SAME list the A sheet shows, so X, the
+// footer badge and the sheet rows cannot disagree.
+[[nodiscard]] inline Shared::ActionCapabilities fileCapabilities(
+    const Gen5StagedPokemonWorkspace& workspace,
+    const SharedEditorSlot& slot) {
+    const auto listed=actions(workspace,slot);
+    Shared::ActionCapabilities caps=Shared::fileCapabilities(false);
+    for(size_t i=0;i<listed.count;++i) {
+        if(listed[i]==Shared::Action::ImportFile)caps.canImportFile=true;
+        if(listed[i]==Shared::Action::ExportFile)caps.canExportFile=true;
     }
-    if(live.validated && live.occupied) {
-        append(Shared::Action::View);
-        // Native Create/Clone results use the SAME shared Edit surface.
-        // Only app-owned PK5 fields can be staged, never source-save writes.
-        append(Shared::Action::Edit);
-        // Move Pokemon matches Gen IV's box action: an exact clone into a
-        // verified empty box slot plus removal of the source slot.
-        // Shared order (NarrowPokemonActionMenu.h): View, Edit, Clone, Move,
-        // Release, Origin & Legality. Round 3 Part 9: like Gen IV (which works
-        // from its reparsed staged buffer) these follow the STAGED slot, so a
-        // Pokemon created, cloned or edited this session keeps them. Untouched
-        // originals use the strict primitives; staged slots use the
-        // certificate-preserving companions (Gen5StagedPokemonWorkspace.h).
-        const bool operand=workspace.originalOccupied(slot.location) ||
-                           workspace.stagedOperand(slot.location);
-        const bool box=slot.location.region==Gen5StagedPokemonWorkspace::Region::Box;
-        if(operand && workspace.firstEmptyCloneDestination()<720)
-            append(Shared::Action::Clone);
-        if(box && operand && workspace.firstEmptyCloneDestination()<720)
-            append(Shared::Action::Move);
-        if(box && operand)
-            append(Shared::Action::Remove);
-        // Neutral Origin & Legality (Gen I-IV row): structure and origin only,
-        // never a legality verdict.
-        append(Shared::Action::LegalityProvenance);
-        // Feature A: a new .pk5 file of the record as staged (exportStagedPokemonFile5); never a
-        // workspace change.
-        append(Shared::Action::ExportFile);
-    }
-    if(workspace.hasChanges())append(Shared::Action::Review);
-    append(Shared::Action::Close);
-    return result;
+    return caps;
 }
 
 [[nodiscard]] constexpr Shared::FieldAccess fieldAccess(

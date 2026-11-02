@@ -34,12 +34,16 @@ struct Pokemon {uint16_t speciesID()const{return 25;}};
 struct Trainer {std::vector<std::unique_ptr<Pokemon>> party;};
 class TrainerViewScreen {
 public:std::string sourceGameId;Trainer trainer;int selectedPartyIndex=0;Navigation controllerNavigation;
-    std::vector<int> touchButtons;int backgrounds=0;
+    std::vector<int> touchButtons;int backgrounds=0;int reviews=0;
     int touchedButtonId(const TouchInput& touch)const{return touch.completedTarget;}
     void drawLegacyBase(PKSEFramebuffer&){++backgrounds;}
+    // Round 11: the Party sheet's Review row opens the generation's standalone shared Review.
+    bool openStagedReview(bool exportCopy){++reviews;return !exportCopy;}
 };
 struct MockEditor {
     bool available=true;
+    std::vector<int> pending;   // staged changes (Round 11: Review is listed while non-empty)
+    const std::vector<int>& pendingChanges()const{return pending;}
     std::optional<int> partyPokemon(size_t slot,std::string& error){error.clear();return slot==0?std::optional<int>{25}:std::nullopt;}
 } native;
 namespace Gen1PokemonEditor {
@@ -47,6 +51,7 @@ enum class UX2Mode {Closed,Actions,View,Edit,Provenance};enum class UX2Picker {N
 struct State {bool party=false;int box=0,slot=0,row=0;UX2Mode mode=UX2Mode::Closed;UX2Picker picker=UX2Picker::None;} state;
 State& ux2StateFor(const TrainerViewScreen&){return state;}
 MockEditor* realEditor(TrainerViewScreen&){return native.available?&native:nullptr;}
+MockEditor* editor(TrainerViewScreen&){return native.available?&native:nullptr;}
 void ux2ResetTouchMotion(State&){}void ux2Close(State& s){s.mode=UX2Mode::Closed;}
 }
 struct Legacy {bool pokemonParty=false,active=false,pokemonActions=false,review=false,pokemonFields=false;
@@ -72,6 +77,7 @@ struct State {bool party=false,actions=false,legality=false;int box=0,slot=0,act
     std::optional<PokeBank::UIModel::Gen3SharedEditor::Mode> mode;} state;
 State& stateFor(const TrainerViewScreen&){return state;}
 MockEditor* editor(TrainerViewScreen&){return native.available?&native:nullptr;}
+std::vector<int> reviewRows(TrainerViewScreen&){return native.pending;}
 void beginActions(TrainerViewScreen&){state.actions=true;}
 bool beginViewOrEdit(TrainerViewScreen&,PokeBank::UIModel::Gen3SharedEditor::Mode mode){
     state.actions=false;state.mode=mode;return true;
@@ -102,7 +108,7 @@ int main() {
         TrainerViewScreen screen;screen.sourceGameId=game;screen.trainer.party.push_back(std::make_unique<Pokemon>());
         const int gen=PokeBank::UIModel::ClassicGenericUi::classicGeneration(game);
         const auto reset=[&]{Gen1PokemonEditor::state={};Gen2PokemonEditor::state={};Gen2PokemonEditor::shared={};
-            legacy={};Gen3SharedEditorSurface::state={};native.available=true;};
+            legacy={};Gen3SharedEditorSurface::state={};native.available=true;native.pending.clear();};
         const auto mode=[&]{return gen==1?static_cast<int>(Gen1PokemonEditor::state.mode):
             gen==2?static_cast<int>(Gen2PokemonEditor::state.mode):
             Gen3SharedEditorSurface::state.mode?static_cast<int>(*Gen3SharedEditorSurface::state.mode):-1;};
@@ -149,5 +155,21 @@ int main() {
         assert(ClassicPartyActions::handle(screen,0,0,0,0,{-1,true,20,40,22,41}));
         assert(!ClassicPartyActions::active(screen) && mode()==afterB);
     }
-    std::cout<<"Actual Gen I-III Party coordinator: four shared rows, controller/touch parity, native sessions, cancel priority PASS\n";
+    // Round 11 ACTIONS (owner Extra 7; deliberately revises the E02 / NEW-20 sheet): with staged
+    // changes the Party sheet lists Review Pending Changes before Cancel, from the shared model, and
+    // the row (controller or touch) closes the sheet and opens the generation's shared Review.
+    for(const auto* game:{"red_gb","gold_gbc","firered_gba"})for(bool touch:{false,true}) {
+        TrainerViewScreen screen;screen.sourceGameId=game;screen.trainer.party.push_back(std::make_unique<Pokemon>());
+        Gen1PokemonEditor::state={};Gen2PokemonEditor::state={};legacy={};Gen3SharedEditorSurface::state={};
+        native.available=true;native.pending={1};
+        assert(ClassicPartyActions::open(screen,0));
+        PKSEFramebuffer fb;assert(ClassicPartyActions::draw(screen,fb));
+        assert(drawn.count==6 && std::string(drawn.rows[4].label)=="Review Pending Changes" &&
+               std::string(drawn.rows[5].label)=="Cancel" && screen.touchButtons.size()==6);
+        if(!touch)for(int i=0;i<4;++i)assert(ClassicPartyActions::handle(screen,HidNpadButton_Down,0,0,0,{}));
+        assert(ClassicPartyActions::handle(screen,touch?0:HidNpadButton_A,0,0,0,{touch?89004:-1}));
+        assert(!ClassicPartyActions::active(screen) && screen.reviews==1);
+        native.pending.clear();
+    }
+    std::cout<<"Actual Gen I-III Party coordinator: shared rows (+ Review while staged), controller/touch parity, native sessions, cancel priority PASS\n";
 }

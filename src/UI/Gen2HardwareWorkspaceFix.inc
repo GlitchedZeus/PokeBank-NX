@@ -227,36 +227,10 @@ void handleUnifiedTouch(TrainerViewScreen& screen, const TouchInput& touch, uint
 }
 
 void handleParityTouch(TrainerViewScreen& screen, const TouchInput& touch, uint64_t& down) {
-    auto& shared = sharedSurfaceStateFor(screen);
+    // The Gen II Clone grid was the only surface here whose taps synthesized a key; Round 11 H31
+    // replaced it with the shared box carry, so no key is synthesized any more.
+    (void)down;
     auto& legacy = editorOverlayState(screen);
-
-    // Clone has one truthful writable target: the highlighted first empty slot in the selected
-    // destination box. Tapping any other cell is inert; the existing A backend remains authoritative.
-    if (shared.cloneActive) {
-        auto* editor = stagedEditor(screen);
-        if (!editor) return;
-        constexpr int w = 930, h = 540;
-        constexpr int x = (1280 - w) / 2;
-        constexpr int y = (672 - h) / 2;
-        constexpr int cols = 5, cellW = 164, cellH = 72;
-        constexpr int startX = x + 48, startY = y + 96;
-        if (touch.justTapped()) {
-            const int destination = firstEmptyGen2Slot(*editor, shared.cloneBox);
-            if (destination >= 0) {
-                const int col = destination % cols, row = destination / cols;
-                if (pointInRect(touch.startX(), touch.startY(), startX + col * cellW,
-                                startY + row * cellH, cellW - 10, cellH - 10))
-                    down |= HidNpadButton_A;
-            }
-        }
-        if (touch.justReleased() && touch.dragged() &&
-            pointInRect(touch.startX(), touch.startY(), x, y, w, h) &&
-            std::abs(touch.deltaX()) > std::abs(touch.deltaY()) &&
-            std::abs(touch.deltaX()) >= 56) {
-            down |= touch.deltaX() < 0 ? HidNpadButton_R : HidNpadButton_L;
-        }
-        return;
-    }
 
     // The shared paged Review (round 5): rows are informational, so a tap never selects or acts.
     // A completed vertical swipe that starts and ends on the panel turns one page, the touch

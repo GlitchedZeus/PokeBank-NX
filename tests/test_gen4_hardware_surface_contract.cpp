@@ -63,14 +63,17 @@ std::string routeBetween(const std::string& text, const char* begin, const char*
 
 int main() {
     namespace Shared = PokeBank::UIModel::SharedPokemonEditor;
-    // PR #280 parity: both empty and occupied slots open Actions with A OR a clean tap;
-    // only an explicit X on an empty cell starts a staged Add, and X on an occupied cell
-    // or no input does nothing.
-    static_assert(Shared::boxActivation(false, true, false) == Shared::BoxActivation::Actions);
-    static_assert(Shared::boxActivation(true, true, false) == Shared::BoxActivation::Actions);
-    static_assert(Shared::boxActivation(false, false, true) == Shared::BoxActivation::Add);
-    static_assert(Shared::boxActivation(true, false, true) == Shared::BoxActivation::None);
-    static_assert(Shared::boxActivation(false, false, false) == Shared::BoxActivation::None);
+    // PR #280 parity: both empty and occupied slots open Actions with A OR a clean tap.
+    // Round 11 X-IMPEXP (owner: "if the cursor is on a pokemon X would say export but if its on a
+    // blank space it would say import"), deliberately replacing X = Add: X exports an occupied slot
+    // and imports into an empty one where the staged editor can; Add stays on the A Actions sheet.
+    constexpr Shared::ActionCapabilities files{true, true, true, true, true};
+    static_assert(Shared::boxActivation(false, true, false, files) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(true, true, false, files) == Shared::BoxActivation::Actions);
+    static_assert(Shared::boxActivation(false, false, true, files) == Shared::BoxActivation::ImportFile);
+    static_assert(Shared::boxActivation(true, false, true, files) == Shared::BoxActivation::ExportFile);
+    static_assert(Shared::boxActivation(false, false, true, {}) == Shared::BoxActivation::None);
+    static_assert(Shared::boxActivation(false, false, false, files) == Shared::BoxActivation::None);
     namespace Narrow = PokeBank::UIModel::NarrowPokemonMenu;
     // Behavior-level contract: the older popup is narrow and never makes a
     // disabled transfer command available through touch or controller A.
@@ -223,7 +226,7 @@ int main() {
     contains(composite, "ClassicPackedMove::handleInput(*this");
     contains(classicMove, "constexpr int kMultiHoldFrames = 8");
     contains(classicMove, "if (!(held & HidNpadButton_Y)) return beginSelectedGroup(screen, state)");
-    contains(classicMove, "if (down & HidNpadButton_Y) return place(screen, state)");
+    contains(classicMove, "case Carry::Key::Place: return place(screen, state);");   // Round 11 H23: A places
     contains(classicMove, "state.touchSelecting = true");
     contains(classicMove, "if (state.touchArmed && touch.justReleased())");
     contains(classicMove, "CarryGeneration::Gen4");
@@ -483,7 +486,10 @@ int main() {
     contains(surface, "screen.touchedButtonId(touch)");
     contains(surface, "bridge(screen).stagedPokemonUnavailableReason()");
     contains(baseUi, "const bool gen4Staged = group == Enums::GameVersion::DP");
-    contains(baseUi, "A: Actions  |  X: Add  |  B: Back");
+    // Round 11 X-IMPEXP (owner request): the Gen IV box footer names X Export / Import, not X Add.
+    contains(baseUi, "A: Actions  |  X: Export  |  B: Back");
+    contains(baseUi, "A: Actions  |  X: Import  |  B: Back");
+    assert(baseUi.find("A: Actions  |  X: Add  |  B: Back") == std::string::npos);
     // Native bag category arrows must work even when the current pocket
     // has no decoded items; swipes must not preselect on touch-down.
     contains(baseUi, "const int categoryDirection =");
@@ -498,9 +504,13 @@ int main() {
     assert(surface.find("add(MenuAction::AddMasterVault") == std::string::npos);
     contains(surface, "PickerTarget::Species");
     assert(surface.find("createSpeciesInitialized") == std::string::npos);
-    contains(surface, "state.session.working->setSpecies(value)");
+    // Round 11: the Species apply moved into the host-tested Session::changeSpecies (setSpecies, the
+    // shiny preview, shared move / history policies, rollback); the surface calls it.
+    contains(surface, "state.session.changeSpecies(value, state.speciesPreviewShiny, screen.sourceGameId,");
+    contains(session, "bool ok = working->setSpecies(value);");
+    contains(session, "ok = working->setShiny(shinyWanted);");
     contains(surface, "state.speciesPreviewShiny = !state.speciesPreviewShiny");
-    contains(surface, "state.session.working->setShiny(state.speciesPreviewShiny)");
+    contains(surface, "state.speciesPreviewShiny");   // the preview reaches changeSpecies (pinned in session above)
     contains(surface, "footer.yLabel = \"Normal/Shiny\"");
     contains(surface, "return \"#\" + number + \"  \" + Names::getSpeciesName(value);");
     contains(surface, "PickerTarget::HeldItem");

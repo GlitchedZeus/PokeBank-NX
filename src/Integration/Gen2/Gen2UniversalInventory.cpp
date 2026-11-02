@@ -164,6 +164,7 @@ uint8_t StagedEditor::stagedInventoryQuantity(InventoryPocket pocket, uint8_t it
 bool StagedEditor::stageInventoryQuantity(InventoryPocket pocket, uint8_t itemId, uint8_t quantity,
                                           std::string& error) {
     error.clear();
+    if (refuseWhileCarrying(error)) return false;
     if (metadata_.payloadSize > staged_.size()) {
         error = "Generation II staged inventory is unavailable for this save layout";
         return false;
@@ -259,6 +260,7 @@ std::size_t StagedEditor::inventoryCapacity(InventoryPocket pocket) const {
 bool StagedEditor::stageInventorySlotQuantity(InventoryPocket pocket, std::size_t slot, uint8_t itemId,
                                               uint8_t quantity, std::string& error) {
     error.clear();
+    if (refuseWhileCarrying(error)) return false;
     if (metadata_.payloadSize > staged_.size()) {
         error = "Generation II staged inventory is unavailable for this save layout";
         return false;

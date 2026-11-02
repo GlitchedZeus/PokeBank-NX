@@ -22,7 +22,7 @@ struct Hint {
 struct Spec {
     bool canOpen = false;        // A: the focused slot / hub panel opens
     std::string openLabel = "View / Actions";
-    std::vector<Hint> actions;   // page actions after A (Gen I-III Boxes: X Add, Y Move / Hold Multi)
+    std::vector<Hint> actions;   // page actions after A (Gen I-IV Boxes: X Export / Import, Y Move / Hold Multi)
     bool boxes = false;          // L/R and ZL/ZR change box (Boxes, Storage)
     bool review = false;         // Review slot: off until a Review key is handled on this page
     std::string reviewGlyph = "Y";

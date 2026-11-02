@@ -257,7 +257,7 @@ namespace UI {
                              RecoveryFiles, RecoveryConfirm };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
-        Overlay leaveReturnOverlay = Overlay::None; // where A/B "Stay" returns from the leave decision
+        Overlay leaveReturnOverlay = Overlay::None; // where B Cancel (or A) returns from the leave decision
         // + -> Backups for an emulator game (round 2 phase 7): one listing per exact source file.
         std::vector<PokeBank::UIModel::SourceBackups::Listing> emuBackupListings;
         struct EmuBackupRow { int listing = 0; int entry = 0; };

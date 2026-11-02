@@ -1,0 +1,4885 @@
+{
+ "areas": [
+  "create",
+  "species-change",
+  "moves",
+  "encounters-met",
+  "legality"
+ ],
+ "issues": [
+  {
+   "id": "PBX-CRT-001",
+   "title": "Inherited Create/mutation UI reachable on game saves (read-only alpha); Create must stage into a working copy and never write the original save",
+   "gens": [
+    "app"
+   ],
+   "area": "create",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE A0062 (3be4de6b)",
+   "occurrences": [
+    {
+     "rid": "A0062",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0116",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Create is now an intended staged feature: every generation stages into the app-owned working copy (e.g. src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc:229-234 \"original RetroArch .srm unchanged\"; include/UI/Gen4SharedPokemonSession.h:245-256 stageCreateBoxPokemon). Owner PASS R11 3634d1e6 H30 \"Create, back out, keep\" (Expected: original save not written). Create/Keep code changed in Round 11 (620ee717, ab072252), so R12 must recheck.",
+   "repair_commits": [
+    "620ee717 Shared species-change and Create-draft policy for Gen I-V (R11 H25, H28, H07)",
+    "ab072252 Round 11 follow-ups: explicit Met Location choice, H25 history flags, visible Create resets"
+   ],
+   "automated_tests": [
+    "tests/test_species_change_history_policy.cpp : CreateRequiredFields refusal leaves draft/staged copy unchanged",
+    "tests/test_ui_gen2_create_review_host.cpp : Gen II Create stages into the working copy and appears in Review"
+   ],
+   "last_owner_result": "R11/3634d1e6/H30: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17 (Review/Keep/Discard/Export, original unchanged)",
+   "r12_checklist_item": "H17",
+   "next_action": "Owner runs R12 H17 on 066e1db9 including one Create; confirm original save SHA unchanged."
+  },
+  {
+   "id": "PBX-CRT-002",
+   "title": "Create opens one shared editor workspace (no multi-page wizard, persistent draft overview) from any applicable empty slot",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "create",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 1 (574d604b)",
+   "occurrences": [
+    {
+     "rid": "A0522",
+     "round": "PRE",
+     "candidate": "574d604b",
+     "item_id": "1",
+     "result": "FAIL",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0525",
+     "round": "PRE",
+     "candidate": "574d604b",
+     "item_id": "4",
+     "result": "FAIL",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0608",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D2",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_HARDWARE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0812",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "creation",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0837",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "creation / fields / pickers",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0678",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C11",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0687",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D01",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "E0029",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H30",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Gen I three-panel workspace accepted PRE 69668bc8 (A0542/A0540, GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md); Gen V Create runs through the shared surface (de22e35f). Latest owner result R11 3634d1e6 H30 \"Create, back out, keep\" PASS (game not recorded on the worksheet). Create entry points changed in Round 11 (src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc:177-237, src/UI/Gen2PokemonEditorFoundation.inc:200-215, include/Integration/Gen5/Gen5SharedScreenState.h:503-530).",
+   "repair_commits": [
+    "de22e35f feat(gen5): run Gen V View/Edit/Create through the one shared editor surface",
+    "620ee717 Shared species-change and Create-draft policy for Gen I-V (R11 H25, H28, H07)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_matrix_gen12.cpp / docs/qa/GEN1_5_MATRIX.md creation cell : host Create from production entry points on every version"
+   ],
+   "last_owner_result": "R11/3634d1e6/H30: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H07 / H18 (smoke)",
+   "r12_checklist_item": "H07",
+   "next_action": "Recheck in R12 H07/H18; ask the owner to note which generation(s) H30-style Create was tried on."
+  },
+  {
+   "id": "PBX-SPC-001",
+   "title": "Gen I/II species picker presentation: `001 - Bulbasaur` rows, shared visual picker with normal/shiny (Gen II plain list)",
+   "gens": [
+    "I",
+    "II"
+   ],
+   "area": "species-change",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 5 (574d604b)",
+   "occurrences": [
+    {
+     "rid": "A0526",
+     "round": "PRE",
+     "candidate": "574d604b",
+     "item_id": "5",
+     "result": "FAIL",
+     "src": "docs/GEN1_EDITOR_HARDWARE_UX_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0552",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    },
+    {
+     "rid": "D0291",
+     "round": "PRE",
+     "candidate": "91a42970",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-14)"
+    },
+    {
+     "rid": "A0567",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "6",
+     "result": "n/a",
+     "src": "docs/GEN1_SUMMARY_RADAR_RETEST.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0291",
+     "text": "- Gen II Species picker still uses a plain list instead of the accepted shared Gen I visual picker family with normal/shiny presentation where valid."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner accepted 69668bc8 (A0552 picker ownership fixes) and cfb70357 (PR #68 body D0303: Gen I/II presentation accepted). Later species-picker owner PASSes R6 26186464 A09/A14 (NEW-05/NEW-11, other areas). Picker changed in Round 11 to one sprite (eb7fe8c9, include/UI/SharedSpeciesPicker.h).",
+   "repair_commits": [
+    "cfb70357 fix: address Gen I and II hardware retest regressions",
+    "eb7fe8c9 SPRITE: species picker shows one sprite in the current shiny state"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "PRE/cfb70357/PR #68 milestone: PASS",
+   "hardware_acceptance_candidate": "cfb70357 PRE",
+   "r12_checklist_item": "H16",
+   "next_action": "Covered by R12 H16."
+  },
+  {
+   "id": "PBX-MOV-001",
+   "title": "Game/species-aware move compatibility (filtered move picker, visible compatibility status, exact-game native PP) across Gen I-V",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "moves",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE 2 (6ecd9c28)",
+   "occurrences": [
+    {
+     "rid": "A0535",
+     "round": "PRE",
+     "candidate": "6ecd9c28",
+     "item_id": "2",
+     "result": "n/a",
+     "src": "docs/GEN1_UX_CLEANUP3_HARDWARE_FOLLOWUP_2026-09-13.md"
+    },
+    {
+     "rid": "A0547",
+     "round": "PRE",
+     "candidate": "69668bc8",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/GEN1_EDITOR_DEVICE_ACCEPTANCE_2026-09-14.md"
+    },
+    {
+     "rid": "D0293",
+     "round": "PRE",
+     "candidate": "91a42970",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-14)"
+    },
+    {
+     "rid": "F0117",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Phase 2",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "A0682",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C15",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0695",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D09",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0119",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "C15 / C16 / D09",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0118",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Generation IV G4-04",
+     "result": "n/a",
+     "src": "docs/GAME_SUPPORT_MATRIX.md"
+    },
+    {
+     "rid": "F0123",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Design goals",
+     "result": "n/a",
+     "src": "README.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0293",
+     "text": "- visible move-status/compatibility summary needs to be restored while remaining distinct from encounter legality."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Gen I semantic compatibility accepted 69668bc8 (A0547); Gen II filtered move picker + empty-move handling accepted cfb70357 (D0303); M06/M07 PASS R3 62a2f8c3; Gen V species-restricted chooser PASS R11 3634d1e6 H26. Compatibility predicates are also used by the Round 11 species-change code (include/UI/SpeciesChangeMoves.h:12).",
+   "repair_commits": [
+    "c7355c57 feat(gen1): Gen I moves on the shared Moves panel",
+    "ddd52f55 feat(gen2): Gen II moves on the shared Moves panel",
+    "83247b81 fix(gen5): filter Move picker by Pikachu/species learnsets, transfer and preserved histories (#326)"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_move_compatibility.cpp : BW/B2W2 species pools",
+    "tests/test_hw_round1_regression_gate.py : M06/M07 guards"
+   ],
+   "last_owner_result": "R11/3634d1e6/H26: PASS (Gen V); R3/62a2f8c3/M06,M07: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H26",
+   "r12_checklist_item": "H18",
+   "next_action": "No new action beyond R12 smoke."
+  },
+  {
+   "id": "PBX-CRT-003",
+   "title": "Gen II empty-slot Create blocked by \"RetroArch source is read-only\" (staged copy must stay editable)",
+   "gens": [
+    "II"
+   ],
+   "area": "create",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE D0289 (91a42970)",
+   "occurrences": [
+    {
+     "rid": "D0289",
+     "round": "PRE",
+     "candidate": "91a42970",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-14)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0289",
+     "text": "- Gen II empty-slot Create is incorrectly blocked by `RetroArch source is read-only. Editing this file is disabled.` The source must stay immutable while the PokeBank staged copy remains editable."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner accepted cfb70357 on hardware (PR #68 body, rid D0303: Gen I/II staged editing \"look and work as intended\"); later Gen II Create PASS R1 C05 and R3 C05. Gen II Create code changed in Round 11 (src/UI/Gen2PokemonEditorFoundation.inc:207-210).",
+   "repair_commits": [
+    "cfb70357 fix: address Gen I and II hardware retest regressions"
+   ],
+   "automated_tests": [
+    "tests/test_ui_gen2_create_review_host.cpp : Gen II Create stages and is listed in Review"
+   ],
+   "last_owner_result": "R3/62a2f8c3/C05: PASS",
+   "hardware_acceptance_candidate": "cfb70357 PRE (PR #68); 066e1db9 R12 H18 smoke",
+   "r12_checklist_item": "H18",
+   "next_action": "Smoke-check Gen II Create in R12 (H07 for moves/H18)."
+  },
+  {
+   "id": "PBX-CRT-004",
+   "title": "Gen I Add/Create destination in packed boxes: refused destinations, then appended at packed position not cursor cell (needs product decision)",
+   "gens": [
+    "I"
+   ],
+   "area": "create",
+   "category": "decision",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE D0294 (91a42970)",
+   "occurrences": [
+    {
+     "rid": "D0294",
+     "round": "PRE",
+     "candidate": "91a42970",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-14)"
+    },
+    {
+     "rid": "D0295",
+     "round": "PRE",
+     "candidate": "501093ae",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-15)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0295",
+     "text": "- **Gen I R/B/Y:** Create flow is now reachable from arbitrary empty visual cells, but `Stage Add` still serializes the new Pokémon at the native packed append position next to existing Pokémon, not at the exact empty visual cell the cursor was on. This needs an explicit product decision because native Gen I boxes are packed/contiguous and do not persist arbitrary sparse holes. Do not silently pretend native slot 14 exists if only two Pokémon are stored."
+    },
+    {
+     "rid": "D0294",
+     "text": "- Gen I R/B/Y Add/Create currently refuses destinations because of a global `next writable slot` / contiguous-box rule; the selected current box should be writable when native capacity exists, while still respecting the packed Gen I format and not fabricating persistent sparse holes."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Current code appends at the native packed slot: ux2BeginAdd uses e->appendSlot (src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc:182-187); older overlay refuses non-first-empty with \"Gen I boxes are contiguous; Add is available at the first empty slot only\" (src/UI/Gen1PokemonEditorOverlay.cpp:237-240). Owner accepted cfb70357 (PR #68 body, D0303). No separate recorded owner product decision on visual-cell vs packed placement was found beyond that acceptance.",
+   "repair_commits": [
+    "cfb70357 fix: address Gen I and II hardware retest regressions"
+   ],
+   "automated_tests": [
+    "tests/test_rby_pokemon_editor.cpp : Gen I Create defaults and packed append"
+   ],
+   "last_owner_result": "PRE/cfb70357/PR #68 milestone: PASS",
+   "hardware_acceptance_candidate": "cfb70357 PRE (PR #68)",
+   "r12_checklist_item": null,
+   "next_action": "No action unless the owner reopens; Gen I Create is exercised by R12 H18 smoke."
+  },
+  {
+   "id": "PBX-CRT-005",
+   "title": "Gen II post-Add auto-opens Pokemon Actions instead of returning to the box",
+   "gens": [
+    "II"
+   ],
+   "area": "create",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE D0299 (501093ae)",
+   "occurrences": [
+    {
+     "rid": "D0299",
+     "round": "PRE",
+     "candidate": "501093ae",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-15)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0299",
+     "text": "- **Gen II post-Add flow:** after `X Stage Add`, a `Pokemon Actions` modal opens automatically. Owner expects Add to return to the box with the new Pokémon present; Actions should appear only when the user explicitly interacts with an occupied Pokémon."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner accepted cfb70357 (PR #68 body, D0303). Gen II Create/Add path changed in Round 11 (Gen2PokemonEditorFoundation.inc:316 missingRequiredFields gate).",
+   "repair_commits": [
+    "cfb70357 fix: address Gen I and II hardware retest regressions"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "PRE/cfb70357/PR #68 milestone: PASS",
+   "hardware_acceptance_candidate": "cfb70357 PRE (PR #68)",
+   "r12_checklist_item": "H18",
+   "next_action": "Observe during R12 Gen II Create that Add returns to the box."
+  },
+  {
+   "id": "PBX-CRT-006",
+   "title": "Gen IV real Create/Add; Create must enter the shared editor (not auto-open Species); fuller Gen IV fields",
+   "gens": [
+    "IV"
+   ],
+   "area": "create",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE D0315 (84dae170)",
+   "occurrences": [
+    {
+     "rid": "D0315",
+     "round": "PRE",
+     "candidate": "84dae170",
+     "item_id": null,
+     "result": "n/a",
+     "src": "issue #86 (comment 2026-09-28)"
+    },
+    {
+     "rid": "D0316",
+     "round": "PRE",
+     "candidate": "acfca273",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #95 (comment 2026-09-28)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0316",
+     "text": "- Add/Create auto-opened Species instead of entering the shared editor like Gen I-III."
+    },
+    {
+     "rid": "D0315",
+     "text": "- real Gen IV Create/Add Pokémon;\n- fuller Gen IV field coverage;\n- visible read-only rows should remain inspectable;\n- remaining deferred fields/pickers need proper exact Gen IV implementations."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Gen IV Create exists: src/UI/Gen4SharedPokemonSurface.inc:586-610 beginCreate -> createBoxDraft(…,25) -> shared session (no forced species picker). Latest owner results that cover Create on all gens: R6 26186464 A17 (Create defaults) PASS, R6 C13 Create Review PASS, R11 3634d1e6 H30 PASS (generation not recorded). No Gen IV-specific Create PASS record exists.",
+   "repair_commits": [
+    "aff41765 fix(gen4): align create editor with classic parity",
+    "66312f10 test(gen4): fix parity contract source assertion"
+   ],
+   "automated_tests": [
+    "tests/test_gen4_create_species_change_history.cpp : Gen IV Create draft species change/history wiring"
+   ],
+   "last_owner_result": "R11/3634d1e6/H30: PASS (gen not recorded)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H07 (Gen IV)",
+   "r12_checklist_item": "H07",
+   "next_action": "R12 H07 explicitly includes Gen IV Create; record the Gen IV game used."
+  },
+  {
+   "id": "PBX-SPC-002",
+   "title": "Gen IV/V species picker parity: Normal/Shiny preview, classic Pokedex-number labels, sprites (Gen V text-only/overbroad modal rejected)",
+   "gens": [
+    "IV",
+    "V"
+   ],
+   "area": "species-change",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE D0317 (acfca273)",
+   "occurrences": [
+    {
+     "rid": "D0317",
+     "round": "PRE",
+     "candidate": "acfca273",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #95 (comment 2026-09-28)"
+    },
+    {
+     "rid": "D0318",
+     "round": "PRE",
+     "candidate": "acfca273",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #95 (comment 2026-09-28)"
+    },
+    {
+     "rid": "A0814",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "pickers",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0681",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C14",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "D0220",
+     "round": "PRE",
+     "candidate": "888b886c",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #307 (comment 2026-10-15)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0220",
+     "text": "The owner previously rejected the text-only/overbroad species modal and asked for the **same Gen I–IV artwork/shiny previews and game-correct availability**."
+    },
+    {
+     "rid": "D0318",
+     "text": "- Species labels/presentation did not match the classic Pokédex-number style closely enough."
+    },
+    {
+     "rid": "D0317",
+     "text": "- Gen IV Species picker lacked Y Normal/Shiny selection."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Gen IV fixed aff41765/66312f10; shared picker now one sprite with Normal/Shiny toggle for every gen (eb7fe8c9, include/UI/SharedSpeciesPicker.h). No owner PASS that explicitly covers Gen IV/V sprite + shiny preview + Dex labels (R6 A09/A14 PASSes cover keyboard and name order only).",
+   "repair_commits": [
+    "aff41765 fix(gen4): align create editor with classic parity",
+    "eb7fe8c9 SPRITE: species picker shows one sprite in the current shiny state"
+   ],
+   "automated_tests": [
+    "docs/qa/GEN1_5_MATRIX.md pickers cell : host PASS only"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 H16",
+   "r12_checklist_item": "H16",
+   "next_action": "Owner runs R12 H16 on a Gen IV and a Gen V save."
+  },
+  {
+   "id": "PBX-MOV-002",
+   "title": "Shared Moves panel and move chooser across Gen I-V: alignment, number/name/type/power/accuracy/PP (Gen V showed name+PP only; Gen IV appended raw IDs)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "moves",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE D0319 (acfca273)",
+   "occurrences": [
+    {
+     "rid": "D0319",
+     "round": "PRE",
+     "candidate": "acfca273",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #95 (comment 2026-09-28)"
+    },
+    {
+     "rid": "A0963",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN4_ITEMS_AND_PICKER_POLISH_2026-10-09.md"
+    },
+    {
+     "rid": "A0933",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P5",
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "A0950",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "1",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "A0953",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "1",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "B0009",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0010",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0011",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0012",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0013",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0014",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0015",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0077",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M01",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0078",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M02",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0079",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M03",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0080",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M04",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0081",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M05",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0082",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M06",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0083",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M07",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0155",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0335",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M01",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0336",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M02",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0337",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M03",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0338",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M04",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0339",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M05",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0340",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M06",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0341",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M07",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0623",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M01",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0624",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0625",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M03",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0626",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M04",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0627",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0628",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M06",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0629",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M07",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0200",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "M01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0201",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "M02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0202",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "M03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0203",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "M04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0204",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "M05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0205",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "M06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0206",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "M07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0267",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "M01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0268",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "M02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0269",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "M03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0270",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "M04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0271",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "M05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0272",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "M06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0273",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "M07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0385",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0386",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0387",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0389",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0390",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M06",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0391",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0493",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0494",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0495",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0498",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M06",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0499",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0319",
+     "text": "- Gen IV Move picker appended raw move IDs"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R1 7fea1797 M01-M07 and R3 62a2f8c3 M01-M03, M06, M07 (M04/M05 regressed separately, see category issue). include/UI/SharedMovesPanel.h changed after 62a2f8c3 (2 lines) and per-gen surfaces changed in Round 11.",
+   "repair_commits": [
+    "888b886c data(gen5): cited BW/B2W2 move type, category, power, accuracy and PP table",
+    "de22e35f feat(gen5): run Gen V View/Edit/Create through the one shared editor surface",
+    "aff41765 fix(gen4): align create editor with classic parity",
+    "307976f3 feat(gen1/gen2): Gen I/II move choosers use the shared Move chooser rows"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : M01-M07 per-ID guards"
+   ],
+   "last_owner_result": "R3/62a2f8c3/M06: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3",
+   "r12_checklist_item": "H18",
+   "next_action": "R12 H18 smoke of the Moves panel."
+  },
+  {
+   "id": "PBX-MET-001",
+   "title": "Gen IV/V Met Location choices too broad (all 108/276 locations at Met Lv5); show source-backed wild context incl. level, preserve encounter filtering, never falsely reject legitimate origins",
+   "gens": [
+    "IV",
+    "V"
+   ],
+   "area": "encounters-met",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE D0320 (acfca273)",
+   "occurrences": [
+    {
+     "rid": "D0320",
+     "round": "PRE",
+     "candidate": "acfca273",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #95 (comment 2026-09-28)"
+    },
+    {
+     "rid": "A0683",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C16",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0696",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D10",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "B0561",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-12",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0585",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0586",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0040",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-12",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0091",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-12",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0380",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-12",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0142",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-12",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0190",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-12",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0236",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A15 · NEW-12",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0295",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A15 · NEW-12",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0341",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A15 · NEW-12",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0014",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A15",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0295",
+     "text": "Preserve encounter filtering"
+    },
+    {
+     "rid": "B0561",
+     "text": "E.g. Walrein can seemingly choose all 108/276 locations; distinguish native values from legal wild/egg/event/evolution/transfer histories, do not falsely reject legitimate origins."
+    },
+    {
+     "rid": "D0320",
+     "text": "- Met Location rows lacked level context."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner FAIL R3; repaired c9a457a3; PASS OCT24, R5 1ca2faec and R6 26186464 A15 with decision \"Preserve encounter filtering\". Owner reversal/extension: the Nov 1 owner message (E0117) asks for full native choices distinguished from verified encounters; R12 H07 expects catches first then every other location marked \"Not a listed catch; unverified\". include/Integration/Encounter/EncounterContext45.h changed after 26186464.",
+   "repair_commits": [
+    "aff41765 fix(gen4): align create editor with classic parity (met level context)",
+    "c9a457a3 fix(editor): show source-backed Gen IV/V location context"
+   ],
+   "automated_tests": [
+    "tests/test_gen45_encounter_context.cpp : Catalogue context rows for Gen IV/V"
+   ],
+   "last_owner_result": "R6/26186464/A15: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H07",
+   "r12_checklist_item": "H07",
+   "next_action": "R12 H07 on Gen IV/V: verify catches-first ordering still honours \"Preserve encounter filtering\"."
+  },
+  {
+   "id": "PBX-MET-002",
+   "title": "Crystal Met Time: A cycles the value inline (no menu)",
+   "gens": [
+    "II"
+   ],
+   "area": "encounters-met",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE met-time (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0825",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "met-time",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0843",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "met-time",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "B0066",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0130",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0188",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "Crystal Met Time (Phase 11)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0255",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "Crystal Met Time (Phase 11)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0481",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CRYSTAL",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0670",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CRYSTAL",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0066",
+     "text": "the met time in pokemon crystsal needs to be changed so i can press A on it and it changes instead of opening a menu to choose."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R3 62a2f8c3 R2-CRYSTAL; tests/test_crystal_met_time_inline.cpp. Gen II workspace (src/UI/Gen2UnifiedPokemonWorkspace.inc) changed after 62a2f8c3 including Round 11.",
+   "repair_commits": [
+    "e824fc97 feat(gen2): real Special Attack/Defense in the VALUES column; Crystal Met Time cycles inline"
+   ],
+   "automated_tests": [
+    "tests/test_crystal_met_time_inline.cpp : A cycles Met Time in place"
+   ],
+   "last_owner_result": "R3/62a2f8c3/R2-CRYSTAL: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3",
+   "r12_checklist_item": "H08",
+   "next_action": "Observe Met Time during R12 H08."
+  },
+  {
+   "id": "PBX-LEG-001",
+   "title": "\"Origin & Legality\" label and one truthful, unified legality/provenance panel in every generation (no fabricated clean verdict, no invented certainty)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "legality",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE CG03 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0863",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG03",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    },
+    {
+     "rid": "A0702",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D16",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0949",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "4/7",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "A0752",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E03",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0027",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E03",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0117",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E03",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0154",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0321",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E03",
+     "result": "NOT TESTED",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "D0230",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E03",
+     "result": "NOT TESTED",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "B0173",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "E03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0240",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "E03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0371",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "E03",
+     "result": "n/a",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS.md"
+    },
+    {
+     "rid": "B0307",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "E03",
+     "result": "NOT TESTED",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0443",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0450",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E03",
+     "result": "n/a",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS_ROUND3.md"
+    },
+    {
+     "rid": "B0456",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E03",
+     "result": "n/a",
+     "src": "docs/hardware/PHASE13_UNVERIFIED_STEPS_ROUND3.md"
+    },
+    {
+     "rid": "B0465",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E03",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0588",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0013",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "E03",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0072",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "E03",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0361",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "E03",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0123",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "E03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0176",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "E03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0222",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A01 · E03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0281",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A01 · E03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0000",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0062",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "C07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0281",
+     "text": "Origin & Legality uncertainty is correct"
+    },
+    {
+     "rid": "B0465",
+     "text": "Owner: Gen I says legality not checked in View/Edit and Origin & Legality. Gold/Silver/Crystal party View sometimes says Legality OK but created Pokémon aren't checked. Gen III like Gen I. Gen IV separate PK4 structure PASS/Legality Incomplete popup with moves. Gen V richer popup including met location/level/date/encounter but incomplete. **Unify legality layout for every generation; full separate legality engine isn't integrated yet. Do not fabricate clean verdicts.**"
+    },
+    {
+     "rid": "D0230",
+     "text": "**Six other unchecked/uncertain, not failed:** B04 (Gen IV/V Bag flow), E03 (legality label), E11 (shiny reroll relations, mechanics need verification), L06 (Party/summary touch), S04 (Gen V Review/Discard/Export suspected, needs repro), S06 (edited export not reopened in emulator)."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R1/R2 NOT VERIFIED, R3 62a2f8c3 FAIL (\"Unify legality layout ... Do not fabricate clean verdicts\"); repaired 20955b20; owner PASS OCT24 c60d4da0, R5 1ca2faec and R6 26186464 A01 (\"Origin & Legality uncertainty is correct\"). Gen V now has the row (include/Integration/Gen5/Gen5SharedScreenState.h:67; src/UI/Gen5SharedReadOnlySurface.inc:270). Round 11 changed legality wording for Gen I-V sessions in the generic details modal (d347afad, src/UI/Modals/PokemonDetailsModal.cpp; include/UI/SharedEditorPresentation.h:45-59), so recheck.",
+   "repair_commits": [
+    "4203ce0d feat(gen1/gen2): Origin & Legality labels, shared picker footers and Pokerus rule",
+    "20955b20 Share truthful Origin panels and native classic Trainer summaries with picker regressions guarded",
+    "d347afad Round 11 CG48: no green clean legality verdict in Gen I-V sessions"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : CG03 Origin & Legality heading; CG48 truthful state",
+    "tests/test_hw_round1_regression_gate.py : E03 GUARDS_ROUND5"
+   ],
+   "last_owner_result": "R6/26186464/A01: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A01",
+   "r12_checklist_item": "H09",
+   "next_action": "During R12 H09 (Origin & Legality is opened) confirm the panel wording; no separate step needed."
+  },
+  {
+   "id": "PBX-SPC-003",
+   "title": "Species change (and form/gender/shiny) only when native; species mutation reconciles dependent state (Gen IV roadmap Phase 3)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "species-change",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ Phase 3 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "F0107",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Phase 3",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "A0688",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "D02",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0108",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "D02",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Native guards: Gen III 1..386 (include/UI/Gen3SharedPokemonSession.h:151), Gen IV setSpecies base form + PID-linked nature/gender/ability reconciliation with rollback (src/Pokemon/Pokemon4Mutable.cpp:418-500), Gen V speciesRefusal (include/Integration/Gen5/Gen5SharedScreenState.h:592-618). Owner PASS R11 3634d1e6 H28 (expected \"out-of-game species absent; Review shows correct changes\"). Species apply code changed in Round 11.",
+   "repair_commits": [
+    "620ee717 Shared species-change and Create-draft policy for Gen I-V (R11 H25, H28, H07)"
+   ],
+   "automated_tests": [
+    "tests/test_species_change_moves_gen4.cpp / _gen5.cpp : species change reconciles moves and refuses non-native changes"
+   ],
+   "last_owner_result": "R11/3634d1e6/H28: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H28",
+   "r12_checklist_item": "H09",
+   "next_action": "Recheck through R12 H09/H16."
+  },
+  {
+   "id": "PBX-CRT-007",
+   "title": "Gen V empty encrypted retail PK5 slots not recognised; Create showed only Cancel; uninitialised new-game trainer must be refused",
+   "gens": [
+    "V"
+   ],
+   "area": "create",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE C10 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0677",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C10",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0679",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "C12",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0741",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R11 3634d1e6 H07 (Gen V: create in an empty BW/B2W2 box slot, Keep after choosing a location). C12 (new-game uninitialised trainer refusal) has no owner result. Gen V Create code changed in Round 11 (include/Integration/Gen5/Gen5SharedScreenState.h:503-530, 455-465).",
+   "repair_commits": [
+    "de22e35f feat(gen5): run Gen V View/Edit/Create through the one shared editor surface"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_create_edit_parity.cpp : Gen V Create header/rows",
+    "docs/GEN5_NATIVE_CREATE_VALIDATION.md validateCreate5 host tests"
+   ],
+   "last_owner_result": "R11/3634d1e6/H07: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H07",
+   "r12_checklist_item": "H07",
+   "next_action": "R12 H07 on a Gen V save; C12 (fresh new-game save) remains untested — add as optional fixture item if a fresh save exists."
+  },
+  {
+   "id": "PBX-CRT-008",
+   "title": "Gen V Create/Edit/View parity with Gen I-IV: left-panel species text clipped; met/origin text overlapped graph",
+   "gens": [
+    "V"
+   ],
+   "area": "create",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE P6 (35cbf163)",
+   "occurrences": [
+    {
+     "rid": "A0935",
+     "round": "PRE",
+     "candidate": "35cbf163",
+     "item_id": "P6",
+     "result": "FAIL",
+     "src": "docs/handoffs/GEN5_9_PROGRESS.md"
+    },
+    {
+     "rid": "B0050",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S03",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0115",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S03",
+     "result": "FAIL",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0319",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S03",
+     "result": "FAIL",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "D0228",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S03",
+     "result": "FAIL",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "B0171",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "S03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0238",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0661",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S03",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0305",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0423",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0463",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0228",
+     "text": "**Six unchecked items with reported problems:** B01/B02/B03/B06 (Gen I–III Bag Add-before-quantity workflow), S01 (Gen V PP/PP Ups crowded), S03 (Gen V Create/Edit clipped field text and parity)."
+    },
+    {
+     "rid": "B0050",
+     "text": "S03 gen 5 editor doesnt match gen 1-4 th left side menu text for the speices names is cut off and all that plkus awhole lot more."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R2 e10f307f S03 and R3 62a2f8c3 S03 (\"Gen V Details panel\"); guarded by tests/test_gen5_create_edit_parity.cpp. A0935 (P6 met text overlaps graph on 35cbf163) was fixed by de22e35f before R1 and the panel layout is covered by the S03 PASS. Gen V surface changed in Round 11.",
+   "repair_commits": [
+    "de22e35f feat(gen5): run Gen V View/Edit/Create through the one shared editor surface",
+    "b57ffe03 S03 + Phase 4: one DETAILS column for Gen III-V, locked rows gold, exact game",
+    "4f030aaa S03: update the Gen V DETAILS label pin to the shared label set"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_create_edit_parity.cpp : S03 labels fit the column; locked rows gold"
+   ],
+   "last_owner_result": "R3/62a2f8c3/S03: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 S03",
+   "r12_checklist_item": "H18",
+   "next_action": "R12 H18 smoke on a Gen V Pokemon editor."
+  },
+  {
+   "id": "PBX-MET-003",
+   "title": "Crystal Met Location chooser proportional and names only (no raw IDs); Gen I has no met location",
+   "gens": [
+    "I",
+    "II"
+   ],
+   "area": "encounters-met",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE 11 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0946",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "11",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "B0039",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0100",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L02",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0149",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0358",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L02",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0646",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0223",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "L02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0290",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "L02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0408",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L02",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0517",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L02",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0517",
+     "text": "Further compactness wanted."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R1 7fea1797 and R3 62a2f8c3 L02. Crystal picker rewritten in Round 11 to an open native list (03387c48; src/UI/Gen2UnifiedPokemonWorkspace.inc:579-609, include/UI/Gen2PokemonPickerModel.h:42-75). The R3 PASS note \"Further compactness wanted\" (B0518) is tracked separately.",
+   "repair_commits": [
+    "47cac826 feat(gen2): proportional Crystal Met Location chooser with names only",
+    "03387c48 Crystal Met Location: same open native list as Gen III (R11 FRLG, Crystal path)"
+   ],
+   "automated_tests": [
+    "tests/test_gen2_location_picker.cpp : picker geometry fits the screen"
+   ],
+   "last_owner_result": "R3/62a2f8c3/L02: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H08",
+   "r12_checklist_item": "H08",
+   "next_action": "Owner runs R12 H08."
+  },
+  {
+   "id": "PBX-CRT-009",
+   "title": "Gen I Create default draft: Pikachu L5 with Thunder Shock/Growl (owner request) -> Gen II Create seeded level-up moves (C14) -> REVERSED R11 H28/Extra 5/Extra 6: new drafts start with NO moves and a species choice never auto-fills moves",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "create",
+   "category": "decision",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE — (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0955",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "—",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "B0036",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E12",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0097",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E12",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0355",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E12",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0643",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E12",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0220",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "E12",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0287",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "E12",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0405",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E12",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0514",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "E12",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0274",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C14",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0333",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C14 · Gen II Create moves",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0411",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "C14",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0043",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A44",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0050",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H28",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0057",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 6",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md (Extra bugs and requests)"
+    },
+    {
+     "rid": "E0069",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H28",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0109",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H28",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0097",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 decisions"
+    },
+    {
+     "rid": "A0850",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "create.default.species",
+     "result": "n/a",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0069",
+     "text": "… when the editor is opened the new pokemon … doesnt come with its default moves and alson when we switch species i dont want it to come with moves auto filled in … a pokemon cant be added until it has all the proper info, met location, moves for current level, like a level 100 pokemon should have 1-2 moves …"
+    },
+    {
+     "rid": "E0057",
+     "text": "gen 1/2 have moves when pokemon editor comes up, pikachu has growl and thunder shock i think, we need to have a blank canvas, so no moves, and same for when a pokemon/species is selected we shouldn't have the moves auto filled, that should be left for the user, also can we add the feature that gen 5 has where if we try to ADD a pokemon that doesn't have a met location it wont add and we have a popup in the middle bottom to tell us what we are missing so we can ad the pokemon this should be a universal rule."
+    },
+    {
+     "rid": "E0050",
+     "text": "this passes but i wanna have it where when the editor is opened the new pokemon that hasnt been added yet doesnt come with its default moves and alson when we switch species i dont want it to come with moves auto filled in, i want the user to pick the moves and all the info first and also can we have it where a pokemon cant be added until it has all the proper info, met location, moves for current level, like a level 100 pokemon should have 1-2 moves unless its breed or however that would be legal, "
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Owner history: E12 PASS R1/R3 (Pikachu with Thunder Shock/Growl) and C14 PASS R6 26186464 (Gen II Create seeds level-up moves) were reversed by the owner in R11 (H28 note, Extra 5, Extra 6: \"we need to have a blank canvas, so no moves\"). Latest owner decision = blank. Verified in current source: Gen I BoxPokemonCreate{} moves{} (include/Integration/Gen1/Gen1StagedPokemonEditor.h:28-35); Gen II defaultCreateRecord with no moves (src/UI/Gen2PokemonEditorFoundation.inc:207-210); Gen III beginCreate sets no moves (include/UI/Gen3SharedPokemonSession.h:130-144); Gen V r.moves={} draftWithoutMoves (include/Integration/Gen5/Gen5SharedScreenState.h:521-523); species change never adds a move in any gen (include/UI/SpeciesChangeMoves.h:5-12). No owner hardware result after the change.",
+   "repair_commits": [
+    "620ee717 Shared species-change and Create-draft policy for Gen I-V (R11 H25, H28, H07)",
+    "160e5c6b Update tests that pinned auto-filled Create moves (owner reversed, R11 H28)",
+    "b155e174 docs(handoff): Lane C checkpoint, Gen II Create moves (the reversed C14 behaviour)"
+   ],
+   "automated_tests": [
+    "tests/test_species_change_moves_gen2.cpp : \"Create starts with no moves (C14 reversed)\" (guard in tests/test_hw_round1_regression_gate.py C14)",
+    "tests/test_species_change_history_policy.cpp : a blank draft stays blank after a species change",
+    "tests/test_species_change_moves_gen1.cpp .. _gen5.cpp : per-gen no-auto-fill"
+   ],
+   "last_owner_result": "R11/3634d1e6/H28: PASS with request (blank moves); earlier R6/26186464/C14: PASS for the now-reversed behaviour",
+   "hardware_acceptance_candidate": "066e1db9 R12 H07",
+   "r12_checklist_item": "H07",
+   "next_action": "Owner verifies R12 H07 (\"The new draft starts with no moves\") in Gen III-V and also checks Gen I/II Create (H07 only names Gen III-V) and a species switch in Create leaves moves empty."
+  },
+  {
+   "id": "PBX-MOV-003",
+   "title": "Gen I hidden-row appearance in Create/Moves (rows/cursor outlines outside the panel)",
+   "gens": [
+    "I"
+   ],
+   "area": "moves",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE A0956 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "A0956",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/GEN14_CAMPAIGN_PROGRESS.md"
+    },
+    {
+     "rid": "B0016",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M08",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0084",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M08",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0342",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M08",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0630",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "M08",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0207",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "M08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0274",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "M08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0392",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0500",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M08",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "A0956 (awaiting owner detail on the Gen I Create \"hidden row\") was answered by M08 \"Gen I hidden-row appearance fixed\": owner PASS R1 7fea1797 and R3 62a2f8c3. Gen I overlay files changed in Round 11.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : M08 guard (closest list-fit / moves-panel tests; device-only)"
+   ],
+   "last_owner_result": "R3/62a2f8c3/M08: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 M08",
+   "r12_checklist_item": "H18",
+   "next_action": "R12 H18 smoke on Gen I."
+  },
+  {
+   "id": "PBX-CRT-010",
+   "title": "Gen II Create A/B controls misroute (A/B \"doesnt know what to press\")",
+   "gens": [
+    "II"
+   ],
+   "area": "create",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE D0215 (a0633b6d)",
+   "occurrences": [
+    {
+     "rid": "D0215",
+     "round": "PRE",
+     "candidate": "a0633b6d",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #320 (body 2026-10-16)"
+    },
+    {
+     "rid": "B0004",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0072",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C05",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0145",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_7fea1797.md"
+    },
+    {
+     "rid": "B0330",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C05",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0618",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "C05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0195",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "C05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0262",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "C05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0380",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0488",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "C05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0215",
+     "text": "gen 2 cretae controls are bugged when i try and press A or B on something it doesnt know what to press and enters wrong, that needs looked at and fixed."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R1 7fea1797 C05 and R3 62a2f8c3 C05 (\"Gen II Create controls\"); guarded by tests/test_hw_round1_regression_gate.py C05. Gen II Create input/surface files changed after R3 (Round 11: src/UI/Gen2PokemonEditorFoundation.inc, Gen2SharedPokemonSurface.inc).",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : C05 per-ID guard"
+   ],
+   "last_owner_result": "R3/62a2f8c3/C05: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 C05",
+   "r12_checklist_item": "H18",
+   "next_action": "Smoke-check Gen II Create A/B in R12 H18."
+  },
+  {
+   "id": "PBX-MET-004",
+   "title": "Gen III Met Location picker cleaned up: readable names without (RSE)/(FRLG)/ID numbers",
+   "gens": [
+    "III"
+   ],
+   "area": "encounters-met",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 L03 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0040",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0101",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L03",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0359",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L03",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0647",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L03",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0224",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "L03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0291",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "L03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0409",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0519",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L03",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0519",
+     "text": "Unnecessary \\`not stored\\` filler; too much blank space in modal."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R1 7fea1797 and R3 62a2f8c3 L03 (note B0520 tracked in the compact-popup issue). Gen III picker rows were rebuilt in Round 11 (01951ab7; include/UI/Gen3EncounterPickerModel.h:100-175).",
+   "repair_commits": [
+    "01951ab7 Gen III Met Location: exact-origin native list, never fail closed (R11 FRLG)"
+   ],
+   "automated_tests": [
+    "tests/test_gen3_exact_game_met_locations.cpp : exact-origin native rows"
+   ],
+   "last_owner_result": "R3/62a2f8c3/L03: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H07",
+   "r12_checklist_item": "H07",
+   "next_action": "Check row names during R12 H07 (FR/LG)."
+  },
+  {
+   "id": "PBX-MET-005",
+   "title": "Met Location popup too tall / unused space; compact 620 px window for every row, no clipping (NEW-10, incl. L03/L04 notes)",
+   "gens": [
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "encounters-met",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 L04 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0041",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0102",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L04",
+     "result": "PASS",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0360",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L04",
+     "result": "PASS",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "B0648",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "L04",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0225",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "L04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0292",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "L04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0410",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0520",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L03",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0521",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0522",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L04",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0559",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-10",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0038",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-10",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0103",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-10",
+     "result": "FAIL",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0420",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-10",
+     "result": "n/a",
+     "src": "docs/handoffs/MAIN_ACTIVE_HANDOFF.md"
+    },
+    {
+     "rid": "C0154",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-10",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0201",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-10",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0392",
+     "round": "OCT25",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-10",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0247",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A26 · NEW-10",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0306",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A26 · NEW-10",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0342",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A26 · NEW-10",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0024",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A25",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0306",
+     "text": "Keep the compact popup"
+    },
+    {
+     "rid": "B0559",
+     "text": "Remove unused middle spacing across generations while preserving scrolling."
+    },
+    {
+     "rid": "B0521",
+     "text": "Scrolling/look good; compact unused space."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner FAIL R3 and OCT24; PASS OCT25 1ca2faec and R6 26186464 A26 with decision \"Keep the compact popup\". Row content changed in Round 11 (unverified native rows added, include/UI/Gen3EncounterPickerModel.h:137-139; src/UI/SharedPokemonEditorSurface.inc changed after 3634d1e6).",
+   "repair_commits": [
+    "d361d86f Round 5 NEW-10: no clipped Met Location rows in the 620 px window"
+   ],
+   "automated_tests": [
+    "tests/test_met_location_fit.cpp : 620 px window, detail fitted beside name",
+    "tests/test_met_location_rows_distinct.cpp"
+   ],
+   "last_owner_result": "R6/26186464/A26: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H07",
+   "r12_checklist_item": "H07",
+   "next_action": "Confirm the compact popup still fits in R12 H07."
+  },
+  {
+   "id": "PBX-MOV-004",
+   "title": "Gen V PP / PP Ups captions too close together",
+   "gens": [
+    "V"
+   ],
+   "area": "moves",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 S01 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0048",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S01",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0114",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S01",
+     "result": "FAIL",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0318",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S01",
+     "result": "FAIL",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    },
+    {
+     "rid": "D0227",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "S01",
+     "result": "FAIL",
+     "src": "issue #313 (comment 2026-10-17)"
+    },
+    {
+     "rid": "B0170",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "S01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0237",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0660",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S01",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "B0304",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "S01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "B0422",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S01",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0462",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "S01",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0227",
+     "text": "**Six unchecked items with reported problems:** B01/B02/B03/B06 (Gen I–III Bag Add-before-quantity workflow), S01 (Gen V PP/PP Ups crowded), S03 (Gen V Create/Edit clipped field text and parity)."
+    },
+    {
+     "rid": "B0048",
+     "text": "S01 the pp and PP ups text are to close together so it look unreable/sloppy."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner FAIL R1, PASS R2 e10f307f and R3 62a2f8c3 S01. Gen V surface changed in Round 11.",
+   "repair_commits": [
+    "b1d34f96 S01 + Phase 9: PP / PP Ups captions apart; Move chooser shows 10 rows"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : S01 GUARDS_ROUND2"
+   ],
+   "last_owner_result": "R3/62a2f8c3/S01: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3 S01",
+   "r12_checklist_item": "H18",
+   "next_action": "R12 H18 smoke."
+  },
+  {
+   "id": "PBX-MOV-005",
+   "title": "Move chooser should show 1-2 more rows instead of blank space (all gens)",
+   "gens": [
+    "all"
+   ],
+   "area": "moves",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 B0062 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0062",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0129",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0186",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "Move chooser rows (Phase 9)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0253",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "Move chooser rows (Phase 9)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0479",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-MOVECHOOSER",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0669",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-MOVECHOOSER",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0062",
+     "text": "the moves sector menu look like it could have 1 or 2 more rows instead of that blank space, this is for all gens."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner PASS R3 62a2f8c3 R2-MOVECHOOSER (10-row chooser). Move picker presentation headers (include/UI/MovePickerPresentation.h, MovePickerRowUI.h) unchanged since 62a2f8c3.",
+   "repair_commits": [
+    "b1d34f96 S01 + Phase 9: PP / PP Ups captions apart; Move chooser shows 10 rows"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : R2-MOVECHOOSER GUARDS_ROUND3"
+   ],
+   "last_owner_result": "R3/62a2f8c3/R2-MOVECHOOSER: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-CRT-011",
+   "title": "Gen V Create header must name the exact game / staged source like Gen I-IV",
+   "gens": [
+    "V"
+   ],
+   "area": "create",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 B0067 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0067",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND1_RESULTS_7fea1797.md"
+    },
+    {
+     "rid": "B0131",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "B0189",
+     "round": "R2",
+     "candidate": null,
+     "item_id": "Gen V Create header (Phase 12)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_ROUND2_TEMPLATE.md"
+    },
+    {
+     "rid": "B0256",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "Gen V Create header (Phase 12)",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e10f307f.md"
+    },
+    {
+     "rid": "B0482",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-GEN5HEADER",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0671",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-GEN5HEADER",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0067",
+     "text": "gen 5 saves dont tell me in the create menu that im making a pokemon for what game like the rest in gens 1-4 do at the top of the screen where source save staged is."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R3 62a2f8c3 R2-GEN5HEADER; guarded by tests/test_gen5_create_edit_parity.cpp (\"S03 Create header names the game\") via the regression gate. Gen V surface changed in Round 11 (src/UI/Gen5SharedReadOnlySurface.inc).",
+   "repair_commits": [
+    "b57ffe03 S03 + Phase 4: one DETAILS column for Gen III-V, locked rows gold, exact game"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_create_edit_parity.cpp : Create header names the exact game"
+   ],
+   "last_owner_result": "R3/62a2f8c3/R2-GEN5HEADER: PASS",
+   "hardware_acceptance_candidate": "62a2f8c3 R3",
+   "r12_checklist_item": "H07",
+   "next_action": "Glance at the header during R12 H07 Gen V Create."
+  },
+  {
+   "id": "PBX-LEG-002",
+   "title": "Gen V shiny toggle may change the Wurmple-line evolution value (PID high half rewritten)",
+   "gens": [
+    "V"
+   ],
+   "area": "legality",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 E11 (7fea1797)",
+   "occurrences": [
+    {
+     "rid": "B0369",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": "E11",
+     "result": "n/a",
+     "src": "docs/qa/ROUND2_STATUS.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Open Defect",
+   "rechecked_needed": false,
+   "status_basis": "include/Integration/Gen5/Gen5PidCoordination.h:54-68 withShiny5 rewrites PID bits 17-31 with no Wurmple-evolution constraint, whereas Gen III and Gen IV PID searches preserve it (src/Pokemon/Pokemon3FRLG.cpp:218-221, src/Pokemon/Pokemon4Mutable.cpp:833-848 want.wurmpleEvo). Documented limit deferred to #314 (detection) / #329; owner E11 never verified.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none (E11 NOT VERIFIED R1/R3, stats area)",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Either constrain withShiny5 to keep (PID>>16)%10 class for Wurmple-line species, or record an owner decision accepting the limit; cite #329."
+  },
+  {
+   "id": "PBX-LEG-003",
+   "title": "Complete legality engine / PKHeX-class encounter, move and ball legality not integrated (PRs #314/#327/#328 isolated, tracker #329)",
+   "gens": [
+    "all"
+   ],
+   "area": "legality",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ Release order 3 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "F0124",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Release order 3",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "C0071",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0122",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "E0115",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §5 separate from the repair candidate"
+    },
+    {
+     "rid": "F0120",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§11",
+     "result": "n/a",
+     "src": "docs/PRODUCT_DECISIONS.md"
+    },
+    {
+     "rid": "F0122",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "PKHeX Oracle / legality assistant",
+     "result": "n/a",
+     "src": "docs/CREATE_POKEMON_VISION.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "The legality-engine PRs #314, #327, #328 are kept isolated and are not in this app (ROUND11_ENGINEERING_INTAKE.md section 5; RETEST_066e1db9.md: \"no legality-engine code\"). The app shows only neutral Origin & Legality / Incomplete states (CG48). docs/V1_ROADMAP.md:11 release order 3 requires finishing #314. Tracker: #329.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_r11_legacy_legality_wording.py : Gen I-V clean report shows Incomplete, never green"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Track on #329; integrate only after the app candidate is accepted (V1_ROADMAP release order 3-4)."
+  },
+  {
+   "id": "PBX-MOV-006",
+   "title": "Gen IV/V move Category element crowds the selected move Power/Accuracy section",
+   "gens": [
+    "IV",
+    "V"
+   ],
+   "area": "moves",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 M04 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0388",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0496",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M04",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0497",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "M05",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0022",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "M04",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0023",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "M05",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0076",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "M04",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0365",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "M04",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0127",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "M04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0178",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "M04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0224",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A03 · M04",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0283",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A03 · M04",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0002",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0497",
+     "text": "Same category presentation issue as Gen IV."
+    },
+    {
+     "rid": "B0496",
+     "text": "New category element crowds selected Move Power/Accuracy section."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner FAIL R3 62a2f8c3 M04/M05; repaired 88f974da (own Category line + type-badge gutter); owner PASS OCT24 c60d4da0, R5 1ca2faec, R6 26186464 A03 (Gen IV); Gen V Moves M05 PASS R5 and R6 A24. include/UI/SharedEditorChrome.h / SharedMovesPanel.h unchanged since 26186464.",
+   "repair_commits": [
+    "88f974da Stage native PK5 language and unique inventory with zero creation stats and shared UI repairs"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : M04 GUARDS_ROUND5"
+   ],
+   "last_owner_result": "R6/26186464/A03 (M04): PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A03",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-MET-006",
+   "title": "Gen III (all five games, reported on FR/LG) and Crystal Met Location pickers fail closed / too narrow (1,267 species-game combos with no row; Ruby Pikachu only one option); owner also suspected FR/LG species roster reads RSE",
+   "gens": [
+    "II",
+    "III"
+   ],
+   "area": "encounters-met",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R3 R2-BUG-008 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0426",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-008",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0542",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-008",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0543",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-008",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0680",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-008",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "E0053",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 2",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md (Extra bugs and requests)"
+    },
+    {
+     "rid": "E0081",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 2",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0113",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Extra 2",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0116",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "FRLG",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "D0154",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H08",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    },
+    {
+     "rid": "E0117",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "owner message 2026-11-01 (independent Round 11 QA)"
+    },
+    {
+     "rid": "E0094",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §2 shared root causes"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0117",
+     "text": "Gen III and Crystal Met Location pickers are incomplete. Independent tests found 1,267 species/game combinations with no picker row. The encounter-filtered list is too narrow for ordinary editing. Provide the appropriate native Met Location choices and distinguish format-valid choices from historically verified encounters. Do not invent encounter legality."
+    },
+    {
+     "rid": "E0081",
+     "text": "leaf green and fire red on gba so gen 3 dont have a working met location for pokemon … i thik it is reading RSE for species … i dont think i can get a rayquaza in leaf green or fire red."
+    },
+    {
+     "rid": "E0053",
+     "text": "leaf green and fire red on gba so gen 3 dont have a working met location for pokemon, i dont think the proper species for those games in in and i thik it is reading RSE for species, like i dont think i can get a rayquaza in leaf green or fire red."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Owner FAIL R11 3634d1e6 Extra 2. Verified in current source: Gen III picker offers catch templates of the record's origin game, then every other native location, then trade/egg/event markers (include/UI/Gen3EncounterPickerModel.h:100-139; include/UI/Gen3SharedPokemonSession.h:213-260 metLocationPicker/metLocationChoosable); the \"No supported exact-game encounter templates\" refusal no longer exists in src/include. Crystal uses the same open list (src/UI/Gen2UnifiedPokemonWorkspace.inc:579-609). Species roster: intake FRLG skeptic note — no RSE species list is read; all 1-386 were and are selectable (not a defect; non-native origin is the open Create-origin decision). R2-BUG-008 keep-stored row PASS R3 is preserved.",
+   "repair_commits": [
+    "01951ab7 Gen III Met Location: exact-origin native list, never fail closed (R11 FRLG)",
+    "03387c48 Crystal Met Location: same open native list as Gen III (R11 FRLG, Crystal path)",
+    "479170d0 WIP: fix(gen3): Met Location picker keeps a stored non-template origin (R2-BUG-008)"
+   ],
+   "automated_tests": [
+    "tests/test_gen3_exact_game_met_locations.cpp : every species in R/S/E/FR/LG and Crystal has a choosable row; export -> reparse",
+    "tests/test_gen3_hardware_surface_contract.cpp : rowValuesWithNative wiring",
+    "tests/test_gen3_encounter_keep_stored.cpp : R2-BUG-008 keep-stored row"
+   ],
+   "last_owner_result": "R11/3634d1e6/Extra 2: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H07 + H08",
+   "r12_checklist_item": "H07",
+   "next_action": "Owner runs R12 H07 (FR/LG Rayquaza or Charizard) and H08 (Crystal)."
+  },
+  {
+   "id": "PBX-SPC-004",
+   "title": "Species change keeps old/incompatible moves (R2-BUG-004): clear incompatible moves on species change; since R11 never add/refill moves",
+   "gens": [
+    "all"
+   ],
+   "area": "species-change",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R3 R2-BUG-004 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0430",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-004",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0534",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-004",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "B0674",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-BUG-004",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "E0027",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H28",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0027",
+     "text": "this passes but i wanna have it where when the editor is opened the new pokemon that hasnt been added yet doesnt come with its default moves and alson when we switch species i dont want it to come with moves auto filled in, i want the user to pick the moves and all the info first and also can we have it where a pokemon cant be added until it has all the proper info, met location, moves for current level, like a level 100 pokemon should have 1-2 moves unless its breed or however that would be legal, "
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R3 62a2f8c3 R2-BUG-004 (that build REFILLED native level-up moves) and R11 3634d1e6 H28 PASS. Owner reversal: H28/Extra 5/Extra 6 asked that species change never auto-fill moves; Round 11 changed keepLearnable to keep only learnable moves and add none (include/UI/SpeciesChangeMoves.h:5-50; Gen II include/UI/Gen2PokemonSession.h:87-94; Gen III include/UI/Gen3SharedPokemonSession.h:162-169; Gen IV include/UI/Gen4SharedPokemonSession.h:145-153; Gen V src/UI/Gen5SharedReadOnlySurface.inc:840-851). Code changed after the last PASS, so recheck.",
+   "repair_commits": [
+    "8a84128e Merge audit/app-qa-20261014 (R2-BUG-004 refill, round 3)",
+    "620ee717 Shared species-change and Create-draft policy for Gen I-V (R11 H25, H28, H07)"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : R2-BUG-004 guard (CG19, test_species_change_moves_gen1 \"Thunder Shock cleared, Growl kept with its PP and PP Ups, nothing added\")",
+    "tests/test_species_change_moves_gen1.cpp .. _gen5.cpp"
+   ],
+   "last_owner_result": "R11/3634d1e6/H28: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H28; recheck on 066e1db9",
+   "r12_checklist_item": null,
+   "next_action": "Add an explicit R12 step: Edit species change keeps learnable moves with PP/PP Ups and adds none (no current Hxx covers it; H09 only checks history)."
+  },
+  {
+   "id": "PBX-MET-007",
+   "title": "Gen V (Black 2) event/location rows indistinguishable (276 locations, repeated POKEPARK/Festa, \"Event/special location; unverified\")",
+   "gens": [
+    "V"
+   ],
+   "area": "encounters-met",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 R2-CHECK-011 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0449",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-011",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_62a2f8c3.md"
+    },
+    {
+     "rid": "B0548",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "R2-CHECK-011",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0029",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-CHECK-011",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0081",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-CHECK-011",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0118",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": "9",
+     "result": "n/a",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0370",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-CHECK-011",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0132",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-CHECK-011",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0169",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-CHECK-011",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0211",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "P5",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0257",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B05 · R2-CHECK-011",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0316",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B05 · R2-CHECK-011",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0051",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "B03",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0064",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "C09",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "C0357",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "B05 (A15/A26 preserved)",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0316",
+     "text": "The names now differ, but many rows still say \"Event/special location; unverified\". The owner wants to understand what each choice means and how it differs from the others."
+    },
+    {
+     "rid": "C0169",
+     "text": "Gen V historical event and location choices cannot be told apart: several rows read POKÉPARK, and Festa rows differ only by number."
+    },
+    {
+     "rid": "B0548",
+     "text": "Black 2 Pikachu picker shows 276 locations, likely too broad; verify native location ID vs actual encounter viability."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Latest owner result R6 26186464 B05 FAIL (\"many rows still say Event/special location; unverified\"). Round 7 repair: sourced event/met-location kinds and focused-row detail line (include/Names/SpecialMetLocationNotes.h, 149 lines, added after 26186464). Round 7-10 checklists (B03/C09) have no owner results and the item is not on the R11 worksheet or R12 checklist.",
+   "repair_commits": [
+    "b421c1c6 feat(B05): Gen IV / V event and marker met locations say what pinned tables show",
+    "a273d88e Merge lane P e52b7d97: sourced event/met-location kinds and focused-row detail (B05)"
+   ],
+   "automated_tests": [
+    "tests/test_special_met_location_notes.cpp : each special/event row has a sourced description",
+    "tests/test_event_year_source.cpp"
+   ],
+   "last_owner_result": "R6/26186464/B05: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist) — needs 066e1db9 R12 add-on",
+   "r12_checklist_item": null,
+   "next_action": "Add a Black 2 event Met Location step to the R12 checklist (focus a POKEPARK/Festa row, read its detail line)."
+  },
+  {
+   "id": "PBX-MET-008",
+   "title": "Crystal Met Location picker: owner wants further compactness (note on R3 L02 PASS)",
+   "gens": [
+    "II"
+   ],
+   "area": "encounters-met",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 L02 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0518",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "L02",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0518",
+     "text": "Further compactness wanted."
+    }
+   ],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "NEW-10 compaction (620 px) covered Gen III-V only; tests/test_met_location_fit.cpp:45 still calls Crystal's 640 px window \"approved\". Round 11 made the Crystal list longer (every landmark). Unknown: whether the owner still wants the Crystal popup made smaller; no later Crystal-specific owner result.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_met_location_fit.cpp : 620 px window, <= Crystal 640 px"
+   ],
+   "last_owner_result": "R3/62a2f8c3/L02: PASS with request",
+   "hardware_acceptance_candidate": "066e1db9 R12 H08 (comment)",
+   "r12_checklist_item": "H08",
+   "next_action": "Ask the owner in R12 H08 comment whether the Crystal Met Location popup size is acceptable."
+  },
+  {
+   "id": "PBX-CRT-012",
+   "title": "New Pokemon IVs/DVs defaulted wrong (Gen V all 15); Create must start IVs/DVs at 0 without resetting existing Pokemon",
+   "gens": [
+    "all"
+   ],
+   "area": "create",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R3 NEW-15 (62a2f8c3)",
+   "occurrences": [
+    {
+     "rid": "B0564",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": "NEW-15",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0043",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-15",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0093",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-15",
+     "result": "PASS",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0382",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "NEW-15",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0144",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-15",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0192",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "NEW-15",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0238",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A17 · NEW-15",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0297",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A17 · NEW-15",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0016",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A17",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "B0564",
+     "text": "Gen V creates all IVs=15; owner wants Create defaults IVs=0 for Gen III–V and DVs=0 for Gen I–II. Don't reset existing Pokémon; preserve native shiny/gender constraints."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS OCT24 c60d4da0, R5 1ca2faec, R6 26186464 A17. Current source: Gen V r.ivs={} r.evs={} (include/Integration/Gen5/Gen5SharedScreenState.h:519-520); Gen I/II BoxPokemonCreate dvs{} (include/Integration/Gen1/Gen1StagedPokemonEditor.h:34, include/Integration/Gen2/Gen2StagedEditor.h:71). Create-draft code in every generation changed in Round 11 (moves/required fields), so recheck.",
+   "repair_commits": [
+    "88f974da Stage native PK5 language and unique inventory with zero creation stats and shared UI repairs"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : NEW-15 GUARDS_ROUND5 entry"
+   ],
+   "last_owner_result": "R6/26186464/A17: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A17",
+   "r12_checklist_item": "H07",
+   "next_action": "During R12 H07 confirm a new draft shows IVs/DVs 0."
+  },
+  {
+   "id": "PBX-SPC-005",
+   "title": "Gen II Unown chooser sprites always showed form A (letter must follow DVs)",
+   "gens": [
+    "II"
+   ],
+   "area": "species-change",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R4 C0010 (c60d4da0)",
+   "occurrences": [
+    {
+     "rid": "C0010",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Picker computes the DV-derived letter on a hypothetical copy (include/UI/Gen2PokemonPickerModel.h:130-162 applySpeciesAppearance(hypothetical, 201,…)). Owner FAIL R4 c60d4da0; the related R5 R2-REROLL item (C0157 chooser portrait/letter agree) was unmarked and C0171 R5 FAIL concerns letter vs shiny (stats area). No owner PASS for the chooser portrait.",
+   "repair_commits": [
+    "fd30e0fc fix(gen2): Unown sprite and draft letter follow the DVs (R2-REROLL, round 3 screenshots 3-4)"
+   ],
+   "automated_tests": [
+    "tests/test_gen2_unown_letter.cpp : chooser/draft letter follows the DVs",
+    "tests/test_gen2_unown_letter_selector.cpp"
+   ],
+   "last_owner_result": "R4/c60d4da0: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H16 (\"Gen II: try Unown\")",
+   "r12_checklist_item": "H16",
+   "next_action": "Owner runs R12 H16 with Crystal/Gold Unown and compares chooser picture to the kept letter."
+  },
+  {
+   "id": "PBX-MOV-007",
+   "title": "Gen V move picker listed all 559 moves (e.g. Pikachu) instead of the species/form learnset",
+   "gens": [
+    "V"
+   ],
+   "area": "moves",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R4 C0012 (c60d4da0)",
+   "occurrences": [
+    {
+     "rid": "C0012",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "D0214",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "issue #326 (body 2026-10-24)"
+    },
+    {
+     "rid": "C0101",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "M05",
+     "result": "FAIL",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0116",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": "7",
+     "result": "n/a",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0152",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "M05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0199",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "M05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0390",
+     "round": "OCT25",
+     "candidate": "1ca2faec",
+     "item_id": "M05",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0245",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A24 · M05",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0304",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A24 · M05",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0022",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A23",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0025",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H26",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0214",
+     "text": "Owner hardware feedback: Gen V Pikachu Move chooser shows ~559 native moves instead of only species-appropriate moves (Gen I–IV already filter)."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": false,
+   "status_basis": "Owner FAIL R4 c60d4da0 and OCT24 (M05); repaired 83247b81 (#326); owner PASS OCT25 1ca2faec, R6 26186464 A24, and R11 3634d1e6 H26 \"Legal move chooser list\". include/Integration/Gen5/Gen5MoveCompatibility.h unchanged since 26186464.",
+   "repair_commits": [
+    "83247b81 fix(gen5): filter Move picker by Pikachu/species learnsets, transfer and preserved histories (#326)"
+   ],
+   "automated_tests": [
+    "tests/test_gen5_move_compatibility.cpp : species/form pools, Learnable/Transfer/Preserved"
+   ],
+   "last_owner_result": "R11/3634d1e6/H26: PASS",
+   "hardware_acceptance_candidate": "3634d1e6 R11 H26",
+   "r12_checklist_item": null,
+   "next_action": "None."
+  },
+  {
+   "id": "PBX-CRT-013",
+   "title": "Gen III Create: every caught Ball incl. Safari, held item independent of Bag availability, named values in Review, export/reopen",
+   "gens": [
+    "III"
+   ],
+   "area": "create",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "R4 R2-REVIEWMOVE (c60d4da0)",
+   "occurrences": [
+    {
+     "rid": "C0019",
+     "round": "R4",
+     "candidate": "c60d4da0",
+     "item_id": "R2-REVIEWMOVE",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND4_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0100",
+     "round": "OCT24",
+     "candidate": "c60d4da0",
+     "item_id": "R2-REVIEWMOVE",
+     "result": "FAIL",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0115",
+     "round": "OCT24",
+     "candidate": "8804f8f8",
+     "item_id": "6",
+     "result": "n/a",
+     "src": "docs/hardware/OCT24_REPAIRS_AND_RETEST.md"
+    },
+    {
+     "rid": "C0151",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-REVIEWMOVE",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_1ca2faec.md"
+    },
+    {
+     "rid": "C0198",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "R2-REVIEWMOVE",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0389",
+     "round": "OCT25",
+     "candidate": "1ca2faec",
+     "item_id": "R2-REVIEWMOVE",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "C0244",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A23 · R2-REVIEWMOVE",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0303",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "A23 · R2-REVIEWMOVE",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "D0021",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A22",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0303",
+     "text": "Created a Gen III Pikachu with Safari Ball, exported it, then reopened the export from Save Backups with the edits intact"
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner FAIL OCT24 c60d4da0, repaired 7130bff3; owner PASS OCT25 1ca2faec and R6 26186464 A23 (\"Created a Gen III Pikachu with Safari Ball, exported it, then reopened the export ... with the edits intact\"). Gen III Create path (src/Integration/Gen3/Gen3StagedPokemonEditor.cpp, include/UI/Gen3SharedPokemonSession.h) changed in Round 11 (required fields, Met Location list).",
+   "repair_commits": [
+    "7130bff3 fix(gen3): validate Create held items independently of Bag availability"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : R2-REVIEWMOVE GUARDS_ROUND6 entry (all 12 caught balls)"
+   ],
+   "last_owner_result": "R6/26186464/A23: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 A23",
+   "r12_checklist_item": "H07",
+   "next_action": "R12 H07 FR/LG Create + H17 export; optionally re-run the Safari Ball export/reopen."
+  },
+  {
+   "id": "PBX-MOV-008",
+   "title": "Gen V \"Learnable\" move label should use the same OK treatment as Gen I-IV (7B)",
+   "gens": [
+    "V"
+   ],
+   "area": "moves",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R5 7B (1ca2faec)",
+   "occurrences": [
+    {
+     "rid": "C0214",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": "7B",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND5_RESULTS_1ca2faec.md"
+    },
+    {
+     "rid": "C0262",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C02 · 7B",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_26186464.md"
+    },
+    {
+     "rid": "C0321",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": "C02 · 7B",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0401",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": "C02",
+     "result": "PASS",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    },
+    {
+     "rid": "D0033",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": "A34",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_e88957f2.md (same items in RETEST_ROUND7_TEMPLATE.md)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner PASS R6 26186464 C02 (OCT26 guard). Gen V surface (src/UI/Gen5SharedReadOnlySurface.inc) changed in Round 11.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : C02 GUARDS_ROUND7"
+   ],
+   "last_owner_result": "R6/26186464/C02: PASS",
+   "hardware_acceptance_candidate": "26186464 R6 C02",
+   "r12_checklist_item": "H18",
+   "next_action": "R12 H18 smoke."
+  },
+  {
+   "id": "PBX-CRT-014",
+   "title": "Create requires the native required fields before Keep/Add: explicit Met Location choice (Gen III-V, exact-game list, never \"value != 0\") and at least one move (app policy) — owner asked for it \"for all gens\"",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "create",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R9 H07 (d6a20a2a)",
+   "occurrences": [
+    {
+     "rid": "D0091",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": "H07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_d6a20a2a.md (same items in RETEST_ROUND9_TEMPLATE.md)"
+    },
+    {
+     "rid": "D0120",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": "H07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_3634d1e6.md (same items in RETEST_ROUND10_TEMPLATE.md)"
+    },
+    {
+     "rid": "E0006",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0048",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H07",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0062",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H07",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "E0085",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Extra 6",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0111",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Extra 6",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "F0112",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H07",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0098",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 decisions"
+    },
+    {
+     "rid": "E0102",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Owner safety clarification 1",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 owner safety clarifications"
+    },
+    {
+     "rid": "F0114",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§4 Moves / Required fields",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0115",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner safety clarification 1",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "D0153",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H07",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0102",
+     "text": "**Create validation is exact-game / format-aware.** \"At least one move\" is an **app policy** for a usable Pokémon, not a legality proof, and is labelled as such. Met Location is required as an **explicit choice** in the exact game's own location list. Never require a *nonzero* value: a real native Pokémon can legitimately carry location 0 or no recorded location (for example Gen III RSE index 0, Gen IV/V special or \"----\" entries, traded or event records). The check must use each game's native semantics, never one universal rule."
+    },
+    {
+     "rid": "F0111",
+     "text": "gen 1/2 have moves when pokemon editor comes up, pikachu has growl and thunder shock i think, we need to have a blank canvas, so no moves, and same for when a pokemon/species is selected we shouldn't have the moves auto filled, that should be left for the user, also can we add the feature that gen 5 has where if we try to ADD a pokemon that doesn't have a met location it wont add and we have a popup in the middle bottom to tell us what we are missing so we can ad the pokemon this should be a universal rule."
+    },
+    {
+     "rid": "E0085",
+     "text": "gen 1/2 have moves when pokemon editor comes up, pikachu has growl and thunder shock … blank canvas … the feature that gen 5 has where if we try to ADD a pokemon that doesn't have a met location it wont add … universal rule."
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Shared rule include/UI/CreateRequiredFields.h:1-76 (Met Location only for gens 3-5 at :46-48, at least one move everywhere, flag-based \"chosen\", no move-count rule). Wired: Gen I src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc:223-227 (move only); Gen II include/UI/Gen2PokemonSession.h:221-243 (move only; Crystal caught data optional); Gen III include/UI/Gen3SharedPokemonSession.h:264-270,465,479; Gen IV include/UI/Gen4SharedPokemonSession.h:200-256; Gen V include/Integration/Gen5/Gen5SharedScreenState.h:455-465. Gen V H07 PASS (R11) predates the cross-gen change. The owner's \"level 100 should have 1-2 moves\" idea (H28 note) was NOT implemented (intake section 4 E0098: not a game rule); owner clarification 1 (E0102) frames the one-move rule as app policy — the level-based rule has no explicit owner sign-off.",
+   "repair_commits": [
+    "620ee717 Shared species-change and Create-draft policy for Gen I-V (R11 H25, H28, H07)",
+    "e86d2a2c CreateRequiredFields: one-move rule is a PokeBank app policy, not legality",
+    "ab072252 Round 11 follow-ups: explicit Met Location choice, H25 history flags, visible Create resets"
+   ],
+   "automated_tests": [
+    "tests/test_species_change_history_policy.cpp : CreateRequiredFields Met Location Gen III-V only, one move everywhere, one message, no move-count rule",
+    "tests/test_gsc_pokemon_session.cpp : Gen II Add refused without a move",
+    "R12 Group A row \"Gen III / IV Create Met Location counts only an explicit pick (never value != 0)\" : NOT TESTED / NO FIXTURE on hardware"
+   ],
+   "last_owner_result": "R11/3634d1e6/H07: PASS (Gen V only) with request \"this needs to be added for all gens\"",
+   "hardware_acceptance_candidate": "066e1db9 R12 H07",
+   "r12_checklist_item": "H07",
+   "next_action": "Owner runs R12 H07 in Gen III (FR/LG), IV and V; also try Add with no move in Gen I/II (not on H07). Ask the owner to confirm dropping the \"level 100 = 1-2 moves\" idea."
+  },
+  {
+   "id": "PBX-SPC-006",
+   "title": "H25: species change carried previous Pokemon's Met Location and Pokerus (stale editor state); Create drafts reset visibly, existing Pokemon keep history and get a Caution flag (never silently deleted)",
+   "gens": [
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "species-change",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "R11 H25 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0024",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H25",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0067",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H25",
+     "result": "FAIL",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §1 finding table"
+    },
+    {
+     "rid": "F0102",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H25",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "E0096",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 decisions"
+    },
+    {
+     "rid": "E0103",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Owner safety clarification 2",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 owner safety clarifications"
+    },
+    {
+     "rid": "F0103",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner safety clarification 2",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "F0104",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§4 H25 Edit vs Create",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "D0155",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H09",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    },
+    {
+     "rid": "E0120",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "owner message 2026-11-01 (independent Round 11 QA)"
+    },
+    {
+     "rid": "F0105",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "H09",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    },
+    {
+     "rid": "E0089",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §2 shared root causes"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0120",
+     "text": "H25 is genuine preserved Pokémon history. Species editing must not silently clear Pokérus, origin or Met Location. Flag suspect combinations in Editor/Review."
+    },
+    {
+     "rid": "E0103",
+     "text": "**H25 history vs stale editor state.** On an existing Pokémon, recorded history (Met Location, Met Level, Pokérus, ball, egg/fateful data) is **preserved**. When it is incompatible with a newly chosen species, it is **flagged** in the editor and in Review, never silently deleted. New drafts reset properly and never inherit another record's state; the editor panels always re-read the record being edited, so nothing stale is shown."
+    },
+    {
+     "rid": "E0067",
+     "text": "gen leaves info in the left side panel ffrom the previous pokemon … i had a pikachu … met location to trohpy arden and changed species to arbok and arbok has the same met location and pokerus stat aswell"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "Shared policy include/UI/SpeciesChangeHistoryPolicy.h:58-64 (Create resets Pokerus and an invalid chosen Met Location; Edit resets nothing) and include/UI/HistoryConsistency.h:42-56 (Caution flags, never delete). Applied: Gen II include/UI/Gen2PokemonSession.h:95-129; Gen III include/UI/Gen3SharedPokemonSession.h:170-212; Gen IV include/UI/Gen4SharedPokemonSession.h:155-197; Gen V include/Integration/Gen5/Gen5SharedScreenState.h:441-453,684-695; Gen III Review caution src/Integration/Gen3/Gen3StagedPokemonEditor.cpp:711-715. Gen I stores neither field. Owner FAIL R11 3634d1e6 H25; no later owner result. Caveat: the R12 Group A byte-for-byte Edit-species-change round trip is NOT TESTED / NO FIXTURE, and see PBX-SPC level issue (Gen I-III Edit species change also resets Level/EXP, which then triggers the \"Met Level is above the current level\" Caution).",
+   "repair_commits": [
+    "620ee717 Shared species-change and Create-draft policy for Gen I-V (R11 H25, H28, H07)",
+    "ab072252 Round 11 follow-ups: explicit Met Location choice, H25 history flags, visible Create resets"
+   ],
+   "automated_tests": [
+    "tests/test_species_change_history_policy.cpp : Create resets Pokerus/invalid Met Location, Edit keeps history, flags never delete",
+    "tests/test_gen4_create_species_change_history.cpp",
+    "tests/test_species_change_moves_gen2.cpp / _gen4.cpp : HistoryConsistency flags"
+   ],
+   "last_owner_result": "R11/3634d1e6/H25: FAIL",
+   "hardware_acceptance_candidate": "066e1db9 R12 H09",
+   "r12_checklist_item": "H09",
+   "next_action": "Owner runs R12 H09 (existing Pokemon with Pokerus/Met Location, unrelated species, check Caution and Review; then a Create draft species change status). Engineering: run the Group A byte-for-byte round trip with a real save."
+  },
+  {
+   "id": "PBX-LEG-004",
+   "title": "Misleading legacy green \"no problems found\" legality wording in Gen I-V sessions (generic details modal / Bank Pokemon)",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "legality",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 E0110 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0110",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §3 leads"
+    }
+   ],
+   "owner_words": [],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "src/UI/Modals/PokemonDetailsModal.cpp now maps a Gen I-V clean report to the shared Incomplete state in the warning colour (checked by tests/test_r11_legacy_legality_wording.py:24-37); include/UI/SharedEditorPresentation.h:57-59 kUnverifiedForbiddenClaims. No owner result.",
+   "repair_commits": [
+    "d347afad Round 11 CG48: no green clean legality verdict in Gen I-V sessions"
+   ],
+   "automated_tests": [
+    "tests/test_r11_legacy_legality_wording.py : Gen I-V clean verdict gated on partialLegalityCoverage",
+    "tests/test_qa_cross_gen_contract.py : CG48"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist) — needs 066e1db9 add-on",
+   "r12_checklist_item": null,
+   "next_action": "Add an R12/R13 step: open a Bank Pokemon details modal from a Gen I-V save and confirm \"Incomplete\", not green."
+  },
+  {
+   "id": "PBX-LEG-005",
+   "title": "Independent legality leads: Gen IV EV/EXP reported clean when it should be flagged; incomplete coverage promoted to \"Complete\"",
+   "gens": [
+    "IV",
+    "all"
+   ],
+   "area": "legality",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 E0113 (3634d1e6)",
+   "occurrences": [
+    {
+     "rid": "E0113",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §3 leads"
+    },
+    {
+     "rid": "D0239",
+     "round": "GH",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "issue #329 (comment 2026-10-31)"
+    },
+    {
+     "rid": "D0240",
+     "round": "GH",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "issue #329 (comment 2026-10-31)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0240",
+     "text": "2. **Coverage promotion.** Legality coverage that is actually incomplete may be promoted to **Complete**."
+    },
+    {
+     "rid": "D0239",
+     "text": "1. **Gen IV EV/EXP false clean.** A Gen IV record whose EV/EXP combination should be flagged was reported clean."
+    }
+   ],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Leads relayed by the owner (issue #329 comment 2026-10-31), not reproduced; they concern the isolated engine (#314/#327/#328), which is not in this app. In this app, Gen I-V clean reports are forced to \"Incomplete\" (d347afad; tests/test_r11_legacy_legality_wording.py). Unknown: whether either lead reproduces in the engine branches.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Reproduce on the engine branches and record the result on #329."
+  },
+  {
+   "id": "PBX-SPC-007",
+   "title": "Species picker: one picture that switches Normal/Shiny instead of two pictures (owner Extra 5)",
+   "gens": [
+    "all"
+   ],
+   "area": "species-change",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ Extra 5 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "F0110",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Extra 5",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    },
+    {
+     "rid": "D0162",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": "H16",
+     "result": "n/a",
+     "src": "docs/hardware/RETEST_066e1db9.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "F0110",
+     "text": "The quit option in the nro has a highlighted option in the Y exit option, it also has a footer which isn't needed cause the buttons we need are the options in the menu, can we also get rid of \"stay\" we have cancel in that menu and those 2 options are the same just different names. In the species picker instead of having the 2 pictures one shiny and one normal can we have it where its 1 photo and if we can shiny or not it changes the photo, instead of the 2 photo thing. Gen 1/2 have moves when editor is opened, it should be blank, same as for gen 1-5 when a pokemon is selected it should leave moves clear not add or fill the moves just cause that pokemon was selected in species selector"
+    }
+   ],
+   "status": "Fixed in Code — Awaiting Hardware",
+   "rechecked_needed": false,
+   "status_basis": "eb7fe8c9 \"SPRITE: species picker shows one sprite in the current shiny state\" (include/UI/SharedSpeciesPicker.h changed in Round 11). Other parts of Extra 5 (quit dialog; blank Gen I/II moves) are tracked in launch-quit and in the PBX-CRT blank-moves issue.",
+   "repair_commits": [
+    "eb7fe8c9 SPRITE: species picker shows one sprite in the current shiny state"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 H16",
+   "r12_checklist_item": "H16",
+   "next_action": "Owner runs R12 H16."
+  },
+  {
+   "id": "PBX-CRT-015",
+   "title": "Create origin game: Create always records the save's own game as origin; non-native origin (e.g. FR/LG Rayquaza with R/S/E origin) is an open owner v1.0 decision",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "create",
+   "category": "decision",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R12 D0245 (066e1db9)",
+   "occurrences": [
+    {
+     "rid": "D0245",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #332 (body 2026-11-01)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "Current source: Gen III Create origin forced to the save game (Gen3StagedPokemonEditor.cpp create path; beginCreate(trainer, originGame) include/UI/Gen3SharedPokemonSession.h:130-144); Gen V origin = trainer.gameVersion (Gen5SharedScreenState.h:686). Intake FRLG section open question 1 and PR #332 body: \"a non-native origin for Create is an owner v1.0 decision\". Unknown: the owner's decision. Related: owner's Extra 2 belief that FR/LG reads RSE species is incorrect (all 386 selectable; intake FRLG skeptic note g).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Ask the owner to decide whether v1.0 Create offers a non-native origin picker; record the decision in PRODUCT_DECISIONS.md."
+  },
+  {
+   "id": "PBX-SPC-008",
+   "title": "Species change Level: whether a species change keeps the Pokemon's current Level has NO SPECIFICATION; generations behave differently today",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "species-change",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ F0106 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "F0106",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "n/a (searched docs/ and root status files)"
+    }
+   ],
+   "owner_words": [],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "No spec (F0106 \"NO SPECIFICATION FOUND\"). Current code per gen: Gen I — Create AND Edit reset Level to SpeciesChangeLevelPolicy::defaultLevel (exact-game minimum encounter level, fallback 5) and drop EXP (src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc:198-201 AddDraft, :222-224 Edit). Gen II — Create AND Edit reset Level/EXP to defaultLevel (include/UI/Gen2PokemonSession.h:75-86). Gen III — Create AND Edit reset Level/EXP to defaultLevel (include/UI/Gen3SharedPokemonSession.h:162; test tests/test_gen3_shared_pokemon_session.cpp:194-211 asserts an Edit at Level 80 becomes the encounter minimum and \"!= 80\"). Gen IV — keeps the current Level, rewriting EXP for the new growth rate (src/Pokemon/Pokemon4Mutable.cpp:426,452-454). Gen V — Edit refuses a species with a different EXP growth group (\"its level would change\", include/Integration/Gen5/Gen5SharedScreenState.h:603-607), so Level is kept; Create rebuild keeps the draft Level (:665-667). Policy origin: include/UI/SpeciesChangeLevelPolicy.h (\"never inherited from the previous species\"), commit 63ce8877 (2026-09-20). Unknown: the owner's intended rule; Gen I-III Edit behaviour silently changes an existing Pokemon's Level/EXP, inconsistent with Gen IV/V and with the H25 \"history kept\" spirit.",
+   "repair_commits": [
+    "63ce8877 editor: add shared species change level policy"
+   ],
+   "automated_tests": [
+    "tests/test_gen3_shared_pokemon_session.cpp:194-211 : Edit species change resets Level to encounter minimum (asserts != 80)",
+    "tests/test_species_change_moves_gen1.cpp:145,191 / tests/test_species_change_moves_gen2.cpp:86 : Level == defaultLevel after species change"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Ask the owner for a rule (keep current Level vs reset) for Create and for Edit; then align Gen I-III with Gen IV/V or vice versa and add an R12/R13 checklist step."
+  },
+  {
+   "id": "PBX-CRT-016",
+   "title": "Create Pokemon / Quick Legal / advanced editor as permanent core feature: Quick Legal and explicit CREATED/USER-CREATED provenance labelling",
+   "gens": [
+    "all"
+   ],
+   "area": "create",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "REQ §7 (no candidate)",
+   "occurrences": [
+    {
+     "rid": "F0121",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§7",
+     "result": "n/a",
+     "src": "docs/PRODUCT_DECISIONS.md"
+    },
+    {
+     "rid": "F0184",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Header / Product decision",
+     "result": "n/a",
+     "src": "docs/CREATE_POKEMON_VISION.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Missing Feature",
+   "rechecked_needed": false,
+   "status_basis": "No Quick Legal entry point or CREATED/USER-CREATED provenance label exists in src/ or include/ (grep \"Quick Legal\", \"USER-CREATED\" returns nothing). docs/CREATE_POKEMON_VISION.md header marks it future-only; docs/PRODUCT_DECISIONS.md §7 says \"should eventually provide\". Guided Create itself exists.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Keep on the post-v1 backlog unless the owner promotes it; depends on the isolated legality engine (#329)."
+  },
+  {
+   "id": "PBX-CRT-017",
+   "title": "Gen II Add toast too implementation-facing ('Pokemon added to staged copy only; source .srm unchanged'); owner prefers concise wording such as 'Added to Box 1 (staged)'",
+   "gens": [
+    "II"
+   ],
+   "area": "create",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE PR #68 comment 2026-09-15 (501093ae)",
+   "occurrences": [
+    {
+     "rid": "D0300",
+     "round": "PRE",
+     "candidate": "501093ae",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "PR #68 (comment 2026-09-15)"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "D0300",
+     "text": "- **Gen II staged toast:** `Pokemon added to staged copy only; source .srm unchanged` is too implementation-facing/noisy. Prefer concise PokeBank wording such as `Added to Box 1 (staged)` while source immutability remains persistent elsewhere in UI."
+    }
+   ],
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "Owner FAIL on 501093ae (D0300). 36a89388 (2026-09-14 21:10, after 501093ae) replaced the toast with '<name> added to Box N' (git show 36a89388: Gen2PokemonEditorFoundation.inc); current source src/UI/Gen2PokemonEditorFoundation.inc:333-337 posts displayName + ' added to Box ' + N. 36a89388 is an ancestor of cfb70357, which the owner accepted on hardware (PR #68 body, D0303: '... staged editing, and the hardware-retst fixes all look and work as intended'). The Gen II Add path changed again in Round 11 (required-fields gate before state.add, Gen2PokemonEditorFoundation.inc:316-328), so it needs re-verification.",
+   "repair_commits": [
+    "36a89388 ui: return Gen II Add directly to packed box selection",
+    "cfb70357 fix: address Gen I and II hardware retest regressions"
+   ],
+   "automated_tests": [
+    "tests/test_gsc_editor_surface_contract.cpp:130 (49d88330) : Gen II Add calls closeToBoxAfterAdd (returns to the packed box); no test asserts the toast wording"
+   ],
+   "last_owner_result": "PRE/cfb70357/PR #68 milestone: PASS",
+   "hardware_acceptance_candidate": "accepted cfb70357 PRE (PR #68); recheck on 066e1db9 R12 H18",
+   "r12_checklist_item": "H18",
+   "next_action": "During R12 Gen II Create/Add, confirm the status line reads '<name> added to Box N' with no implementation wording."
+  }
+ ],
+ "accepted_features": [
+  {
+   "gen": "I",
+   "feature": "Create default species/level: Pikachu L5 (moves part reversed in R11)",
+   "latest_pass": "R3 62a2f8c3 E12",
+   "code_changed_since": true,
+   "evidence": "Gen1StagedPokemonEditor.h:28-35 species 25 level 5; moves now blank"
+  },
+  {
+   "gen": "II",
+   "feature": "Gen II Create A/B controls",
+   "latest_pass": "R3 62a2f8c3 C05",
+   "code_changed_since": true,
+   "evidence": "Gen II Create files changed in R11"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Create header names exact game",
+   "latest_pass": "R3 62a2f8c3 R2-GEN5HEADER",
+   "code_changed_since": true,
+   "evidence": "test_gen5_create_edit_parity.cpp"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Create/Edit details panel parity (no clipping)",
+   "latest_pass": "R3 62a2f8c3 S03",
+   "code_changed_since": true,
+   "evidence": "test_gen5_create_edit_parity.cpp"
+  },
+  {
+   "gen": "all",
+   "feature": "Create defaults IVs/DVs 0",
+   "latest_pass": "R6 26186464 A17 (NEW-15)",
+   "code_changed_since": true,
+   "evidence": "Gen5SharedScreenState.h:519-520"
+  },
+  {
+   "gen": "all",
+   "feature": "Create Review lists the created details",
+   "latest_pass": "R6 26186464 C13",
+   "code_changed_since": true,
+   "evidence": "Review entry paths changed in R11 (Caution notes)"
+  },
+  {
+   "gen": "III",
+   "feature": "Gen III Create with Safari Ball, held item, export/reopen",
+   "latest_pass": "R6 26186464 A23 (R2-REVIEWMOVE)",
+   "code_changed_since": true,
+   "evidence": "Gen3StagedPokemonEditor.cpp changed in R11"
+  },
+  {
+   "gen": "V",
+   "feature": "Create requires Met Location (Gen V)",
+   "latest_pass": "R11 3634d1e6 H07",
+   "code_changed_since": true,
+   "evidence": "CreateRequiredFields.h generalised in R11"
+  },
+  {
+   "gen": "all",
+   "feature": "Create, back out, keep (cancel leaves slot empty, Keep stages one, original untouched)",
+   "latest_pass": "R11 3634d1e6 H30",
+   "code_changed_since": true,
+   "evidence": "Create entry points changed in R11"
+  },
+  {
+   "gen": "all",
+   "feature": "Species change clears incompatible moves",
+   "latest_pass": "R11 3634d1e6 H28 (also R3 R2-BUG-004)",
+   "code_changed_since": true,
+   "evidence": "SpeciesChangeMoves.h rewritten in R11 (never adds)"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I Moves panel alignment",
+   "latest_pass": "R3 62a2f8c3 M01",
+   "code_changed_since": true,
+   "evidence": "SharedMovesPanel.h 2-line change after R3"
+  },
+  {
+   "gen": "II",
+   "feature": "Gen II Moves panel matches Gen I",
+   "latest_pass": "R3 62a2f8c3 M02",
+   "code_changed_since": true,
+   "evidence": "same"
+  },
+  {
+   "gen": "III",
+   "feature": "Gen III Moves panel",
+   "latest_pass": "R3 62a2f8c3 M03",
+   "code_changed_since": true,
+   "evidence": "same"
+  },
+  {
+   "gen": "IV",
+   "feature": "Gen IV Moves panel / Category spacing",
+   "latest_pass": "R6 26186464 A03 (M04)",
+   "code_changed_since": false,
+   "evidence": "SharedEditorChrome.h / SharedMovesPanel.h unchanged since 26186464"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Moves panel / species-form move pools",
+   "latest_pass": "R6 26186464 A24 (M05); H26 R11",
+   "code_changed_since": false,
+   "evidence": "Gen5MoveCompatibility.h unchanged since 26186464"
+  },
+  {
+   "gen": "all",
+   "feature": "Move chooser details consistent (number/name/type/power/acc/PP)",
+   "latest_pass": "R3 62a2f8c3 M06",
+   "code_changed_since": true,
+   "evidence": "per-gen surfaces changed in R11"
+  },
+  {
+   "gen": "all",
+   "feature": "PP editing and PP Ups limits",
+   "latest_pass": "R3 62a2f8c3 M07",
+   "code_changed_since": true,
+   "evidence": "per-gen surfaces changed in R11"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I hidden Move rows fit",
+   "latest_pass": "R3 62a2f8c3 M08",
+   "code_changed_since": true,
+   "evidence": "Gen I overlay changed in R11"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V PP/PP Ups captions",
+   "latest_pass": "R3 62a2f8c3 S01",
+   "code_changed_since": true,
+   "evidence": "Gen V surface changed in R11"
+  },
+  {
+   "gen": "all",
+   "feature": "Move chooser extra rows",
+   "latest_pass": "R3 62a2f8c3 R2-MOVECHOOSER",
+   "code_changed_since": false,
+   "evidence": "MovePickerPresentation.h/MovePickerRowUI.h unchanged since 62a2f8c3"
+  },
+  {
+   "gen": "all",
+   "feature": "Coloured move types",
+   "latest_pass": "R3 62a2f8c3 R2-BUG-007",
+   "code_changed_since": false,
+   "evidence": "move picker presentation unchanged since 62a2f8c3"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V Learnable label OK treatment (7B)",
+   "latest_pass": "R6 26186464 C02",
+   "code_changed_since": true,
+   "evidence": "Gen5SharedReadOnlySurface.inc changed in R11"
+  },
+  {
+   "gen": "V",
+   "feature": "Gen V species-restricted move chooser",
+   "latest_pass": "R11 3634d1e6 H26",
+   "code_changed_since": false,
+   "evidence": "Gen5MoveCompatibility.h unchanged"
+  },
+  {
+   "gen": "II",
+   "feature": "Crystal Met Location picker compact/names only",
+   "latest_pass": "R3 62a2f8c3 L02",
+   "code_changed_since": true,
+   "evidence": "Crystal list rewritten R11 (03387c48)"
+  },
+  {
+   "gen": "III",
+   "feature": "Gen III location names cleaned",
+   "latest_pass": "R3 62a2f8c3 L03",
+   "code_changed_since": true,
+   "evidence": "Gen III picker rebuilt R11 (01951ab7)"
+  },
+  {
+   "gen": "IV,V",
+   "feature": "Gen IV/V location windows clean layout",
+   "latest_pass": "R3 62a2f8c3 L04; R6 A26",
+   "code_changed_since": true,
+   "evidence": "picker rows changed R11"
+  },
+  {
+   "gen": "II",
+   "feature": "Crystal Met Time cycles inline",
+   "latest_pass": "R3 62a2f8c3 R2-CRYSTAL",
+   "code_changed_since": true,
+   "evidence": "Gen2UnifiedPokemonWorkspace.inc changed"
+  },
+  {
+   "gen": "III",
+   "feature": "Ruby Pikachu Met Location keep-stored row",
+   "latest_pass": "R3 62a2f8c3 R2-BUG-008",
+   "code_changed_since": true,
+   "evidence": "Gen III picker rebuilt R11"
+  },
+  {
+   "gen": "III,IV,V",
+   "feature": "Met Location rows fit compact 620 px window",
+   "latest_pass": "R6 26186464 A26 (NEW-10)",
+   "code_changed_since": true,
+   "evidence": "row content changed R11"
+  },
+  {
+   "gen": "IV,V",
+   "feature": "Gen IV/V location choices context-backed",
+   "latest_pass": "R6 26186464 A15 (NEW-12)",
+   "code_changed_since": true,
+   "evidence": "EncounterContext45.h changed after R6"
+  },
+  {
+   "gen": "all",
+   "feature": "Origin & Legality wording / truthful panel",
+   "latest_pass": "R6 26186464 A01 (E03)",
+   "code_changed_since": true,
+   "evidence": "d347afad CG48 R11"
+  },
+  {
+   "gen": "I",
+   "feature": "Gen I semantic move-compatibility colours; picker ownership fixes",
+   "latest_pass": "PRE 69668bc8 (A0547, A0552)",
+   "code_changed_since": true,
+   "evidence": "Gen I overlay changed since"
+  }
+ ],
+ "noise": [
+  {
+   "rid": "A0832",
+   "reason": "Matrix N/A cell (Gold met-time): Gold/Silver PK2 store no caught data; not an issue."
+  },
+  {
+   "rid": "A0833",
+   "reason": "Matrix N/A cell (Silver met-time): Gold/Silver PK2 store no caught data; not an issue."
+  }
+ ],
+ "misfiled": []
+}

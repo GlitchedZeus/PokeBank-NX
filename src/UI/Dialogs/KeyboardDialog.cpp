@@ -1,5 +1,6 @@
 #include "UI/Dialogs/KeyboardDialog.h"
 #include "Utils/Gen12KanaText.h"
+#include "Utils/HangulComposer.h"
 
 #include <algorithm>
 #include <climits>
@@ -189,9 +190,33 @@ namespace UI
                 addKey(plans, bottomRow, KeyboardKeyAction::Accept, "OK", 5);
             }
 
-            std::vector<KeyPlan> planPage(KeyboardPage page, bool allowNegative)
+            /// Korean names: three rows of two-set jamo (Utils::Hangul::kRows), Shift for the tense
+            /// consonants and ㅒ / ㅖ, and the shared text bottom row leading to Letters and Symbols.
+            void planHangulPage(std::vector<KeyPlan> &plans)
+            {
+                namespace H = Utils::Hangul;
+                addTypeKeys(plans, 0, std::string(H::kRows[0].lower), std::string(H::kRows[0].upper));
+                addKey(plans, 0, KeyboardKeyAction::Backspace, "");
+                addTypeKeys(plans, 1, std::string(H::kRows[1].lower), std::string(H::kRows[1].upper));
+                addKey(plans, 2, KeyboardKeyAction::Shift, "");
+                addTypeKeys(plans, 2, std::string(H::kRows[2].lower), std::string(H::kRows[2].upper));
+                addTextBottomRow(plans, KeyboardKeyAction::ShowLetters, "ABC", KeyboardKeyAction::ShowSymbols,
+                                 "?123");
+            }
+
+            std::vector<KeyPlan> planPage(KeyboardPage page, bool allowNegative, bool koreanHangul)
             {
                 std::vector<KeyPlan> plans;
+                if (page == KeyboardPage::Hangul)
+                {
+                    planHangulPage(plans);
+                    return plans;
+                }
+                // A Korean name's Letters and Symbols pages lead back to Hangul in place of Accents,
+                // which stay one ZL / ZR press away.
+                const KeyboardKeyAction otherPage = koreanHangul ? KeyboardKeyAction::ShowHangul
+                                                                 : KeyboardKeyAction::ShowAccents;
+                const std::string otherPageLabel = koreanHangul ? "한" : "àé";
                 if (isKanaPage(page))
                 {
                     planKanaPage(plans, page);
@@ -206,8 +231,7 @@ namespace UI
                     addTypeKeys(plans, 1, "asdfghjkl'-", "ASDFGHJKL'-");
                     addKey(plans, 2, KeyboardKeyAction::Shift, "");
                     addTypeKeys(plans, 2, "zxcvbnm,.?", "ZXCVBNM,.?");
-                    addTextBottomRow(plans, KeyboardKeyAction::ShowSymbols, "?123", KeyboardKeyAction::ShowAccents,
-                                     "àé");
+                    addTextBottomRow(plans, KeyboardKeyAction::ShowSymbols, "?123", otherPage, otherPageLabel);
                     break;
                 case KeyboardPage::Symbols:
                     addTypeKeys(plans, 0, "1234567890", "1234567890");
@@ -216,8 +240,7 @@ namespace UI
                     // The gender signs, the ellipsis and the multiplication sign are in the games'
                     // own character sets, which is why they are here rather than further out.
                     addTypeKeys(plans, 2, "♂♀…×~*+=%_$", "♂♀…×~*+=%_$");
-                    addTextBottomRow(plans, KeyboardKeyAction::ShowLetters, "ABC", KeyboardKeyAction::ShowAccents,
-                                     "àé");
+                    addTextBottomRow(plans, KeyboardKeyAction::ShowLetters, "ABC", otherPage, otherPageLabel);
                     break;
                 case KeyboardPage::Accents:
                     addTypeKeys(plans, 0, "àáâäãåæçèé", "ÀÁÂÄÃÅÆÇÈÉ");
@@ -295,8 +318,10 @@ namespace UI
             waitingForRelease = false;
             keys.clear();
             selectedKeyIndex = 0;
+            hangulComposing = false;
             buildPage(request.digitsOnly     ? KeyboardPage::Digits
                       : request.japaneseKana ? KeyboardPage::HiraganaA
+                      : request.koreanHangul ? KeyboardPage::Hangul
                                              : KeyboardPage::Letters);
         }
 
@@ -310,7 +335,7 @@ namespace UI
                 keepSelection ? keys[selectedKeyIndex].keyX + keys[selectedKeyIndex].keyWidth / 2 : 0;
 
             page = newPage;
-            const std::vector<KeyPlan> plans = planPage(newPage, request.allowNegative);
+            const std::vector<KeyPlan> plans = planPage(newPage, request.allowNegative, request.koreanHangul);
 
             // Rows start at the widest row's left edge rather than each being centred, so a short row
             // -- the number pad's third, without a sign key -- keeps its columns under the ones above.
@@ -529,6 +554,19 @@ namespace UI
                     const int pageStep = (buttonsDown & HidNpadButton_ZR) ? 1 : kanaPageCount - 1;
                     buildPage(kanaPages[(current + pageStep) % kanaPageCount]);
                 }
+                else if ((buttonsDown & (HidNpadButton_ZL | HidNpadButton_ZR)) && request.koreanHangul)
+                {
+                    // Korean names: ZL / ZR walk Hangul -> Letters -> Symbols -> Accents.
+                    constexpr KeyboardPage koreanPages[] = {KeyboardPage::Hangul, KeyboardPage::Letters,
+                                                            KeyboardPage::Symbols, KeyboardPage::Accents};
+                    constexpr int koreanPageCount = 4;
+                    int current = 0;
+                    for (int i = 0; i < koreanPageCount; ++i)
+                        if (koreanPages[i] == page)
+                            current = i;
+                    const int pageStep = (buttonsDown & HidNpadButton_ZR) ? 1 : koreanPageCount - 1;
+                    buildPage(koreanPages[(current + pageStep) % koreanPageCount]);
+                }
                 else if (buttonsDown & (HidNpadButton_ZL | HidNpadButton_ZR))
                 {
                     constexpr KeyboardPage textPages[] = {KeyboardPage::Letters, KeyboardPage::Symbols,
@@ -561,6 +599,13 @@ namespace UI
             switch (key.action)
             {
             case KeyboardKeyAction::Type:
+                if (page == KeyboardPage::Hangul)
+                {
+                    typeHangul(shift != ShiftMode::Off ? key.upperLabel : key.lowerLabel);
+                    if (shift == ShiftMode::Once)
+                        shift = ShiftMode::Off;
+                    break;
+                }
                 if (insertText(shift != ShiftMode::Off ? key.upperLabel : key.lowerLabel) && shift == ShiftMode::Once)
                     shift = ShiftMode::Off;
                 break;
@@ -596,6 +641,7 @@ namespace UI
                     text.clear();
                     caretOffset = 0;
                     textSelected = false;
+                    hangulComposing = false;
                     textEdited();
                 }
                 break;
@@ -610,6 +656,9 @@ namespace UI
                 break;
             case KeyboardKeyAction::ShowAccents:
                 buildPage(KeyboardPage::Accents);
+                break;
+            case KeyboardKeyAction::ShowHangul:
+                buildPage(KeyboardPage::Hangul);
                 break;
             case KeyboardKeyAction::SystemKeyboard:
                 handOffToSystemKeyboard();
@@ -662,6 +711,7 @@ namespace UI
 
         bool KeyboardState::insertText(const std::string &characters)
         {
+            hangulComposing = false;
             if (textSelected)
             {
                 text.clear();
@@ -684,6 +734,8 @@ namespace UI
 
         void KeyboardState::deleteBeforeCaret()
         {
+            // Backspace removes the whole syllable before the caret and ends the composing run.
+            hangulComposing = false;
             if (textSelected)
             {
                 text.clear();
@@ -702,6 +754,7 @@ namespace UI
 
         void KeyboardState::moveCaret(int characterStep)
         {
+            hangulComposing = false;
             if (textSelected)
             {
                 textSelected = false;
@@ -782,6 +835,32 @@ namespace UI
             text.replace(characterStart, caretOffset - characterStart, replacement);
             caretOffset = characterStart + replacement.size();
             textEdited();
+        }
+
+        void KeyboardState::typeHangul(const std::string &jamo)
+        {
+            namespace H = Utils::Hangul;
+            if (hangulComposing && !textSelected && caretOffset > 0)
+            {
+                const size_t characterStart = previousCharacterStart(text, caretOffset);
+                const std::string_view previous(text.data() + characterStart, caretOffset - characterStart);
+                if (const auto composed = H::compose(H::decodeOne(previous), H::decodeOne(jamo)))
+                {
+                    // A final consonant moving on to a new syllable makes one character two.
+                    if (characterCount(text) - 1 + static_cast<int>(composed->size()) > request.maxChars)
+                    {
+                        refusedFrames = REFUSED_FRAMES;
+                        return;
+                    }
+                    const std::string replacement = H::encode(*composed);
+                    text.replace(characterStart, caretOffset - characterStart, replacement);
+                    caretOffset = characterStart + replacement.size();
+                    textEdited();
+                    return;
+                }
+            }
+            if (insertText(jamo))
+                hangulComposing = true;
         }
 
         void KeyboardState::finish(bool acceptText)

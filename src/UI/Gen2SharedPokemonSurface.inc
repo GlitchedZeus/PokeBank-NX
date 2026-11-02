@@ -16,9 +16,7 @@ struct SharedSurfaceState {
     const TrainerViewScreen* owner = nullptr;
     uint64_t ownerSerial = 0;   // TrainerViewScreen::instanceSerial (never reused, unlike the address)
     std::string sourceGameId;
-    bool cloneActive = false;
     bool provenanceActive = false;
-    int cloneBox = 0;
     PokeBank::UIModel::Gen12ReviewDiscard::State reviewDiscard;
 };
 
@@ -71,12 +69,21 @@ void sharedBadge(PKSEFramebuffer& fb, int x, int y, const std::string& text) {
     fb.drawText(x + 12, y + 6, text, Colors::Text, TextStyle::Caption);
 }
 
-SharedEditor::ActionCapabilities gen2ActionCapabilities() noexcept {
+// Round 11 ACTIONS: the ONE Gen II box-sheet capability set. The live sheet
+// (ClassicReleaseActionFix.inc, input and draw) and the shadow sheets below and in
+// Gen2SharedSurfaceParity.inc all list from it, so their rows, touch ids and dispatch cannot drift.
+// Every Gen II box sheet opens only with a staged editor: Clone, Release (staged packed compaction,
+// stageReleaseBoxPokemon), Origin & Legality (informational: legality stays "Not checked"), and
+// Feature A's Import / Export to file. Move is the accepted hold-Y packed carry, started from the
+// sheet only on the Boxes view (the Storage pane has no carry entry), like Gen I's boxMoveAvailable.
+SharedEditor::ActionCapabilities gen2ActionCapabilities(const TrainerViewScreen& screen) noexcept {
     SharedEditor::ActionCapabilities caps;
     caps.canClone = true;
-    caps.canRemove = false; // Gen2 StagedEditor has no proven remove/compaction adapter yet.
-    // This is an informational shell: encounter legality remains explicitly PokeBank::UIModel::SharedEditorPresentation::legalityLabel(PokeBank::UIModel::SharedEditorPresentation::LegalityState::NotChecked).
+    caps.canRemove = true;
     caps.hasLegalityProvenance = true;
+    caps.canImportFile = true;
+    caps.canExportFile = true;
+    caps.canMove = screen.selectedMode == TrainerViewScreen::ViewMode::Boxes && screen.detailViewActive;
     return caps;
 }
 
@@ -90,7 +97,7 @@ std::string sharedActionDescription(SharedEditor::Action action, const Gen2::Sta
         case SharedEditor::Action::View: return "Read-only shared Pokemon view";
         case SharedEditor::Action::Edit:
             return pokemon ? pokemon->nickname + "  Lv " + std::to_string(pokemon->level) : "Edit Pokemon";
-        case SharedEditor::Action::Clone: return "Choose a destination box visually";
+        case SharedEditor::Action::Clone: return "Carry a copy to an empty slot";
         case SharedEditor::Action::LegalityProvenance: return "Source, validation and truthful legality status";
         case SharedEditor::Action::Add: return "Open Create Pokemon — DRAFT";
         case SharedEditor::Action::Review:
@@ -98,15 +105,6 @@ std::string sharedActionDescription(SharedEditor::Action action, const Gen2::Sta
         case SharedEditor::Action::Close: return "Return to box";
         default: return "";
     }
-}
-
-int firstEmptyGen2Slot(Gen2::StagedEditor& editor, int box) {
-    for (int slot = 0; slot < static_cast<int>(editor.metadata().boxCapacity); ++slot) {
-        std::string error;
-        if (!editor.boxedPokemon(static_cast<std::size_t>(box), static_cast<std::size_t>(slot), error))
-            return slot;
-    }
-    return -1;
 }
 
 bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held,
@@ -119,7 +117,7 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
     auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                         static_cast<std::size_t>(legacy.pokemonSlot), error);
     const bool occupied = pokemon.has_value();
-    const auto actions = SharedEditor::actionsForSlot(occupied, gen2ActionCapabilities(), !editor->pendingChanges().empty());
+    const auto actions = SharedEditor::actionsForSlot(occupied, gen2ActionCapabilities(screen), !editor->pendingChanges().empty());
     if (actions.count == 0) return true;
 
     const uint64_t nav = screen.controllerNavigation.apply(
@@ -160,11 +158,13 @@ bool handleSharedActions(TrainerViewScreen& screen, uint64_t down, uint64_t held
             return beginEdit(screen, legacy.pokemonBox, legacy.pokemonSlot);
         case SharedEditor::Action::Clone: {
             if (!pokemon) return true;
-            auto& shared = sharedSurfaceStateFor(screen);
-            shared.cloneActive = true;
-            shared.cloneBox = legacy.pokemonBox;
+            // Round 11 H31: the shared visual Clone carry (the same as the live Actions sheet).
+            const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;
+            legacy.active = false;
             legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginCloneFromAction(screen, box, slot))
+                screen.postStatus("Clone could not start from here", 240);
             return true;
         }
         case SharedEditor::Action::LegalityProvenance: {
@@ -201,52 +201,6 @@ bool handleSharedProvenance(TrainerViewScreen& screen, uint64_t down) {
     legacy.pokemonActions = true;
     legacy.review = false;
     screen.controllerNavigation.reset();
-    return true;
-}
-
-bool handleSharedClone(TrainerViewScreen& screen, uint64_t down) {
-    auto& shared = sharedSurfaceStateFor(screen);
-    if (!shared.cloneActive) return false;
-    auto* editor = stagedEditor(screen);
-    if (!editor) { shared.cloneActive = false; return true; }
-    const int boxes = static_cast<int>(editor->metadata().boxCount);
-    if (down & HidNpadButton_L) shared.cloneBox = (shared.cloneBox - 1 + boxes) % boxes;
-    if (down & HidNpadButton_R) shared.cloneBox = (shared.cloneBox + 1) % boxes;
-    // Leaving the Clone dialog (B, or after staging) returns to Pokemon Actions, exactly like
-    // Legality & Provenance: Clone hides the action sheet while it owns input.
-    auto backToActions = [&] {
-        shared.cloneActive = false;
-        auto& actions = editorOverlayState(screen);
-        actions.active = true;
-        actions.pokemonActions = true;
-        actions.review = false;
-        screen.controllerNavigation.reset();
-    };
-    if (down & HidNpadButton_B) {
-        backToActions();
-        return true;
-    }
-    if (!(down & HidNpadButton_A)) return true;
-
-    const int destination = firstEmptyGen2Slot(*editor, shared.cloneBox);
-    if (destination < 0) {
-        screen.postStatus("That Generation II box is full", 240);
-        return true;
-    }
-    auto& legacy = editorOverlayState(screen);
-    std::size_t destinationSlot = 0;
-    std::string error;
-    if (!editor->stageCloneBoxPokemon(static_cast<std::size_t>(legacy.pokemonBox),
-                                      static_cast<std::size_t>(legacy.pokemonSlot),
-                                      static_cast<std::size_t>(shared.cloneBox),
-                                      destinationSlot, error)) {
-        screen.postStatus(error.empty() ? "Clone failed" : error, 300);
-        return true;
-    }
-    backToActions();
-    gscTrainer(screen).refreshStagedBoxPresentation(error);
-    screen.postStatus("Clone added to Box " + std::to_string(shared.cloneBox + 1) +
-                      " / Slot " + std::to_string(destinationSlot + 1), 300);
     return true;
 }
 
@@ -324,7 +278,7 @@ void drawSharedActionSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(legacy.pokemonBox),
                                               static_cast<std::size_t>(legacy.pokemonSlot), error);
     const auto actions = SharedEditor::actionsForSlot(
-        pokemon.has_value(), gen2ActionCapabilities(), !editor->pendingChanges().empty());
+        pokemon.has_value(), gen2ActionCapabilities(screen), !editor->pendingChanges().empty());
     legacy.pokemonRow = std::clamp(
         legacy.pokemonRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
     const auto model = PokeBank::UIModel::ClassicPokemonActionMenu::fromShared(actions);
@@ -359,41 +313,6 @@ void drawSharedProvenanceSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb)
         for(size_t i=0;i<4;++i)rows.push_back({"Move "+std::to_string(i+1),p->moves[i]?Names::getMoveName(p->moves[i]):"Empty"});
     }
     UI::SharedEditorChrome::drawOriginLegalityPanel(fb,screen.touchButtons,rows,P::LegalityState::NotChecked);
-}
-
-void drawSharedCloneSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
-    auto& shared = sharedSurfaceStateFor(screen);
-    auto* editor = stagedEditor(screen);
-    if (!editor) return;
-    const int destination = firstEmptyGen2Slot(*editor, shared.cloneBox);
-    fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight() - 48, Color(0, 0, 0, 120));
-    constexpr int x = 190, y = 74, w = 900, h = 550;
-    drawPanelSurface(fb, x, y, w, h, false, 18);
-    fb.drawText(x + 28, y + 20, "Clone Pokemon — Destination", Colors::Text, TextStyle::Heading);
-    fb.drawText(x + 28, y + 54,
-                "Box " + std::to_string(shared.cloneBox + 1) + "   •   first writable slot highlighted   •   source unchanged",
-                Colors::TextDim, TextStyle::Caption);
-
-    constexpr int cols = 5;
-    constexpr int cellW = 150, cellH = 72;
-    const int startX = x + 58, startY = y + 104;
-    for (int slot = 0; slot < static_cast<int>(editor->metadata().boxCapacity); ++slot) {
-        const int col = slot % cols, row = slot / cols;
-        const int xx = startX + col * cellW, yy = startY + row * cellH;
-        std::string error;
-        const auto pokemon = editor->boxedPokemon(static_cast<std::size_t>(shared.cloneBox),
-                                                  static_cast<std::size_t>(slot), error);
-        const bool target = slot == destination;
-        SharedBoxedRows::drawBox(fb, SharedBoxedRows::rect(xx, yy, cellW - 10, cellH - 10), {target});  // R2-BUG-012 boxed row
-        fb.drawRoundedRect(xx, yy, cellW - 10, cellH - 10, 8, target ? Colors::Accent : Colors::Divider, 1);
-        fb.drawText(xx + 10, yy + 8, "Slot " + std::to_string(slot + 1), Colors::TextDim, TextStyle::Caption);
-        fb.drawText(xx + 10, yy + 34,
-                    pokemon ? std::string(Names::getSpeciesName(pokemon->species)) : (target ? "Clone here" : "Empty"),
-                    Colors::Text, TextStyle::Caption);
-    }
-    if (destination < 0)
-        fb.drawText(x + 28, y + h - 62, "This box is full — choose another box with L/R", Colors::Error, TextStyle::Body);
-    drawNavBar(fb, {{"L/R", "Box"}, {"A", "Stage Clone"}, {"B", "Cancel"}});
 }
 
 void drawSharedReviewSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
@@ -573,7 +492,7 @@ bool sharedSurfaceOwnsFrame(const TrainerViewScreen& screen) noexcept {
     if (!isGSC(screen)) return false;
     const auto& shared = sharedSurfaceStateFor(screen);
     const auto& legacy = editorOverlayState(screen);
-    return shared.cloneActive || shared.provenanceActive || stateFor(screen).mode != Mode::None ||
+    return shared.provenanceActive || stateFor(screen).mode != Mode::None ||
            (legacy.active && (legacy.pokemonActions || legacy.review));
 }
 
@@ -581,7 +500,6 @@ bool handleSharedSurfaceInput(TrainerViewScreen& screen, uint64_t down, uint64_t
                               int stickX, int stickY, const TouchInput& touch) {
     if (!isGSC(screen)) return false;
     if (handleSharedProvenance(screen, down)) return true;
-    if (handleSharedClone(screen, down)) return true;
     if (handleSharedReview(screen, down, held, stickX, stickY)) return true;
     if (handleSharedActions(screen, down, held, stickX, stickY, touch)) return true;
     auto& state = stateFor(screen);
@@ -599,7 +517,6 @@ bool drawSharedSurface(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     const auto& shared = sharedSurfaceStateFor(screen);
     auto& legacy = editorOverlayState(screen);
     if (shared.provenanceActive) { drawSharedProvenanceSurface(screen, fb); return true; }
-    if (shared.cloneActive) { drawSharedCloneSurface(screen, fb); return true; }
     if (legacy.active && legacy.review) { drawSharedReviewSurface(screen, fb); return true; }
     if (stateFor(screen).mode != Mode::None) { drawSharedWorkspace(screen, fb); return true; }
     if (legacy.active && legacy.pokemonActions) { drawSharedActionSurface(screen, fb); return true; }

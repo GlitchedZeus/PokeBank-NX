@@ -1,6 +1,6 @@
 #pragma once
 
-// ClassicCarryGrid.h - which grid the shared classic Y-carry runs on, and how its cursor moves
+// ClassicCarryGrid.h - which grid the shared classic box carry runs on, and how its cursor moves
 // in the Gen IV Storage view (QA Round 3 Part 9 item 8).
 //
 // The Storage view's game-save pane shows the SAME staged PK4 boxes as the Boxes view. With a

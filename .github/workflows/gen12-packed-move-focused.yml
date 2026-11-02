@@ -46,6 +46,10 @@ jobs:
             src/Integration/Gen2/Gen2ReadOnlySave.cpp \
             src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
             src/Integration/Gen2/Gen2PersonalData.cpp \
+            src/Integration/Gen2/Gen2UniversalInventory.cpp \
+            src/Inventory/ClassicInventoryCatalog.cpp \
+            src/Inventory/ItemQuantityPolicy.cpp \
+            src/Names/ItemNames.cpp \
             src/Pokemon/Experience.cpp \
             src/Utils/StringHelpers.cpp \
             src/Utils/HelperUtilities.cpp \
@@ -68,6 +72,10 @@ jobs:
             src/Integration/Gen2/Gen2ReadOnlySave.cpp \
             src/Integration/Gen2/Gen2ReadOnlyInventory.cpp \
             src/Integration/Gen2/Gen2PersonalData.cpp \
+            src/Integration/Gen2/Gen2UniversalInventory.cpp \
+            src/Inventory/ClassicInventoryCatalog.cpp \
+            src/Inventory/ItemQuantityPolicy.cpp \
+            src/Names/ItemNames.cpp \
             src/Pokemon/Experience.cpp \
             src/Utils/StringHelpers.cpp \
             src/Utils/HelperUtilities.cpp \

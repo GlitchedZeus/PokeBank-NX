@@ -5,6 +5,8 @@ source = (ROOT / "src/UI/SaveSelectScreen.cpp").read_text(encoding="utf-8")
 launcher_source = (ROOT / "src/UI/GameLauncher.cpp").read_text(encoding="utf-8")
 launcher_header = (ROOT / "include/UI/GameLauncher.h").read_text(encoding="utf-8")
 main_source = (ROOT / "src/main.cpp").read_text(encoding="utf-8")
+# Round 11: the region scenery band (artwork + scrim, rounded mask) lives in UI/CardScenery.h.
+scenery_header = (ROOT / "include/UI/CardScenery.h").read_text(encoding="utf-8")
 root_makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 return_host_source = (ROOT / "runtime/return_host/source/main.c").read_text(encoding="utf-8")
 return_host_license = (ROOT / "runtime/return_host/LICENSE.nx-hbloader.txt").read_text(encoding="utf-8")
@@ -176,6 +178,20 @@ require("saveGameLaunchBinding" in source,
         "Link Game File must persist app-owned launch metadata")
 require('"Y", "Up Folder"' in source,
         "game-file browser must support controller folder navigation")
+# Round 11 H39 (owner: "add a button that is cancel … make it '-' … app wide"): the Link Game File
+# browser is the app's second SD browser; '-' cancels it from any folder exactly like the Import from
+# file dialog, and its footer names it. B keeps closing it (owner-accepted), labelled Close.
+picker_input = source[source.index("if (overlay == Overlay::GameFilePicker) {\n            const int count"):]
+picker_input = picker_input[:picker_input.index("if (overlay == Overlay::Help)")]
+minus_at = picker_input.find("HidNpadButton_Minus)")
+require(minus_at >= 0 and
+        "overlay = launchFileReturnToLegacy ? Overlay::LegacyInstances : Overlay::None;" in picker_input[minus_at:minus_at + 300] and
+        "activateGameFilePicker" not in picker_input[minus_at:minus_at + 300],
+        "the Link Game File browser must cancel on '-' from any folder without linking anything")
+picker_draw = source[source.index("} else if (overlay == Overlay::GameFilePicker) {"):]
+picker_draw = picker_draw[:picker_draw.index("} else if (overlay ==", 10)]
+require('{"-", "Cancel"}' in picker_draw and '{"B", "Close"}' in picker_draw,
+        "the Link Game File footer must show B Close and - Cancel")
 require("promptText(" not in source[source.find("openGameFilePicker"):source.find("openGen4Setup")],
         "launch linking must not require typing a raw SD path")
 
@@ -515,8 +531,10 @@ require("partySpriteH = 82" in source and
 require("gameRegionBackdropKey(title.gameId)" in source and
         "SystemIcons::regionBackdrop(regionKey)" in source and
         "regionH = 270" in source and
-        "Color(5, 14, 30, 40)" in source,
-        "selected-game Product Home card must support a visible region-scene backdrop with a readability scrim")
+        "CardScenery::drawTopBand(fb, DETAIL_X, HUB_Y, DETAIL_W, regionH," in source and
+        "kHomeSceneryScrim{5, 14, 30, 40}" in scenery_header,
+        "selected-game Product Home card must support a visible region-scene backdrop with a readability scrim "
+        "(drawn by the rounded CardScenery band, Round 11)")
 region_loader = system_icons[system_icons.index("const IconImage& SystemIcons::regionBackdrop"):
                              system_icons.index("const IconImage& SystemIcons::trainerPortrait")]
 require('"brilliant_diamond_switch"' in game_identity and
@@ -692,7 +710,7 @@ require("drawTrainerPortrait" not in classic_fn,
 require("focused ? Colors::Info : Colors::TextSecondary" in source and
         ": i == 0 ? Colors::Info" not in source,
         "Games/Banks/Items/Search/More must turn blue only when focused")
-require("Color(5, 14, 30, 40)" in source and "Color(3, 10, 24, 104)" in source,
+require("kHomeSceneryScrim{5, 14, 30, 40}" in scenery_header and "Color(3, 10, 24, 104)" in source,
         "Product Home region artwork must remain visible under lighter glass")
 require("return beginLaunchLinkForCurrentTitle();" not in source and
         "Direct launch could not resolve this game's ROM" in source,
@@ -804,20 +822,33 @@ require("PokeBank::UIModel::HomeQuit::decide(kDown)" in leave and "Decision::Qui
         "Only the leave decision's explicit Y may quit or start the launch handoff")
 require(source.count("appExitRequested = true;") == 1 and source.count("requestGameLaunch(") == 1,
         "App exit and launch handoff each have exactly one site: the leave decision's Y")
-# R2-LAUNCH: the leave decision is sized by SharedMenuGeometry::LaunchConfirm, its text comes from
-# LeaveDecisionLayout (word-wrapped, quit-route notice kept), and it shows real coloured B / A / Y
-# buttons plus the shared confirm footer. Only Y commits.
+# R2-LAUNCH: the leave decision is sized by SharedMenuGeometry::LaunchConfirm and its text comes from
+# LeaveDecisionLayout (word-wrapped, quit-route notice kept). Only Y commits.
+# Round 11 QUIT (owner: "has a highlighted option in the Y exit option, it also has a footer which
+# isn't needed … get rid of 'stay'"): deliberately changed from B Back / A Stay / accent-filled Y plus
+# a repeating confirm footer to two neutral buttons, B Cancel (safe, left) and Y Quit / Launch, with an
+# EMPTY nav bar that covers the Home footer. A still stays (HomeQuit::decide is unchanged), unlabelled.
 layout_header = (ROOT / "include/UI/LeaveDecisionLayout.h").read_text(encoding="utf-8")
 leave_draw = source[source.index("        if (overlay == Overlay::QuitConfirm) {\n            // R2-LAUNCH"):]
 leave_draw = leave_draw[:leave_draw.index("        } else if (overlay == Overlay::OpenFailure) {")]
 require('"Quit PokeBank NX?"' in layout_header and '"Launch " + std::string(gameName) + "?"' in layout_header and
         "G::layout(G::MenuType::LaunchConfirm" in leave_draw and
         "LeaveDecisionLayout::build(\n                quitting, pendingLaunchName, pendingLaunchNotice, pendingLaunchStarter)" in leave_draw and
-        'drawGlyphButton(fb, back.x, back.y, back.w, back.h, "B", "Back");' in leave_draw and
-        'drawGlyphButton(fb, stay.x, stay.y, stay.w, stay.h, "A", "Stay");' in leave_draw and
-        'quitting ? "Quit" : "Launch", Colors::Accent, Colors::White);' in leave_draw and
-        'confirmFooter(\n                                                   "Y", quitting ? "Quit" : "Launch", "A", "Stay")' in leave_draw,
+        'drawGlyphButton(fb, cancel.x, cancel.y, cancel.w, cancel.h, "B", "Cancel");' in leave_draw and
+        'drawGlyphButton(fb, commit.x, commit.y, commit.w, commit.h, "Y", quitting ? "Quit" : "Launch");' in leave_draw and
+        "G::buttonRect(layout, 0, 2)" in leave_draw and "G::buttonRect(layout, 1, 2)" in leave_draw,
         "The leave decision is visible, names Y as the only commit and shows the quit-route notice")
+require(leave_draw.count("drawGlyphButton(") == 2 and '"Stay"' not in leave_draw and '"A"' not in leave_draw and
+        "Colors::Accent" not in leave_draw and "confirmFooter" not in leave_draw and "drawFooter" not in leave_draw,
+        "Round 11 QUIT: two neutral buttons (B Cancel, Y Quit / Launch), no Stay, no highlight, no repeating footer")
+require("drawNavBar(fb, std::string());" in leave_draw,
+        "Round 11 QUIT: an empty nav bar covers the Home footer under the leave decision")
+# Round 11 QUIT (skeptic): the Bank / Storage exit prompt had the same Stay-next-to-Cancel duplication.
+storage_panel = (ROOT / "src/UI/Panels/StoragePanel.cpp").read_text(encoding="utf-8")
+trainer_base = (ROOT / "src/UI/TrainerViewScreenBase.inc").read_text(encoding="utf-8")
+require('{"B", "Stay"}' not in storage_panel and "B: Stay" not in trainer_base and
+        '{"A", "Confirm"}, {"B", "Cancel"}' in storage_panel and "A: Confirm  |  B: Cancel" in trainer_base,
+        "Round 11 QUIT: the Storage exit prompt labels B Cancel, like its Cancel row, never Stay")
 require("inputTrace().frame(\"home\", padGetButtonsDown(&pad), padGetButtons(&pad), kDown," in source,
         "Product Home records raw edges, held state and the logical mask in the opt-in input trace")
 # Footer hints match the bindings: B is labelled Quit because it opens the quit decision, and

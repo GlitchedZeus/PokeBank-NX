@@ -66,6 +66,26 @@ void testPlusOnlyWhereHandled() {
     std::cout << "+ named only where it acts ok\n";
 }
 
+// Round 11 X-IMPEXP (owner Extra 4): the Pokemon page names X Export / Import in every generation,
+// and Add Pokemon is still described under A (Create stays reachable from Actions).
+void testBoxXRow() {
+    for (int gen = 1; gen <= 5; ++gen) {
+        const auto lines = Help::lines(Help::Page::Pokemon, gen);
+        int x = 0;
+        bool add = false;
+        for (const auto& line : lines) {
+            if (line.rfind("X   ", 0) == 0) {
+                ++x;
+                assert(line.find("Export") != std::string::npos && line.find("Import") != std::string::npos);
+                assert(line.find("Add") == std::string::npos);
+            }
+            if (line.rfind("A   ", 0) == 0 && line.find("Add Pokemon") != std::string::npos) add = true;
+        }
+        assert(x == 1 && add);
+    }
+    std::cout << "X Export / Import named on every Pokemon page ok\n";
+}
+
 void testEveryLineIsConcrete() {
     for (int gen = 1; gen <= 5; ++gen)
         for (const auto page : kPages) {
@@ -105,10 +125,27 @@ void testClaimsMatchTheCode() {
     assert(gen5.find("if(keys&HidNpadButton_Y ||\n       tap==PokeBank::UIModel::ClassicTrainerSession::kReviewTouchId)") !=
            std::string::npos);
     assert(gen5.find("keys&(HidNpadButton_Plus|HidNpadButton_Y)") == std::string::npos);
-    // Moving a Pokemon: Y places, B cancels.
+    // Round 11 X-IMPEXP: X on the Boxes grid exports / imports a file in every generation, through
+    // the shared decision (SharedPokemonEditor::boxActivation), and never opens Create.
+    const std::pair<const char*, const char*> boxX[] = {
+        {"src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc", "PokemonFileMenus::exportPokemon(screen, 1, false, state.box, state.slot)"},
+        {"src/UI/Gen2SharedSurfaceParity.inc", "PokemonFileMenus::exportPokemon(screen, 2, false, box, slot)"},
+        {"src/UI/Gen3SharedPokemonSurface.inc", "PokemonFileMenus::exportPokemon(screen, 3, false, screen.selectedBoxIndex"},
+        {"src/UI/Gen4SharedPokemonSurface.inc", "PokemonFileMenus::exportPokemon(screen, 4, false, screen.selectedBoxIndex"},
+        {"src/UI/Gen5SharedReadOnlySurface.inc", "PokemonFileMenus::exportPokemon(screen,5,false,screen.selectedBoxIndex"},
+    };
+    for (const auto& [file, call] : boxX) {
+        const std::string text = read(file);
+        assert(text.find("boxActivation(") != std::string::npos && text.find(call) != std::string::npos);
+        assert(text.find("BoxActivation::Add") == std::string::npos);
+    }
+    // Moving or cloning a Pokemon: A places, B cancels (Round 11 H23, owner: the place key moved from
+    // Y to A in every generation). Both carry dispatch sites use the shared ClassicCarryRules keys.
     const std::string carry = read("src/UI/ClassicPackedMoveOverlay.inc");
-    assert(carry.find("if (down & HidNpadButton_Y) return place(screen, state);") != std::string::npos);
-    assert(carry.find("if (down & HidNpadButton_B) return cancel(screen, state);") != std::string::npos);
+    assert(carry.find("case Carry::Key::Place: return place(screen, state);") != std::string::npos);
+    assert(carry.find("case Carry::Key::Cancel: return cancel(screen, state);") != std::string::npos);
+    assert(carry.find("if (down & HidNpadButton_Y) return place(screen, state);") == std::string::npos);
+    assert(read("include/UI/ClassicCarryRules.h").find("if (down & kButtonA) return Key::Place;") != std::string::npos);
     std::cout << "Help claims match the input code ok\n";
 }
 
@@ -159,6 +196,7 @@ void testEveryRowDrawsGlyphsAndReviewIsNamedOnce() {
 int main() {
     testPlusOnlyWhereHandled();
     testEveryLineIsConcrete();
+    testBoxXRow();
     testClaimsMatchTheCode();
     testEveryRowDrawsGlyphsAndReviewIsNamedOnce();
     std::cout << "test_classic_help_accuracy: all passed\n";

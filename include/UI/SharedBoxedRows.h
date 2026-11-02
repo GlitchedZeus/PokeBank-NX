@@ -14,6 +14,11 @@
 // Colours are the reference popup's: Colors::Surface rows, Colors::Divider 1 px border,
 // Colors::PartyNumber (the established yellow) 2 px focus / pressed outline. The theme's
 // dark-blue modal surface, fonts and artwork are unchanged.
+//
+// Round 11 H12: a row can also be MARKED (picked in a multi-select list, e.g. Recovery files). A
+// marked box gets its own fill (Colors::AccentSecondary), a Success-coloured bar along its left
+// edge and a Success border, so "picked" is visible on its own and is never confused with focus
+// (yellow outline) or a fingertip press (yellow tint). Rows that never set it draw as before.
 
 #include "UI/Common.h"
 #include "UI/PKSEFramebuffer.h"
@@ -39,11 +44,18 @@ inline constexpr int kFocusBorder = 2;     // focused / pressed outline
 inline constexpr int kLabelInset = 18;     // reference label x inset inside the box
 inline constexpr int kDetailInset = 16;    // right-aligned detail text inset
 inline constexpr int kPressedAlpha = 112;  // reference pressed tint
+inline constexpr int kMarkBarWidth = 6;    // Round 11 H12: marked rows' left bar
+inline constexpr int kMarkBarInset = 6;
 
+// `marked` stays the LAST member so positional `{focused}` / `{focused, enabled}` initialisers keep
+// their meaning.
 struct State {
     bool focused = false;
     bool enabled = true;
+    bool marked = false;   // Round 11 H12: picked in a multi-select list
 };
+
+inline Color markedFill() { return Colors::AccentSecondary; }
 
 inline Color labelColor(const State& s) {
     if (!s.enabled) return Color(Colors::TextDim.r, Colors::TextDim.g, Colors::TextDim.b, 105);
@@ -65,11 +77,16 @@ inline bool drawBox(PKSEFramebuffer& fb, const Geo::Rect& cell, const State& s) 
     const bool pressed = s.enabled && pressedNow(cell);
     Color tint = Colors::PartyNumber;
     tint.a = kPressedAlpha;
-    fb.drawFilledRoundedRect(cell.x, cell.y, cell.w, cell.h, kRadius, pressed ? tint : Colors::Surface);
+    fb.drawFilledRoundedRect(cell.x, cell.y, cell.w, cell.h, kRadius,
+                             pressed ? tint : s.marked ? markedFill() : Colors::Surface);
+    if (s.marked)
+        fb.drawFilledRoundedRect(cell.x + kMarkBarInset, cell.y + kMarkBarInset, kMarkBarWidth,
+                                 cell.h - 2 * kMarkBarInset, kMarkBarWidth / 2, Colors::Success);
     const bool outline = s.enabled && (s.focused || pressed);
-    fb.drawRoundedRect(cell.x, cell.y, cell.w, cell.h, kRadius,
-                       outline ? Colors::PartyNumber : Colors::Divider,
-                       outline ? kFocusBorder : kBorder);
+    Color border = outline ? Colors::PartyNumber : Colors::Divider;
+    if (s.marked && !outline) border = Colors::Success;
+    fb.drawRoundedRect(cell.x, cell.y, cell.w, cell.h, kRadius, border,
+                       outline || s.marked ? kFocusBorder : kBorder);
     return pressed;
 }
 

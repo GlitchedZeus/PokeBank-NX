@@ -140,6 +140,10 @@ inline constexpr int kPreviewX = 610;                       // preview column, r
 inline constexpr int kPreviewW = ModalWidth - kPreviewX - 24;   // 446: up to the modal's right padding
 inline constexpr int kKeyGridY = ModalHeight - 24 - kKeyGridH;  // 320: grid bottom-aligned in the column
 inline constexpr int kSearchArtY = 140, kSearchArtW = 150, kSearchArtH = 120;   // artwork while searching
+// Round 11 SPRITE (owner: "In the species picker ... 1 photo"): the preview shows ONE artwork, in
+// the current Normal/Shiny preview state, centred on the column the title and type badges use.
+inline constexpr int kPreviewTextW = 353;
+inline constexpr int kPreviewArtY = 152, kPreviewArtW = 240, kPreviewArtH = 190;   // above the badges (y+344)
 
 namespace MenuGeometry = PokeBank::UIModel::SharedMenuGeometry;
 inline constexpr MenuGeometry::Rule kRowRule = MenuGeometry::rule(MenuGeometry::MenuType::SpeciesPicker);
@@ -228,6 +232,13 @@ inline int firstVisible(const Chooser& c, uint16_t species) noexcept {
 inline SharedSearchInput::Rect keyGridRect(int modalX, int modalY) noexcept {
     return {modalX + kPreviewX, modalY + kKeyGridY, kPreviewW, kKeyGridH};
 }
+// The single preview artwork: drawn here by drawContent and the tap target that previews the
+// other appearance (handleTouch). While searching it is the compact artwork above the key grid.
+inline SharedSearchInput::Rect previewArtRect(int modalX, int modalY, bool searching) noexcept {
+    const int w = searching ? kSearchArtW : kPreviewArtW;
+    return {modalX + kPreviewX + (kPreviewTextW - w) / 2, modalY + (searching ? kSearchArtY : kPreviewArtY),
+            w, searching ? kSearchArtH : kPreviewArtH};
+}
 
 struct Input {
     PokeBank::UIModel::SharedPickerPaging::Keys nav;   // D-pad / stick (+ L/R/ZL/ZR) as resolved by the owner
@@ -240,6 +251,7 @@ struct Handled {
     bool touch = false;        // the frame's touch belongs to the key grid or the scrollbar
     bool queryChanged = false;
     bool blockSelect = false;  // nothing matches: A selects nothing
+    bool previewShinyTapped = false;   // a tap on the preview artwork: the owner toggles shiny as for Y
 };
 
 inline constexpr int ModalX = (1280 - ModalWidth) / 2;                   // 100 on the 1280x720 panel
@@ -265,6 +277,13 @@ inline Handled handleTouch(Chooser& c, const SharedSearchInput::Touch& touch, ui
     if (te != Event::None) h.touch = true;
     if (te == Event::QueryChanged) h.queryChanged = true;
     if (te == Event::Closed) h.keys = true;   // the Done key's release closed the grid: nothing else this frame
+    // Round 11 SPRITE: a tap released on the preview artwork (started there too, so a swipe is
+    // never a tap) previews the other appearance. Preview only, like Y: the owner applies it on A.
+    if (!h.touch && touch.justReleased) {
+        const auto art = previewArtRect(modalX, modalY, c.searching());
+        if (art.contains(touch.startX, touch.startY) && art.contains(touch.x, touch.y))
+            h.touch = h.previewShinyTapped = true;
+    }
     refilter(c, speciesCount, available, name);
     if (!h.touch && c.count() > 0) {
         const int visible = c.visibleRows();
@@ -282,7 +301,8 @@ inline Handled handleTouch(Chooser& c, const SharedSearchInput::Touch& touch, ui
 
 // Keys phase, BEFORE the owner's own browsing / A / B: X or Minus (`search`) toggles the grid;
 // while it is open the D-pad / stick, A and B drive the keys and the owner must not browse,
-// select or cancel this frame. Y is never consumed (the owner keeps its shiny toggle).
+// select or cancel this frame. Y is never consumed (the owner keeps its shiny toggle; a tap on the
+// preview artwork arrives from handleTouch as previewShinyTapped and is fed to that same toggle).
 template <class Available, class Name>
 inline Handled handleKeys(Chooser& c, const PokeBank::UIModel::SharedPickerPaging::Keys& nav,
                           bool a, bool b, bool search, uint16_t& species, int speciesCount,
@@ -310,7 +330,7 @@ inline Handled handle(Chooser& c, const Input& in, uint16_t& species, int specie
     t.keys = t.keys || k.keys;
     t.queryChanged = t.queryChanged || k.queryChanged;
     t.blockSelect = k.blockSelect;
-    return t;
+    return t;   // t.previewShinyTapped is touch-only
 }
 
 // Extracted from the accepted Gen I visual picker and shared with Generation II.
@@ -438,18 +458,34 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
         const auto form = static_cast<uint8_t>(preview == 201 && nativeUnownForm >= 0 &&
             nativeUnownForm < 26 ? nativeUnownForm : 0);
         const int previewX = x + kPreviewX;
-        constexpr int previewW = 353;
+        constexpr int previewW = kPreviewTextW;
         fb.drawText(previewX, y + 86, titleText(preview), Colors::Text, TextStyle::Heading);
-        fb.drawText(previewX, y + 122, "NORMAL", !previewShiny ? Colors::Accent : Colors::TextDim, TextStyle::Caption);
-        fb.drawText(previewX + 190, y + 122, "SHINY", previewShiny ? Colors::ShinyStar : Colors::TextDim, TextStyle::Caption);
+        // Round 11 SPRITE: one state caption and ONE artwork in the current preview state, instead
+        // of fixed NORMAL and SHINY pictures. Y (or a tap on the picture) previews the other one.
+        const char* caption = previewShiny ? "SHINY" : "NORMAL";
+        fb.drawText(previewX, y + 122, caption, previewShiny ? Colors::ShinyStar : Colors::Accent, TextStyle::Caption);
+        if (shinyToggleAvailable) {
+            int cw = 0, ch = 0;
+            fb.measureText(caption, cw, ch, TextStyle::Caption);
+            fb.drawText(previewX + cw + 14, y + 122,
+                        previewShiny ? "Y / tap picture: Normal" : "Y / tap picture: Shiny",
+                        Colors::TextDim, TextStyle::Caption);
+        }
+        const auto art = previewArtRect(x, y, searching);
+        // The requested appearance only: a missing shiny artwork is reported, never replaced by
+        // the normal one (the picture must agree with the Shiny state A will apply).
+        Sprite* sprite = SpriteManager::getSprite(preview, form, previewShiny);
+        if (sprite && sprite->data) {
+            fb.drawSpriteStaticContained(art.x, art.y, art.w, art.h, sprite->width, sprite->height,
+                                         sprite->data, sprite->channels);
+        } else if (!searching) {
+            const char* missing = previewShiny ? "No shiny sprite" : "No sprite";
+            int mw = 0, mh = 0;
+            fb.measureText(missing, mw, mh, TextStyle::Caption);
+            fb.drawText(art.x + (art.w - mw) / 2, art.y + (art.h - mh) / 2, missing, Colors::TextDim, TextStyle::Caption);
+        }
         if (searching) {
-            // NEW-05: compact artwork above the key grid (drawn earlier in this column).
-            if (auto* normal = SpriteManager::getSprite(preview, form, false); normal && normal->data)
-                fb.drawSpriteStaticContained(previewX, y + kSearchArtY, kSearchArtW, kSearchArtH,
-                                             normal->width, normal->height, normal->data, normal->channels);
-            if (auto* shiny = SpriteManager::getSprite(preview, form, true); shiny && shiny->data)
-                fb.drawSpriteStaticContained(previewX + 190, y + kSearchArtY, kSearchArtW, kSearchArtH,
-                                             shiny->width, shiny->height, shiny->data, shiny->channels);
+            // NEW-05: the compact artwork and its type badges sit above the key grid (drawn earlier).
             const auto types = (previewTypes[0] == 0xFF && previewTypes[1] == 0xFF)
                 ? classicPickerTypes(preview, speciesCount)
                 : previewTypes;
@@ -457,12 +493,6 @@ void drawContent(PKSEFramebuffer& fb, int x, int y, int selectedSpecies,
                                                 types[0], types[1], 20);
             return;
         }
-        if (auto* normal = SpriteManager::getSprite(preview, form, false); normal && normal->data)
-            fb.drawSpriteStaticContained(previewX, y + 152, 165, 190, normal->width, normal->height, normal->data, normal->channels);
-        else fb.drawText(previewX + 20, y + 235, "No sprite", Colors::TextDim, TextStyle::Caption);
-        if (auto* shiny = SpriteManager::getSprite(preview, form, true); shiny && shiny->data)
-            fb.drawSpriteStaticContained(previewX + 188, y + 152, 165, 190, shiny->width, shiny->height, shiny->data, shiny->channels);
-        else fb.drawText(previewX + 208, y + 235, "No shiny sprite", Colors::TextDim, TextStyle::Caption);
 
         // Generation-correct type badges update with the highlighted species.
         const auto types = (previewTypes[0] == 0xFF && previewTypes[1] == 0xFF)

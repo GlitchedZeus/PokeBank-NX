@@ -2,6 +2,7 @@
 #define POKEBANK_GEN5_NATIVE_TEXT_H
 
 #include "Encryption/Encryption5.h"
+#include "Integration/Gen5/Gen5TrainerName.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -18,6 +19,12 @@ namespace PokeVault::Integration::Gen5 {
 // PK5 original trainer name 0x68: 8 units, max 7 characters.
 // This first text-editing tranche permits native ASCII only, not lossy
 // UTF-8-to-Pokemon glyph approximation. Non-ASCII source text is preserved.
+// Round 11 H27: the keyboard's Hangul / kana pages are therefore NOT offered for
+// Gen V. PK5 stores raw UTF-16, so any code unit "fits", but the games draw only
+// the glyphs in their own per-language font tables, which this project has not
+// verified (no Gen V equivalent of Gen4Text.h's table exists here). Without that
+// table a writer cannot refuse a syllable the game would draw as garbage, so free
+// non-ASCII entry waits for verified Gen V glyph rules; display is unaffected.
 [[nodiscard]] constexpr size_t nameOffset5(bool nickname) noexcept {
     return nickname ? 0x48 : 0x68;
 }
@@ -40,6 +47,21 @@ namespace PokeVault::Integration::Gen5 {
         result.push_back(static_cast<char>(code));
     }
     return result;
+}
+// Display only (Round 11 H27): the stored nickname / OT name in the record's own language, read
+// to the first 0xFFFF / 0x0000 or the field's character limit, through the same decoder as Gen V
+// trainer names. Never use it to seed or replay an edit: asciiName5 is the write gate.
+[[nodiscard]] inline std::optional<std::string> displayName5(
+    std::span<const uint8_t> plain,bool nickname) {
+    const size_t off=nameOffset5(nickname),cap=nameCapacity5(nickname);
+    if(plain.size()<off+cap*2)return std::nullopt;
+    std::u16string raw;
+    for(size_t i=0;i<nameMaxLength5(nickname);++i) {
+        const uint16_t code=Crypto::read16(plain,off+i*2);
+        if(code==0 || code==0xFFFF)break;
+        raw.push_back(static_cast<char16_t>(code));
+    }
+    return displayGen5Text(raw,nameMaxLength5(nickname));
 }
 [[nodiscard]] inline bool nativeNameBytesDiffer5(
     std::span<const uint8_t> a,std::span<const uint8_t> b,bool nickname) {

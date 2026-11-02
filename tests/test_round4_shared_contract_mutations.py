@@ -53,7 +53,7 @@ assert check(mutate('src/UI/SharedPokemonEditorSurface.inc',
 assert check(mutate('src/UI/TrainerViewScreenBase.inc','ClassicPartyActions::open(','ClassicPartyActions::missingOpen('),'CG33')
 assert check(mutate('src/UI/TrainerViewScreenCompositeOverlay.cpp','ClassicPartyActions::handle(*this',
     'ClassicPartyActions::missingHandle(*this'),'CG33')
-assert check(mutate('src/UI/ClassicPartyActions.inc','actionsForSlot(true,{false,false,true},false)',
+assert check(mutate('src/UI/ClassicPartyActions.inc','actionsForSlot(true,{false,false,true,false,true},pendingChanges(screen))',
     'actionsForSlot(false,{false,false,false},false)'),'CG33')
 assert check(mutate('include/UI/Gen2PokemonSession.h','editor.stagePartyPokemonEdit(',
     'editor.stageBoxPokemonEdit('),'CG33')

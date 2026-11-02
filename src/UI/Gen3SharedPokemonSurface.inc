@@ -50,6 +50,7 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/SharedMovesPanel.h"
 #include "UI/SharedStatReroll.h"
+#include "UI/EditFeedback.h"
 #include "Utils/HelperUtilities.h"
 #include "UI/SharedHeldItemPicker.h"
 #include "UI/SharedHeldItemInput.h"
@@ -77,6 +78,7 @@ namespace SessionModel = PokeBank::UIModel::Gen3SharedEditor;
 namespace Gen3 = PokeVault::Integration::Gen3;
 namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 namespace EncounterPicker = PokeBank::UIModel::Gen3EncounterPicker;
+namespace MetRows = PokeBank::UIModel::ExactGameMetLocations;
 namespace Context = PokeBank::UIModel::ClassicGameContext;
 namespace MoveUI = PokeBank::UIModel::MovePickerPresentation;
 namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
@@ -415,18 +417,19 @@ constexpr int kMetLocationPickerWidth = 620;
 static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
     PokeBank::UIModel::SharedMenuGeometry::MenuType::LocationPicker).width == kMetLocationPickerWidth);
 
-std::string encounterOriginText(const TrainerViewScreen& screen,
+std::string encounterOriginText(const TrainerViewScreen&,
                                 const Gen3::StagedPokemonRecord& p) {
     if (p.metLocation == 0) return "Unknown";
-    const auto choices = Encounter::forGameSpeciesWithGen3Provenance(
-        screen.sourceGameId, p.species);
+    // Round 11 FRLG: the record's own origin game's catch templates (not the save's). A location
+    // with no template is valid trade / gift / hatch history the data cannot confirm.
+    const auto choices = EncounterPicker::templatesForOrigin(p.originGame, p.species);
     const Encounter::EncounterProvenanceChoice* selected = nullptr;
     for (const auto& choice : choices) {
         if (choice.encounter.location != p.metLocation) continue;
         if (!selected) selected = &choice;
         if (choice.encounter.containsLevel(p.metLevel)) { selected = &choice; break; }
     }
-    if (!selected) return "Unresolved";
+    if (!selected) return "Not a listed catch; unverified";
     if (!selected->evolved) return std::string(Names::getSpeciesName(p.species));
     return std::string(Names::getSpeciesName(selected->originalEncounterSpecies)) +
            " → " + Names::getSpeciesName(p.species);
@@ -598,30 +601,14 @@ void normalizeEditableFocus(State& state, int verticalDirection = 0, bool panelC
 
 // One encounter choice as {place, "method · level [· origin species]"} for the picker row.
 std::pair<std::string, std::string> metLocationChoiceText(const State& state, uint16_t value) {
+    // Round 11 follow-up: the row text lives in the picker model (Gen3EncounterPickerModel.h
+    // rowText) so the verified-catch / unverified distinction is unit-tested: catch templates say
+    // their method and level, every other native location says "Not a listed catch; unverified",
+    // markers name themselves, and keep-stored is the save's own value, never judged.
     const auto& stored = state.session.working;
-    if (value == EncounterPicker::kKeepStoredRow) {
-        // R2-BUG-008: the save's own met location, not judged (traded / hatched / event / other).
-        return {"Keep stored: " + Names::getMetLocationDisplayName(stored.originGame, stored.metLocation),
-                "Met Lv. " + std::to_string(stored.metLevel)};   // the name already says "Keep stored"
-    }
-    const auto* selected = EncounterPicker::choiceAt(state.encounterChoices, value);
-    if (!selected) return {"Unknown location", {}};
-    const auto& encounter = selected->encounter;
-    std::string place = Names::getMetLocationDisplayName(state.session.working.originGame, encounter.location);
-    // Round 5 NEW-10: short enough that every row fits the 620 px window on one line
-    // (tests/test_met_location_fit.cpp).
-    std::string detail = std::string(Encounter::methodName(encounter.method)) +
-                         " Lv. " + std::to_string(encounter.minLevel);
-    if (encounter.maxLevel != encounter.minLevel)
-        detail += "–" + std::to_string(encounter.maxLevel);
-    if (selected->evolved) {
-        detail += ", met as " + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));
-        if (selected->minimumEvolutionLevel != 0)
-            detail += " (evo. " + std::to_string(selected->minimumEvolutionLevel) + ")";
-    }
-    // R2-BUG-008: the save's own met data is the "Keep stored" row; candidate rows show only the
-    // encounter itself (NEW-10 / Round 3 L03: no "not stored" filler on every other row).
-    return {std::move(place), std::move(detail)};
+    auto text = EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,
+                                         stored.metLocation, stored.metLevel);
+    return {std::move(text.place), std::move(text.detail)};
 }
 
 std::string pickerValueLabel(const State& state, uint16_t value) {
@@ -725,17 +712,20 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         const auto balls = Enums::getBallList(Enums::GameVersion::FRLG);
         state.pickerValues.assign(balls.begin(), balls.end());
     } else if (target == PickerTarget::MetLocation) {
-        state.encounterChoices = Encounter::forGameSpeciesWithGen3Provenance(
-            screen.sourceGameId, state.session.working.species);
-        if (state.encounterChoices.empty()) {
+        // Round 11 FRLG: the record's origin game decides the list (FireRed / LeafGreen: Kanto and
+        // Sevii; R/S/E: Hoenn), never the save's. A species with no catch template in that game
+        // (a traded Rayquaza, an evolved Charizard) still gets every native location.
+        // Session::metLocationPicker is the one model (templates + rows) the tests drive.
+        auto picker = state.session.metLocationPicker();
+        state.encounterChoices = std::move(picker.choices);
+        // R2-BUG-008: a stored origin the templates do not cover stays choosable (keep stored).
+        state.pickerValues = std::move(picker.rows);
+        if (state.pickerValues.empty()) {
             state.pickerTarget = PickerTarget::None;
-            screen.postStatus("No supported exact-game encounter templates for this Pokemon", 300);
+            screen.postStatus("Met Location has no native Generation III list for this origin game", 300);
             return;
         }
-        // R2-BUG-008: a stored origin the templates do not cover stays choosable (keep stored).
-        state.pickerValues = EncounterPicker::rowValuesWithStored(
-            state.encounterChoices, state.session.working.metLocation);
-        state.pickerRow = EncounterPicker::selectedRowWithStored(
+        state.pickerRow = EncounterPicker::selectedRowWithNative(
             state.encounterChoices, state.pickerValues, state.session.working.metLocation,
             state.session.working.metLevel);
         state.valuePicker = true;
@@ -820,10 +810,16 @@ void applyValuePicker(State& state) {
             state.session.setUnownLetter(static_cast<uint8_t>(value));
             break;
         case PickerTarget::MetLocation: {
-            if (const auto* choice = EncounterPicker::choiceAt(state.encounterChoices, value)) {
-                p.metLocation = choice->encounter.location;
-                state.session.setEncounterMetLevel(choice->encounter.minLevel);
-                state.selectedEncounter = *choice;
+            // Round 11 follow-up: Session::applyMetLocationRow applies every offered row -- a catch
+            // template, another location native to the record's origin game, a trade / egg / event
+            // marker (labelled unverified), or keep-stored -- and marks the Create Met Location
+            // explicitly chosen for each one (a FireRed Rayquaza or Charizard has only non-template
+            // rows). The chosen flag, never "location != 0", is what Create requires.
+            const SessionModel::Session::MetLocationPicker picker{state.encounterChoices, state.pickerValues};
+            const Encounter::EncounterProvenanceChoice* applied = nullptr;
+            if (state.session.applyMetLocationRow(picker, value, applied)) {
+                if (applied) state.selectedEncounter = *applied;
+                else if (value != EncounterPicker::kKeepStoredRow) state.selectedEncounter.reset();
             }
             break;
         }
@@ -942,7 +938,7 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         return;
     }
     if (row == 12) {
-        auto choices = Encounter::forGameSpeciesWithGen3Provenance(screen.sourceGameId, p.species);
+        auto choices = EncounterPicker::templatesForOrigin(p.originGame, p.species);
         std::optional<Encounter::EncounterProvenanceChoice> chosen = state.selectedEncounter;
         if (!chosen || chosen->encounter.location != p.metLocation) {
             chosen.reset();
@@ -954,7 +950,14 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
             }
         }
         if (!chosen) {
-            screen.postStatus("Choose a legitimate Met Location encounter first", 300);
+            if (p.metLocation == 0) {
+                screen.postStatus("Choose a Met Location first", 300);
+                return;
+            }
+            // Round 11 FRLG: a native location with no catch template (trade / gift / hatch
+            // history, or a kept stored value): any native met level; 0 is the hatched marker.
+            const auto r = Utils::promptNumber("Met Level (not a listed encounter)", p.metLevel, 0, 100);
+            if (r.accepted) state.session.setEncounterMetLevel(static_cast<uint8_t>(r.value));
             return;
         }
         const auto& encounter = chosen->encounter;
@@ -1306,6 +1309,8 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
         (down & HidNpadButton_B) != 0, (down & (HidNpadButton_X | HidNpadButton_Minus)) != 0,
         chosen, 386, gen3SpeciesAvailable, gen3SpeciesName);
     state.speciesPreview = chosen;
+    // Round 11 SPRITE: a tap on the preview artwork previews the other appearance, as Y does.
+    if (touched.previewShinyTapped) down |= HidNpadButton_Y;
     if (touched.keys || keyed.keys)
         down &= ~(HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_Left | HidNpadButton_Right |
                   HidNpadButton_L | HidNpadButton_R | HidNpadButton_ZL | HidNpadButton_ZR |
@@ -1341,29 +1346,18 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
         return true;
     }
     if (down & HidNpadButton_A) {
+        // Session::setSpecies applies the shared Round 11 policies: moves (SpeciesChangeMoves.h)
+        // and history (SpeciesChangeHistoryPolicy.h, checked against
+        // Encounter::forGameSpeciesWithGen3Provenance). A Create draft's invalid encounter and
+        // Pokerus reset; an existing Pokemon keeps its recorded Met Location and Pokerus.
+        const uint16_t previousSpecies = state.session.working.species;
         if (state.session.setSpecies(state.speciesPreview, screen.sourceGameId)) {
             state.session.setShiny(state.speciesPreviewShiny);
             state.speciesPicker = false;
-            const auto& p = state.session.working;
-            if (p.metLocation != 0) {
-                const auto encounters = Encounter::forGameSpeciesWithGen3Provenance(
-                    screen.sourceGameId, p.species);
-                bool stillValid = false;
-                for (const auto& choice : encounters) {
-                    if (choice.encounter.location == p.metLocation &&
-                        choice.encounter.containsLevel(p.metLevel)) {
-                        stillValid = true;
-                        state.selectedEncounter = choice;
-                        break;
-                    }
-                }
-                if (!stillValid) {
-                    state.session.working.metLocation = 0;
-                    state.session.working.metLevel = 0;
-                    state.selectedEncounter.reset();
-                    screen.postStatus("Species changed; choose a new legitimate encounter", 300);
-                }
-            }
+            if (state.session.working.species != previousSpecies) state.selectedEncounter.reset();
+            // A Create reset is visible: the status names what was reset (Pokerus, Met Location).
+            if (const auto reset = state.session.speciesChangeResetStatus(); !reset.empty())
+                screen.postStatus(reset, 300);
         }
         else
             screen.postStatus("Species is not representable in Generation III");
@@ -1612,7 +1606,9 @@ bool handleWorkspace(TrainerViewScreen& screen, State& state, u64 down, const To
         w.ivs = next.ivs;
         w.evs = next.evs;
         state.previewValid = false;
-        screen.postStatus(Reroll::kRerollStatus, 200);
+        // Round 11 H22: the new IVs / EVs and stats are the feedback; no success toast.
+        namespace EditFeedback = PokeBank::UIModel::EditFeedback;
+        EditFeedback::applied(screen, EditFeedback::Kind::Reroll);
         return true;
     }
     if ((down & HidNpadButton_A) && passiveView) {
@@ -1651,6 +1647,17 @@ const Pokemon::Pokemon* sourceBoxPokemon(TrainerViewScreen& screen, const State&
         return nullptr;
     const auto* pokemon = box[static_cast<std::size_t>(state.slot)].get();
     return pokemon && pokemon->speciesID() != 0 ? pokemon : nullptr;
+}
+
+// Round 11 ACTIONS: the ONE Gen III staged-sheet capability set, used by the input and the draw
+// so rows, touch ids (31600 + native index) and dispatch stay aligned. Move is the accepted
+// sparse hold-Y carry, started from the sheet only for a Boxes-view slot (never Party or the
+// Storage save pane, which have no carry entry here).
+Shared::ActionCapabilities gen3ActionCapabilities(const TrainerViewScreen& screen, const State& state) noexcept {
+    Shared::ActionCapabilities caps{/*clone*/true, /*remove*/true, /*legality*/true, /*import*/true, /*export*/true};
+    caps.canMove = !state.party && screen.selectedMode == TrainerViewScreen::ViewMode::Boxes &&
+                   screen.detailViewActive;
+    return caps;
 }
 
 bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
@@ -1692,8 +1699,7 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
     const bool occupied = staged->boxedPokemon(static_cast<std::size_t>(state.box),
                                                 static_cast<std::size_t>(state.slot), error).has_value();
     const auto actions = Shared::actionsForSlot(
-        occupied, {/*clone*/true, /*remove*/true, /*legality*/true, /*import*/true, /*export*/true},
-        !reviewRows(screen).empty());
+        occupied, gen3ActionCapabilities(screen, state), !reviewRows(screen).empty());
     if (actions.count == 0) return true;
     state.actionRow = std::clamp(
         state.actionRow, 0, std::max(0, static_cast<int>(actions.count) - 1));
@@ -1742,19 +1748,22 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             state.confirmRelease = true;
             break;
         case Shared::Action::Clone: {
-            const auto box = Utils::promptNumber("Clone to Gen III Box", state.box + 1, 1, 14);
-            if (!box.accepted) break;
-            const auto slot = Utils::promptNumber("Clone to Slot", state.slot + 1, 1, 30);
-            if (!slot.accepted) break;
-            if (!staged->stageCloneBoxPokemon(
-                    static_cast<std::size_t>(state.box), static_cast<std::size_t>(state.slot),
-                    static_cast<std::size_t>(box.value - 1), static_cast<std::size_t>(slot.value - 1),
-                    error)) {
-                screen.postStatus(error.empty() ? "Generation III Clone failed" : error, 360);
-            } else {
-                refreshPresentation(screen);
-                screen.postStatus("Generation III Clone staged; source save unchanged", 300);
-            }
+            // Round 11 H31 (owner): the shared visual Clone carry, never number keypads. Actions
+            // closes; the copy rides the box cursor from the first empty slot of this box; A places
+            // it on any empty slot (occupied / unreadable slots are refused), B cancels.
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginCloneFromAction(screen, state.box, state.slot))
+                screen.postStatus("Clone could not start from here", 240);
+            break;
+        }
+        case Shared::Action::Move: {
+            // Round 11 ACTIONS: the accepted sparse hold-Y carry, picked up (A places, B restores: Round 11 H23).
+            // The sheet closes first so the carry layer (not this surface) owns the next keys.
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            if (!ClassicPackedMove::beginGen3FromAction(screen, state.box, state.slot))
+                screen.postStatus("Move could not start from here", 240);
             break;
         }
         case Shared::Action::Close:
@@ -2246,7 +2255,13 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         detailLabels.size(), static_cast<std::size_t>(state.detailsFocus),
         state.focus.panel == Shared::Panel::Details,
         [](std::size_t row) { return detailLabels[row]; },
-        [&](std::size_t row) { return detailsValue(screen, p, static_cast<int>(row)); },
+        [&](std::size_t row) {
+            // Round 11 (H07 for all gens): a new Pokemon's Met Location is not chosen until picked.
+            if (row == 13 && state.session.mode == SessionModel::Mode::Create && !state.session.metLocationChosen &&
+                state.session.metLocationChoosable())
+                return std::string("Choose a location");
+            return detailsValue(screen, p, static_cast<int>(row));
+        },
         [&](std::size_t row) {
             return detailLocked(p, static_cast<int>(row))
                 ? PokeBank::UIModel::SharedFieldState::State::ReadOnly
@@ -2377,7 +2392,7 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
     struct DataRow { std::string label, value; };
     // Same data pane as Gen IV/V: the PID is shown once, in gold (ReadOnly field state), in the
     // STATS panel's PID-linked block; no "(read-only)" text row here (QA CG16).
-    const std::vector<DataRow> rows{
+    std::vector<DataRow> rows{
         {"Origin", Enums::getOriginGameName(p.originGame)},
         {"Language", Enums::getLanguageName(p.language)},
         {"Ball", Enums::getBallName(p.ball)},
@@ -2385,6 +2400,11 @@ void drawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state)
         {"Encounter origin", encounterOriginText(screen, p)},
         {"Legality", Presentation::legalityLabel(Presentation::LegalityState::NotChecked)}
     };
+    // Round 11 (owner H25 clarification 2): an existing Pokemon whose species changed keeps its
+    // history; a misfit is a caution line right under the encounter rows, never a change.
+    if (const auto caution = PokeBank::UIModel::HistoryConsistency::joined(state.session.historyFlags());
+        !caution.empty())
+        rows.insert(rows.begin() + 5, {PokeBank::UIModel::HistoryConsistency::kCautionLabel, caution});
     SharedPokemonShell::drawDataAndGraph(fb, rightX, y + 244, rightW, h - 256,
         Presentation::kOriginLegalityHeading, rows, state.previewError.empty() ? p.calculatedStats : std::array<uint16_t,6>{});
 
@@ -2514,7 +2534,7 @@ void drawActions(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& state) {
                                                static_cast<std::size_t>(state.slot), error);
     const bool occupied = pokemon.has_value();
     const auto actions = Shared::actionsForSlot(
-        occupied, {true, true, true, true, true}, !reviewRows(screen).empty());
+        occupied, gen3ActionCapabilities(screen, state), !reviewRows(screen).empty());
     screen.drawGSCOverlay(fb);
     // One narrow, greyed-out menu for touch and A. Underlying box hitboxes
     // are replaced by enabled native command IDs only.
@@ -2713,20 +2733,28 @@ bool handleInput(TrainerViewScreen& screen, u64 down, u64 held,
     const bool inBoxes = boxEntrySurface(screen);
     if (!inBoxes && !storageEntrySurface(screen)) return false;
     const bool occupied = selectedOccupied(screen);
+    // Round 11 X-IMPEXP: X on the Boxes grid exports an occupied slot / imports into an empty one
+    // (Add Pokemon stays on the A sheet). The Storage save pane has no X shortcut.
     const auto activation = Shared::boxActivation(
-        occupied, (down & HidNpadButton_A) != 0, (down & HidNpadButton_X) != 0);
+        occupied, (down & HidNpadButton_A) != 0, inBoxes && (down & HidNpadButton_X) != 0,
+        Shared::fileCapabilities(editor(screen) != nullptr));
     if (activation == Shared::BoxActivation::Actions) {
         beginActions(screen);
         return true;
     }
-    if (activation == Shared::BoxActivation::Add) {
-        // Consume X even if validation rejects the staged Create. Otherwise
-        // the old source-writable base creator sees the same X input.
-        (void)beginCreate(screen,
-            inBoxes ? screen.selectedBoxIndex : screen.stSaveBox,
-            inBoxes ? screen.selectedItemIndex : screen.stSaveSlot);
+    if (activation == Shared::BoxActivation::ImportFile) {
+        screen.controllerNavigation.reset();
+        PokemonFileMenus::beginImport(screen, 3, screen.selectedBoxIndex, screen.selectedItemIndex);
         return true;
     }
+    if (activation == Shared::BoxActivation::ExportFile) {
+        screen.controllerNavigation.reset();
+        PokemonFileMenus::exportPokemon(screen, 3, false, screen.selectedBoxIndex, screen.selectedItemIndex);
+        return true;
+    }
+    // Consume any other X here (Storage pane, no staged editor): it must never fall through to the
+    // inherited source-writable box handlers (old X = Add / Release).
+    if (down & HidNpadButton_X) return true;
     return false;
 }
 

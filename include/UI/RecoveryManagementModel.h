@@ -310,9 +310,14 @@ struct Plan {
 }
 
 // One drawn row of the view: a source heading, or an item.
+// Round 11 H12: the row's state is also given as fields, so the screen draws a visible marked
+// style (UI/SharedBoxedRows.h State::marked) instead of relying on the badge word alone.
 struct Row {
     int item = -1;            // -1: a heading row (not selectable)
     std::string title, detail, badge;
+    bool heading = false;     // a source heading: never focused, never a touch target
+    bool picked = false;      // selected for removal (drawn marked)
+    bool removable = false;   // A may select it
 };
 
 // Rows grouped by source (headings in source order), each group newest first.
@@ -347,6 +352,7 @@ struct Row {
                 heading.title = "Save: " + leafName(items[i].source);
                 heading.detail = items[i].source;
             }
+            heading.heading = true;
             out.push_back(std::move(heading));
         }
         Row row;
@@ -357,9 +363,73 @@ struct Row {
         row.detail = i < verdicts.size() ? verdicts[i].reason : std::string{};
         const bool picked = i < selection.picked.size() && selection.picked[i];
         row.badge = picked ? "Selected" : removable ? "Removable" : "Protected";
+        row.picked = picked;
+        row.removable = removable;
         out.push_back(std::move(row));
     }
     return out;
+}
+
+// Round 11 H12: presentation helpers. None of them changes classify, buildPlan or the selection.
+struct Hint {
+    std::string glyph, label;
+};
+
+// The Recovery files footer: Choose, then A for the focused row (Select / Deselect / Why kept;
+// nothing on a heading), Y only while something is selected, then - Help and B Back.
+[[nodiscard]] inline std::vector<Hint> footerHints(const std::vector<Row>& rows, int focus, std::size_t picked) {
+    std::vector<Hint> hints = {{"D-pad/Stick", "Choose"}};
+    if (focus >= 0 && focus < static_cast<int>(rows.size())) {
+        const Row& row = rows[static_cast<std::size_t>(focus)];
+        if (!row.heading && row.item >= 0)
+            hints.push_back({"A", row.picked ? "Deselect" : row.removable ? "Select" : "Why kept"});
+    }
+    if (picked > 0) hints.push_back({"Y", "Remove selected (" + std::to_string(picked) + ")"});
+    hints.push_back({"-", "Help"});
+    hints.push_back({"B", "Back"});
+    return hints;
+}
+
+// The Help overlay's lines for the view.
+[[nodiscard]] inline std::vector<Hint> helpLines() {
+    return {{"D-pad/Stick", "Choose a copy (save headings are labels only)"},
+            {"A", "Select or deselect a Removable copy; on a Protected copy, say why it is kept"},
+            {"Y", "Review the selected copies; a confirmation lists every file before anything is removed"},
+            {"-", "Open or close this Help"},
+            {"B", "Back to Backups; nothing is removed"}};
+}
+
+// The notice for A on a protected row: why it stays, and that only Removable copies can be picked.
+[[nodiscard]] inline std::string protectedNotice(const Verdict& verdict) {
+    return verdict.reason + " Only Removable copies can be selected.";
+}
+
+[[nodiscard]] inline bool anyRemovable(const std::vector<Verdict>& verdicts) {
+    return std::any_of(verdicts.begin(), verdicts.end(),
+                       [](const Verdict& v) { return v.status == Status::Removable; });
+}
+
+// Initial focus: the first Removable row of the opening game's group(s) (`preferSources`, exact
+// source paths), else that group's first copy, else the first copy of the list. Rows and verdicts
+// are always built over the FULL listing; this only chooses where focus starts.
+[[nodiscard]] inline int initialFocus(const std::vector<Row>& rows, const std::vector<Item>& items,
+                                      const std::vector<std::string>& preferSources) {
+    const auto preferred = [&](const Row& row) {
+        if (row.heading || row.item < 0 || static_cast<std::size_t>(row.item) >= items.size()) return false;
+        const std::string& source = items[static_cast<std::size_t>(row.item)].source;
+        return !source.empty() &&
+               std::find(preferSources.begin(), preferSources.end(), source) != preferSources.end();
+    };
+    int firstPreferred = -1, firstItem = -1;
+    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+        const Row& row = rows[static_cast<std::size_t>(i)];
+        if (row.heading || row.item < 0) continue;
+        if (firstItem < 0) firstItem = i;
+        if (!preferred(row)) continue;
+        if (row.removable) return i;
+        if (firstPreferred < 0) firstPreferred = i;
+    }
+    return firstPreferred >= 0 ? firstPreferred : std::max(0, firstItem);
 }
 
 // The confirmation's lines: every file a plan removes, with its size, then the total.

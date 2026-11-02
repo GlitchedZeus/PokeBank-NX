@@ -22,16 +22,21 @@ inline std::array<uint16_t, 6> battleStats(const G::PokemonRecord& p,bool draft=
 // CalcMonStats); neither derived value is a second editable DV or Stat Exp.
 //
 // Round 7 (owner Round 6 A22 / C01, R2-SPECIAL): the Gen I calculated-Special presentation is the
-// reference. The STATS grid keeps plain numbers: HP, Attack, Defense and Speed show their
-// calculated stat in the Calculated column; the Special row has no single calculated value (Gen II
-// splits it), so its Calculated cell stays empty. The two derived values are explained in the
-// lower-middle of the STATS panel, below the grid and above Shiny, as Gen I shows its Special:
-// "CALCULATED SPECIAL STATS", then "Sp. Atk <n>   Sp. Def <n>", then one note line. No slash
-// display and no tags squeezed into the numeric column.
+// reference: the two derived values are explained in the lower-middle of the STATS panel, below
+// the grid and above Shiny, as Gen I shows its Special: "CALCULATED SPECIAL STATS", then
+// "Sp. Atk <n>   Sp. Def <n>", then one note line.
+// Round 11 (owner H22: "we still dont have a number in the calculated column for special
+// calculated stat, add it"): like Gen I, the Special row's Calculated cell also holds numbers. The
+// one Special DV / Stat Exp row feeds both stats, so the cell shows both, Sp. Atk then Sp. Def, in
+// the block's order: plain numbers separated by spaces (no "a/b" slash, owner Round 3; no "Sp."
+// tags in the numeric column, CG51 / CG84). Neither number is an editable DV or Stat Exp.
 inline constexpr int kSpecialRow = 4;
-// The Calculated column's value for a grid row ("" for the Special row and out of range).
+inline constexpr const char* kSpecialCellGap = "  ";   // between Sp. Atk and Sp. Def
+// The Calculated column's value for a grid row ("" out of range). Every Gen II STATS painter
+// (unified workspace, final hardware repaint, legacy Foundation, View modal) uses it.
 inline std::string calculatedCell(const std::array<uint16_t, 6>& battle, int row) {
     if (row >= 0 && row < kSpecialRow) return std::to_string(battle[static_cast<std::size_t>(row)]);
+    if (row == kSpecialRow) return std::to_string(battle[4]) + kSpecialCellGap + std::to_string(battle[5]);
     return {};
 }
 // STATS geometry shared by every Gen II painter (relative to the STATS panel origin).
@@ -55,7 +60,10 @@ struct SpecialBlock {
     static constexpr int kSpDValueX = 272;    // its number
 };
 struct DataRow { std::string label, value; };
-inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game) {
+// `caution`: Round 11 (owner H25 clarification 2) history flags for an existing Crystal Pokemon
+// whose species changed (Session::historyFlags, joined); shown right under "Met", never a change.
+inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame game,
+                                     const std::string& caution = {}) {
     const auto* personal = G::personalRecord(p.species);
     const auto next = personal && p.level < 100 ? Pokemon::getExpForLevel(p.level + 1, personal->experienceGrowth) : p.experience;
     std::vector<DataRow> rows{
@@ -72,6 +80,7 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
         rows.push_back({"Caught history", game == G::SourceGame::Crystal
             ? "Crystal caught data" : "Retained Crystal data"});
         rows.push_back({"Met", Gen2Native::crystalCaughtLocationName(caught.location)});
+        if (!caution.empty()) rows.push_back({"Caution", caution});
         rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
         rows.push_back({"Time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});
         rows.push_back({"OT gender", Gen2Native::crystalOriginalTrainerGenderText(caught)});
@@ -98,8 +107,9 @@ namespace UI::Gen2WorkspacePresentation {
 // Sibling native-data and graph panels use the accepted Gen I split composition.
 // Values also exposes the editable Held Item / Friendship / Pokerus capabilities.
 inline void drawDataAndGraph(PKSEFramebuffer& fb, int x, int y, int w, int h,
-    const PokeVault::Integration::Gen2::PokemonRecord& p, PokeVault::Integration::Gen2::SourceGame game) {
-    auto rows = PokeBank::UIModel::Gen2Workspace::dataRows(p, game);
+    const PokeVault::Integration::Gen2::PokemonRecord& p, PokeVault::Integration::Gen2::SourceGame game,
+    const std::string& caution = {}) {
+    auto rows = PokeBank::UIModel::Gen2Workspace::dataRows(p, game, caution);
     // The accepted shared legacy layer gives this sibling panel only 260 px.
     // When genuine caught history is present, prioritize those record bytes over
     // auxiliary party HP/status here. The final 1280x720 hardware surface is

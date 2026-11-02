@@ -1,7 +1,7 @@
-// Round 5 (owner Oct 24): Review must open from every normal entry. Party Actions keeps its
-// hardware-accepted View / Edit / Origin & Legality / Cancel sheet (E02 / NEW-20), so Party edits
-// reach Review through the staged-exit menu: Party -> Edit -> keep -> B (leave) -> A Review
-// Changes. The Bag's Options -> Review opens the same shared paged Review.
+// Round 5 (owner Oct 24): Review must open from every normal entry. Party edits reach Review
+// through the staged-exit menu: Party -> Edit -> keep -> B (leave) -> A Review Changes. Round 11
+// (owner Extra 7: every Actions menu has "reviewing pending changes") deliberately revises the
+// E02 / NEW-20 Party sheet: it now also lists Review Pending Changes while changes are staged. The Bag's Options -> Review opens the same shared paged Review.
 //
 // Drives a real Gold / Silver / Crystal GSCReadOnlyTrainer: a staged Party edit makes the session
 // dirty (the shell then asks to leave), the four-action exit maps A / touch 2 to Review, the
@@ -133,9 +133,12 @@ void routes() {
     const auto bag = read("src/UI/ClassicInventoryOverlay.cpp");
     assert(bag.find("if (!screen.openStagedReview(false))") != std::string::npos);
     assert(bag.find("Pending Classic Save Changes") == std::string::npos);
-    // Party Actions keeps the accepted four commands (no Review row).
-    assert(read("src/UI/ClassicPartyActions.inc").find("actionsForSlot(true,{false,false,true},false)") !=
-           std::string::npos);
+    // Party Actions: the shared model with the real pending state (Round 11: Review while staged)
+    // and a Review dispatch to the generation's standalone Review.
+    const auto party = read("src/UI/ClassicPartyActions.inc");
+    assert(party.find("actionsForSlot(true,{false,false,true,false,true},pendingChanges(screen))") != std::string::npos);
+    assert(party.find("(void)screen.openStagedReview(false);") != std::string::npos);
+    assert(party.find("{false,false,true},false)") == std::string::npos);
     // Gen I and Gen II Review both page by swipe through the shared models.
     assert(read("src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc").find("SharedReviewTouch::swipePage(") !=
            std::string::npos);

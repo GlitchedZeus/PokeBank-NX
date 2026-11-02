@@ -1,0 +1,4167 @@
+{
+ "meta": {
+  "generated_from": "qa_recon/all_records.json + docs at wr11 6c7c8e99 (read-only)",
+  "legend": "appearances 'Rn:ID'; '~' = matched by meaning, not by ID. R7, R8, R9 and R12 have no owner results. R10 owner results are the R11 worksheet. OCT24 results are on c60d4da0; R5 results are the owner's Oct 25 sheet (gate 'OCT25'); R6 results are the Oct 26 sheet (gate 'OCT26').",
+  "gate_coverage": "tests/test_hw_round1_regression_gate.py guards R1 (42), R2 (6), R3 (30 new), Oct 24 (27), Oct 25 (10 new), Oct 26 (19 B/C/D rows keyed by the R6 sheet row number, so 'B01'/'B02'/'B03'/'C02'... in GUARDS_ROUND7 are NOT the R1 IDs). It has no Round 11 table; R11 PASS items are unguarded by it.",
+  "pre_scope_note": "PRE template checklists (DEVICE_TEST_CHECKLIST*, GEN14, GEN15 gate, smoke docs; ~410 rows) were never filled row by row and were superseded wholesale by the R1 7fea1797 checklist; they are traced at section level. The ~300 ad-hoc PRE owner FAIL / NOT TESTED / request records from issues, PRs and session logs are not traced individually here (they predate any round checklist)."
+ },
+ "lineage": [
+  {
+   "key": "C02 B never quits without warning",
+   "appearances": [
+    "R1:C02",
+    "R2:C02 (regression list)",
+    "R3:C02",
+    "R12:H02~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R12:H02 (not device tested; behaviour changed: A Stay removed at owner request R11 Extra 5)"
+   ]
+  },
+  {
+   "key": "C03 Launch requires confirmation",
+   "appearances": [
+    "R1:C03",
+    "R2:C03 (regression list)",
+    "R3:C03",
+    "R12:H02~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "C04 L/R behave correctly",
+   "appearances": [
+    "R1:C04",
+    "R2:C04 (regression list)",
+    "R3:C04"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "C05 Gen II Create A/B fixed",
+   "appearances": [
+    "R1:C05",
+    "R2:C05 (regression list)",
+    "R3:C05",
+    "R11:H19~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H19~ PASS"
+   ]
+  },
+  {
+   "key": "C06 Popups no longer activate background controls",
+   "appearances": [
+    "R1:C06",
+    "R2:C06 (regression list)",
+    "R3:C06",
+    "R11:H47~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H47~ PASS"
+   ]
+  },
+  {
+   "key": "C08 Pokemon Release / Remove requires Y confirmation",
+   "appearances": [
+    "R1:C08",
+    "R2:C08 (regression list)",
+    "R3:C08"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "C09 Second controller works properly",
+   "appearances": [
+    "R1:C09",
+    "R2:C09 (regression list)",
+    "R3:C09"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "M01 Gen I Moves panel aligned",
+   "appearances": [
+    "R1:M01",
+    "R2:M01 (regression list)",
+    "R3:M01"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "M02 Gen II Moves panel matches Gen I",
+   "appearances": [
+    "R1:M02",
+    "R2:M02 (regression list)",
+    "R3:M02"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "M03 Gen III Moves panel matches",
+   "appearances": [
+    "R1:M03",
+    "R2:M03 (regression list)",
+    "R3:M03"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "M06 Move chooser consistent",
+   "appearances": [
+    "R1:M06",
+    "R2:M06 (regression list)",
+    "R3:M06",
+    "R11:H26~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H26~ PASS"
+   ]
+  },
+  {
+   "key": "M07 Move PP editing and PP Ups",
+   "appearances": [
+    "R1:M07",
+    "R2:M07 (regression list)",
+    "R3:M07"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "M08 Gen I hidden-row appearance",
+   "appearances": [
+    "R1:M08",
+    "R2:M08 (regression list)",
+    "R3:M08"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "B05 Unique items limited to one",
+   "appearances": [
+    "R1:B05",
+    "R2:B05 (regression list)",
+    "R3:B05",
+    "R9:H04~",
+    "R10:H04~",
+    "R11:H04~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H04~ FAIL (Top Up scope; Key Items/HMs rule not reported broken)"
+   ]
+  },
+  {
+   "key": "B07 Removing items requires confirmation",
+   "appearances": [
+    "R1:B07",
+    "R2:B07 (regression list)",
+    "R3:B07",
+    "R11:H33~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H33~ PASS"
+   ]
+  },
+  {
+   "key": "E01 Make Shiny removed from quick Actions",
+   "appearances": [
+    "R1:E01",
+    "R2:E01 (regression list)",
+    "R3:E01"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "E04 Rows 1/15 counters removed",
+   "appearances": [
+    "R1:E04",
+    "R2:E04 (regression list)",
+    "R3:E04"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "E06 Shiny shows Yes / No",
+   "appearances": [
+    "R1:E06",
+    "R2:E06 (regression list)",
+    "R3:E06"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "E07 Pokerus cycles inline with A",
+   "appearances": [
+    "R1:E07",
+    "R2:E07 (regression list)",
+    "R3:E07"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "E08 Gender editing without a huge picker",
+   "appearances": [
+    "R1:E08",
+    "R2:E08 (regression list)",
+    "R3:E08",
+    "R9:H08~",
+    "R10:H08~",
+    "R11:H08~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H08~ PASS (Gen V gender inline)"
+   ]
+  },
+  {
+   "key": "E09 Gen III language cycles inline",
+   "appearances": [
+    "R1:E09",
+    "R2:E09 (regression list)",
+    "R3:E09"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "E10 Y immediately rerolls DVs/IVs/EVs",
+   "appearances": [
+    "R1:E10",
+    "R2:E10 (regression list)",
+    "R3:E10",
+    "R12:H13~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "E12 Gen I Create defaults to Pikachu Level 5",
+   "appearances": [
+    "R1:E12",
+    "R2:E12 (regression list)",
+    "R3:E12",
+    "R11:Extra 6~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:Extra 6~ owner reverses the default moves ('pikachu has growl and thunder shock ... blank canvas')"
+   ]
+  },
+  {
+   "key": "E13 Gen III PID-linked fields and Unown editing",
+   "appearances": [
+    "R1:E13",
+    "R2:E13 (regression list)",
+    "R3:E13"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "L01 Gen II DATA panel text inside box",
+   "appearances": [
+    "R1:L01",
+    "R2:L01 (regression list)",
+    "R3:L01"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "L02 Crystal location picker compact",
+   "appearances": [
+    "R1:L02",
+    "R2:L02 (regression list)",
+    "R3:L02"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "L03 Gen III location picker cleaned up",
+   "appearances": [
+    "R1:L03",
+    "R2:L03 (regression list)",
+    "R3:L03"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "L04 Gen IV/V location windows clean",
+   "appearances": [
+    "R1:L04",
+    "R2:L04 (regression list)",
+    "R3:L04"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "L05 No editor panel cursor/row overlaps",
+   "appearances": [
+    "R1:L05",
+    "R2:L05 (regression list)",
+    "R3:L05"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "N01 First scroll press immediate",
+   "appearances": [
+    "R1:N01",
+    "R2:N01 (regression list)",
+    "R3:N01",
+    "R11:H18~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H18~ PASS"
+   ]
+  },
+  {
+   "key": "N02 Hold-to-scroll quick and consistent",
+   "appearances": [
+    "R1:N02",
+    "R2:N02 (regression list)",
+    "R3:N02",
+    "R11:H18~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H18~ PASS"
+   ]
+  },
+  {
+   "key": "N03 Touch scrolling and joystick focus",
+   "appearances": [
+    "R1:N03",
+    "R2:N03 (regression list)",
+    "R3:N03",
+    "R11:H18~",
+    "R11:H47~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H18~ PASS",
+    "R11:H47~ PASS"
+   ]
+  },
+  {
+   "key": "N04 Long lists and keyboard repeat smooth",
+   "appearances": [
+    "R1:N04",
+    "R2:N04 (regression list)",
+    "R3:N04"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "S02 Gen V party, boxes and trainer display correctly",
+   "appearances": [
+    "R1:S02",
+    "R2:S02 (regression list)",
+    "R3:S02",
+    "R8:H03~",
+    "R9:H02~",
+    "R10:H02~",
+    "R11:H02~",
+    "R12:H18~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:PASS",
+    "R11:H02~ PASS"
+   ]
+  },
+  {
+   "key": "C01 A selects and advances (Gen V assigned save opens directly)",
+   "appearances": [
+    "R1:C01",
+    "R2:C01",
+    "R3:C01",
+    "R4:C01",
+    "R5:C01",
+    "R6:A29",
+    "R7:A28",
+    "R8:H02~",
+    "R11:H18~/H19~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:FAIL",
+    "OCT24:NOT TESTED",
+    "R5:PASS",
+    "R6:A29 PASS",
+    "R11:H18~/H19~ PASS"
+   ]
+  },
+  {
+   "key": "C07 Backup deletion requires Y confirmation / backup browser",
+   "appearances": [
+    "R1:C07",
+    "R2:C07",
+    "R3:C07",
+    "R4:C07",
+    "R5:C07",
+    "R6:A02",
+    "R7:A02",
+    "R9:H12~",
+    "R10:H12~",
+    "R11:H12~/H44~",
+    "R12:H11~"
+   ],
+   "results": [
+    "R1:PASS (owner note: only native titles)",
+    "R3:FAIL",
+    "R4:NOT TESTED",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A02 PASS",
+    "R11:H12~ FAIL",
+    "R11:H44~ PASS"
+   ]
+  },
+  {
+   "key": "M04 Gen IV Moves panel / Category spacing",
+   "appearances": [
+    "R1:M04",
+    "R2:M04",
+    "R3:M04",
+    "R4:M04",
+    "R5:M04",
+    "R6:A03",
+    "R7:A03"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A03 PASS"
+   ]
+  },
+  {
+   "key": "M05 Gen V Moves panel / species move pools",
+   "appearances": [
+    "R1:M05",
+    "R2:M05",
+    "R3:M05",
+    "R4:M05 (+unnamed '559 moves' FAIL)",
+    "R5:M05",
+    "R6:A24",
+    "R7:A23",
+    "R11:H26~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:FAIL",
+    "R4:FAIL (#326)",
+    "OCT24:FAIL",
+    "R5:PASS",
+    "R6:A24 PASS",
+    "R11:H26~ PASS"
+   ]
+  },
+  {
+   "key": "B08 Bag changes in Review and export / Bag Review discoverable",
+   "appearances": [
+    "R1:B08",
+    "R2:B08",
+    "R3:B08",
+    "R4:B08",
+    "R5:B08",
+    "R6:B03",
+    "R7:A33",
+    "R8:H05~",
+    "R12:H17~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:FAIL",
+    "R6:B03 PASS"
+   ]
+  },
+  {
+   "key": "E02 Actions menu order",
+   "appearances": [
+    "R1:E02",
+    "R2:E02",
+    "R3:E02",
+    "R4:E02",
+    "R5:E02",
+    "R6:A04",
+    "R7:A04",
+    "R11:Extra 7~",
+    "R12:H05"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A04 PASS",
+    "R11:Extra 7~ request (Gen II/III lack Move/Review)"
+   ]
+  },
+  {
+   "key": "E05 Footer glyphs / Inventory Help",
+   "appearances": [
+    "R1:E05",
+    "R2:E05",
+    "R3:E05",
+    "R4:E05",
+    "R5:E05",
+    "R6:B04",
+    "R7:B02",
+    "R7:C01 (Bag + and Help agree)",
+    "R9:H03~",
+    "R10:H03~",
+    "R11:H03~",
+    "R12:H18~ (Bag Help)"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:FAIL",
+    "R6:B04 FAIL",
+    "R11:H03~ PASS (fit/legibility only)"
+   ]
+  },
+  {
+   "key": "S05 Original saves stay unchanged",
+   "appearances": [
+    "R1:S05",
+    "R2:S05",
+    "R3:S05",
+    "R4:S05",
+    "R5:S05",
+    "R6:A25",
+    "R7:A24",
+    "R8:H08~/H09~",
+    "R9:H14~",
+    "R10:H14~",
+    "R11:H14~",
+    "R12:H17~"
+   ],
+   "results": [
+    "R1:PASS",
+    "R3:FAIL",
+    "R4:NOT TESTED",
+    "OCT24:FAIL",
+    "R5:PASS",
+    "R6:A25 PASS",
+    "R11:H14~ PASS"
+   ]
+  },
+  {
+   "key": "B01 Gen I Add Item",
+   "appearances": [
+    "R1:B01",
+    "R2:B01",
+    "R3:B01",
+    "R11:H34~",
+    "R12:H10~"
+   ],
+   "results": [
+    "R1:FAIL",
+    "R2:PASS",
+    "R3:PASS",
+    "R11:H34~ FAIL (Top Up/PC Items, Gen I)"
+   ]
+  },
+  {
+   "key": "B02 Gen II Add Item",
+   "appearances": [
+    "R1:B02",
+    "R2:B02",
+    "R3:B02",
+    "R11:H34~",
+    "R12:H10~"
+   ],
+   "results": [
+    "R1:FAIL",
+    "R2:PASS",
+    "R3:PASS",
+    "R11:H34~ FAIL (Top Up/PC Items, Gen I)"
+   ]
+  },
+  {
+   "key": "B03 Gen III Add Item",
+   "appearances": [
+    "R1:B03",
+    "R2:B03",
+    "R3:B03",
+    "R11:H34~",
+    "R12:H10~"
+   ],
+   "results": [
+    "R1:FAIL",
+    "R2:PASS",
+    "R3:PASS",
+    "R11:H34~ FAIL (Top Up/PC Items, Gen I)"
+   ]
+  },
+  {
+   "key": "B06 Stackable quantity editing",
+   "appearances": [
+    "R1:B06",
+    "R2:B06",
+    "R3:B06",
+    "R11:H34~",
+    "R12:H10~"
+   ],
+   "results": [
+    "R1:FAIL",
+    "R2:PASS",
+    "R3:PASS",
+    "R11:H34~ FAIL (Top Up/PC Items, Gen I)"
+   ]
+  },
+  {
+   "key": "S01 Gen V PP / PP Ups captions",
+   "appearances": [
+    "R1:S01",
+    "R2:S01",
+    "R3:S01"
+   ],
+   "results": [
+    "R1:FAIL",
+    "R2:PASS",
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "S03 Gen V left panel / Create parity",
+   "appearances": [
+    "R1:S03",
+    "R2:S03",
+    "R3:S03",
+    "R9:H07~",
+    "R11:H07~"
+   ],
+   "results": [
+    "R1:FAIL",
+    "R2:PASS",
+    "R3:PASS",
+    "R11:H07~ PASS"
+   ]
+  },
+  {
+   "key": "B04 Gen IV/V Add Item",
+   "appearances": [
+    "R1:B04",
+    "R2:B04",
+    "R3:B04",
+    "R10:H17~",
+    "R11:H17~"
+   ],
+   "results": [
+    "R1:NOT VERIFIED",
+    "R2:NOT VERIFIED",
+    "R3:PASS",
+    "R11:H17~ PASS"
+   ]
+  },
+  {
+   "key": "E03 Origin & Legality heading / one panel",
+   "appearances": [
+    "R1:E03",
+    "R2:E03",
+    "R3:E03",
+    "R4:E03",
+    "R5:E03",
+    "R6:A01",
+    "R7:A01",
+    "R7:C07 (Gen I/II panel)",
+    "R12:H09~ (Gen III-V/Crystal only)"
+   ],
+   "results": [
+    "R1:NOT VERIFIED",
+    "R2:NOT VERIFIED",
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A01 PASS"
+   ]
+  },
+  {
+   "key": "E11 Rerolls preserve requested Shiny / Gender (Gen II Unown)",
+   "appearances": [
+    "R1:E11",
+    "R2:E11",
+    "R3:E11"
+   ],
+   "results": [
+    "R1:NOT VERIFIED",
+    "R2:NOT VERIFIED",
+    "R3:NOT TESTED"
+   ],
+   "note": "folded into R2-REROLL from R2 ('Rerolls (Phase 10): As E11 above')"
+  },
+  {
+   "key": "L06 Party/summary taps open Actions; Pokerus/Held Item activation",
+   "appearances": [
+    "R1:L06",
+    "R2:L06",
+    "R3:L06",
+    "R4:L06",
+    "R5:L06",
+    "R6:B01",
+    "R7:A31"
+   ],
+   "results": [
+    "R1:NOT VERIFIED",
+    "R2:NOT VERIFIED",
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:FAIL",
+    "R6:B01 PASS"
+   ]
+  },
+  {
+   "key": "S04 Gen V Review / Discard / Export",
+   "appearances": [
+    "R1:S04",
+    "R2:S04",
+    "R3:S04"
+   ],
+   "results": [
+    "R1:NOT VERIFIED",
+    "R2:NOT VERIFIED",
+    "R3:PASS (request: Gen V Review for Gen I-IV)"
+   ]
+  },
+  {
+   "key": "S06 Exported edited save loads in an emulator",
+   "appearances": [
+    "R1:S06",
+    "R2:S06",
+    "R3:S06",
+    "R4:S06",
+    "R5:S06",
+    "R6:D03",
+    "R7:D01",
+    "R8:H09~ (optional)",
+    "R11:H46~ (optional)"
+   ],
+   "results": [
+    "R1:NOT VERIFIED",
+    "R2:NOT VERIFIED",
+    "R3:NOT TESTED",
+    "R4:NOT TESTED",
+    "OCT24:NOT TESTED",
+    "R5:NOT TESTED",
+    "R6:D03 NOT TESTED",
+    "R11:H46~ PASS (optional; emulator vs PC compare not recorded)"
+   ]
+  },
+  {
+   "key": "R2-MENUS Compact selection windows",
+   "appearances": [
+    "R2:R2-MENUS",
+    "R3:R2-MENUS"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-SEARCH Species live search",
+   "appearances": [
+    "R2:R2-SEARCH",
+    "R3:R2-SEARCH",
+    "R9:H11~",
+    "R10:H11~",
+    "R11:H11~",
+    "R12:H18~"
+   ],
+   "results": [
+    "R3:PASS",
+    "R11:H11~ PASS"
+   ]
+  },
+  {
+   "key": "R2-GOLD Read-only field colours",
+   "appearances": [
+    "R2:R2-GOLD",
+    "R3:R2-GOLD",
+    "R11:H21~"
+   ],
+   "results": [
+    "R3:PASS",
+    "R11:H21~ PASS"
+   ]
+  },
+  {
+   "key": "R2-LAUNCH Launch dialog (B Back / A Stay / Y Launch)",
+   "appearances": [
+    "R2:R2-LAUNCH",
+    "R3:R2-LAUNCH",
+    "R12:H02~"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-SCROLLBAR Draggable scrollbars",
+   "appearances": [
+    "R2:R2-SCROLLBAR",
+    "R3:R2-SCROLLBAR"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-MOVECHOOSER Move chooser extra rows",
+   "appearances": [
+    "R2:R2-MOVECHOOSER",
+    "R3:R2-MOVECHOOSER"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-CRYSTAL Crystal Met Time inline",
+   "appearances": [
+    "R2:R2-CRYSTAL",
+    "R3:R2-CRYSTAL"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-GEN5HEADER Gen V Create exact-game header",
+   "appearances": [
+    "R2:R2-GEN5HEADER",
+    "R3:R2-GEN5HEADER"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-SPECIAL Gen II Special SpA/SpD (7A placement)",
+   "appearances": [
+    "R2:Gen II Special",
+    "R3:R2-SPECIAL",
+    "R4:R2-SPECIAL",
+    "R5:R2-SPECIAL",
+    "R6:A22",
+    "R6:C01 (7A)",
+    "R7:B01",
+    "R11:H22~",
+    "R12:H12"
+   ],
+   "results": [
+    "R3:FAIL",
+    "R4:FAIL (#324)",
+    "OCT24:FAIL",
+    "R5:PASS",
+    "R6:A22 FAIL",
+    "R6:C01 FAIL",
+    "R11:H22~ FAIL"
+   ]
+  },
+  {
+   "key": "R2-TRAINER Gen I Trainer Name/Money; Gold/Silver layout",
+   "appearances": [
+    "R2:R2-TRAINER",
+    "R3:R2-TRAINER",
+    "R4:R2-TRAINER",
+    "R5:R2-TRAINER",
+    "R6:B02",
+    "R7:A32",
+    "R9:H10~",
+    "R10:H10~",
+    "R11:H10~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:FAIL",
+    "R6:B02 PASS",
+    "R11:H10~ PASS"
+   ]
+  },
+  {
+   "key": "R2-EMUBACKUP Emulator backups browser",
+   "appearances": [
+    "R2:R2-EMUBACKUP",
+    "R3:R2-EMUBACKUP",
+    "R4:R2-EMUBACKUP",
+    "R5:R2-EMUBACKUP",
+    "R6:A28",
+    "R7:A27",
+    "R9:H12~",
+    "R10:H12~",
+    "R11:H12~",
+    "R12:H11~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "R4:FAIL (#322)",
+    "OCT24:NOT TESTED",
+    "R5:PASS",
+    "R6:A28 PASS",
+    "R11:H12~ FAIL",
+    "R11:H44~ PASS"
+   ]
+  },
+  {
+   "key": "R2-REROLL Gen II Unown letter / shiny / DVs / reroll agree (+E11, R6 C09 UNOWN-LETTER, R4 Unown chooser sprite)",
+   "appearances": [
+    "R2:Rerolls (Phase 10)",
+    "R3:R2-REROLL",
+    "R4:R2-REROLL",
+    "R4:Unown chooser sprites (unnamed)",
+    "R5:R2-REROLL",
+    "R6:B07",
+    "R6:C09",
+    "R7:B05",
+    "R7:C05 (Unown confirmations)",
+    "R11:H22~",
+    "R12:H13~ (no toast only)",
+    "R12:H16~ (Unown picture only)"
+   ],
+   "results": [
+    "R3:FAIL",
+    "R4:FAIL (Unown chooser shows form A)",
+    "OCT24:NOT TESTED",
+    "R5:FAIL",
+    "R6:B07 FAIL",
+    "R6:C09 FAIL",
+    "R11:H22~ FAIL"
+   ]
+  },
+  {
+   "key": "R2-REVIEWMOVE Review rows named; Gen III Create with Safari Ball",
+   "appearances": [
+    "R2:Review one row per Move",
+    "R3:R2-REVIEWMOVE",
+    "R4:R2-REVIEWMOVE",
+    "R5:R2-REVIEWMOVE",
+    "R6:A23",
+    "R7:A22"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:FAIL",
+    "R5:PASS",
+    "R6:A23 PASS"
+   ]
+  },
+  {
+   "key": "R2-BUG-001 Trainer Edit button",
+   "appearances": [
+    "R3:R2-BUG-001"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-BUG-003 Gen V Trainer clutter",
+   "appearances": [
+    "R3:R2-BUG-003",
+    "R9:H09~",
+    "R10:H09~",
+    "R11:H09~"
+   ],
+   "results": [
+    "R3:PASS",
+    "R11:H09~ PASS"
+   ]
+  },
+  {
+   "key": "R2-BUG-004 Species change clears incompatible moves",
+   "appearances": [
+    "R3:R2-BUG-004",
+    "R11:H28~",
+    "R12:H07~/H09~"
+   ],
+   "results": [
+    "R3:PASS",
+    "R11:H28~ PASS (owner asks: no auto-filled moves)"
+   ]
+  },
+  {
+   "key": "R2-BUG-005 TM/HM move information",
+   "appearances": [
+    "R3:R2-BUG-005",
+    "R11:H35~"
+   ],
+   "results": [
+    "R3:PASS",
+    "R11:H35~ PASS"
+   ]
+  },
+  {
+   "key": "R2-BUG-006 Compact item grid",
+   "appearances": [
+    "R3:R2-BUG-006"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-BUG-007 Coloured Move types",
+   "appearances": [
+    "R3:R2-BUG-007"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-BUG-008 Ruby Pikachu location investigation",
+   "appearances": [
+    "R3:R2-BUG-008"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-BUG-012 Clickable popup rows boxed",
+   "appearances": [
+    "R3:R2-BUG-012"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-BUG-013 Coloured controller glyphs in Help",
+   "appearances": [
+    "R3:R2-BUG-013"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-CHECK-009 Yellow Move Pokemon reachable",
+   "appearances": [
+    "R3:R2-CHECK-009",
+    "R12:H03~"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "R2-CHECK-010 Sapphire Super Rod pocket warning",
+   "appearances": [
+    "R3:R2-CHECK-010"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "NEW-01 Help closes with B",
+   "appearances": [
+    "R3:NEW-01"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "AUD-02 Species sprites and restrictions",
+   "appearances": [
+    "R3:AUD-02"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "AUD-03 Emulator names",
+   "appearances": [
+    "R3:AUD-03",
+    "R11:H20~"
+   ],
+   "results": [
+    "R3:PASS",
+    "R11:H20~ PASS"
+   ]
+  },
+  {
+   "key": "AUD-05 Quick View touch",
+   "appearances": [
+    "R3:AUD-05"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "AUD-06 Item sprites",
+   "appearances": [
+    "R3:AUD-06"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "AUD-07 Gen V assigned to profile",
+   "appearances": [
+    "R3:AUD-07"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "AUD-08 Gen IV Y multi-move",
+   "appearances": [
+    "R3:AUD-08",
+    "R11:H23~",
+    "R12:H03~"
+   ],
+   "results": [
+    "R3:PASS",
+    "R11:H23~ PASS (request: A places)"
+   ]
+  },
+  {
+   "key": "AUD-09 Home Profile navigation",
+   "appearances": [
+    "R3:AUD-09"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "AUD-10 Region backgrounds",
+   "appearances": [
+    "R3:AUD-10",
+    "R12:H01~"
+   ],
+   "results": [
+    "R3:PASS"
+   ]
+  },
+  {
+   "key": "AUD-04 Game launch and return (RetroArch exit crash / DraStic Quit to Launcher)",
+   "appearances": [
+    "PRE:GEN15 gate B20/B21/B22 + 'Previously observed' row",
+    "R3:AUD-04",
+    "R3:Part 9 #4 / PART9 repro 'Emulator quit: you return where the notice says'"
+   ],
+   "results": [
+    "PRE:FAIL (PR #92 2026-10-06 'RetroArch quit lifecycle: FAIL')",
+    "R3:NOT TESTED"
+   ]
+  },
+  {
+   "key": "R2-BUG-002 Gen III/IV Trainer Name/Money reach Review",
+   "appearances": [
+    "R3:R2-BUG-002",
+    "R4:R2-BUG-002",
+    "R5:R2-BUG-002",
+    "R6:A05",
+    "R7:A05"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A05 PASS"
+   ]
+  },
+  {
+   "key": "R2-CHECK-011 Gen V event / Met Location rows distinguishable",
+   "appearances": [
+    "R3:R2-CHECK-011",
+    "R4:R2-CHECK-011",
+    "R5:R2-CHECK-011",
+    "R6:B05",
+    "R7:B03",
+    "R7:C09 (focused event row detail line)",
+    "R12:H07~ (partial)"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:FAIL",
+    "R6:B05 FAIL"
+   ]
+  },
+  {
+   "key": "NEW-02 No Touch:Back footer",
+   "appearances": [
+    "R3:NEW-02",
+    "R4:NEW-02",
+    "R5:NEW-02",
+    "R6:A06",
+    "R7:A06"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A06 PASS"
+   ]
+  },
+  {
+   "key": "NEW-03 Bag Remove / Key Item warning glyphs",
+   "appearances": [
+    "R3:NEW-03",
+    "R4:NEW-03",
+    "R5:NEW-03",
+    "R6:A07",
+    "R7:A07"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A07 PASS"
+   ]
+  },
+  {
+   "key": "NEW-04 Gen II PC Move",
+   "appearances": [
+    "R3:NEW-04",
+    "R4:NEW-04",
+    "R5:NEW-04",
+    "R6:A08",
+    "R7:A08",
+    "R11:H23~",
+    "R12:H03~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A08 PASS",
+    "R11:H23~ PASS"
+   ]
+  },
+  {
+   "key": "NEW-05 Species keyboard beside list",
+   "appearances": [
+    "R3:NEW-05",
+    "R4:NEW-05",
+    "R5:NEW-05",
+    "R6:A09",
+    "R7:A09"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A09 PASS"
+   ]
+  },
+  {
+   "key": "NEW-06 Held Item search + Sort",
+   "appearances": [
+    "R3:NEW-06",
+    "R4:NEW-06",
+    "R5:NEW-06",
+    "R6:A10",
+    "R7:A10"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A10 PASS"
+   ]
+  },
+  {
+   "key": "NEW-07 Crystal OT Gender inline",
+   "appearances": [
+    "R3:NEW-07",
+    "R4:NEW-07",
+    "R5:NEW-07",
+    "R6:A11",
+    "R7:A11"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A11 PASS"
+   ]
+  },
+  {
+   "key": "NEW-08 Ball picker scrollbar gutter",
+   "appearances": [
+    "R3:NEW-08",
+    "R4:NEW-08",
+    "R5:NEW-08",
+    "R6:A12",
+    "R7:A12"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A12 PASS"
+   ]
+  },
+  {
+   "key": "NEW-09 Nature stat colours",
+   "appearances": [
+    "R3:NEW-09",
+    "R4:NEW-09",
+    "R5:NEW-09",
+    "R6:A13",
+    "R7:A13",
+    "R11:H25~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A13 PASS",
+    "R11:H25~ FAIL (stale left panel, not colours)"
+   ]
+  },
+  {
+   "key": "NEW-11 Selected species name first",
+   "appearances": [
+    "R3:NEW-11",
+    "R4:NEW-11",
+    "R5:NEW-11",
+    "R6:A14",
+    "R7:A14",
+    "R12:H16~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A14 PASS"
+   ]
+  },
+  {
+   "key": "NEW-12 Gen IV/V location choices context-backed",
+   "appearances": [
+    "R3:NEW-12",
+    "R4:NEW-12",
+    "R5:NEW-12",
+    "R6:A15",
+    "R7:A15"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A15 PASS"
+   ]
+  },
+  {
+   "key": "NEW-13 Ability names/effects",
+   "appearances": [
+    "R3:NEW-13",
+    "R4:NEW-13",
+    "R5:NEW-13",
+    "R6:A16",
+    "R7:A16"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A16 PASS"
+   ]
+  },
+  {
+   "key": "NEW-15 Create defaults IVs/DVs 0",
+   "appearances": [
+    "R3:NEW-15",
+    "R4:NEW-15",
+    "R5:NEW-15",
+    "R6:A17",
+    "R7:A17"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A17 PASS"
+   ]
+  },
+  {
+   "key": "NEW-16 Gen V Home A opens assigned save",
+   "appearances": [
+    "R3:NEW-16",
+    "R4:NEW-16",
+    "R5:NEW-16",
+    "R6:A18",
+    "R7:A18"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A18 PASS"
+   ]
+  },
+  {
+   "key": "NEW-17 Gen V Key Items/TMs editable",
+   "appearances": [
+    "R3:NEW-17",
+    "R4:NEW-17",
+    "R5:NEW-17",
+    "R6:A19",
+    "R7:A19",
+    "R11:H37~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A19 PASS",
+    "R11:H37~ PASS"
+   ]
+  },
+  {
+   "key": "NEW-19 Gen I-IV staged exit menu",
+   "appearances": [
+    "R3:NEW-19",
+    "R4:NEW-19",
+    "R5:NEW-19",
+    "R6:A20",
+    "R7:A20"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A20 PASS"
+   ]
+  },
+  {
+   "key": "NEW-20 Gen I-III Party Actions popup",
+   "appearances": [
+    "R3:NEW-20",
+    "R4:NEW-20",
+    "R5:NEW-20",
+    "R6:A21",
+    "R7:A21",
+    "R12:H05~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:PASS",
+    "R6:A21 PASS"
+   ]
+  },
+  {
+   "key": "NEW-10 Met Location rows fit (compact 620 px)",
+   "appearances": [
+    "R3:NEW-10",
+    "R4:NEW-10",
+    "R5:NEW-10",
+    "R6:A26",
+    "R7:A25"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:FAIL",
+    "R5:PASS",
+    "R6:A26 PASS"
+   ]
+  },
+  {
+   "key": "NEW-14 / 7C Gen V Language inline, no toast",
+   "appearances": [
+    "R3:NEW-14",
+    "R4:NEW-14",
+    "R5:NEW-14",
+    "R6:A27",
+    "R6:C03",
+    "R7:A26",
+    "R7:A35",
+    "R11:H27~",
+    "R12:H14~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:FAIL",
+    "R5:PASS",
+    "R6:A27 PASS",
+    "R6:C03 PASS",
+    "R11:H27~ FAIL (names/Korean/keyboards)"
+   ]
+  },
+  {
+   "key": "NEW-18 / 7F Gen I-IV Trainer matches Gen V; Gen V Trainer visual (R7 C06 Review button overlap)",
+   "appearances": [
+    "R3:NEW-18",
+    "R4:NEW-18",
+    "R5:NEW-18",
+    "R6:B06",
+    "R6:C06",
+    "R7:B04",
+    "R7:C06",
+    "R9:H09~/H10~ (functions only)",
+    "R11:H09~/H10~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "OCT24:PASS",
+    "R5:FAIL",
+    "R6:B06 FAIL",
+    "R6:C06 FAIL",
+    "R11:H09~ PASS",
+    "R11:H10~ PASS"
+   ]
+  },
+  {
+   "key": "AUD-01 One shared Gen I-V Review",
+   "appearances": [
+    "R3:AUD-01",
+    "R4:AUD-01",
+    "R5:AUD-01",
+    "R6:D01",
+    "R7:A48",
+    "R11:H45~",
+    "R12:H17~"
+   ],
+   "results": [
+    "R3:FAIL",
+    "R4:FAIL (#323)",
+    "OCT24:NOT TESTED",
+    "R5:NOT TESTED",
+    "R6:D01 PASS ('do not redesign')",
+    "R11:H45~ PASS"
+   ]
+  },
+  {
+   "key": "Part 9 #1/#3/#8/#9 round-3 device checks",
+   "appearances": [
+    "R3:Part 9 #1",
+    "R3:Part 9 #3",
+    "R3:Part 9 #8",
+    "R3:Part 9 #9"
+   ],
+   "results": [
+    "R3:recorded under AUD-01/AUD-03/AUD-08/AUD-09"
+   ]
+  },
+  {
+   "key": "P3-TRAINER Trainer Play Time / Gender staged (P2 restyle)",
+   "appearances": [
+    "R5:P3 Trainer",
+    "R6:A30",
+    "R7:A29",
+    "R9:H10~",
+    "R10:H10~",
+    "R11:H10~"
+   ],
+   "results": [
+    "R5:PASS",
+    "R6:A30 PASS",
+    "R11:H10~ PASS"
+   ]
+  },
+  {
+   "key": "4D-HELP Help names only real controls",
+   "appearances": [
+    "R5:4D Help",
+    "R6:A31",
+    "R7:A30"
+   ],
+   "results": [
+    "R5:PASS",
+    "R6:A31 PASS"
+   ]
+  },
+  {
+   "key": "P1-RETURN Review easy to find; returns where it came from (Gen II Unown Create invisible Review; Party hidden +)",
+   "appearances": [
+    "R5:P1 Review return",
+    "R6:B08",
+    "R7:B06 (P1-RETURN 1)",
+    "R7:B07 (P1-RETURN 2)",
+    "R12:H05~ (Party Actions list Review only)"
+   ],
+   "results": [
+    "R5:FAIL",
+    "R6:B08 FAIL"
+   ]
+  },
+  {
+   "key": "P1-GEN1 Gen I Review presentation",
+   "appearances": [
+    "R5:P1 Gen I Review",
+    "R6:D02",
+    "R7:A49"
+   ],
+   "results": [
+    "R5:NOT TESTED",
+    "R6:D02 PASS"
+   ]
+  },
+  {
+   "key": "7B Gen V Learnable label",
+   "appearances": [
+    "R5:7B (request)",
+    "R6:C02",
+    "R7:A34"
+   ],
+   "results": [
+    "R6:C02 PASS"
+   ]
+  },
+  {
+   "key": "7D Tap outside closes non-destructive popups",
+   "appearances": [
+    "R5:7D (request)",
+    "R6:C04",
+    "R7:A36",
+    "R7:C04 (Quick Games tap outside)",
+    "R11:H47~"
+   ],
+   "results": [
+    "R6:C04 PASS",
+    "R11:H47~ PASS"
+   ]
+  },
+  {
+   "key": "7E Save safety and backups",
+   "appearances": [
+    "R5:7E (request)",
+    "R6:C05",
+    "R7:A37",
+    "R8:H08~/H09~",
+    "R12:H17~"
+   ],
+   "results": [
+    "R6:C05 PASS"
+   ]
+  },
+  {
+   "key": "7G Bag Review discoverability",
+   "appearances": [
+    "R5:7G (request)",
+    "R6:C07",
+    "R7:A38"
+   ],
+   "results": [
+    "R6:C07 PASS"
+   ]
+  },
+  {
+   "key": "R6-C08 Gen III held-item policy (Safari Ball / Berry Juice)",
+   "appearances": [
+    "R6:C08",
+    "R7:A39"
+   ],
+   "results": [
+    "R6:C08 PASS"
+   ]
+  },
+  {
+   "key": "R6-C10 Tap-outside: no tap-through",
+   "appearances": [
+    "R6:C10",
+    "R7:A40",
+    "R11:H47~"
+   ],
+   "results": [
+    "R6:C10 PASS",
+    "R11:H47~ PASS"
+   ]
+  },
+  {
+   "key": "R6-C11 View-only notice",
+   "appearances": [
+    "R6:C11",
+    "R7:A41"
+   ],
+   "results": [
+    "R6:C11 PASS"
+   ]
+  },
+  {
+   "key": "R6-C12 Gen V Pokerus Keep",
+   "appearances": [
+    "R6:C12",
+    "R7:A42"
+   ],
+   "results": [
+    "R6:C12 PASS"
+   ]
+  },
+  {
+   "key": "R6-C13 Create Review shows details",
+   "appearances": [
+    "R6:C13",
+    "R7:A43",
+    "R12:H17~"
+   ],
+   "results": [
+    "R6:C13 PASS"
+   ]
+  },
+  {
+   "key": "R6-C14 Gen II Create starts with level-up moves",
+   "appearances": [
+    "R6:C14",
+    "R7:A44",
+    "R11:H28~",
+    "R11:Extra 5~",
+    "R11:Extra 6~"
+   ],
+   "results": [
+    "R6:C14 PASS",
+    "R11:H28 request + Extra 5/6: owner reverses (start blank)"
+   ]
+  },
+  {
+   "key": "R6-C15 Stored unreleased held item labelled",
+   "appearances": [
+    "R6:C15",
+    "R7:A45"
+   ],
+   "results": [
+    "R6:C15 PASS"
+   ]
+  },
+  {
+   "key": "R6-C16 No draft carried across saves",
+   "appearances": [
+    "R6:C16",
+    "R7:A46"
+   ],
+   "results": [
+    "R6:C16 PASS"
+   ]
+  },
+  {
+   "key": "R6-C17 Gen I-III export refuses changed original",
+   "appearances": [
+    "R6:C17",
+    "R7:A47"
+   ],
+   "results": [
+    "R6:C17 PASS"
+   ]
+  },
+  {
+   "key": "R7-C01 Bag + and Help agree",
+   "appearances": [
+    "R7:C01"
+   ],
+   "results": []
+  },
+  {
+   "key": "R7-C02 Gen V export appears in Save Backups (7E G1)",
+   "appearances": [
+    "R7:C02"
+   ],
+   "results": []
+  },
+  {
+   "key": "R7-C03 Editor typography same in Gen I-V",
+   "appearances": [
+    "R7:C03"
+   ],
+   "results": []
+  },
+  {
+   "key": "R7-C04 Quick Games closes on a tap outside",
+   "appearances": [
+    "R7:C04"
+   ],
+   "results": []
+  },
+  {
+   "key": "R7-C05 Unown confirmations",
+   "appearances": [
+    "R7:C05",
+    "R11:H22~",
+    "R12:H13~"
+   ],
+   "results": [
+    "R11:H22~ FAIL (toasts)"
+   ]
+  },
+  {
+   "key": "R7-C06 Gen V Trainer: Review button overlaps nothing",
+   "appearances": [
+    "R7:C06"
+   ],
+   "results": []
+  },
+  {
+   "key": "R7-C07 Gen I/II Origin & Legality panel",
+   "appearances": [
+    "R7:C07"
+   ],
+   "results": []
+  },
+  {
+   "key": "R7-C08 Create Review rows look the same in Gen I-V",
+   "appearances": [
+    "R7:C08"
+   ],
+   "results": []
+  },
+  {
+   "key": "R7-C09 Met Location: focused event row shows its detail line",
+   "appearances": [
+    "R7:C09"
+   ],
+   "results": []
+  },
+  {
+   "key": "R8-H01 Install and open",
+   "appearances": [
+    "R8:H01",
+    "R9:H01",
+    "R10:H01",
+    "R11:H01",
+    "R12:H01"
+   ],
+   "results": [
+    "R11:H01 PASS"
+   ]
+  },
+  {
+   "key": "R8-H02 Navigation (D-pad/stick/touch, B back)",
+   "appearances": [
+    "R8:H02",
+    "R11:H18~/H19~/H47~"
+   ],
+   "results": [
+    "R11:H18~ PASS",
+    "R11:H19~ PASS",
+    "R11:H47~ PASS"
+   ]
+  },
+  {
+   "key": "R8-H03 Open one save per generation",
+   "appearances": [
+    "R8:H03",
+    "R9:H02",
+    "R10:H02",
+    "R11:H02",
+    "R12:H18~"
+   ],
+   "results": [
+    "R11:H02 PASS"
+   ]
+  },
+  {
+   "key": "R8-H04 Bank storage persists over restart",
+   "appearances": [
+    "R8:H04",
+    "R11:H40~/H41~/H42~"
+   ],
+   "results": [
+    "R11:H40~ FAIL",
+    "R11:H41~ FAIL",
+    "R11:H42~ FAIL"
+   ]
+  },
+  {
+   "key": "R8-H05 Bag edit reverted -> no pending change",
+   "appearances": [
+    "R8:H05",
+    "R11:H33~/H45~"
+   ],
+   "results": [
+    "R11:H33~ PASS",
+    "R11:H45~ PASS"
+   ]
+  },
+  {
+   "key": "R8-H06 Ordinary Pokemon editing -> Review lists exactly the changes",
+   "appearances": [
+    "R8:H06",
+    "R11:H24~",
+    "R12:H17~"
+   ],
+   "results": [
+    "R11:H24~ PASS"
+   ]
+  },
+  {
+   "key": "R8-H07 Gen II OT name length (7)",
+   "appearances": [
+    "R8:H07",
+    "R8:Group A matrix #10"
+   ],
+   "results": []
+  },
+  {
+   "key": "R8-H08 Discard leaves the save untouched",
+   "appearances": [
+    "R8:H08",
+    "R11:H45~/H48~",
+    "R12:H17~"
+   ],
+   "results": [
+    "R11:H45~ PASS",
+    "R11:H48~ PASS"
+   ]
+  },
+  {
+   "key": "R8-H09 Export Copy writes a separate file",
+   "appearances": [
+    "R8:H09",
+    "R9:H14",
+    "R10:H14",
+    "R11:H14",
+    "R12:H17~"
+   ],
+   "results": [
+    "R11:H14 PASS"
+   ]
+  },
+  {
+   "key": "R8-H10 / R9-R10 H15 earlier-rounds smoke check",
+   "appearances": [
+    "R8:H10",
+    "R9:H15",
+    "R10:H15",
+    "R11:H15",
+    "R12:H18~"
+   ],
+   "results": [
+    "R11:H15 PASS ('None')"
+   ]
+  },
+  {
+   "key": "GroupA Bank faults",
+   "appearances": [
+    "R8:Group A",
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (named)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE (synthetic evidence only)"
+   ]
+  },
+  {
+   "key": "GroupA Gen II padded 128 KiB",
+   "appearances": [
+    "R8:Group A",
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (named)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE (synthetic evidence only)"
+   ]
+  },
+  {
+   "key": "GroupA Japanese Crystal / Gen II read-only",
+   "appearances": [
+    "R8:Group A",
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (named)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE (synthetic evidence only)"
+   ]
+  },
+  {
+   "key": "GroupA Localized FR/LG releases",
+   "appearances": [
+    "R8:Group A",
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (named)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE (synthetic evidence only)"
+   ]
+  },
+  {
+   "key": "GroupA Gen III RTC footer",
+   "appearances": [
+    "R8:Group A",
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (named)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE (synthetic evidence only)"
+   ]
+  },
+  {
+   "key": "GroupA Gen III torn/signature-free slots",
+   "appearances": [
+    "R8:Group A",
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (not named; 'See RETEST_ROUND10_TEMPLATE.md')"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE (synthetic evidence only)"
+   ]
+  },
+  {
+   "key": "GroupA Meteorite and unreleased held items",
+   "appearances": [
+    "R8:Group A",
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (not named; 'See RETEST_ROUND10_TEMPLATE.md')"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE (synthetic evidence only)"
+   ]
+  },
+  {
+   "key": "GroupA Gen II/III Bag byte fidelity",
+   "appearances": [
+    "R8:Group A",
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (not named; 'See RETEST_ROUND10_TEMPLATE.md')"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE (synthetic evidence only)"
+   ]
+  },
+  {
+   "key": "GroupA Gen III Egg names; Gen V PID gender",
+   "appearances": [
+    "R8:Group A",
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (not named; 'See RETEST_ROUND10_TEMPLATE.md')"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE (synthetic evidence only)"
+   ]
+  },
+  {
+   "key": "GroupA Japanese Gen I/II writers",
+   "appearances": [
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (Japanese named only)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE"
+   ]
+  },
+  {
+   "key": "GroupA Japanese Gen III/IV/V saves",
+   "appearances": [
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (Japanese named only)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE"
+   ]
+  },
+  {
+   "key": "GroupA Standalone .pk1-.pk5/.ek3-.ek5 files",
+   "appearances": [
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (Japanese named only)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE"
+   ]
+  },
+  {
+   "key": "GroupA Gen III unused species index never overwritten",
+   "appearances": [
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (Japanese named only)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE"
+   ]
+  },
+  {
+   "key": "GroupA Gen I Exp. All / settings hardening / Gen IV-V misc",
+   "appearances": [
+    "R9:Group A",
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' (Japanese named only)"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE"
+   ]
+  },
+  {
+   "key": "GroupA Gen IV pocket hole/ghost/filler record",
+   "appearances": [
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' ('Gen IV Bag fidelity')"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE"
+   ]
+  },
+  {
+   "key": "GroupA Gen IV Bag Remove/Add byte fidelity",
+   "appearances": [
+    "R10:Group A",
+    "R12:Group A 'Earlier Group A rows' ('Gen IV Bag fidelity')"
+   ],
+   "results": [
+    "hardware: NOT TESTED / NO FIXTURE"
+   ]
+  },
+  {
+   "key": "R9-H03 Bag Help fits",
+   "appearances": [
+    "R9:H03",
+    "R10:H03",
+    "R11:H03",
+    "R12:H18~"
+   ],
+   "results": [
+    "R11:H03 PASS"
+   ]
+  },
+  {
+   "key": "R9-H04 Top Up / Add Missing",
+   "appearances": [
+    "R9:H04",
+    "R10:H04",
+    "R11:H04",
+    "R12:H10"
+   ],
+   "results": [
+    "R11:H04 FAIL"
+   ]
+  },
+  {
+   "key": "R9-H05 Export a Pokemon to a file",
+   "appearances": [
+    "R9:H05",
+    "R10:H05",
+    "R11:H05",
+    "R12:H05~"
+   ],
+   "results": [
+    "R11:H05 PASS"
+   ]
+  },
+  {
+   "key": "R9-H06 Import into empty slot",
+   "appearances": [
+    "R9:H06",
+    "R10:H06",
+    "R11:H06",
+    "R12:H05~/H06~"
+   ],
+   "results": [
+    "R11:H06 PASS"
+   ]
+  },
+  {
+   "key": "R9-H07 Gen V Create asks for Met Location",
+   "appearances": [
+    "R9:H07",
+    "R10:H07",
+    "R11:H07",
+    "R12:H07"
+   ],
+   "results": [
+    "R11:H07 PASS (request: all gens)"
+   ]
+  },
+  {
+   "key": "R9-H08 Gen V Gender inline",
+   "appearances": [
+    "R9:H08",
+    "R10:H08",
+    "R11:H08"
+   ],
+   "results": [
+    "R11:H08 PASS"
+   ]
+  },
+  {
+   "key": "R9-H09 Gen V Trainer Gender and Pokedex",
+   "appearances": [
+    "R9:H09",
+    "R10:H09",
+    "R11:H09"
+   ],
+   "results": [
+    "R11:H09 PASS"
+   ]
+  },
+  {
+   "key": "R9-H10 Gen I Play Time",
+   "appearances": [
+    "R9:H10",
+    "R10:H10",
+    "R11:H10"
+   ],
+   "results": [
+    "R11:H10 PASS"
+   ]
+  },
+  {
+   "key": "R9-H11 L/R while searching",
+   "appearances": [
+    "R9:H11",
+    "R10:H11",
+    "R11:H11",
+    "R12:H18~"
+   ],
+   "results": [
+    "R11:H11 PASS"
+   ]
+  },
+  {
+   "key": "R9-H12 Recovery files view",
+   "appearances": [
+    "R9:H12",
+    "R10:H12",
+    "R11:H12",
+    "R12:H11"
+   ],
+   "results": [
+    "R11:H12 FAIL"
+   ]
+  },
+  {
+   "key": "R9-H13 Japanese saves read-only",
+   "appearances": [
+    "R9:H13",
+    "R10:H13",
+    "R11:H13",
+    "R12:H17~ (optional sentence)"
+   ],
+   "results": [
+    "R11:H13 PASS (owner: 'i didnt test a japenese save'; not hardware evidence)"
+   ]
+  },
+  {
+   "key": "R9-H14 Export Copy separate",
+   "appearances": [
+    "R9:H14",
+    "R10:H14",
+    "R11:H14",
+    "R12:H17~"
+   ],
+   "results": [
+    "R11:H14 PASS"
+   ]
+  },
+  {
+   "key": "R10-H16 Gen IV Bag Remove keeps later items",
+   "appearances": [
+    "R10:H16",
+    "R11:H16",
+    "R12:H18~"
+   ],
+   "results": [
+    "R11:H16 PASS"
+   ]
+  },
+  {
+   "key": "R10-H17 Gen IV Berries/TM added in number order",
+   "appearances": [
+    "R10:H17",
+    "R11:H17",
+    "R12:H18~"
+   ],
+   "results": [
+    "R11:H17 PASS"
+   ]
+  },
+  {
+   "key": "R11-H18 D-pad and joystick parity",
+   "appearances": [
+    "R11:H18"
+   ],
+   "results": [
+    "R11:H18 PASS"
+   ]
+  },
+  {
+   "key": "R11-H19 B closes nested menus",
+   "appearances": [
+    "R11:H19"
+   ],
+   "results": [
+    "R11:H19 PASS"
+   ]
+  },
+  {
+   "key": "R11-H20 Emulator/provider identification",
+   "appearances": [
+    "R11:H20"
+   ],
+   "results": [
+    "R11:H20 PASS"
+   ]
+  },
+  {
+   "key": "R11-H21 Gen I DV/EV and shiny controls",
+   "appearances": [
+    "R11:H21",
+    "R12:H13~"
+   ],
+   "results": [
+    "R11:H21 PASS"
+   ]
+  },
+  {
+   "key": "R11-H22 DV column and Unown sprite",
+   "appearances": [
+    "R11:H22",
+    "R12:H12",
+    "R12:H13",
+    "R12:H16~"
+   ],
+   "results": [
+    "R11:H22 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H23 Move between boxes (Gen II)",
+   "appearances": [
+    "R11:H23",
+    "R12:H03"
+   ],
+   "results": [
+    "R11:H23 PASS (request: A places)"
+   ]
+  },
+  {
+   "key": "R11-H24 Edit and discard (Gen III)",
+   "appearances": [
+    "R11:H24",
+    "R12:H17~"
+   ],
+   "results": [
+    "R11:H24 PASS"
+   ]
+  },
+  {
+   "key": "R11-H25 Nature stat colours and trainer fields (stale left panel)",
+   "appearances": [
+    "R11:H25",
+    "R12:H09"
+   ],
+   "results": [
+    "R11:H25 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H26 Legal move chooser list (Gen V)",
+   "appearances": [
+    "R11:H26"
+   ],
+   "results": [
+    "R11:H26 PASS"
+   ]
+  },
+  {
+   "key": "R11-H27 Language chooser A-cycles (names, Korean, keyboards)",
+   "appearances": [
+    "R11:H27",
+    "R12:H14 (names/Korean display only)"
+   ],
+   "results": [
+    "R11:H27 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H28 Changing species clears incompatible moves",
+   "appearances": [
+    "R11:H28",
+    "R12:H07 (Gen III-V only)",
+    "R12:H09~"
+   ],
+   "results": [
+    "R11:H28 PASS (request: blank moves, required info)"
+   ]
+  },
+  {
+   "key": "R11-H29 Y shiny toggle (Gen V inline)",
+   "appearances": [
+    "R11:H29",
+    "R12:H13"
+   ],
+   "results": [
+    "R11:H29 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H30 Create, back out, keep",
+   "appearances": [
+    "R11:H30",
+    "R12:H07~"
+   ],
+   "results": [
+    "R11:H30 PASS"
+   ]
+  },
+  {
+   "key": "R11-H31 Clone to available slot",
+   "appearances": [
+    "R11:H31",
+    "R12:H04"
+   ],
+   "results": [
+    "R11:H31 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H32 Occupied destination safety",
+   "appearances": [
+    "R11:H32",
+    "R12:H03~/H04~ (Move/Clone occupied only)",
+    "R12:Group A (Clone/Move occupied; Gen I/II carry)"
+   ],
+   "results": [
+    "R11:H32 NOT TESTED ('dont know how to test this')"
+   ]
+  },
+  {
+   "key": "R11-H33 Remove confirmation and cancel",
+   "appearances": [
+    "R11:H33"
+   ],
+   "results": [
+    "R11:H33 PASS"
+   ]
+  },
+  {
+   "key": "R11-H34 Add and pocket capacity (Top Up PC items, Gen I)",
+   "appearances": [
+    "R11:H34",
+    "R12:H10"
+   ],
+   "results": [
+    "R11:H34 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H35 Held item and TM/HM details",
+   "appearances": [
+    "R11:H35"
+   ],
+   "results": [
+    "R11:H35 PASS"
+   ]
+  },
+  {
+   "key": "R11-H36 Malformed pocket safe refusal (optional)",
+   "appearances": [
+    "R11:H36",
+    "R12:Group A 'Earlier Group A rows'~"
+   ],
+   "results": [
+    "R11:H36 PASS"
+   ]
+  },
+  {
+   "key": "R11-H37 Gen V Bag read/navigation",
+   "appearances": [
+    "R11:H37"
+   ],
+   "results": [
+    "R11:H37 PASS"
+   ]
+  },
+  {
+   "key": "R11-H38 Cross-generation import refusal",
+   "appearances": [
+    "R11:H38"
+   ],
+   "results": [
+    "R11:H38 PASS (question: how to move Gen I -> Gen V)"
+   ]
+  },
+  {
+   "key": "R11-H39 Standalone file browser cancel",
+   "appearances": [
+    "R11:H39",
+    "R12:H06"
+   ],
+   "results": [
+    "R11:H39 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H40 Bank UI / in-save box rename",
+   "appearances": [
+    "R11:H40"
+   ],
+   "results": [
+    "R11:H40 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H41 Bank deposit",
+   "appearances": [
+    "R11:H41"
+   ],
+   "results": [
+    "R11:H41 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H42 Bank withdrawal",
+   "appearances": [
+    "R11:H42"
+   ],
+   "results": [
+    "R11:H42 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H43 Gen I/II/IV/V Vault availability",
+   "appearances": [
+    "R11:H43"
+   ],
+   "results": [
+    "R11:H43 FAIL"
+   ]
+  },
+  {
+   "key": "R11-H44 Bank and save recovery display",
+   "appearances": [
+    "R11:H44",
+    "R12:H11~"
+   ],
+   "results": [
+    "R11:H44 PASS"
+   ]
+  },
+  {
+   "key": "R11-H45 Multiple edits -> Review -> Discard",
+   "appearances": [
+    "R11:H45",
+    "R12:H17"
+   ],
+   "results": [
+    "R11:H45 PASS"
+   ]
+  },
+  {
+   "key": "R11-H46 Export Copy reload and compare (optional)",
+   "appearances": [
+    "R11:H46"
+   ],
+   "results": [
+    "R11:H46 PASS"
+   ]
+  },
+  {
+   "key": "R11-H47 Touch and controls agreement",
+   "appearances": [
+    "R11:H47"
+   ],
+   "results": [
+    "R11:H47 PASS"
+   ]
+  },
+  {
+   "key": "R11-H48 Exit and relaunch after discard",
+   "appearances": [
+    "R11:H48"
+   ],
+   "results": [
+    "R11:H48 PASS"
+   ]
+  },
+  {
+   "key": "R11-Extra 1 Gen I fill-all fills only current pocket",
+   "appearances": [
+    "R11:Extra 1",
+    "R12:H10"
+   ],
+   "results": [
+    "R11:Extra 1 owner request/bug"
+   ]
+  },
+  {
+   "key": "R11-Extra 2 FR/LG Met Location / species list reads RSE",
+   "appearances": [
+    "R11:Extra 2",
+    "R12:H07",
+    "R12:Group A row 1"
+   ],
+   "results": [
+    "R11:Extra 2 owner request/bug"
+   ]
+  },
+  {
+   "key": "R11-Extra 3 Gen V quick-view radar",
+   "appearances": [
+    "R11:Extra 3",
+    "R12:H15"
+   ],
+   "results": [
+    "R11:Extra 3 owner request/bug"
+   ]
+  },
+  {
+   "key": "R11-Extra 4 X = Import/Export in boxes",
+   "appearances": [
+    "R11:Extra 4",
+    "R12:H05"
+   ],
+   "results": [
+    "R11:Extra 4 owner request/bug"
+   ]
+  },
+  {
+   "key": "R11-Extra 5 Quit dialog (no Stay, no footer); one species picture; Gen I/II blank moves",
+   "appearances": [
+    "R11:Extra 5",
+    "R12:H02",
+    "R12:H16",
+    "R12:H07 (Gen III-V only)"
+   ],
+   "results": [
+    "R11:Extra 5 owner request/bug"
+   ]
+  },
+  {
+   "key": "R11-Extra 6 Gen I/II blank Create moves; Met Location required universally",
+   "appearances": [
+    "R11:Extra 6",
+    "R12:H07 (Gen III-V only)"
+   ],
+   "results": [
+    "R11:Extra 6 owner request/bug"
+   ]
+  },
+  {
+   "key": "R11-Extra 7 Same Actions list in every gen incl. Move to Vault / Export to file",
+   "appearances": [
+    "R11:Extra 7",
+    "R12:H05 (no Move to Vault)"
+   ],
+   "results": [
+    "R11:Extra 7 owner request/bug"
+   ]
+  },
+  {
+   "key": "R11-Extra 8 PKSE-style Bank search highlight before 1.0",
+   "appearances": [
+    "R11:Extra 8"
+   ],
+   "results": [
+    "R11:Extra 8 owner request/bug"
+   ]
+  },
+  {
+   "key": "PRE DEVICE_TEST_CHECKLIST.md Tests A-K (launch/idle, controller model, hint bar, themes, Select Game, read-only Party/Boxes, Action Sheet, live-write hard lock, Summary, error/recovery, handheld/docked)",
+   "appearances": [
+    "PRE:DEVICE_TEST_CHECKLIST.md A-K (157 rows)",
+    "R1:C01-C09/N01-N04 (controls), E01/E02 (Action sheet)",
+    "R8:H01/H02~",
+    "R11:H01/H18/H47~"
+   ],
+   "results": [
+    "PRE:no per-row results; 12 Classic-inventory PASS (2026-09-13), '# BALL' FAIL, live-write NOT TESTED"
+   ]
+  },
+  {
+   "key": "PRE DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md A-N (branding, Left Stick #19, Action Sheet, installed-game safety #23, Storage #27, PLA crash #24, themes, lifecycle/controller reconnect, handheld/docked)",
+   "appearances": [
+    "PRE:SECOND checklist (105 rows)",
+    "R1:C09/N01-N04~",
+    "R8:H02~"
+   ],
+   "results": [
+    "PRE:artwork PASS, idle/breathing motion FAIL/REMOVE; other rows unfilled"
+   ]
+  },
+  {
+   "key": "PRE GEN14_HARDWARE_TEST_CHECKLIST.md A-G (Home art, Quick Games/profiles, save instances, editors per gen, Review/Export/Discard, source safety + launch, controls)",
+   "appearances": [
+    "PRE:GEN14 checklist (35 rows)",
+    "R1:all sections~",
+    "R3:AUD-03/AUD-07/AUD-09/AUD-10/AUD-04~",
+    "R11:H20~"
+   ],
+   "results": [
+    "PRE:unfilled (superseded by GEN15 gate 2026-10-15 and R1 7fea1797 on 2026-10-17)"
+   ]
+  },
+  {
+   "key": "PRE GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md A01-G12 every-action gate (114 rows)",
+   "appearances": [
+    "PRE:GEN15 gate",
+    "R1:RETEST_7fea1797 (narrower P0 #320 checklist)"
+   ],
+   "results": [
+    "PRE:unfilled; 5 'previously observed' Gen V/launch FAIL rows"
+   ]
+  },
+  {
+   "key": "PRE controller disconnect/reconnect, HOME/sleep resume",
+   "appearances": [
+    "PRE:SECOND K (A0309-A0313)",
+    "PRE:GEN15 A03"
+   ],
+   "results": [
+    "PRE:EXTENDED_REPORT NOT TESTED (HOME/resume/sleep/controller reconnect)",
+    "PRE:FOLLOWUP_2026-09-03 PASS (HOME->resume, sleep->wake)"
+   ]
+  },
+  {
+   "key": "PRE GEN15 B13-B19 path aliases / invalid-truncated / moved-missing save / manual chooser traversal; GEN14 C6-C7",
+   "appearances": [
+    "PRE:GEN14 C6/C7",
+    "PRE:GEN15 B13-B19",
+    "R8:Group A #7 corrupted saves (partial)"
+   ],
+   "results": []
+  },
+  {
+   "key": "PRE GEN15 B16-B18 Gen V primary/backup, new-game save notice, diagnostics privacy",
+   "appearances": [
+    "PRE:GEN15 B16-B18 + Black 2 new-game row"
+   ],
+   "results": [
+    "PRE:FAIL (Black 2 new-game save shown with fake progression, A0742)"
+   ]
+  },
+  {
+   "key": "PRE GEN15 F10 faults (no space, read error, power loss) / G08 stress cycles",
+   "appearances": [
+    "PRE:GEN15 F10, G08",
+    "R8:Group A Bank faults (Bank only)"
+   ],
+   "results": []
+  },
+  {
+   "key": "PRE GEN15 A07 trainer-gender portraits / uninitialized trainer",
+   "appearances": [
+    "PRE:GEN15 A07",
+    "PRE:GEN14 A2"
+   ],
+   "results": []
+  },
+  {
+   "key": "PRE live-write paths (installed-game / RetroArch)",
+   "appearances": [
+    "PRE:DEVICE_TEST_CHECKLIST Test H"
+   ],
+   "results": [
+    "PRE:NOT TESTED (A0517)"
+   ]
+  },
+  {
+   "key": "PRE '# BALL' label (Gen II raw item 5)",
+   "appearances": [
+    "PRE:DEVICE_TEST_CHECKLIST classic inventory"
+   ],
+   "results": [
+    "PRE:FAIL (A0516)"
+   ]
+  },
+  {
+   "key": "PRE artificial idle/breathing sprite motion",
+   "appearances": [
+    "PRE:SECOND checklist prior feedback"
+   ],
+   "results": [
+    "PRE:FAIL / REMOVE (A0341)"
+   ]
+  },
+  {
+   "key": "PRE GEN5_SAVE_INSTANCE_HARDWARE_SMOKE / hotpath-validation / GEN1_SUMMARY_RADAR_RETEST / GEN4_ITEMS_AND_PICKER_POLISH checklists",
+   "appearances": [
+    "PRE:those docs (37 rows)",
+    "R3:AUD-07/AUD-03~",
+    "R11:H20~"
+   ],
+   "results": [
+    "PRE:unfilled"
+   ]
+  }
+ ],
+ "dropped": [
+  {
+   "item": "AUD-04 Game launch and return (Gen I-III RetroArch exit crash; Gen IV/V DraStic Quit to Launcher)",
+   "last_round": "R3 (62a2f8c3)",
+   "last_result": "NOT TESTED",
+   "owner_words": "PR #92 2026-10-06 (quoted in docs/handoffs/LAUNCH_RETURN_PROGRESS.md:19): \"RetroArch quit lifecycle: FAIL — quitting RetroArch drops/crashes to Nintendo HOME instead of returning to PokeBank NX.\"",
+   "reason": "no reason recorded",
+   "evidence": "Only mention after R3 is docs/hardware/ROUND3_RESULTS_62a2f8c3.md:132; not in R4 ROUND4_REPAIRS_AND_RETEST, OCT24, RETEST_1ca2faec .. RETEST_066e1db9; not in the gate (GUARDS_ROUND3 has AUD-02,03,05-10 only). Earlier: GEN15 gate B21/B22 + 'Known Gen I–III RetroArch exit crash ... explicitly blocking repro'; LAUNCH_RETURN_PROGRESS.md:23 'PR #307 (2026-10-15) still lists both ... as open'. DraStic half: owner decision 'DraStic return-to-PokeBank is no longer an acceptance requirement' (LAUNCH_RETURN_PROGRESS.md:20). R12 H02 only checks the Launch question dialog.",
+   "still_needed": true,
+   "note": "RetroArch half has no owner decision and no later owner result; it was simply never re-listed."
+  },
+  {
+   "item": "E11 Rerolls keep the requested Shiny / Gender (and Gen II Unown letter)",
+   "last_round": "R3 (62a2f8c3)",
+   "last_result": "NOT TESTED",
+   "owner_words": "R1: \"E11 i dont think  a  shiny and nonshiny can have the same stats this needs look into more.\"; R3: \"Owner uncertain about Unown's odd displayed stats\"",
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_e10f307f.md §3 'Rerolls (Phase 10) | As E11 above'; ROUND4_REPAIRS_AND_RETEST R2-REROLL 'DV/shiny/Unown rules checked'; gate ROUND2_NOT_VERIFIED lists E11. The successor R2-REROLL was never owner-PASSed (see next entry).",
+   "still_needed": true
+  },
+  {
+   "item": "R2-REROLL Gen II Unown: letter, Shiny, DVs and Reroll agree (+ R6 C09 UNOWN-LETTER selector)",
+   "last_round": "R7 B05 listed; last owner result R6 B07 / C09; R11 H22 FAIL (other sub-issues)",
+   "last_result": "FAIL",
+   "owner_words": "R6 B07: \"Gen II Unown:<br>• Shiny restricts the available letters.<br>• Turning Shiny off and choosing a letter changes the DVs and the form.<br>• Turning Shiny on again changes the form.<br>• Reroll seems not to work, shiny or not.<br>• Choosing a letter does not explain whether the result should be shiny.\"; R5: \"Gen II Unown: making it shiny changed A to something that looks like I or V. It is unclear how letter, shiny state and DVs relate.\"",
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only. R11 H22 ('DV column and Unown sprite') FAIL notes cover only toasts/Special; R12 H13 checks only 'no toast' after Unown letter/reroll/Shiny and H16 only the species-picker picture. R5 requirement P6 ('letter, shiny state, DVs and sprite always agree') never re-tested.",
+   "still_needed": true,
+   "note": "Partially carried (toasts, picture); the agreement/reroll-works requirement is dropped."
+  },
+  {
+   "item": "R2-CHECK-011 Gen V event and Met Location rows distinguishable (+ R7 C09 focused event row detail line)",
+   "last_round": "R7 B03 / C09 listed; last owner result R6 B05",
+   "last_result": "FAIL",
+   "owner_words": "R6 B05: \"The names now differ, but many rows still say \"Event/special location; unverified\". The owner wants to understand what each choice means and how it differs from the others.\"",
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only. R12 H07 (Gen III-V) only checks catches first / others marked 'Not a listed catch; unverified' / Trade-Egg-Event marked separately, not that event rows are distinguishable.",
+   "still_needed": true
+  },
+  {
+   "item": "NEW-18 / 7F Gen I-IV Trainer looks exactly like Gen V; Gen V Trainer Review button overlaps rows (R7 B04, C06)",
+   "last_round": "R7 B04 / C06 listed; last owner result R6 B06 / C06",
+   "last_result": "FAIL",
+   "owner_words": "R6 B06: \"Gen I–IV Trainer still looks like a hybrid:<br>• yellow values where Gen V uses neutral text;<br>• awkward boxes and inconsistent row backgrounds;<br>• layout pieces that look patched together.<br>Gen V Trainer is the standard.\"; R6 C06: \"Trainer looks inconsistent with Gen V. The Y Review Changes button is too large or badly placed and overlaps rows.\"",
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only. R9/R10 H09 (Gen V Trainer Gender/Pokédex) and H10 (Gen I Play Time) test functions only; R11 H09/H10 PASS do not cover the visual standard.",
+   "still_needed": true
+  },
+  {
+   "item": "E05 Inventory Help wording and glyphs Gen I-V (R6 B04; R7 B02 + R7 C01 'Bag + and Help agree')",
+   "last_round": "R7 B02 / C01 listed; last owner result R6 B04",
+   "last_result": "FAIL",
+   "owner_words": "R6 B04: \"Problems with Inventory Help and glyphs:<br>• Gen I/II/III Inventory Help has stale wording such as \"X Add remains available\".<br>• Bag Help describes + as Options although + opens Review.<br>• Gen V Bag Help is titled \"Game Browser Controls\" but should be \"Inventory Controls\".",
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only. R9/R10/R11 H03 'Bag Help fits' (R11 PASS) checks only that the dialog is legible and unclipped, not the stale wording / '+' meaning / title.",
+   "still_needed": true,
+   "note": "Possibly satisfied by R11 H03 PASS if the owner read the text; the sheet records no note."
+  },
+  {
+   "item": "P1-RETURN (1) Gen II Unown Create -> Review shows an invisible screen; (2) one visible Review key per screen (R7 B06/B07)",
+   "last_round": "R7 B06 / B07 listed; last owner result R6 B08",
+   "last_result": "FAIL",
+   "owner_words": "R6 B08: \"While creating Unown in Gen II, opening Review displays what appears to be an invisible screen. The application appears frozen, but pressing B exits the invisible screen and returns it to normal.\" / \"Review also works by pressing + in the Party menu. This needs fix",
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only. R12 H05 only checks Gen I-III Party Actions list Review Pending Changes; the invisible-Review defect (1) is on no later checklist.",
+   "still_needed": true
+  },
+  {
+   "item": "R7 C02 Gen V export appears in Save Backups (7E audit gap G1)",
+   "last_round": "R7 (e88957f2) C02",
+   "last_result": "never tested (owner reported it R6 C12 follow-up)",
+   "owner_words": "R6 C12 follow-up: \"**New bug:** after exporting an edited Gen V save, the exported copy does not appear in Save Backups, unlike the other generations.\"",
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only; docs/audits/ROUND6_SAVE_SAFETY_PKSE.md G1. R9-R12 'Recovery files' items (H12/H11) test selection/protection, not Gen V export listing.",
+   "still_needed": true,
+   "note": "Backup/recovery visibility of exports: safety-adjacent."
+  },
+  {
+   "item": "R7 C03 Pokémon editor typography the same in Gen I-V",
+   "last_round": "R7 (e88957f2) C03",
+   "last_result": "never tested (owner request R6)",
+   "owner_words": "R6: \"**Pokémon editor typography is inconsistent.** Older-generation View/Edit screens use large white headings, while newer ones use smaller coloured section labels.",
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only",
+   "still_needed": true
+  },
+  {
+   "item": "R7 C04 Quick Games (and other ordinary popups) close on a tap outside",
+   "last_round": "R7 (e88957f2) C04",
+   "last_result": "never tested (owner follow-up to R6 C04 PASS)",
+   "owner_words": "R6 C04 follow-up: \"Also wants tap-outside dismissal on the **Quick Games** panel and other ordinary popups\"",
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only. R11 H47 'Touch and controls agreement' PASS is generic (no Quick Games step).",
+   "still_needed": true
+  },
+  {
+   "item": "R7 C07 Gen I/II 'Origin & Legality' panel",
+   "last_round": "R7 (e88957f2) C07",
+   "last_result": "never tested",
+   "owner_words": null,
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only. R12 H09 checks Origin & Legality only for Gen III, IV, V or Crystal.",
+   "still_needed": true
+  },
+  {
+   "item": "R7 C08 Create Review rows look the same in Gen I-V",
+   "last_round": "R7 (e88957f2) C08",
+   "last_result": "never tested",
+   "owner_words": null,
+   "reason": "replaced by a broader item",
+   "evidence": "docs/hardware/RETEST_6ec5ccb9.md 'How this round is split' + H10 'Repeat a few of your favourite round 7 checks'; commit 66f8a53f 'Round 8: owner checklist on ordinary saves; advanced cases move to an automated matrix' ('Owner Oct 28: hardware acceptance must not depend on fixtures the owner does not own'); R7 e88957f2 checklist was never filled (no owner results for R7-R9); R9 d6a20a2a / R10 3634d1e6 H15 smoke only. R12 H17 'Review lists every staged change' does not compare generations.",
+   "still_needed": false,
+   "note": "Related R6 C13 PASS (Create Review shows details) is gate-guarded."
+  },
+  {
+   "item": "R8 H04 Bank storage: deposit one Pokémon, save Bank, restart",
+   "last_round": "R8 (6ec5ccb9) H04",
+   "last_result": "never tested; R11 H41 FAIL",
+   "owner_words": "R11 H41: \"ui doesnt allow it we havent added any menu or anything in to the legacy storage or \"bank\" yet\"",
+   "reason": "scope change",
+   "evidence": "Dropped from R9 d6a20a2a Group H; ROUND11_ENGINEERING_INTAKE.md §5 'Vault / Bank (H38, H40–H43, bank search) ... a v1.0 feature with its own reviewed plan and branch'; owner safety clarification 4 'No unfinished Vault/Bank features'.",
+   "still_needed": true,
+   "note": "v1.0 feature; R8 listed a Bank deposit flow that the R11 owner says the UI does not offer."
+  },
+  {
+   "item": "R8 H05 Bag quantity changed back -> Review shows no pending change",
+   "last_round": "R8 (6ec5ccb9) H05",
+   "last_result": "never tested",
+   "owner_words": null,
+   "reason": "no reason recorded",
+   "evidence": "Not in RETEST_d6a20a2a.md / RETEST_3634d1e6.md / RETEST_066e1db9.md Group H; nearest R11 H33/H45 (PASS) do not include the revert-to-original case.",
+   "still_needed": false,
+   "note": "Low risk; engineering behaviour, not an owner request."
+  },
+  {
+   "item": "R8 H07 Gen II OT name length (7 characters)",
+   "last_round": "R8 (6ec5ccb9) H07",
+   "last_result": "never tested",
+   "owner_words": null,
+   "reason": "moved to Group A automated",
+   "evidence": "docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md row #10 'Gen II OT name limit'; commit 66f8a53f ('also runs the Gen II OT prompt check no Makefile ran').",
+   "still_needed": false
+  },
+  {
+   "item": "R11 H40 In-save box rename (only Bank/'Legacy Storage' boxes rename)",
+   "last_round": "R11 (3634d1e6 worksheet) H40",
+   "last_result": "FAIL",
+   "owner_words": "\"can rename a box inside the save its doesnt allow me to select it, the only boxes i can rename are bank boxes or as their called right now in the app \"legacy storage\"\"",
+   "reason": "scope change",
+   "evidence": "ROUND11_ENGINEERING_INTAKE.md §1 H40 routed to VAULT ('Separate Vault plan/branch'); intake :2977 'This is intended behaviour, not a regression, but the UI is inconsistent across generations' (source policy refuses rename). Not on RETEST_066e1db9.md.",
+   "still_needed": true,
+   "note": "In-save rename is not a Vault feature; routing it to the Vault lane parks an owner request with no decision."
+  },
+  {
+   "item": "R11 H41/H42 Bank deposit and withdrawal",
+   "last_round": "R11 H41/H42",
+   "last_result": "FAIL",
+   "owner_words": "H41: \"ui doesnt allow it we havent added any menu or anything in to the legacy storage or \"bank\" yet\"; H42: \"not supported yet\"",
+   "reason": "scope change",
+   "evidence": "ROUND11_ENGINEERING_INTAKE.md §5 + owner safety clarification 4; RETEST_066e1db9.md intro 'no Vault'.",
+   "still_needed": true,
+   "note": "v1.0 requirement (Vault)."
+  },
+  {
+   "item": "R11 H43 Gen I/II/IV/V Vault availability",
+   "last_round": "R11 H43",
+   "last_result": "FAIL",
+   "owner_words": "\"gen 1 does not have \"move to vault or bank or what ever\" \"",
+   "reason": "scope change",
+   "evidence": "ROUND11_ENGINEERING_INTAKE.md §5; intake §4 'Move to Vault is not shown until the Vault exists'.",
+   "still_needed": true
+  },
+  {
+   "item": "R11 H38 question: how to move a Gen I Pokémon to Gen V (transfer path)",
+   "last_round": "R11 H38",
+   "last_result": "PASS (question)",
+   "owner_words": "\"how are we suppose to move a gen 1 pokemon  to like gen 5 ?? does it have to go through bank first or how we doing that ??\"",
+   "reason": "scope change",
+   "evidence": "ROUND11_ENGINEERING_INTAKE.md §1 H38 priority Vault, routing VAULT.",
+   "still_needed": true,
+   "note": "Owner question has no recorded answer in the checklist chain."
+  },
+  {
+   "item": "R11 Extra 8 PKSE-style Bank search highlight before 1.0",
+   "last_round": "R11 Extra 8",
+   "last_result": "request",
+   "owner_words": "\"pkse has a nice search function in the bank where it highlights the pokemon with the searched letter or the item  could we add just before 1.0.\"",
+   "reason": "scope change",
+   "evidence": "ROUND11_ENGINEERING_INTAKE.md §5 'Vault / Bank (H38, H40–H43, bank search)'.",
+   "still_needed": true
+  },
+  {
+   "item": "R11 H27 keyboards: Japanese/Korean/all-language entry; language button in search bar",
+   "last_round": "R11 H27",
+   "last_result": "FAIL",
+   "owner_words": "\"also in our keyboards we need to add the proper letters and charcters for japenese and korean and all languges is that possible in the nanog kayboard and is it possible to add a new button in our custom search bar that would also change the letters ... feedback ??\"",
+   "reason": "deferred by an owner decision",
+   "evidence": "ROUND11_ENGINEERING_INTAKE.md H27 'Fix C (keyboards, owner question, v1.0+ feature, needs a design decision)' and open questions :2845; R12 H14 covers only name display/Hangul glyphs.",
+   "still_needed": true,
+   "note": "Pending owner decision (not yet made); the display half is on R12 H14."
+  },
+  {
+   "item": "R11 H28 request 'level 100 should have 1-2 moves'",
+   "last_round": "R11 H28",
+   "last_result": "PASS (with request)",
+   "owner_words": "\"a pokemon cant be added until it has all the proper info, met location, moves for current level, like a level 100 pokemon should have 1-2 moves unless its breed or however that would be legal,\"",
+   "reason": "scope change",
+   "evidence": "ROUND11_ENGINEERING_INTAKE.md §4 Required fields: 'The suggested \"level 100 should have 1–2 moves\" rule is **not** a game rule and is not invented' (engineering decision, 'owner may override').",
+   "still_needed": false,
+   "note": "Declined by engineering, not by the owner; needs owner confirmation."
+  },
+  {
+   "item": "Gen I/II Create Met Location requirement ('this needs to be added for all gens' / 'universal rule')",
+   "last_round": "R11 H07 / Extra 6",
+   "last_result": "PASS (with request)",
+   "owner_words": "H07: \"this needs to be added for all gens\"; Extra 6: \"also can we add the feature that gen 5 has where if we try to ADD a pokemon that doesn't have a met location it wont add ... this should be a universal rule.\"",
+   "reason": "scope change",
+   "evidence": "ROUND11_ENGINEERING_INTAKE.md §4 Required fields: Met Location in Gen III–V only; 'Gen I has no met data and Gold/Silver have none; Crystal caught data stays optional' (engineering decision, owner may override; owner clarification 1 'exact-game / format-aware'). R12 H07 is Gen III–V only.",
+   "still_needed": false,
+   "note": "Format-justified; R12 H08 covers Crystal list."
+  },
+  {
+   "item": "PRE controller disconnect / reconnect (input works after reconnect)",
+   "last_round": "PRE (DEVICE_TEST_CHECKLIST_SECOND K; GEN15 A03)",
+   "last_result": "NOT TESTED",
+   "owner_words": null,
+   "reason": "no reason recorded",
+   "evidence": "DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md 'HOME/resume/sleep/controller reconnect' NOT TESTED (A0142); FOLLOWUP 2026-09-03 PASSed HOME->resume and sleep->wake only; no R1-R12 checklist item. R1 C09 is a second controller, not reconnect.",
+   "still_needed": true
+  },
+  {
+   "item": "PRE Gen V Black 2 newly initialized save must report new game / no trainer (GEN15 B17)",
+   "last_round": "PRE (GEN15 gate 2026-10-15)",
+   "last_result": "FAIL",
+   "owner_words": null,
+   "reason": "no reason recorded",
+   "evidence": "GEN15_HARDWARE_ACCEPTANCE_GATE 'Previously observed Gen V hardware defects' row 3 (A0742); no R1-R12 item checks a new-game Gen V save.",
+   "still_needed": true
+  },
+  {
+   "item": "PRE save-discovery robustness: moved/missing/renamed save -> relink; junk/truncated .sav rejected; path aliases (GEN14 C6/C7, GEN15 B13-B15/B19)",
+   "last_round": "PRE (GEN14 / GEN15 checklists)",
+   "last_result": "never tested (template rows)",
+   "owner_words": null,
+   "reason": "moved to Group A automated",
+   "evidence": "R8 Group A / ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md #7 'Deliberately corrupted saves' covers corrupted inputs only; moved/missing relink and alias rows are on no later checklist.",
+   "still_needed": true,
+   "note": "Only partly automated."
+  },
+  {
+   "item": "PRE GEN15 F10 fault handling (no space, read error, power loss) and G08 hundreds of open/edit/cancel cycles",
+   "last_round": "PRE (GEN15 gate)",
+   "last_result": "never tested (template rows)",
+   "owner_words": null,
+   "reason": "moved to Group A automated",
+   "evidence": "Group A 'Bank missing ... interrupted save' covers the Bank only; R11 H44 'Do NOT intentionally simulate power loss on hardware'. Export fault injection and stress are on no later checklist.",
+   "still_needed": false
+  },
+  {
+   "item": "PRE GEN15 A07 trainer-gender portraits / uninitialized trainer never guessed",
+   "last_round": "PRE (GEN15 gate; GEN14 A2)",
+   "last_result": "never tested (template rows)",
+   "owner_words": null,
+   "reason": "no reason recorded",
+   "evidence": "No R1-R12 item.",
+   "still_needed": false
+  },
+  {
+   "item": "PRE live-write paths (installed-game / RetroArch direct writes)",
+   "last_round": "PRE (DEVICE_TEST_CHECKLIST Test H)",
+   "last_result": "NOT TESTED",
+   "owner_words": null,
+   "reason": "deferred by an owner decision",
+   "evidence": "RETEST_7fea1797.md §5 'No live emulator or installed-game writes; Inject Save stays disabled'; ROUND5_RESULTS 'S06 deferral is not write permission'.",
+   "still_needed": false
+  },
+  {
+   "item": "PRE '# BALL' label (Gen II raw item ID 5)",
+   "last_round": "PRE (DEVICE_TEST_CHECKLIST classic inventory, 2026-09-13)",
+   "last_result": "FAIL",
+   "owner_words": null,
+   "reason": "fixed and assumed fine",
+   "evidence": "Record later_refs: 'Post-acceptance name-table cleanup with regression coverage; no new inventory hardware checkpoint required'.",
+   "still_needed": false
+  },
+  {
+   "item": "PRE artificial idle / breathing sprite motion",
+   "last_round": "PRE (DEVICE_TEST_CHECKLIST_SECOND prior feedback)",
+   "last_result": "FAIL",
+   "owner_words": "FAIL / REMOVE",
+   "reason": "fixed and assumed fine",
+   "evidence": "Owner asked for removal; no later checklist row.",
+   "still_needed": false
+  }
+ ],
+ "passed_then_unlisted": [
+  {
+   "item": "C04 L/R behave correctly",
+   "last_pass": "R3 62a2f8c3 C04 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['C04'] (L/R behave correctly): host:tests/test_home_input_guard.cpp; py:tests/test_game_hub_contract.py; py:tests/test_home_card_provider_contract.py"
+  },
+  {
+   "item": "C05 Gen II Create A/B fixed",
+   "last_pass": "R3 62a2f8c3 C05 PASS; by meaning R11:H19~ PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['C05'] (Gen II Create A/B fixed): host:tests/test_gen2_workspace_layers.cpp; host:tests/test_gen2_workspace_layers.cpp"
+  },
+  {
+   "item": "C06 Popups no longer activate background controls",
+   "last_pass": "R3 62a2f8c3 C06 PASS; by meaning R11:H47~ PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['C06'] (Popups no longer activate background controls): cg:CG08-modal-footer-and-touch-layer; cg:CG11-no-generic-modern-ui-in-gen1-5; host:tests/test_shared_editor_unit.cpp"
+  },
+  {
+   "item": "C08 Pokemon Release / Remove requires Y confirmation",
+   "last_pass": "R3 62a2f8c3 C08 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['C08'] (Pokémon Release / Remove requires Y confirmation): host:tests/test_shared_editor_unit.cpp; cg:CG06-reroll-without-confirmation; py:tests/test_touch_pokemon_editor_direct_rows_contract.py"
+  },
+  {
+   "item": "C09 Second controller works properly",
+   "last_pass": "R3 62a2f8c3 C09 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['C09'] (Second controller works properly): pin:src/UI/UI.cpp; pin:src/UI/UI.cpp",
+   "note": "Pin-only guard (PIN_ONLY_ALLOWED: 'no host seam'); no behavioural test."
+  },
+  {
+   "item": "M01 Gen I Moves panel aligned",
+   "last_pass": "R3 62a2f8c3 M01 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['M01'] (Gen I Moves panel properly aligned): host:tests/test_gen2_moves_panel.cpp; host:tests/test_shared_editor_unit.cpp; host:tests/test_gen1_pokemon_editor_ui_contract.cpp"
+  },
+  {
+   "item": "M02 Gen II Moves panel matches Gen I",
+   "last_pass": "R3 62a2f8c3 M02 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['M02'] (Gen II Moves panel matches Gen I): host:tests/test_gen2_moves_panel.cpp; host:tests/test_shared_editor_unit.cpp"
+  },
+  {
+   "item": "M03 Gen III Moves panel matches",
+   "last_pass": "R3 62a2f8c3 M03 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['M03'] (Gen III Moves panel matches): host:tests/test_gen3_hardware_surface_contract.cpp; host:tests/test_shared_editor_unit.cpp"
+  },
+  {
+   "item": "M06 Move chooser consistent",
+   "last_pass": "R3 62a2f8c3 M06 PASS; by meaning R11:H26~ PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['M06'] (Move chooser consistent across generations): host:tests/test_move_picker_presentation.cpp; host:tests/test_shared_editor_unit.cpp; host:tests/test_gen2_moves_panel.cpp"
+  },
+  {
+   "item": "M07 Move PP editing and PP Ups",
+   "last_pass": "R3 62a2f8c3 M07 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['M07'] (Move PP editing and PP Ups work): host:tests/test_gsc_pokemon_session.cpp; host:tests/test_gen1_edit_draft.cpp; host:tests/test_gen3_shared_pokemon_session.cpp"
+  },
+  {
+   "item": "M08 Gen I hidden-row appearance",
+   "last_pass": "R3 62a2f8c3 M08 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['M08'] (Gen I hidden-row appearance fixed): host:tests/test_gen1_list_fit.cpp; host:tests/test_gen1_pokemon_editor_ui_contract.cpp",
+   "note": "R2 checklist marks it 'device-only: guarded only by the closest list-fit / moves-panel tests'."
+  },
+  {
+   "item": "B05 Unique items limited to one",
+   "last_pass": "R3 62a2f8c3 B05 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['B05'] (Bikes, rods, Key Items and other unique items limited to one): cg:CG09-item-quantity-policy; host:tests/test_item_quantity_policy.cpp; host:tests/test_shared_bag_quantity.cpp"
+  },
+  {
+   "item": "B07 Removing items requires confirmation",
+   "last_pass": "R3 62a2f8c3 B07 PASS; by meaning R11:H33~ PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['B07'] (Removing items requires confirmation): host:tests/test_shared_editor_unit.cpp; host:tests/test_gen5_bag_screen.cpp"
+  },
+  {
+   "item": "E01 Make Shiny removed from quick Actions",
+   "last_pass": "R3 62a2f8c3 E01 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E01'] (Make Shiny removed from quick Actions): cg:CG01-no-make-shiny-quick-action; host:tests/test_classic_pokemon_action_menu.cpp; host:tests/test_gen4_hardware_surface_contract.cpp"
+  },
+  {
+   "item": "E04 Rows 1/15 counters removed",
+   "last_pass": "R3 62a2f8c3 E04 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E04'] (Rows 1/15 counters removed): cg:CG02-no-row-counters; host:tests/test_gen1_list_fit.cpp; host:tests/test_shared_editor_unit.cpp"
+  },
+  {
+   "item": "E06 Shiny shows Yes / No",
+   "last_pass": "R3 62a2f8c3 E06 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E06'] (Shiny shows simply Yes / No): cg:CG01b-shiny-editing-still-present; host:tests/test_gen2_inline_fields.cpp; host:tests/test_shared_editor_unit.cpp"
+  },
+  {
+   "item": "E07 Pokerus cycles inline with A",
+   "last_pass": "R3 62a2f8c3 E07 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E07'] (Pokérus cycles inline with A): host:tests/test_gen2_inline_fields.cpp; host:tests/test_shared_editor_unit.cpp"
+  },
+  {
+   "item": "E08 Gender editing without a huge picker",
+   "last_pass": "R3 62a2f8c3 E08 PASS; by meaning R11:H08~ PASS (Gen V gender inline)",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E08'] (Gender editing works without a huge picker): host:tests/test_gen2_inline_fields.cpp; host:tests/test_gen4_hardware_surface_contract.cpp"
+  },
+  {
+   "item": "E09 Gen III language cycles inline",
+   "last_pass": "R3 62a2f8c3 E09 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E09'] (Gen III language cycles inline): host:tests/test_shared_editor_unit.cpp; host:tests/test_shared_editor_unit.cpp"
+  },
+  {
+   "item": "E10 Y immediately rerolls DVs/IVs/EVs",
+   "last_pass": "R3 62a2f8c3 E10 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E10'] (Y immediately rerolls DVs / IVs / EVs): cg:CG06-reroll-without-confirmation; host:tests/test_gen12_dv_reroll.cpp; host:tests/test_gen2_workspace_layers.cpp",
+   "note": "R12 H13 re-checks only 'no toast' after reroll."
+  },
+  {
+   "item": "E12 Gen I Create defaults to Pikachu Level 5",
+   "last_pass": "R3 62a2f8c3 E12 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E12'] (Gen I Create defaults to Pikachu Level 5): host:tests/test_rby_pokemon_editor.cpp; qa:tests/test_qa_matrix_gen12.cpp",
+   "note": "Owner reversed the default moves in R11 Extra 6 ('blank canvas'); the guard pins only species 25 / level 5. Gen I blank-moves Create is on no R12 Group H row."
+  },
+  {
+   "item": "E13 Gen III PID-linked fields and Unown editing",
+   "last_pass": "R3 62a2f8c3 E13 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E13'] (Gen III PID-linked fields and Unown editing work): host:tests/test_shared_stat_reroll.cpp; host:tests/test_gen3_staged_pokemon_editor.cpp; host:tests/test_gen3_pid_search_fail_closed.cpp"
+  },
+  {
+   "item": "L01 Gen II DATA panel text inside box",
+   "last_pass": "R3 62a2f8c3 L01 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['L01'] (Gen II DATA panel text stays inside its box): host:tests/test_gsc_workspace_render.cpp; host:tests/test_gen2_moves_panel.cpp"
+  },
+  {
+   "item": "L02 Crystal location picker compact",
+   "last_pass": "R3 62a2f8c3 L02 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['L02'] (Crystal location picker is compact and readable): host:tests/test_gen2_location_picker.cpp; cg:CG04-no-developer-wording"
+  },
+  {
+   "item": "L03 Gen III location picker cleaned up",
+   "last_pass": "R3 62a2f8c3 L03 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['L03'] (Gen III location picker cleaned up): cg:CG04-no-developer-wording; host:tests/test_shared_editor_unit.cpp"
+  },
+  {
+   "item": "L04 Gen IV/V location windows clean",
+   "last_pass": "R3 62a2f8c3 L04 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['L04'] (Gen IV/V location windows use clean layout): host:tests/test_shared_editor_unit.cpp; pin:src/UI/SharedPokemonEditorSurface.inc"
+  },
+  {
+   "item": "L05 No editor panel cursor/row overlaps",
+   "last_pass": "R3 62a2f8c3 L05 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['L05'] (No editor panel cursor or row overlaps): host:tests/test_shared_editor_unit.cpp; host:tests/test_gen2_moves_panel.cpp"
+  },
+  {
+   "item": "N01 First scroll press immediate",
+   "last_pass": "R3 62a2f8c3 N01 PASS; by meaning R11:H18~ PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['N01'] (First scroll press responds immediately): host:tests/test_navigation_repeat.cpp; cg:CG10-single-navigation-repeat-engine"
+  },
+  {
+   "item": "N02 Hold-to-scroll quick and consistent",
+   "last_pass": "R3 62a2f8c3 N02 PASS; by meaning R11:H18~ PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['N02'] (Holding direction scrolls quickly and consistently): host:tests/test_navigation_repeat.cpp; cg:CG10-single-navigation-repeat-engine"
+  },
+  {
+   "item": "N03 Touch scrolling and joystick focus",
+   "last_pass": "R3 62a2f8c3 N03 PASS; by meaning R11:H18~ PASS, R11:H47~ PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['N03'] (Touch scrolling and joystick focus behave properly): cg:CG08-modal-footer-and-touch-layer; py:tests/test_touch_modal_list_contract.py; py:tests/test_touch_appwide_surface_contract.py"
+  },
+  {
+   "item": "N04 Long lists and keyboard repeat smooth",
+   "last_pass": "R3 62a2f8c3 N04 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['N04'] (Long lists and keyboard repeat feel smooth): cg:CG10-single-navigation-repeat-engine; host:tests/test_navigation_repeat.cpp"
+  },
+  {
+   "item": "B01 (round 2 PASS)",
+   "last_pass": "R3 62a2f8c3 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND2['B01'] (Gen I Add Item workflow improved (round 2 PASS)): cg:CG12-single-bag-add-flow; host:tests/test_bag_add_flow_gen15.cpp; qa:tests/test_qa_matrix_gen12.cpp",
+   "note": "R11 H34 FAIL (Top Up / PC Items / Gen I) touches the Bag flow; R12 H10 re-checks Top Up only."
+  },
+  {
+   "item": "B02 (round 2 PASS)",
+   "last_pass": "R3 62a2f8c3 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND2['B02'] (Gen II Add Item workflow improved (round 2 PASS)): cg:CG12-single-bag-add-flow; host:tests/test_bag_add_flow_gen15.cpp; qa:tests/test_qa_matrix_gen12.cpp",
+   "note": "R11 H34 FAIL (Top Up / PC Items / Gen I) touches the Bag flow; R12 H10 re-checks Top Up only."
+  },
+  {
+   "item": "B03 (round 2 PASS)",
+   "last_pass": "R3 62a2f8c3 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND2['B03'] (Gen III item editing still works correctly (round 2 PASS)): cg:CG12-single-bag-add-flow; host:tests/test_bag_add_flow_gen15.cpp; qa:tests/test_qa_matrix_gen3.cpp",
+   "note": "R11 H34 FAIL (Top Up / PC Items / Gen I) touches the Bag flow; R12 H10 re-checks Top Up only."
+  },
+  {
+   "item": "B06 (round 2 PASS)",
+   "last_pass": "R3 62a2f8c3 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND2['B06'] (Stackable item quantity editing works (round 2 PASS)): cg:CG09-item-quantity-policy; cg:CG12-single-bag-add-flow; host:tests/test_bag_add_flow_gen15.cpp",
+   "note": "R11 H34 FAIL (Top Up / PC Items / Gen I) touches the Bag flow; R12 H10 re-checks Top Up only."
+  },
+  {
+   "item": "S01 (round 2 PASS)",
+   "last_pass": "R3 62a2f8c3 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND2['S01'] (Gen V matches the shared Gen I-IV editor: PP / PP Ups captions (round 2 PASS)): host:tests/test_shared_editor_unit.cpp; host:tests/test_shared_editor_unit.cpp"
+  },
+  {
+   "item": "S03 (round 2 PASS)",
+   "last_pass": "R3 62a2f8c3 PASS; by meaning R11 H07 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND2['S03'] (Gen V Create / Clone / Move / Release: left panel, parity (round 2 PASS)): cg:CG16-shared-field-state; cg:CG17-exact-source-game-header; host:tests/test_gen5_create_edit_parity.cpp"
+  },
+  {
+   "item": "B04 (round 3 PASS)",
+   "last_pass": "R3 62a2f8c3 PASS; by meaning R11 H17 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['B04'] (Gen IV/V Add Item (round 3 PASS)): cg:CG12-single-bag-add-flow; host:tests/test_bag_add_flow_gen15.cpp; qa:tests/test_qa_matrix_gen4.cpp"
+  },
+  {
+   "item": "S04 (round 3 PASS)",
+   "last_pass": "R3 62a2f8c3 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['S04'] (Gen V Review / Discard / Export (round 3 PASS)): host:tests/test_gen5_review_discard_export_trace.cpp; host:tests/test_gen5_review_discard_export_trace.cpp; host:tests/test_gen5_review_discard_export_trace.cpp"
+  },
+  {
+   "item": "R2-MENUS Compact selection windows",
+   "last_pass": "R3 62a2f8c3 R2-MENUS PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-MENUS'] (Compact selection windows (round 3 PASS)): cg:CG13-shared-menu-geometry; host:tests/test_shared_menu_geometry.cpp"
+  },
+  {
+   "item": "R2-GOLD Read-only field colours",
+   "last_pass": "R3 62a2f8c3 R2-GOLD PASS; by meaning R11 H21 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-GOLD'] (Read-only field colours (round 3 PASS)): cg:CG16-shared-field-state"
+  },
+  {
+   "item": "R2-SCROLLBAR Draggable scrollbars",
+   "last_pass": "R3 62a2f8c3 R2-SCROLLBAR PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-SCROLLBAR'] (Touch scrollbar dragging (round 3 PASS)): cg:CG14-shared-draggable-scrollbar; host:tests/test_shared_scrollbar.cpp"
+  },
+  {
+   "item": "R2-MOVECHOOSER Move chooser extra rows",
+   "last_pass": "R3 62a2f8c3 R2-MOVECHOOSER PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-MOVECHOOSER'] (Extra rows in the Move list (round 3 PASS)): host:tests/test_shared_menu_geometry.cpp"
+  },
+  {
+   "item": "R2-CRYSTAL Crystal Met Time inline",
+   "last_pass": "R3 62a2f8c3 R2-CRYSTAL PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-CRYSTAL'] (Crystal Met Time (round 3 PASS)): qa:tests/test_qa_matrix_gen12.cpp"
+  },
+  {
+   "item": "R2-GEN5HEADER Gen V Create exact-game header",
+   "last_pass": "R3 62a2f8c3 R2-GEN5HEADER PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-GEN5HEADER'] (Gen V exact-game title (round 3 PASS)): cg:CG17-exact-source-game-header; host:tests/test_gen5_create_edit_parity.cpp"
+  },
+  {
+   "item": "R2-BUG-001 Trainer Edit button",
+   "last_pass": "R3 62a2f8c3 R2-BUG-001 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-BUG-001'] (Trainer Edit button (round 3 PASS)): cg:CG18-trainer-edit-footer; cg:CG18b-trainer-footer-not-overridden"
+  },
+  {
+   "item": "R2-BUG-003 Gen V Trainer clutter",
+   "last_pass": "R3 62a2f8c3 R2-BUG-003 PASS; by meaning R11 H09 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-BUG-003'] (Gen V Trainer clutter (round 3 PASS)): host:tests/test_gen5_create_edit_parity.cpp"
+  },
+  {
+   "item": "R2-BUG-004 Species change clears incompatible moves",
+   "last_pass": "R3 62a2f8c3 R2-BUG-004 PASS; by meaning R11 H28 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-BUG-004'] (Species change clears incompatible moves (round 3 PASS; never adds moves since Round 11)): cg:CG19-species-change-resets-moves; host:tests/test_species_change_moves_gen15.cpp; host:tests/test_species_change_moves_gen1.cpp",
+   "note": "Gate entry already re-pinned for the R11 'never adds moves' change (commit 160e5c6b)."
+  },
+  {
+   "item": "R2-BUG-005 TM/HM move information",
+   "last_pass": "R3 62a2f8c3 R2-BUG-005 PASS; by meaning R11 H35 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-BUG-005'] (TM/HM move information (round 3 PASS)): cg:CG25-gen5-machine-and-feather-art; host:tests/test_machine_moves_gen15.cpp"
+  },
+  {
+   "item": "R2-BUG-006 Compact item grid",
+   "last_pass": "R3 62a2f8c3 R2-BUG-006 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-BUG-006'] (Compact item grid (round 3 PASS)): cg:CG23-bag-add-grid-picker; host:tests/test_item_grid_picker.cpp"
+  },
+  {
+   "item": "R2-BUG-007 Coloured Move types",
+   "last_pass": "R3 62a2f8c3 R2-BUG-007 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-BUG-007'] (Coloured Move types (round 3 PASS)): cg:CG22-move-chooser-type-badges; host:tests/test_move_type_badges.cpp"
+  },
+  {
+   "item": "R2-BUG-008 Ruby Pikachu location investigation",
+   "last_pass": "R3 62a2f8c3 R2-BUG-008 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-BUG-008'] (Ruby Pikachu location investigation (round 3 PASS)): host:tests/test_gen3_encounter_keep_stored.cpp",
+   "note": "Owner PASS note: 'Owner sees only Level 26 Hoenn Safari Region option.'"
+  },
+  {
+   "item": "R2-BUG-012 Clickable popup rows boxed",
+   "last_pass": "R3 62a2f8c3 R2-BUG-012 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-BUG-012'] (All clickable popup rows boxed (round 3 PASS)): cg:CG20-shared-boxed-modal-rows; cg:CG20b-shared-boxed-modal-rows-gen12-classic; cg:CG20c-shared-boxed-species-picker"
+  },
+  {
+   "item": "R2-BUG-013 Coloured controller glyphs in Help",
+   "last_pass": "R3 62a2f8c3 R2-BUG-013 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-BUG-013'] (Coloured controller buttons in Help (round 3 PASS)): cg:CG21-help-lines-use-button-glyphs; host:tests/test_glyph_instruction.cpp"
+  },
+  {
+   "item": "R2-CHECK-009 Yellow Move Pokemon reachable",
+   "last_pass": "R3 62a2f8c3 R2-CHECK-009 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-CHECK-009'] (Yellow Move Pokemon reachable (round 3 PASS)): host:tests/test_gen12_packed_move.cpp"
+  },
+  {
+   "item": "R2-CHECK-010 Sapphire Super Rod pocket warning",
+   "last_pass": "R3 62a2f8c3 R2-CHECK-010 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['R2-CHECK-010'] (Sapphire Super Rod pocket warning (round 3 PASS)): host:tests/test_bag_add_flow_gen15.cpp; host:tests/test_bag_add_flow_gen15.cpp"
+  },
+  {
+   "item": "NEW-01 Help closes with B",
+   "last_pass": "R3 62a2f8c3 NEW-01 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['NEW-01'] (Help closes with B (round 3 PASS)): cg:CG29-help-closes-with-b",
+   "note": "Owner PASS note: 'remaining minor fix is remove redundant `- Close/Help` footer everywhere' — on no later checklist."
+  },
+  {
+   "item": "AUD-02 Species sprites and restrictions",
+   "last_pass": "R3 62a2f8c3 AUD-02 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['AUD-02'] (Species sprites and restrictions (round 3 PASS)): cg:CG15-shared-species-search; host:tests/test_shared_species_picker_surface_contract.cpp"
+  },
+  {
+   "item": "AUD-03 Emulator names",
+   "last_pass": "R3 62a2f8c3 AUD-03 PASS; by meaning R11 H20 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['AUD-03'] (Emulator names (round 3 PASS)): cg:CG26-trainer-provider-display-name; host:tests/test_home_card_providers.cpp; host:tests/test_session_provider_names.cpp"
+  },
+  {
+   "item": "AUD-05 Quick View touch",
+   "last_pass": "R3 62a2f8c3 AUD-05 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['AUD-05'] (Quick View touch (round 3 PASS)): host:tests/test_touch_scroll_state.cpp; py:tests/test_touch_appwide_surface_contract.py"
+  },
+  {
+   "item": "AUD-06 Item sprites",
+   "last_pass": "R3 62a2f8c3 AUD-06 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['AUD-06'] (Item sprites (round 3 PASS)): cg:CG25-gen5-machine-and-feather-art; py:tests/test_item_sprite_coverage.py"
+  },
+  {
+   "item": "AUD-07 Gen V assigned to profile",
+   "last_pass": "R3 62a2f8c3 AUD-07 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['AUD-07'] (Gen V assigned to profile (round 3 PASS)): host:tests/test_gen5_source_e2e.cpp; host:tests/test_gen5_readonly_save.cpp"
+  },
+  {
+   "item": "AUD-08 Gen IV Y multi-move",
+   "last_pass": "R3 62a2f8c3 AUD-08 PASS; by meaning R11 H23 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['AUD-08'] (Gen IV Y multi-move (round 3 PASS)): host:tests/test_gen4_hardware_surface_contract.cpp; host:tests/test_gen4_storage_carry.cpp"
+  },
+  {
+   "item": "AUD-09 Home Profile navigation",
+   "last_pass": "R3 62a2f8c3 AUD-09 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND3['AUD-09'] (Home Profile navigation (round 3 PASS)): cg:CG28-same-profile-keeps-game-focus; py:tests/test_game_hub_contract.py"
+  },
+  {
+   "item": "NEW-02 No Touch:Back footer",
+   "last_pass": "R6 26186464 A06 · NEW-02 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-02'] (No Touch:Back footer, touch Back kept (Oct 24 PASS)): cg:CG37-no-touch-back-footer"
+  },
+  {
+   "item": "NEW-03 Bag Remove / Key Item warning glyphs",
+   "last_pass": "R6 26186464 A07 · NEW-03 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-03'] (Bag Remove / Key Item warning glyphs, A commits (Oct 24 PASS)): cg:CG38-bag-confirm-glyphs-a-commits"
+  },
+  {
+   "item": "NEW-05 Species keyboard beside list",
+   "last_pass": "R6 26186464 A09 · NEW-05 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-05'] (Species keyboard beside the list (Oct 24 PASS)): cg:CG39-species-search-keyboard-beside-list"
+  },
+  {
+   "item": "NEW-06 Held Item search + Sort",
+   "last_pass": "R6 26186464 A10 · NEW-06 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-06'] (Held Item search with Sort (Oct 24 PASS)): cg:CG40-held-item-picker-search"
+  },
+  {
+   "item": "NEW-07 Crystal OT Gender inline",
+   "last_pass": "R6 26186464 A11 · NEW-07 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-07'] (Crystal OT Gender cycles inline (Oct 24 PASS)): cg:CG41-gen2-ot-gender-inline"
+  },
+  {
+   "item": "NEW-08 Ball picker scrollbar gutter",
+   "last_pass": "R6 26186464 A12 · NEW-08 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-08'] (Ball picker scrollbar gutter (Oct 24 PASS)): cg:CG42-ball-picker-scrollbar-gutter"
+  },
+  {
+   "item": "NEW-12 Gen IV/V location choices context-backed",
+   "last_pass": "R6 26186464 A15 · NEW-12 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-12'] (Gen IV/V location choices are context-backed (Oct 24 PASS)): cg:CG53-gen45-met-location-context; host:tests/test_gen45_encounter_context.cpp"
+  },
+  {
+   "item": "NEW-13 Ability names/effects",
+   "last_pass": "R6 26186464 A16 · NEW-13 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-13'] (Ability picker shows names and effects (Oct 24 PASS)): cg:CG46-ability-names-not-slots"
+  },
+  {
+   "item": "NEW-15 Create defaults IVs/DVs 0",
+   "last_pass": "R6 26186464 A17 · NEW-15 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-15'] (Create defaults IVs / DVs 0 (Oct 24 PASS)): cg:CG55-create-defaults-zero-ivs-dvs"
+  },
+  {
+   "item": "NEW-16 Gen V Home A opens assigned save",
+   "last_pass": "R6 26186464 A18 · NEW-16 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-16'] (Gen V Home A opens the assigned save (Oct 24 PASS)): cg:CG57-gen5-home-a-opens-assigned-save"
+  },
+  {
+   "item": "NEW-19 Gen I-IV staged exit menu",
+   "last_pass": "R6 26186464 A20 · NEW-19 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-19'] (Gen I-IV staged exit menu (Oct 24 PASS)): cg:CG31-classic-exit-offers-review"
+  },
+  {
+   "item": "NEW-04 Gen II PC Move",
+   "last_pass": "R6 26186464 A08 · NEW-04 PASS; by meaning R11 H23 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-04'] (Gen II PC Move completes (Oct 24 PASS)): cg:CG56-gen2-carry-refresh-without-finalize; host:tests/test_gen2_box_move_presentation.cpp",
+   "note": "R12 H03 changes the accepted control (A places instead of Y) at owner request."
+  },
+  {
+   "item": "NEW-09 Nature stat colours",
+   "last_pass": "R6 26186464 A13 · NEW-09 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-09'] (Nature stat colours: raised green, lowered red (Oct 24 PASS)): cg:CG43-nature-stat-colours; host:tests/test_stats_label_neutral_contract.cpp; host:tests/test_stats_label_neutral_contract.cpp",
+   "note": "R11 H25 (titled 'Nature stat colours ...') FAIL was about stale left-panel data; colours not re-reported."
+  },
+  {
+   "item": "NEW-11 Selected species name first",
+   "last_pass": "R6 26186464 A14 · NEW-11 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-11'] (Selected species reads name first (Oct 24 PASS)): cg:CG45-selected-species-name-first",
+   "note": "R12 H16 changes the species picker picture (one picture) at owner request."
+  },
+  {
+   "item": "NEW-17 Gen V Key Items/TMs editable",
+   "last_pass": "R6 26186464 A19 · NEW-17 PASS; by meaning R11 H37 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-17'] (Gen V Key Items / TMs editable (Oct 24 PASS)): cg:CG34-gen5-key-tm-pockets-editable"
+  },
+  {
+   "item": "NEW-20 Gen I-III Party Actions popup",
+   "last_pass": "R6 26186464 A21 · NEW-20 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['NEW-20'] (Gen I-III Party Actions popup (Oct 24 PASS)): cg:CG33-party-opens-actions",
+   "note": "R12 H05 re-checks Party Actions Review."
+  },
+  {
+   "item": "R2-BUG-002 Gen III/IV Trainer Name/Money reach Review",
+   "last_pass": "R6 26186464 A05 · R2-BUG-002 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['R2-BUG-002'] (Gen III/IV Trainer Review and staged exit (Oct 24 PASS)): cg:CG30-trainer-page-opens-review; cg:CG31-classic-exit-offers-review"
+  },
+  {
+   "item": "E03 Origin & Legality wording",
+   "last_pass": "R6 26186464 A01 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['E03'] (Origin & Legality wording and one truthful panel (Oct 24 PASS)): cg:CG03-origin-legality-heading; cg:CG48-origin-legality-truthful-state; cg:CG49-one-origin-legality-panel",
+   "note": "R12 H09 looks at Origin & Legality for Gen III-V/Crystal only; Gen I/II never re-listed after R7 C07."
+  },
+  {
+   "item": "M04 Gen IV move Category spacing",
+   "last_pass": "R6 26186464 A03 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['M04'] (Gen IV move Category spacing (Oct 24 PASS)): cg:CG52-gen45-move-category-spacing"
+  },
+  {
+   "item": "L06 Pokérus and Held Item selection (Gen III/V)",
+   "last_pass": "R6 26186464 B01 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['L06'] (Touch Party / summary opens Actions (Oct 24 PASS)): host:tests/test_party_summary_tap_routing.cpp; cg:CG33-party-opens-actions | tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['B01'] (L06: Gen III/V Pokerus and Held Item activation (Oct 26 PASS)): cg:CG69-pokerus-editable-gen3-gen5; cg:CG70-held-item-tap-commits-any-row; host:tests/test_held_item_input.cpp"
+  },
+  {
+   "item": "R2-TRAINER Gold/Silver Trainer layout; Gen I Name/Money",
+   "last_pass": "R6 26186464 B02 PASS; by meaning R11 H10 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['R2-TRAINER'] (Gen I Trainer Name / Money reach Review (Oct 24 PASS)): cg:CG30-trainer-page-opens-review | tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['B02'] (R2-TRAINER: no Gold / Silver gender overlap, supported Trainer edits kept (Oct 26 PASS)): cg:CG72-gold-silver-trainer-no-gender; cg:CG64-trainer-playtime-gender-staged; host:tests/test_classic_trainer_page.cpp",
+   "note": "Owner R6 follow-up: 'Still asks for the Gen V look (see B06)' — the visual half is dropped (see dropped NEW-18/7F)."
+  },
+  {
+   "item": "B08 Bag Review discoverable",
+   "last_pass": "R6 26186464 B03 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['B08'] (Bag changes appear in Review and exported copy): host:tests/test_gen1_export_transaction.cpp; host:tests/test_gen5_bag_screen.cpp; qa:tests/test_qa_export_contracts.cpp | tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['B03'] (B08: direct Bag Review (Oct 26 PASS)): cg:CG73-review-entry-visible-gen1-5; cg:CG58-export-outcome-visible"
+  },
+  {
+   "item": "M05 Gen V species/form move pools",
+   "last_pass": "R6 26186464 A24 PASS; by meaning R11 H26 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND6['M05'] (Gen V species- and form-specific move pools (Oct 25 PASS)): host:tests/test_gen5_move_compatibility.cpp; host:tests/test_gen5_move_compatibility.cpp"
+  },
+  {
+   "item": "NEW-10 Met Location rows fit (620 px)",
+   "last_pass": "R6 26186464 A26 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND6['NEW-10'] (Met Location rows fit the compact window (Oct 25 PASS)): host:tests/test_met_location_fit.cpp; cg:CG62-met-location-rows-fit"
+  },
+  {
+   "item": "NEW-14 / 7C Gen V Language inline, no toast",
+   "last_pass": "R6 26186464 A27 + C03 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND6['NEW-14'] (Gen V Language cycles inline as a staged native edit (Oct 25 PASS)): host:tests/test_gen5_language_cycle.cpp; host:tests/test_gen5_language_cycle.cpp; host:tests/test_gen5_language_cycle.cpp | tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C03'] (7C: Gen V Language cycles inline, no toast (Oct 26 PASS)): cg:CG79-no-gen5-language-toast; host:tests/test_gen5_language_cycle.cpp",
+   "note": "Still on R12 by meaning (H14 names); listed here because the inline-cycle step itself is not on R12."
+  },
+  {
+   "item": "R2-REVIEWMOVE Gen III Create with Safari Ball, named Review rows",
+   "last_pass": "R6 26186464 A23 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND6['R2-REVIEWMOVE'] (Gen III Create: every caught Ball incl. Safari, released held items only, named Review (Oct 25 PASS)): host:tests/test_gen3_staged_pokemon_editor.cpp; host:tests/test_gen3_staged_pokemon_editor.cpp; cg:CG32-review-rows-readable-names"
+  },
+  {
+   "item": "P3-TRAINER Trainer Play Time / Gender staged",
+   "last_pass": "R6 26186464 A30 PASS; by meaning R11 H09/H10 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND6['P3-TRAINER'] (Trainer Play Time / Gender staged at native offsets, Review, Export only (Oct 25 PASS)): cg:CG64-trainer-playtime-gender-staged; host:tests/test_gen4_staged_pokemon_editor.cpp; host:tests/test_gen3_trainer_edit.cpp"
+  },
+  {
+   "item": "4D-HELP Help names real controls",
+   "last_pass": "R6 26186464 A31 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND6['4D-HELP'] (Help never claims a control that does nothing there (Oct 25 PASS)): cg:CG63-help-names-real-controls; host:tests/test_classic_help_accuracy.cpp"
+  },
+  {
+   "item": "C01 A selects and advances",
+   "last_pass": "R6 26186464 A29 PASS; by meaning R11 H18/H19 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['C01'] (A selects and advances normally): host:tests/test_gen2_workspace_layers.cpp; host:tests/test_home_input_guard.cpp; py:tests/test_game_hub_contract.py | tests/test_hw_round1_regression_gate.py GUARDS_ROUND6['C01'] (A selects and advances; assigned Gen V save opens directly (Oct 25 PASS)): cg:CG57-gen5-home-a-opens-assigned-save; host:tests/test_home_input_guard.cpp"
+  },
+  {
+   "item": "R2-EMUBACKUP Backups list newest first, A opens a copy",
+   "last_pass": "R6 26186464 A28 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND6['R2-EMUBACKUP'] (Backups: newest first, A opens the exact copy, original protected (Oct 25 PASS)): host:tests/test_emulator_backup_access.cpp; cg:CG59-backup-browser-actions; cg:CG61-switch-backup-opens-staged-copy",
+   "note": "Successor items R11 H12 FAIL -> R12 H11 cover the Recovery files view, not the Backups list/open flow."
+  },
+  {
+   "item": "C07 Backup deletion protected",
+   "last_pass": "R6 26186464 A02 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['C07'] (Backup deletion requires Y confirmation): host:tests/test_home_input_guard.cpp; py:tests/test_touch_appwide_surface_contract.py; py:tests/test_touch_modal_list_contract.py | tests/test_hw_round1_regression_gate.py GUARDS_ROUND5['C07'] (Backup browser actions and deletion (Oct 24 PASS)): cg:CG59-backup-browser-actions; cg:CG60-no-backup-on-unchanged-open"
+  },
+  {
+   "item": "E02 Pokémon Actions order",
+   "last_pass": "R6 26186464 A04 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['E02'] (Actions menu order consistent): host:tests/test_classic_pokemon_action_menu.cpp; host:tests/test_gen12_packed_move.cpp; host:tests/test_gen12_packed_move.cpp",
+   "note": "R12 H05 lists a NEW order (adds Export to file); the gate still pins the old list strings — check they agree on 066e1db9."
+  },
+  {
+   "item": "S05 Original saves never change",
+   "last_pass": "R6 26186464 A25 PASS; by meaning R11 H14 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS['S05'] (Original saves stay unchanged): qa:tests/test_qa_export_contracts.cpp; qa:tests/test_qa_matrix_gen12.cpp; qa:tests/test_qa_matrix_gen5.cpp | tests/test_hw_round1_regression_gate.py GUARDS_ROUND6['S05'] (Original saves never change; backups open through a copy (Oct 25 PASS)): qa:tests/test_qa_matrix_gen12.cpp; cg:CG61-switch-backup-opens-staged-copy; cg:CG60-no-backup-on-unchanged-open"
+  },
+  {
+   "item": "R6 C02 · 7B Gen V Learnable label",
+   "last_pass": "R6 26186464 C02 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C02'] (7B: Gen V directly learnable move reads OK (Oct 26 PASS)): host:tests/test_ui_editor_input_host.cpp"
+  },
+  {
+   "item": "R6 C04 · 7D tap outside closes non-destructive popups",
+   "last_pass": "R6 26186464 C04 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C04'] (7D: tap outside closes non-destructive popups, no tap-through (Oct 26 PASS)): cg:CG78-tap-outside-dismisses-non-destructive; host:tests/test_popup_dismiss.cpp; host:tests/test_popup_dismiss.cpp"
+  },
+  {
+   "item": "R6 C05 · 7E save safety and backups",
+   "last_pass": "R6 26186464 C05 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C05'] (7E: save safety: originals protected, backups through a copy (Oct 26 PASS)): cg:CG61-switch-backup-opens-staged-copy; cg:CG60-no-backup-on-unchanged-open; host:tests/test_emulator_backup_access.cpp",
+   "note": "R12 H17 re-checks Export Copy separation only."
+  },
+  {
+   "item": "R6 C07 · 7G Bag Review discoverability",
+   "last_pass": "R6 26186464 C07 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C07'] (7G: Bag Review discoverable (Oct 26 PASS)): cg:CG73-review-entry-visible-gen1-5"
+  },
+  {
+   "item": "R6 C08 · Gen III held-item policy",
+   "last_pass": "R6 26186464 C08 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C08'] (Gen III held-item policy: no unreleased held items, Safari as a caught Ball (Oct 26 PASS)): cg:CG71-gen3-held-item-vs-caught-ball; host:tests/test_gen3_staged_pokemon_editor.cpp"
+  },
+  {
+   "item": "R6 C10 · Tap-through",
+   "last_pass": "R6 26186464 C10 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C10'] (Tap-through: a popup consumes its taps (Oct 26 PASS)): cg:CG78-tap-outside-dismisses-non-destructive; cg:CG08-modal-footer-and-touch-layer"
+  },
+  {
+   "item": "R6 C11 · View-only notice",
+   "last_pass": "R6 26186464 C11 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C11'] (View-only notice: View explains, never stages or prompts (Oct 26 PASS)): host:tests/test_ui_editor_input_host.cpp; host:tests/test_ui_editor_input_host.cpp",
+   "note": "Engineering deferral (MAIN_ACTIVE_HANDOFF): 'The View-mode notice does not cover Gen I/II'."
+  },
+  {
+   "item": "R6 C12 · Gen V Pokérus Keep",
+   "last_pass": "R6 26186464 C12 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C12'] (Gen V Pokerus Keep stages the toggled mode, keeps the strain (Oct 26 PASS)): host:tests/test_ui_editor_input_host.cpp"
+  },
+  {
+   "item": "R6 C13 · Create Review lists details",
+   "last_pass": "R6 26186464 C13 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C13'] (Create Review lists the created details (Oct 26 PASS)): cg:CG74-create-review-details"
+  },
+  {
+   "item": "R6 C15 · Stored unreleased held item labelled",
+   "last_pass": "R6 26186464 C15 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C15'] (Stored unreleased held item is labelled, kept (Oct 26 PASS)): cg:CG71-gen3-held-item-vs-caught-ball; host:tests/test_ui_editor_input_host.cpp"
+  },
+  {
+   "item": "R6 C16 · No cross-save draft",
+   "last_pass": "R6 26186464 C16 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C16'] (No draft carried across saves (Oct 26 PASS)): host:tests/test_ui_editor_input_host.cpp"
+  },
+  {
+   "item": "R6 C17 · Gen I-III export refuses a changed original",
+   "last_pass": "R6 26186464 C17 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C17'] (Gen I-III export refuses a changed original (Oct 26 PASS)): host:tests/test_emulator_backup_access.cpp"
+  },
+  {
+   "item": "R6 C14 Gen II Create starts with level-up moves",
+   "last_pass": "R6 26186464 C14 PASS (reversed by owner R11 H28 / Extra 5 / Extra 6)",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['C14'] (Gen II Create starts with no moves (Oct 26 PASS, reversed by the owner in Round 11 H28)): host:tests/test_species_change_moves_gen2.cpp",
+   "note": "Gate now pins the REVERSED behaviour (Create starts with no moves). R12 H07 tests 'no moves' only in Gen III-V; Gen I/II blank Create is on no R12 Group H row."
+  },
+  {
+   "item": "AUD-01 One shared Gen I-V Review",
+   "last_pass": "R6 26186464 D01 PASS; by meaning R11 H45 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['D01'] (AUD-01: one shared Gen I-V Review (Oct 26 PASS: do not redesign)): cg:CG35-gen5-review-matches-gen4; cg:CG65-gen1-review-shared-presenter-only; cg:CG67-standalone-review-returns-underneath"
+  },
+  {
+   "item": "P1-GEN1 Gen I Review presentation",
+   "last_pass": "R6 26186464 D02 PASS",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND7['D02'] (P1-GEN1: Gen I Review presentation (Oct 26 PASS)): cg:CG65-gen1-review-shared-presenter-only; cg:CG68-gen1-review-swipe-one-page"
+  },
+  {
+   "item": "R11 H08 Gen V Gender changes inline",
+   "last_pass": "R11 (3634d1e6 inferred) H08 PASS",
+   "guarded": true,
+   "guard": "by meaning only — E08 (GUARDS) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H09 Gen V Trainer Gender and Pokédex",
+   "last_pass": "R11 (3634d1e6 inferred) H09 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: P3-TRAINER / R2-BUG-003 by meaning (Gen II-IV / Gen V clutter), not the Gen V Gender edit; tests/test_hw_round1_regression_gate.py has no Round 11 table"
+  },
+  {
+   "item": "R11 H10 Gen I Play Time editable (to 255)",
+   "last_pass": "R11 (3634d1e6 inferred) H10 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none (P3-TRAINER covers Gen II-IV); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+  },
+  {
+   "item": "R11 H18 D-pad and joystick parity",
+   "last_pass": "R11 (3634d1e6 inferred) H18 PASS",
+   "guarded": true,
+   "guard": "by meaning only — N01-N03 (GUARDS) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H19 B closes nested menus one layer at a time",
+   "last_pass": "R11 (3634d1e6 inferred) H19 PASS",
+   "guarded": true,
+   "guard": "by meaning only — C05 / NEW-01 by meaning (partial); tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H20 Emulator/provider identification",
+   "last_pass": "R11 (3634d1e6 inferred) H20 PASS",
+   "guarded": true,
+   "guard": "by meaning only — AUD-03 (GUARDS_ROUND3) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H21 Gen I DV/EV, derived HP DV, Y shiny",
+   "last_pass": "R11 (3634d1e6 inferred) H21 PASS",
+   "guarded": true,
+   "guard": "by meaning only — R2-GOLD / E10 by meaning (partial); tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H24 Gen III edit and discard",
+   "last_pass": "R11 (3634d1e6 inferred) H24 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none specific; tests/test_hw_round1_regression_gate.py has no Round 11 table"
+  },
+  {
+   "item": "R11 H26 Gen V legal move chooser list",
+   "last_pass": "R11 (3634d1e6 inferred) H26 PASS",
+   "guarded": true,
+   "guard": "by meaning only — M05 (GUARDS_ROUND6) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H30 Create, back out, keep",
+   "last_pass": "R11 (3634d1e6 inferred) H30 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none specific; tests/test_hw_round1_regression_gate.py has no Round 11 table"
+  },
+  {
+   "item": "R11 H33 Bag Remove confirmation and cancel",
+   "last_pass": "R11 (3634d1e6 inferred) H33 PASS",
+   "guarded": true,
+   "guard": "by meaning only — B07 (GUARDS) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H35 Held item and TM/HM details",
+   "last_pass": "R11 (3634d1e6 inferred) H35 PASS",
+   "guarded": true,
+   "guard": "by meaning only — R2-BUG-005 (GUARDS_ROUND3) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H36 Malformed Gen IV pocket safe refusal (optional)",
+   "last_pass": "R11 (3634d1e6 inferred) H36 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none in this gate (Group A host tests only); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+  },
+  {
+   "item": "R11 H37 Gen V Bag read/navigation",
+   "last_pass": "R11 (3634d1e6 inferred) H37 PASS",
+   "guarded": true,
+   "guard": "by meaning only — NEW-17 / S02 by meaning (partial); tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H38 Cross-generation import refusal",
+   "last_pass": "R11 (3634d1e6 inferred) H38 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none (standalone-file import arrived in R9); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+  },
+  {
+   "item": "R11 H44 Recovery display: latest prior generation protected",
+   "last_pass": "R11 (3634d1e6 inferred) H44 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none in this gate; tests/test_hw_round1_regression_gate.py has no Round 11 table"
+  },
+  {
+   "item": "R11 H46 Export Copy reload and compare (S06-like, optional)",
+   "last_pass": "R11 (3634d1e6 inferred) H46 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none (S06 is in OWNER_NOT_PASS); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+  },
+  {
+   "item": "R11 H47 Touch and controls agreement",
+   "last_pass": "R11 (3634d1e6 inferred) H47 PASS",
+   "guarded": true,
+   "guard": "by meaning only — C06 / C10 by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+  },
+  {
+   "item": "R11 H48 Exit and relaunch after discard",
+   "last_pass": "R11 (3634d1e6 inferred) H48 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: C16 by meaning (partial); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+  },
+  {
+   "item": "R11 H05 Export same Pokémon twice -> distinct ' (2)' file",
+   "last_pass": "R11 (3634d1e6 inferred) H05 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none (standalone files arrived in R9); tests/test_hw_round1_regression_gate.py has no Round 11 table",
+   "note": "R12 H05/H06 re-check the X Export/Import entry and the '-' cancel, not the duplicate-name export or the Review/source checks."
+  },
+  {
+   "item": "R11 H06 Import exported Pokémon into empty slot",
+   "last_pass": "R11 (3634d1e6 inferred) H06 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none in this gate; tests/test_hw_round1_regression_gate.py has no Round 11 table",
+   "note": "R12 H05/H06 re-check the X Export/Import entry and the '-' cancel, not the duplicate-name export or the Review/source checks."
+  },
+  {
+   "item": "R11 H13 Japanese Gen I/II read-only",
+   "last_pass": "R11 (3634d1e6 inferred) H13 PASS",
+   "guarded": false,
+   "guard": "UNGUARDED: none; and the PASS is not evidence ('i didnt test a japenese save'); tests/test_hw_round1_regression_gate.py has no Round 11 table",
+   "note": "R12 H17 keeps an optional 'Japanese Gen I/II save (if you have one) stays read-only' sentence."
+  }
+ ],
+ "r12_omissions": [
+  {
+   "item": "H32 Occupied destination safety (Import / Move / Clone toward an occupied or unavailable destination)",
+   "status_before_r12": "R11 H32 NOT TESTED ('dont know how to test this')",
+   "r12_coverage": "partial: H03 (Move) and H04 (Clone) include 'A on an occupied slot is refused'; Import into an occupied/unavailable slot and protected/full destinations only in Group A rows 4-5 (no owner action)",
+   "reason": "moved to Group A automated",
+   "still_needed": true,
+   "safety_critical": true
+  },
+  {
+   "item": "Gen I/II Create starts with no moves and needs at least one move (R11 Extra 5/6, H28 request; reverses accepted E12 / R6 C14)",
+   "status_before_r12": "R11 owner request (H28 PASS-with-request, Extra 5, Extra 6)",
+   "r12_coverage": "none for Gen I/II: H07 is 'Gen III–V' only; gate C14 now pins Gen II blank Create on host",
+   "reason": "no reason recorded (ROUND11_ENGINEERING_INTAKE §4 'Moves' decision says 'every generation')",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "R2-REROLL / UNOWN-LETTER Gen II Unown letter, Shiny, DVs and Reroll agree; 'Reroll seems not to work'",
+   "status_before_r12": "R6 B07 FAIL, R6 C09 FAIL, R11 H22 FAIL; never PASSed",
+   "r12_coverage": "partial: H13 checks only that no toast appears; H16 checks the species-picker picture",
+   "reason": "replaced by a broader item",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "E11 Rerolls keep the requested Shiny / Gender",
+   "status_before_r12": "R1/R2 NOT VERIFIED, R3 NOT TESTED; never PASSed",
+   "r12_coverage": "none",
+   "reason": "replaced by a broader item (R2-REROLL)",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "AUD-04 Game launch and return (Gen I-III RetroArch exit crash)",
+   "status_before_r12": "R3 NOT TESTED; PRE FAIL",
+   "r12_coverage": "none (H02 checks only the Launch question)",
+   "reason": "no reason recorded",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "S06 Exported edited save loads in an emulator",
+   "status_before_r12": "R1-R6 NOT VERIFIED / NOT TESTED; R11 H46 optional PASS without saying emulator or PC",
+   "r12_coverage": "none (H17 checks Export Copy writes a separate verified file)",
+   "reason": "deferred by an owner decision (ROUND5_RESULTS: 'S06 deferral is not write permission'; R6 D03 'Deferred on purpose')",
+   "still_needed": true,
+   "safety_critical": true
+  },
+  {
+   "item": "R2-CHECK-011 Gen V event / Met Location rows distinguishable",
+   "status_before_r12": "R6 B05 FAIL; never PASSed after",
+   "r12_coverage": "partial: H07 marks Trade/Egg/Event separately, not row meaning",
+   "reason": "replaced by a broader item",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "NEW-18 / 7F Gen I-IV Trainer visual standard = Gen V; Gen V Trainer Review button overlap",
+   "status_before_r12": "R6 B06 FAIL, R6 C06 FAIL",
+   "r12_coverage": "none",
+   "reason": "replaced by a broader item",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "E05 Inventory Help wording/glyphs ('+' described as Options, stale 'X Add', Gen V title)",
+   "status_before_r12": "R6 B04 FAIL; R11 H03 PASS covers only fit/legibility",
+   "r12_coverage": "H18 smoke mentions 'Bag Help' only",
+   "reason": "replaced by a broader item",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "P1-RETURN (1) Gen II Unown Create -> Review invisible screen",
+   "status_before_r12": "R6 B08 FAIL",
+   "r12_coverage": "none (H05 checks Party Actions list Review)",
+   "reason": "replaced by a broader item",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "R7 C02 Gen V export appears in Save Backups",
+   "status_before_r12": "owner-reported R6; never tested",
+   "r12_coverage": "none",
+   "reason": "replaced by a broader item",
+   "still_needed": true,
+   "safety_critical": true
+  },
+  {
+   "item": "R7 C03 editor typography / C04 Quick Games tap-outside / C07 Gen I/II Origin & Legality panel",
+   "status_before_r12": "owner requests R6; never tested",
+   "r12_coverage": "none",
+   "reason": "replaced by a broader item",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "R11 H40-H43, H38, Extra 8 Bank/Vault (incl. in-save box rename)",
+   "status_before_r12": "R11 FAIL / question",
+   "r12_coverage": "none",
+   "reason": "scope change (owner safety clarification 4: Gen I–V only, no Vault)",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "R11 H27 keyboards for Japanese/Korean/all languages",
+   "status_before_r12": "R11 H27 FAIL (request part)",
+   "r12_coverage": "H14 covers name display and Hangul glyphs only",
+   "reason": "deferred by an owner decision (pending; intake Fix C questions)",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "R11 H13 Japanese Gen I/II save read-only",
+   "status_before_r12": "R11 PASS that is not evidence (no Japanese save opened)",
+   "r12_coverage": "optional sentence in H17 only",
+   "reason": "no reason recorded",
+   "still_needed": true,
+   "safety_critical": true
+  },
+  {
+   "item": "Group A rows named until R10 but not named in R12 (Gen III torn slots, Meteorite/unreleased held items, Gen II/III Bag byte fidelity, Egg names / PID gender, Japanese writers, standalone pk files, unused species index)",
+   "status_before_r12": "Group A synthetic only",
+   "r12_coverage": "collapsed into 'Earlier Group A rows ... See RETEST_ROUND10_TEMPLATE.md'",
+   "reason": "moved to Group A automated",
+   "still_needed": false,
+   "safety_critical": true
+  },
+  {
+   "item": "Checked and NOT omitted: S05 (H17), C07/R2-EMUBACKUP successor Recovery files (H11), AUD-01 Review (H17), H04/H34 Top Up (H10), H12 (H11), H22 Special (H12) + toasts (H13), H25 (H09), H29 (H13), H31 (H04), H39 (H06), Extra 1-5/7 (H10/H07/H15/H05/H02/H16/H05)",
+   "status_before_r12": "various FAIL/request",
+   "r12_coverage": "present",
+   "reason": "n/a",
+   "still_needed": false,
+   "safety_critical": false
+  },
+  {
+   "item": "Checked: R1 NOT VERIFIED items",
+   "status_before_r12": "B04 PASS R3; E03 PASS OCT24/R5/R6; L06 PASS OCT24, FAIL R5, PASS R6 B01; S04 PASS R3; E11 never; S06 never (R11 H46 optional PASS ambiguous)",
+   "r12_coverage": "E11 and S06 absent",
+   "reason": "see entries above",
+   "still_needed": true,
+   "safety_critical": false
+  },
+  {
+   "item": "Checked: P1-GEN1 Gen I Review presentation",
+   "status_before_r12": "R5 NOT TESTED, R6 D02 PASS",
+   "r12_coverage": "not listed (accepted; guarded by GUARDS_ROUND7 D02)",
+   "reason": "n/a (accepted)",
+   "still_needed": false,
+   "safety_critical": false
+  }
+ ],
+ "counts": {
+  "lineage": 229,
+  "dropped": 31,
+  "dropped_still_needed": 21,
+  "passed_then_unlisted": 134,
+  "passed_then_unlisted_unguarded": 12,
+  "r12_omissions": 19
+ }
+}

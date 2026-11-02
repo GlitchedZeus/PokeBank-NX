@@ -46,6 +46,7 @@ int main() {
     const auto gen2 = read("src/UI/Gen2PokemonPickerOverlay.inc");
     const auto gen3 = read("src/UI/Gen3SharedPokemonSurface.inc");
     const auto gen4 = read("src/UI/Gen4SharedPokemonSurface.inc");
+    const auto gen5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
     const auto gen2Actions = read("src/UI/Gen2SharedSurfaceParity.inc");
 
     contains(shared, "inline constexpr int ModalWidth = 1080;");
@@ -66,8 +67,11 @@ int main() {
     assert(gen3.find("constexpr int px = 110, py = 56, pw = 1060, ph = 600") == std::string::npos);
     assert(gen3.find("Choose Species — Generation III") == std::string::npos);
 
-    // Gen II Empty Slot / Pokemon Actions must use the same quiet panel shell as Gen I/III.
-    contains(gen2Actions, "drawPanelSurface(fb, x, y, w, h, false, 18)");
+    // Gen II Empty Slot / Pokemon Actions must use the same quiet panel shell as Gen I/III. Round 11
+    // H31 removed the Gen II Clone dialog (the last full-size panel here, drawn with that shell);
+    // the Actions sheet is the shared narrow menu and the remaining modal keeps the quiet shell.
+    contains(gen2Actions, "drawPanelSurface(fb, g.x, g.y, g.width, g.height, false, 18)");
+    contains(gen2Actions, "drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonRow,");
     assert(gen2Actions.find("fb.drawRoundedRect(x, y, w, h, 18, Colors::FocusBorder, 2)") ==
            std::string::npos);
 
@@ -87,6 +91,20 @@ int main() {
     contains(gen1, "pickerPreviewShiny");
     contains(gen2, "model.previewShiny");
     contains(gen3, "state.speciesPreviewShiny");
+
+    // Round 11 SPRITE: one artwork in the current preview state (no fixed NORMAL + SHINY
+    // pair), and a tap on it previews the other appearance in every generation: each owner
+    // turns the shared chooser's previewShinyTapped into its own Y (same toggle, applied on A).
+    contains(shared, "getSprite(preview, form, previewShiny)");
+    assert(shared.find("getSprite(preview, form, false)") == std::string::npos);
+    assert(shared.find("getSprite(preview, form, true)") == std::string::npos);
+    contains(shared, "previewArtRect(modalX, modalY, c.searching())");
+    contains(gen1, "if (handled.previewShinyTapped) down |= HidNpadButton_Y;");
+    contains(gen2, "if (handled.previewShinyTapped) down |= HidNpadButton_Y;");
+    contains(gen3, "if (touched.previewShinyTapped) down |= HidNpadButton_Y;");
+    contains(gen4, "if (touched.previewShinyTapped) down |= HidNpadButton_Y;");   // Gen IV + V shared
+    contains(gen5, "#include \"SharedPokemonEditorSurface.inc\"");
+    contains(gen5, "if (touched.previewShinyTapped) down |= HidNpadButton_Y;");
 
     std::cout << "Shared Gen I/II/III species-picker modal chrome contract: PASS\n";
     return 0;

@@ -1,0 +1,1613 @@
+{
+ "areas": [
+  "other"
+ ],
+ "issues": [
+  {
+   "id": "PBX-OTH-001",
+   "title": "Original/installed save never written: live installed-save writes hard-locked (no live-write safety regression)",
+   "gens": [
+    "all"
+   ],
+   "area": "other",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE (Sept 1 acceptance target) (3be4de6b)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "include/Safety/WritePolicy.h:18 LIVE_SAVE_WRITES_ENABLED=false (constexpr, unchanged since c618bd5e 2026-09-01); canWriteTo() :25 refuses SaveDestination::LiveGame. Owner hardware: PRE 3be4de6b 'LIVE INSTALLED SAVE WRITE OBSERVED: NO' and 'ORIGINAL INSTALLED SAVE CHANGED: NO' (A0215/A0216). Latest owner evidence that originals stay unchanged is in other areas (R6 26186464 S05 PASS; R11 3634d1e6 H14 'Export Copy is separate' PASS). Host-only PASS cells (A0819, A0858) are NOT hardware evidence. Export/Review code changed in the Round 11 repairs, so re-verify.",
+   "repair_commits": [
+    "c618bd5e safety: hard-lock live game save writes"
+   ],
+   "automated_tests": [
+    "tests/test_write_policy.cpp : LiveGame destination refused while LIVE_SAVE_WRITES_ENABLED is false",
+    "tests/test_ci_repository_safety_contract.py : repository safety contract"
+   ],
+   "last_owner_result": "PRE/3be4de6b/(follow-up 2026-09-03) LIVE INSTALLED SAVE WRITE OBSERVED: PASS (NO); related R11/3634d1e6/H14: PASS (export-copy area)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17",
+   "r12_checklist_item": "H17",
+   "next_action": "In R12 H17 record the original save's SHA-256 before and after Export Copy (A0589 source-integrity proof) instead of a visual 'unchanged'.",
+   "occurrences": [
+    {
+     "rid": "A0029",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0517",
+     "round": "PRE",
+     "candidate": "fc1e6de2",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_CHECKLIST.md"
+    },
+    {
+     "rid": "A0018",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_REPORT_2026-09-01.md"
+    },
+    {
+     "rid": "A0050",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/SESSION_LOG_2026-09-01.md"
+    },
+    {
+     "rid": "A0215",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0216",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0819",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "immutability",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0858",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0215",
+     "text": "NO — tester reports unchanged in exercised flow"
+    },
+    {
+     "rid": "A0216",
+     "text": "NO"
+    }
+   ]
+  },
+  {
+   "id": "PBX-OTH-002",
+   "title": "Final original-save integrity proof never performed: launch original game / pre-post SHA-256 / concurrent emulator writing the same save",
+   "gens": [
+    "all"
+   ],
+   "area": "other",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": true,
+   "first_seen": "PRE (Sept 2 session log) (3be4de6b)",
+   "status": "Needs Investigation",
+   "status_basis": "No owner record anywhere of launching the original game after a PokeBank session, nor of a pre/post SHA-256 of the original save (the GEN5_SAVE_INSTANCE_HARDWARE_SMOKE rule, A0589). docs/qa/GEN1_5_MATRIX.md lists 'emulator running concurrently against the same save' as hardware-only residue (A0845). Owner rule in R3 (B0595) says never require owner live emulator write testing, so the concurrent-emulator part may be intentionally out of owner scope; unknown: whether SD FAT semantics / concurrent writes are ever verified. R12 H17 checks only that the original 'is unchanged', with no SHA step.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_qa_export_contracts.cpp : export writes a separate file, source bytes unchanged (host synthetic)"
+   ],
+   "last_owner_result": "PRE/3be4de6b/LIVE INSTALLED SAVE WRITE: NOT TESTED ('NOT PROVEN')",
+   "hardware_acceptance_candidate": "066e1db9 R12 H17 (partial: no SHA or game-launch step)",
+   "r12_checklist_item": "H17",
+   "next_action": "Owner decision: either add a pre/post SHA-256 + launch-in-original-game step to R12 H17, or record that concurrent-emulator and game-launch verification are out of owner scope.",
+   "rechecked_needed": false,
+   "occurrences": [
+    {
+     "rid": "A0067",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/SESSION_LOG_2026-09-02.md"
+    },
+    {
+     "rid": "A0120",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0144",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0145",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0589",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/GEN5_SAVE_INSTANCE_HARDWARE_SMOKE.md"
+    },
+    {
+     "rid": "A0845",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "immutability",
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_MATRIX.md"
+    },
+    {
+     "rid": "A0888",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/qa/SAVE_SAFETY_CHAIN.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0120",
+     "text": "LIVE INSTALLED SAVE WRITE: NOT PROVEN"
+    }
+   ]
+  },
+  {
+   "id": "PBX-OTH-003",
+   "title": "Inherited PKSE mutation UI (Release/Create/Move-Multi/Edit/Save) reachable on installed-game sources (#23)",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "safety",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE (Sept 2 extended report) (3be4de6b)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "include/Safety/SourceMutationPolicy.h:30-33 canPerform() allows only View on InstalledGame/HistoricalBackup/legacy sources; src/UI/UI.cpp:611 opens cart/installed saves as SourceKind::InstalledGame; src/UI/TrainerViewScreenBase.inc:5226/:5401 gate Edit through canPerform; trace tag INSTALLED_READ_ONLY at :646. The PRE second-device checklist rows (E. Installed-game mutation safety, A0271–A0278) were never filled in, and no later round re-tested installed (Switch-native) sources, which are outside the Gen I–V gate.",
+   "repair_commits": [
+    "0ea98cc1 safety: lock installed-source UI and harden PLA reads"
+   ],
+   "automated_tests": [
+    "tests/test_source_mutation_policy.cpp : every mutation except View is refused for InstalledGame/legacy/historical sources"
+   ],
+   "last_owner_result": "PRE/3be4de6b/USER-FACING READ-ONLY CONTRACT: FAIL",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "next_action": "Add one R12 or later row: open an installed Switch-native save, confirm Release/Create/Move/Edit/Save are absent or refused. Otherwise #23 stays unverified.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "A0121",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0148",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "1",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0219",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "FAIL",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0223",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "1",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0345",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0121",
+     "text": "USER-REACHABLE MUTATION UI: PROVEN"
+    },
+    {
+     "rid": "A0219",
+     "text": "FAIL / inherited mutation UI remains"
+    }
+   ]
+  },
+  {
+   "id": "PBX-OTH-004",
+   "title": "Handheld and docked UI pass (docked mode never owner-tested as a whole)",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "PRE (Sept 2 extended report) (3be4de6b)",
+   "status": "Needs Investigation",
+   "status_basis": "Handheld readability/focus PASS on PRE 3be4de6b (A0200/A0201). Docked was NOT TESTED there, and no later round records a general docked pass (only feature-specific docked checks such as Oct 24 NEW-06 docked Species keyboard). v1 gates require it: docs/RELEASE_CHECKLIST.md 'handheld + docked UI passes' (F0173), docs/V1_ROADMAP.md Phase 13 (F0171). Unknown: whether R11 testing was handheld or docked. R12 H01 mentions docked only for the HOME card.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "PRE/3be4de6b/Docked mode: NOT TESTED (handheld readability/focus: PASS)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H01 (HOME card only)",
+   "r12_checklist_item": "H01",
+   "next_action": "Add a docked whole-app pass row (TV output, text/focus/footers on every main screen) to the #313 full acceptance round.",
+   "rechecked_needed": false,
+   "occurrences": [
+    {
+     "rid": "A0143",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0202",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0200",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0201",
+     "round": "PRE",
+     "candidate": "3be4de6b",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "A0202",
+     "text": "NOT TESTED"
+    }
+   ]
+  },
+  {
+   "id": "PBX-OTH-005",
+   "title": "Pre-NRO engineering gates incomplete: sanitizer/Clang/fuzz coverage gaps (host tests + ASan/UBSan required before every NRO)",
+   "gens": [
+    "all"
+   ],
+   "area": "other",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE item 5 (Sept 2 extended report)",
+   "status": "Open Defect",
+   "status_basis": "PROCESS REQUIREMENT. Status mapping for process items: 'Fixed in Code — Awaiting Hardware' = honoured in current tooling/docs but never owner-confirmed; 'Open Defect' = not honoured. Partially honoured. Makefile.host.host-ui:8-13 links the app only under GCC (Clang skipped), so .github/workflows/host-tests-clang.yml does not cover the host-UI harness. Makefile.host.classic_inventory has no -fsanitize flags; its tests (test_rby_staged_inventory, test_gen3_staged_inventory, test_gsc_universal_inventory, test_classic_inventory_catalog) run only in inventory-hardware-retest.yml without ASan/UBSan. tests/fuzz_gen2_sav.cpp:62-70 seeds still contain no 128 KiB padded or Japanese image (last changed cd5eabfe 2026-10-27), while padded/Japanese Gen II saves are shipped behaviours (Group A rows Q02/Q03).",
+   "repair_commits": [],
+   "automated_tests": [
+    ".github/workflows/host-tests-clang.yml : host-test + host-sanitize under clang++ (excludes host-UI harness)"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (engineering-only)",
+   "next_action": "Add sanitizer flags to Makefile.host.classic_inventory, add padded (0x00/0xFF) and Japanese seeds to fuzz_gen2_sav, and record the Clang/host-UI limitation as accepted or fix the ambiguous using-directives.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "A0152",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "5",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "C0427",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/MAIN_ACTIVE_HANDOFF.md"
+    },
+    {
+     "rid": "D0187",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md (Known gaps)"
+    },
+    {
+     "rid": "D0188",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/ROUND8_AUTOMATED_COMPATIBILITY_MATRIX.md (Known gaps)"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-006",
+   "title": "One exact, SHA-identified, audited NRO per round (no single-fix NROs; record app SHA + NRO SHA-256)",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE item 6 (Sept 2 extended report)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "PROCESS REQUIREMENT. Status mapping for process items: 'Fixed in Code — Awaiting Hardware' = honoured in current tooling/docs but never owner-confirmed; 'Open Defect' = not honoured. Honoured. docs/qa/CANDIDATE_UNDER_AUDIT.env binds CODE_SHA 066e1db9…, TREE_SHA, NRO_SHA256 ba6aea09… and size (commit c761964f); docs/hardware/RETEST_066e1db9.md:22 shows the SHA-256 and :35 asks the owner to check it. Held-item fix was not shipped alone (C0422): shipped in Round 6 26186464 per MAIN_ACTIVE_HANDOFF. One candidate per round R1–R12 in NRO_ARCHIVE.md.",
+   "repair_commits": [
+    "c761964f Bind the Round 11 repair candidate 066e1db9 for QA-F9 and the Round 12 hardware checklist"
+   ],
+   "automated_tests": [
+    "tests/test_qa_nro_audit_workflow.py : one identity source, exact key formats (CODE_SHA/TREE_SHA/NRO_SHA256)"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 (owner SHA check step, RETEST_066e1db9.md:35)",
+   "next_action": "Owner writes the downloaded NRO's SHA-256 into the R12 sheet; keep batching fixes into one candidate per round.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "A0153",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "6",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md"
+    },
+    {
+     "rid": "A0229",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "7",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "B0134",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/OWNER_RETEST_7fea1797_20261017.md"
+    },
+    {
+     "rid": "C0422",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/MAIN_ACTIVE_HANDOFF.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-007",
+   "title": "Packaged RomFS completeness: NRO builds must not drop artwork (Gen V covers, device asset preflight)",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE item 5 (Session 2.6, #37)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "eb2aa8b3 added tools/verify_nro_romfs.py; tools/check_device_assets.py preflight; recovery check reports 'verified baseline: 3260 HD / 1025 base / 18 types / 3 fonts'. QA-F1 (A0749) added the four Gen V covers to the audit. Artwork visibility on hardware is tracked in visuals-sprites; no owner row checks packaging as such.",
+   "repair_commits": [
+    "eb2aa8b3 fix(release): stop NRO builds from dropping Product Home artwork; verify packaged RomFS"
+   ],
+   "automated_tests": [
+    "tests/test_verify_nro_romfs.py : packaged RomFS contains required art incl. Gen V covers"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "066e1db9 R12 H01 (indirect: HOME card art)",
+   "r12_checklist_item": "H01",
+   "next_action": "None beyond keeping verify_nro_romfs in the candidate workflow.",
+   "rechecked_needed": false,
+   "occurrences": [
+    {
+     "rid": "A0227",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "5",
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md"
+    },
+    {
+     "rid": "A0749",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F1",
+     "result": "PASS",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-008",
+   "title": "Never infer a PASS: green CI / host PASS / an old audited NRO is not hardware acceptance; a PASS with requested changes does not close the request",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE second checklist completion rules (2026-09-02)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "PROCESS REQUIREMENT. Status mapping for process items: 'Fixed in Code — Awaiting Hardware' = honoured in current tooling/docs but never owner-confirmed; 'Open Defect' = not honoured. Honoured: every candidate is marked NOT DEVICE TESTED until owner results (PR #330/#332 bodies D0242/D0243; NRO_ARCHIVE 'not an approved release'); host cells say 'NOT DEVICE TESTED'; tests/test_hw_round1_regression_gate.py carries the Oct 26 'A PASS does not close the request' rule. Exception: README.md:44 still calls Round 6 the latest recorded result although R11 results are in the repo (see the record-keeping issue).",
+   "repair_commits": [
+    "b6cc08b0 test(qa): hardware round 1 regression gate for the owner's 42 PASS IDs"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : owner PASS items guarded; PASS with requested change stays an open request"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (process)",
+   "next_action": "Keep the rule; fix the stale README status line.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "A0346",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md"
+    },
+    {
+     "rid": "B0595",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND3_RESULTS_62a2f8c3.md"
+    },
+    {
+     "rid": "C0417",
+     "round": "OCT26",
+     "candidate": "26186464",
+     "item_id": null,
+     "result": "n/a",
+     "src": "tests/test_hw_round1_regression_gate.py"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "C0417",
+     "text": "A PASS does not close the request"
+    }
+   ]
+  },
+  {
+   "id": "PBX-OTH-009",
+   "title": "Gen VI–IX application work deferred and isolated until exact Gen I–V owner acceptance",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "decision",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE (owner directive 2026-10-15)",
+   "status": "Intentionally Unsupported",
+   "status_basis": "Owner directive 2026-10-15 (handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md) and owner decision Oct 31 (docs/MAIN_CONSOLIDATION_20261031.md; ROUND11_ENGINEERING_INTAKE.md §4 'Gen I–V only… no Gen VI–IX code'). Honoured: CURRENT_STATUS.md:5, README.md:241 development/gen6-plus is separate; git log of the current branch has no gen6-plus merge. Note: inherited PKSE 1.1.3 Switch-native read code (src/Trainer/Trainer8SWSH.cpp, Trainer8LA.cpp, Trainer9SV.cpp, Trainer9LZA.cpp; SaveSelectScreen.cpp:184-191, :506-518) predates the directive (25f248ab 2026-09-01) and is still in the app; 02595853 (2026-10-28) touched Trainer7LGPE/Trainer8LA as inherited-bug fixes. Deferral is temporary, not a permanent 'no'.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (decision)",
+   "next_action": "Keep isolated; confirm with the owner that the inherited Switch-native browse paths in the Gen I–V NRO are acceptable under the 'no Gen VI–IX code' rule.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "A0625",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0626",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0193",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner directive / Mandatory milestone order",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0168",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Release order 6",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0185",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Gen VI–IX row",
+     "result": "n/a",
+     "src": "docs/GAME_SUPPORT_MATRIX.md"
+    },
+    {
+     "rid": "F0186",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Header / Not deferred",
+     "result": "n/a",
+     "src": "docs/FUTURE_AFTER_GEN15_BACKLOG.md"
+    },
+    {
+     "rid": "F0187",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Active owner gate",
+     "result": "n/a",
+     "src": "CURRENT_STATUS.md"
+    },
+    {
+     "rid": "F0189",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner decision (Oct 31) development/gen6-plus",
+     "result": "n/a",
+     "src": "docs/MAIN_CONSOLIDATION_20261031.md"
+    },
+    {
+     "rid": "E0105",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "Owner safety clarification 4",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §4 owner safety clarifications"
+    },
+    {
+     "rid": "F0192",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner safety clarification 4",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    },
+    {
+     "rid": "E0116",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §5 separate from the repair candidate"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0105",
+     "text": "**Scope of the Round 11 repair NRO:** Gen I–V only. No unfinished Vault/Bank features and no Gen VI–IX code are integrated."
+    }
+   ]
+  },
+  {
+   "id": "PBX-OTH-010",
+   "title": "QA-F2: malformed one-time-* workflows failed on every push",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE QA-F2 (Oct 15 gate)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "96a44685 repaired the 3 YAML files and gated them to manual dispatch; python3 tools/qa/check_workflows.py on current source: 'PASS all 48 workflow files parse with a trigger and jobs'; .github/workflows/app-qa-workflow-hygiene.yml enforces it on PRs. No hardware component. Deletion of the 20+ one-time-* workflows still waits for owner approval (A0784), and they are still present in .github/workflows.",
+   "repair_commits": [
+    "96a44685 ci: repair invalid one-time workflow YAML and gate to manual dispatch (QA-F2)",
+    "1b101ed5 tools(qa): workflow parse checker for QA-F2"
+   ],
+   "automated_tests": [
+    "tools/qa/check_workflows.py (app-qa-workflow-hygiene.yml) : every workflow parses with on:/jobs:"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (CI-only; owner approval for deletion)",
+   "next_action": "Ask the owner to approve or decline deleting the one-time-* workflows (docs/qa/WORKFLOW_CLEANUP_PROPOSAL.md).",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "A0747",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F2",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "A0770",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F2",
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    },
+    {
+     "rid": "A0783",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    },
+    {
+     "rid": "A0784",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F2",
+     "result": "n/a",
+     "src": "docs/qa/FINDINGS.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-011",
+   "title": "QA-F9: candidate-NRO audit defaulted to stale fa9cfcea artifact on pull_request",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "defect",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "PRE QA-F9 (#307 head a0633b6d)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "cb03e27b removed defaults; python3 tests/test_qa_nro_audit_workflow.py on current source: PASS. Identity file docs/qa/CANDIDATE_UNDER_AUDIT.env bound to 066e1db9. Later audit PASSes for 7fea1797 (run 38947904299) and e10f307f (run 39122863086) are exact-binary audits, not hardware. Safety-critical because an audit of the wrong binary breaks identity integrity of what the owner tests.",
+   "repair_commits": [
+    "cb03e27b ci(qa): QA-F9 - the candidate NRO audit can no longer audit a stale artifact"
+   ],
+   "automated_tests": [
+    "tests/test_qa_nro_audit_workflow.py : no identity literals/defaults, API run/artifact binding, staleness guard, tree SHA check"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (CI-only)",
+   "next_action": "Confirm an app-qa-nro-audit run PASS exists for 066e1db9 before the owner tests R12.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "A0778",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F9",
+     "result": "n/a",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    },
+    {
+     "rid": "A0794",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "QA-F9",
+     "result": "n/a",
+     "src": "docs/qa/FINDINGS.md"
+    },
+    {
+     "rid": "A0781",
+     "round": "PRE",
+     "candidate": "7fea1797",
+     "item_id": "QA-F9",
+     "result": "PASS",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    },
+    {
+     "rid": "A0782",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": "QA-F9",
+     "result": "PASS",
+     "src": "docs/qa/CAMPAIGN_CHECKPOINT.md"
+    },
+    {
+     "rid": "A0800",
+     "round": "PRE",
+     "candidate": "fa9cfcea",
+     "item_id": null,
+     "result": "PASS",
+     "src": "docs/qa/FINDINGS.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-012",
+   "title": "Full Gen I–V 20-release, every-action, exact-NRO owner acceptance gate (#313) not met; no v1.0",
+   "gens": [
+    "all"
+   ],
+   "area": "other",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ GEN15 gate G01–G12 (2026-10-15)",
+   "status": "Open Defect",
+   "status_basis": "Requirement unmet (tracked as Open because no fix can exist until the owner signs the exact NRO, G12). CURRENT_STATUS.md:11 '#313 all-20-release acceptance OPEN'; README.md:44 'no v1.0 release or complete Gen I–V hardware acceptance yet'. Rounds 7–9 have no owner results, R11 was 34/13/1, and R12 066e1db9 is NOT DEVICE TESTED. Hardware-only rows (controller/touch parity, picker/modal rendering, leave dialog, SD export, emulator launch/return; A0879) need an owner full pass.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py : host cross-gen UI contracts (not hardware)"
+   ],
+   "last_owner_result": "R11/3634d1e6: 34 PASS / 13 FAIL / 1 NOT TESTED (not a full G01–G12 run)",
+   "hardware_acceptance_candidate": "first candidate after R12 that clears every FAIL (full #313 round)",
+   "next_action": "After R12 clears its FAILs, schedule the full G01–G12 20-game acceptance round on one exact NRO.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "F0194",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "G01-G12",
+     "result": "n/a",
+     "src": "docs/handoffs/GEN15_HARDWARE_ACCEPTANCE_GATE_20261015.md"
+    },
+    {
+     "rid": "F0167",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Owner-locked release order",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0188",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Important / Roadmap",
+     "result": "n/a",
+     "src": "README.md"
+    },
+    {
+     "rid": "F0190",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§4 issues #29 etc.",
+     "result": "n/a",
+     "src": "docs/MAIN_CONSOLIDATION_20261031.md"
+    },
+    {
+     "rid": "F0169",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "v1 target bullets",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0177",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§5",
+     "result": "n/a",
+     "src": "docs/PRODUCT_DECISIONS.md"
+    },
+    {
+     "rid": "A0879",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": null,
+     "result": "NOT TESTED",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-013",
+   "title": "Hardware status records incomplete or stale: R7–R9 owner results never recorded; R10 row says 'owner testing now'; NRO archive missing R1/R2 (403) and R12; README stale",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R1 NRO archive row (7fea1797)",
+   "status": "Open Defect",
+   "status_basis": "PROCESS REQUIREMENT. Status mapping for process items: 'Fixed in Code — Awaiting Hardware' = honoured in current tooling/docs but never owner-confirmed; 'Open Defect' = not honoured. docs/hardware/NRO_ARCHIVE.md: R1 7fea1797 and R2 e10f307f 'not archived: release creation refused (HTTP 403)' (artifacts expire 2027-01-14/16); R7–R9 'results not recorded'; R10 3634d1e6 still 'owner testing now' though ROUND11_OWNER_WORKSHEET.md has its results; no row for 066e1db9 (R12) at all. archive-candidate-nro.yml (bd4aa878) can only be dispatched from the default branch. README.md:44 says the latest recorded result is Round 6 and the owner is testing Round 10. R12 066e1db9 is NOT DEVICE TESTED (PR #332).",
+   "repair_commits": [
+    "bd4aa878 Repository organisation: NRO archive workflow, project board definition, full audit ledger"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (record-keeping)",
+   "next_action": "After #330 merges, run archive-candidate-nro.yml for R1, R2, R10 and 066e1db9 before Jan 2027 expiry. Update the R10 row and README to R11 results, and record that R7–R9 have no owner results.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "D0189",
+     "round": "R1",
+     "candidate": "7fea1797",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/NRO_ARCHIVE.md"
+    },
+    {
+     "rid": "D0190",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/NRO_ARCHIVE.md"
+    },
+    {
+     "rid": "D0191",
+     "round": "R3",
+     "candidate": "62a2f8c3",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/NRO_ARCHIVE.md"
+    },
+    {
+     "rid": "D0192",
+     "round": "R5",
+     "candidate": "1ca2faec",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/NRO_ARCHIVE.md"
+    },
+    {
+     "rid": "D0193",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/NRO_ARCHIVE.md"
+    },
+    {
+     "rid": "D0194",
+     "round": "R7",
+     "candidate": "e88957f2",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/NRO_ARCHIVE.md"
+    },
+    {
+     "rid": "D0195",
+     "round": "R8",
+     "candidate": "6ec5ccb9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/NRO_ARCHIVE.md"
+    },
+    {
+     "rid": "D0196",
+     "round": "R9",
+     "candidate": "d6a20a2a",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/NRO_ARCHIVE.md"
+    },
+    {
+     "rid": "D0197",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/NRO_ARCHIVE.md"
+    },
+    {
+     "rid": "D0241",
+     "round": "GH",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #330 (body 2026-10-31)"
+    },
+    {
+     "rid": "D0242",
+     "round": "R10",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #330 (body 2026-10-31)"
+    },
+    {
+     "rid": "D0243",
+     "round": "R12",
+     "candidate": "066e1db9",
+     "item_id": null,
+     "result": "n/a",
+     "src": "PR #332 (body 2026-11-01)"
+    },
+    {
+     "rid": "E0111",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md §3 leads"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-014",
+   "title": "Previously owner-PASSed behaviour must not regress (smoke check of earlier passes every round)",
+   "gens": [
+    "all"
+   ],
+   "area": "other",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "R2 (e10f307f)",
+   "status": "Hardware Accepted",
+   "rechecked_needed": true,
+   "status_basis": "R11 3634d1e6 H15 'Rounds 6–8 smoke check' owner PASS (E0014). tests/test_hw_round1_regression_gate.py PASS on current source: 302 guards covering R1, R2, R3 (70), Oct 24, Oct 25 and Oct 26 PASS items. The Round 11 repair lanes (066e1db9) changed carry, species change, footers and encounters, so recheck in R12 H18. GEN15 gate G09 (F0194) requires the same.",
+   "repair_commits": [
+    "b6cc08b0 test(qa): hardware round 1 regression gate for the owner's 42 PASS IDs"
+   ],
+   "automated_tests": [
+    "tests/test_hw_round1_regression_gate.py : per-ID guards for every owner PASS from R1 through Oct 26"
+   ],
+   "last_owner_result": "R11/3634d1e6/H15: PASS",
+   "hardware_acceptance_candidate": "066e1db9 R12 H18",
+   "r12_checklist_item": "H18",
+   "next_action": "Owner runs R12 H18.",
+   "occurrences": [
+    {
+     "rid": "B0312",
+     "round": "R2",
+     "candidate": "e10f307f",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND2_RESULTS_e10f307f.md"
+    },
+    {
+     "rid": "E0014",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": "H15",
+     "result": "PASS",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-015",
+   "title": "Owner's original reports and screenshots not stored verbatim in the repository (Round 6 both reports)",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R6 (26186464)",
+   "status": "Open Defect",
+   "status_basis": "PROCESS REQUIREMENT. Status mapping for process items: 'Fixed in Code — Awaiting Hardware' = honoured in current tooling/docs but never owner-confirmed; 'Open Defect' = not honoured. Not honoured. docs/hardware/ROUND6_RESULTS_26186464.md:18-23 still says the original PokeBank-NX-Round6-Results-26186464.md and round6-screenshots/ are not in the repository. The second 54/4/1 report is referenced only in docs/audits/PKSE_UPSTREAM_REPAIR_CAMPAIGN_2026-10-27.md, never added. Two conflicting Round 6 tallies (49/9/1 vs 54/4/1) remain unreconciled.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (owner must supply files)",
+   "next_action": "Ask the owner to re-upload both Round 6 reports and screenshots; store them unchanged next to ROUND6_RESULTS_26186464.md.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "C0360",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND6_RESULTS_26186464.md"
+    },
+    {
+     "rid": "C0428",
+     "round": "R6",
+     "candidate": "26186464",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/audits/PKSE_UPSTREAM_REPAIR_CAMPAIGN_2026-10-27.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-016",
+   "title": "Owner wants an engineering assessment of every finding before changes, not just a prompt or blind fix",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 Extra bugs and requests (3634d1e6)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "PROCESS REQUIREMENT. Status mapping for process items: 'Fixed in Code — Awaiting Hardware' = honoured in current tooling/docs but never owner-confirmed; 'Open Defect' = not honoured. Honoured for Round 11: docs/hardware/ROUND11_ENGINEERING_INTAKE.md gives a per-finding assessment, shared root causes (§2) and owner safety clarifications (§4) before the repair lanes were merged (066e1db9). The owner has not confirmed the assessment format meets the request.",
+   "repair_commits": [
+    "132f941d Round 11 intake: owner worksheet, engineering intake, NRO archive record"
+   ],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (process; owner confirmation)",
+   "next_action": "Keep giving an intake-style assessment for every owner round before building.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "E0060",
+     "round": "R11",
+     "candidate": "3634d1e6",
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md (Extra bugs and requests)"
+    },
+    {
+     "rid": "F0199",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Closing note",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+    }
+   ],
+   "owner_words": [
+    {
+     "rid": "E0060",
+     "text": "for all these i wanna hear your take on them and not just right me a prompt check out the problems or fix and see how it would work or whats wrong or if we on the same page together, i dont just wanna fuck shit up i wanna hear your take"
+    }
+   ]
+  },
+  {
+   "id": "PBX-OTH-017",
+   "title": "RECOVERY means a repository/workspace recovery operation (not save recovery)",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "request",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "REQ docs/RECOVERY_CONTRACT.md",
+   "status": "Needs Investigation",
+   "status_basis": "PROCESS REQUIREMENT. Status mapping for process items: 'Fixed in Code — Awaiting Hardware' = honoured in current tooling/docs but never owner-confirmed; 'Open Defect' = not honoured. Tooling exists (tools/recover_workspace.py, tools/check_recovery_contract.py reports 'snapshot status: COMMITTED'). But docs/RECOVERY_CONTRACT.md is stale ('Last updated 2026-09-22', names PR #77 as the active candidate). Unknown: which branch RECOVERY should restore after the Oct 31 consolidation (main vs fix/round11-gen15-repairs).",
+   "repair_commits": [],
+   "automated_tests": [
+    "tools/check_recovery_contract.py : asset baseline + snapshot state"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (process)",
+   "next_action": "Update RECOVERY_CONTRACT.md to name the current authoritative branch.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "F0151",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "The rule",
+     "result": "n/a",
+     "src": "docs/RECOVERY_CONTRACT.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-018",
+   "title": "v1.0 release hardening items not implemented (Reduced Motion/accessibility, constrained memory, bounded caches, recovery UX, sleep/resume, privacy-safe diagnostics export)",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ docs/V1_ROADMAP.md Phase 13",
+   "status": "Missing Feature",
+   "status_basis": "No Reduced Motion setting anywhere in src/ or include/ (grep). Diagnostics exist (AppShellScreen.cpp:158-160 logs + read-only 'Diagnostics / Build Info') but no privacy-safe export. No sleep/resume/operation-mode handling found in src/main.cpp or src/UI/UI.cpp. NACP title is set (Makefile:46 APP_TITLE 'PokeBank NX', :74 icon). Release gates in docs/RELEASE_CHECKLIST.md (no unsupported parser crash, handheld+docked, sleep/resume) are unmet or untested.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "next_action": "After #313, make a v1.0 hardening plan: Reduced Motion, sleep/resume test, diagnostics export, memory/cache bounds.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "F0171",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Phase 13",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0173",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Stable v1.0 release gates",
+     "result": "n/a",
+     "src": "docs/RELEASE_CHECKLIST.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-019",
+   "title": "v1.0 game scope (40 mainline identities GB→Switch incl. 3DS, LGPE/SwSh/BDSP/PLA/SV/Z-A) not implemented",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ docs/V1_ROADMAP.md Phases 8-10",
+   "status": "Missing Feature",
+   "status_basis": "docs/PRODUCT_DECISIONS.md §1 makes 40 identities (incl. 3DS and Switch) the v1.0 target; README.md:79/:134 shows Gen VI–VIII native formats only on separate PRs #309/#311/#312 and modern Switch as 'general editor ❌ / Future'. No 3DS (Gen VI/VII) support exists in src/. Inherited Switch-native read paths exist, but no shared editor. Conflict to resolve: the current gate (F0187) is Gen I–V only, but v1.0 is still defined as all 40.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "next_action": "Owner to confirm whether v1.0 still means 40 identities or Gen I–V only; update V1_ROADMAP/PRODUCT_DECISIONS to match.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "F0172",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Phases 8-10",
+     "result": "n/a",
+     "src": "docs/V1_ROADMAP.md"
+    },
+    {
+     "rid": "F0174",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§1",
+     "result": "n/a",
+     "src": "docs/PRODUCT_DECISIONS.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-020",
+   "title": "Post-v1 / non-goal scope: Android companion, link-cable Trade Station, internet trading/GTS, Trainer Plaza, Event Library, Stadium/Colosseum/XD",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "decision",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "REQ docs/PRODUCT_DECISIONS.md",
+   "status": "Intentionally Unsupported",
+   "status_basis": "Recorded product decisions: docs/PRODUCT_DECISIONS.md §2 (Android v2.0), §4 (link-cable Trade Station a non-goal), §8 (Event Library provenance rule); docs/FEATURE_FEASIBILITY_MATRIX.md 'not required for 1.0'; docs/V2_ROADMAP.md; docs/TRAINER_PLAZA_VISION.md 'must not block v1.0'; docs/FUTURE_AFTER_GEN15_BACKLOG.md (#35 cries/audio, #46 Mystery Gift, #39 Android deferred). None of these exist in src/ (consistent).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (decision)",
+   "next_action": "None for v1.0.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "F0175",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§2",
+     "result": "n/a",
+     "src": "docs/PRODUCT_DECISIONS.md"
+    },
+    {
+     "rid": "F0176",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§4",
+     "result": "n/a",
+     "src": "docs/PRODUCT_DECISIONS.md"
+    },
+    {
+     "rid": "F0179",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§8",
+     "result": "n/a",
+     "src": "docs/PRODUCT_DECISIONS.md"
+    },
+    {
+     "rid": "F0180",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Not required for 1.0",
+     "result": "n/a",
+     "src": "docs/FEATURE_FEASIBILITY_MATRIX.md"
+    },
+    {
+     "rid": "F0181",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Release principle / Not required for v2.0 / Can ship before 2.0",
+     "result": "n/a",
+     "src": "docs/V2_ROADMAP.md"
+    },
+    {
+     "rid": "F0195",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "No release hostage",
+     "result": "n/a",
+     "src": "docs/TRAINER_PLAZA_VISION.md"
+    },
+    {
+     "rid": "F0197",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": null,
+     "result": "n/a",
+     "src": "docs/V2_PLATFORM_VISION.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-021",
+   "title": "Lineage/breeding parents: never invent parents the save did not store (lineage states)",
+   "gens": [
+    "all"
+   ],
+   "area": "other",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "REQ docs/PRODUCT_DECISIONS.md §3",
+   "status": "Missing Feature",
+   "status_basis": "No lineage feature exists: only placeholder copy (src/UI/AppShellScreen.cpp:814 'Clone Lineage', SaveSelectScreen.cpp:5253 'Transfer & lineage' Vault tile). Nothing in src/ fabricates parents, so the constraint is met only because the feature does not exist.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "next_action": "Carry the rule into the Vault/lineage design when that work starts.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "F0178",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§3",
+     "result": "n/a",
+     "src": "docs/PRODUCT_DECISIONS.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-022",
+   "title": "Vault-driven National Pokédex (v1 milestone) not implemented — Home Pokédex is a placeholder",
+   "gens": [
+    "all"
+   ],
+   "area": "other",
+   "category": "missing-feature",
+   "safety_critical": false,
+   "v1_required": true,
+   "first_seen": "REQ docs/POKEDEX_SPEC.md",
+   "status": "Missing Feature",
+   "status_basis": "src/UI/AppShellScreen.cpp:786 renders 'Collection progress will appear here' for the Pokédex section; Master Vault is 'Coming Soon' (AppShellScreen.cpp:92, :672). Only per-save read-only Pokédex views exist (TrainerViewScreenBase.inc:482 pokedexProgress; Gen5SharedReadOnlySurface.inc:1333-1437 Gen V list). The spec requires Vault-authoritative ownership, which cannot exist without the Vault.",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "next_action": "Keep blocked on Master Vault; state explicitly in V1_ROADMAP whether the Pokédex milestone is v1.0 or v1.x.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "F0182",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Minimum Pokédex v1 milestone",
+     "result": "n/a",
+     "src": "docs/POKEDEX_SPEC.md"
+    },
+    {
+     "rid": "F0183",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "Core rule",
+     "result": "n/a",
+     "src": "docs/POKEDEX_SPEC.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-023",
+   "title": "Owner approval needed for merges, deletions and retargets; legality #314 stays unmerged",
+   "gens": [
+    "app"
+   ],
+   "area": "other",
+   "category": "request",
+   "safety_critical": true,
+   "v1_required": false,
+   "first_seen": "REQ docs/MAIN_CONSOLIDATION_20261031.md §1/§8 (rule first stated R1 7fea1797 OWNER_RETEST)",
+   "status": "Fixed in Code — Awaiting Hardware",
+   "status_basis": "PROCESS REQUIREMENT. Status mapping for process items: 'Fixed in Code — Awaiting Hardware' = honoured in current tooling/docs but never owner-confirmed; 'Open Defect' = not honoured. Honoured as of 6c7c8e99: no #314/legality-engine merge in history (only inherited include/Legality/Legality.h); one-time workflows not deleted pending approval; docs/MAIN_CONSOLIDATION_20261031.md §1 holds every deletion/closure for approval; Japanese Gen I/II editing stays locked (R11 H13 PASS). Flagged safety because unreviewed merges have truncated trees before (a5515493). B0134/B0595 carry the same rule and are listed under the issues for their other content.",
+   "repair_commits": [],
+   "automated_tests": [
+    "tests/test_ci_repository_safety_contract.py : repository safety contract"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (process)",
+   "next_action": "Get explicit owner approval before merging #330/#332 or deleting branches/workflows.",
+   "rechecked_needed": false,
+   "r12_checklist_item": null,
+   "occurrences": [
+    {
+     "rid": "F0191",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§1 / §8 Rules",
+     "result": "n/a",
+     "src": "docs/MAIN_CONSOLIDATION_20261031.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-024",
+   "title": "Round 11's 34 owner-PASS items are not frozen in the regression gate",
+   "gens": [
+    "all"
+   ],
+   "area": "other",
+   "category": "defect",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "R11 intake §1 note (3634d1e6)",
+   "status": "Open Defect",
+   "status_basis": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md:43 requires every repair to keep the 34 R11 PASS results (H01–H03, H05–H11, H13–H21, H23, H24, H26, H28, H30, H33, H35–H48 subset) and add regressions. tests/test_hw_round1_regression_gate.py has GUARDS for R1/R2/R3/Oct24/Oct25/Oct26 only (lines 45, 260, 302, 438, 547, 607; summary ends at Oct 26). There is no GUARDS_ROUND11 block, so the gate will not catch a regression of an R11 PASS. R11 is referenced only for reversals (C14 at :661, R2-BUG-004 at :350).",
+   "repair_commits": [],
+   "automated_tests": [],
+   "last_owner_result": "R11/3634d1e6: 34 PASS (unguarded)",
+   "hardware_acceptance_candidate": "066e1db9 R12 H18 (smoke only)",
+   "r12_checklist_item": "H18",
+   "next_action": "Add a GUARDS_ROUND11 block (34 IDs, count-checked against ROUND11_OWNER_WORKSHEET.md) to tests/test_hw_round1_regression_gate.py.",
+   "rechecked_needed": false,
+   "occurrences": [
+    {
+     "rid": "F0198",
+     "round": "REQ",
+     "candidate": null,
+     "item_id": "§1 note",
+     "result": "n/a",
+     "src": "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+    }
+   ],
+   "owner_words": []
+  },
+  {
+   "id": "PBX-OTH-025",
+   "title": "No developer / implementation wording in user-visible strings (CG04) - host contract only; Gen I edit status texts still say '... staged; source .srm unchanged'",
+   "gens": [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V"
+   ],
+   "area": "other",
+   "category": "requirement",
+   "safety_critical": false,
+   "v1_required": false,
+   "first_seen": "PRE GEN1_5_UI_AUDIT_MATRIX CG04",
+   "occurrences": [
+    {
+     "rid": "A0864",
+     "round": "PRE",
+     "candidate": null,
+     "item_id": "CG04",
+     "result": "PASS",
+     "src": "docs/qa/GEN1_5_UI_AUDIT_MATRIX.md"
+    }
+   ],
+   "owner_words": [],
+   "status": "Needs Investigation",
+   "rechecked_needed": false,
+   "status_basis": "CG04 (tests/test_qa_cross_gen_contract.py:882-888) only rejects '(DV-derived)', 'commits to draft', '(RSE)/(FRLG)/...' suffixes and '(ID nn)' raw IDs; host PASS with 0 violations, NOT DEVICE TESTED (A0864). The owner rejected implementation-facing wording ('source .srm unchanged') for Gen II (D0300, PBX-CRT-017), but src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc:215,304,392,420,434,448,524,538,546 still pass '... staged; source .srm unchanged' texts to EditFeedback::report, and include/UI/EditFeedback.h:29-33 posts Kind::Field Applied messages. Unknown: whether these Gen I UX2 commit paths are still reachable on 066e1db9 (Gen I Edit became a Keep/Discard working-copy draft in 74d4b16f) and whether CG04 should cover this wording. No owner hardware item for CG04 itself.",
+   "repair_commits": [
+    "36a89388 ui: return Gen II Add directly to packed box selection (Gen II toast reworded)",
+    "f2cf5954 Gen I-V: no toast after routine edits; Gen V Shiny toggles inline (H22, H29)"
+   ],
+   "automated_tests": [
+    "tests/test_qa_cross_gen_contract.py:882-888 CG04-no-developer-wording : no '(DV-derived)', 'commits to draft', game-group or raw-ID suffixes in user-visible literals",
+    "tests/test_hw_round1_regression_gate.py:210-213 : CG04 is part of the frozen guards for owner-PASSed picker items"
+   ],
+   "last_owner_result": "none",
+   "hardware_acceptance_candidate": "none (not on any checklist)",
+   "r12_checklist_item": null,
+   "next_action": "Trace whether Gen I ux2CommitEdit success texts reach the screen on 066e1db9; if so, reword them and extend CG04 to reject 'source .srm unchanged'-style implementation wording."
+  }
+ ],
+ "accepted_features": [
+  {
+   "gen": "app",
+   "feature": "No live installed-save write; original installed save unchanged after the exercised flow",
+   "latest_pass": "PRE 3be4de6b (follow-up 2026-09-03) LIVE INSTALLED SAVE WRITE OBSERVED: NO",
+   "code_changed_since": true,
+   "evidence": "A0215/A0216; WritePolicy.h unchanged since c618bd5e, but export/review paths changed many times since (R11 repairs) -> recheck via R12 H17"
+  },
+  {
+   "gen": "app",
+   "feature": "Handheld text readability and focus visibility",
+   "latest_pass": "PRE 3be4de6b (follow-up 2026-09-03)",
+   "code_changed_since": true,
+   "evidence": "A0200/A0201; whole UI rewritten since (Product Home, shared editors); no later general handheld row"
+  },
+  {
+   "gen": "all",
+   "feature": "Regression smoke of earlier-round passes (navigation, open/exit, trainer, party/boxes, harmless staged edit)",
+   "latest_pass": "R11 3634d1e6 H15",
+   "code_changed_since": true,
+   "evidence": "E0014; Round 11 repair lanes merged into 066e1db9 -> R12 H18"
+  },
+  {
+   "gen": "I-IV",
+   "feature": "Owner-accepted integrated Gen I–IV application build",
+   "latest_pass": "PRE 0760334f (owner-accepted 2026-10-08)",
+   "code_changed_since": true,
+   "evidence": "A0919 docs/BUILD_RECORD.md; superseded by the Gen I–V candidates"
+  }
+ ],
+ "noise": [
+  {
+   "rid": "A0146",
+   "reason": "Template 'final summary fields' of the Sept 2 extended report; not a behaviour."
+  },
+  {
+   "rid": "D0218",
+   "reason": "Candidate-level summary: fa9cfcea failed. Its failures (direct-to-Party routing, Create Cancel-only, separate Create wizard, garbled new-game trainer, Trainer popup) are itemised and traced in open-save/create/trainer; candidate superseded by 7fea1797 (R1)."
+  },
+  {
+   "rid": "D0219",
+   "reason": "Duplicate of D0218 (same fa9cfcea failure list, PR #307 comment)."
+  },
+  {
+   "rid": "D0221",
+   "reason": "Duplicate of D0218 (issue #313 comment on the fa9cfcea failure)."
+  },
+  {
+   "rid": "D0222",
+   "reason": "Round 1 tally (42/54); individual items traced in their areas."
+  },
+  {
+   "rid": "D0237",
+   "reason": "Oct 24 tally (27/6/4) restated in PR body; items traced in their areas."
+  },
+  {
+   "rid": "C0419",
+   "reason": "Oct 24 tally (27/6/4) restated in MAIN_ACTIVE_HANDOFF; items traced in their areas."
+  },
+  {
+   "rid": "B0313",
+   "reason": "Pointer saying R2 reports are tracked in the R3 plan; the reports themselves are itemised elsewhere."
+  },
+  {
+   "rid": "B0591",
+   "reason": "R3 P0 priority grouping of items traced in their own areas."
+  },
+  {
+   "rid": "B0592",
+   "reason": "R3 P1 priority grouping of items traced in their own areas."
+  },
+  {
+   "rid": "B0593",
+   "reason": "R3 P2 priority grouping of items traced in their own areas."
+  },
+  {
+   "rid": "B0594",
+   "reason": "R3 P3 priority grouping of items traced in their own areas."
+  },
+  {
+   "rid": "D0198",
+   "reason": "Fact: Round 4 had no separate candidate (its repairs shipped in R5)."
+  },
+  {
+   "rid": "A0779",
+   "reason": "Host matrix campaign progress (Phase 5, host PASS); its finding QA-F6 is traced in save-discovery."
+  },
+  {
+   "rid": "A0780",
+   "reason": "Independent #307 audit progress row; its findings QA-F4/QA-F5 are traced in pokemon-edit/install-home."
+  },
+  {
+   "rid": "D0235",
+   "reason": "Owner request list (R1 extras): each item (compact menus, live species search, drag scrollbars, Gen I trainer name/money, Gen II Special, Crystal Met Time, emulator backups, launch modal, Gen V header) belongs to its own area (help-footer-controls, search, touch, trainer, stats, encounters-met, backups-recovery, launch-quit, visuals-sprites) and is itemised there."
+  }
+ ],
+ "misfiled": []
+}

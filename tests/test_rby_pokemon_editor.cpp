@@ -272,12 +272,11 @@ int main() {
     {auto je=StagedPokemonEditor::create(*j.save,error);assert(je&&je->view().boxes().size()==8&&je->view().boxes()[0].slots.size()==30);
      std::vector<uint8_t> jpOut=je->finalizedBytes(error);assert(jpOut==jp);}
     {
-        // Create default matches Gen II-V (#25 L5) with Pikachu's pokered base moves at base PP.
+        // Create default matches Gen II-V (#25 L5). Round 11 (owner H28 / Extra 5 / Extra 6): it starts
+        // with no moves -- the user picks them and the UI's shared Create rule refuses Add until one is.
         const PokeVault::Integration::Gen1::BoxPokemonCreate defaults{};
-        using E = PokeVault::Integration::Gen1::StagedPokemonEditor;
         assert(defaults.species == 25 && defaults.level == 5);
-        assert(defaults.moves[0] == 84 && defaults.moves[1] == 45 && defaults.moves[2] == 0 && defaults.moves[3] == 0);
-        for (std::size_t i = 0; i < 4; ++i) assert(defaults.pp[i] == E::moveBasePP(defaults.moves[i]));
+        for (std::size_t i = 0; i < 4; ++i) assert(defaults.moves[i] == 0 && defaults.pp[i] == 0 && defaults.ppUps[i] == 0);
     }
     std::cout<<"Gen I staged boxed Pokemon editor: PASS (R/B/Y fields, lists, encoding, immutable export)\n";
 }

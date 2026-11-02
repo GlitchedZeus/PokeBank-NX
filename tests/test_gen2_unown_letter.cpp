@@ -116,10 +116,13 @@ int main() {
     }
     const auto chooserSource = read("include/UI/SharedSpeciesPicker.h");
     const auto chooserOverlay = read("src/UI/Gen2PokemonPickerOverlay.inc");
+    // Round 11 SPRITE: one preview artwork in the current shiny state, so the native letter
+    // computed for that state is never paired with the other appearance.
     require(chooserSource.find("getIconSprite(species, form, previewShiny)") != std::string::npos &&
-            chooserSource.find("getSprite(preview, form, false)") != std::string::npos &&
-            chooserSource.find("getSprite(preview, form, true)") != std::string::npos,
-            "picker renders previews using native Unown form");
+            chooserSource.find("getSprite(preview, form, previewShiny)") != std::string::npos &&
+            chooserSource.find("getSprite(preview, form, false)") == std::string::npos &&
+            chooserSource.find("getSprite(preview, form, true)") == std::string::npos,
+            "picker renders one preview using the native Unown form for its shiny state");
     require(chooserOverlay.find("Gen2Picker::previewUnownForm(") != std::string::npos &&
             chooserOverlay.find("&overlay.speciesChooser, unownForm)") != std::string::npos,
             "Gen II supplies computed form to shared chooser");
@@ -129,7 +132,10 @@ int main() {
     other.begin(shiny.working, Rules::SessionMode::Edit);
     require(other.setSpecies(25, "silver_gbc") && other.working.form == 0, "non-Unown form 0");
 
-    // Keep -> reparse: the saved letter (Gen2ReadOnlySave) equals the draft letter.
+    // Keep -> reparse: the saved letter (Gen2ReadOnlySave) equals the draft letter. Round 11 (owner
+    // H28): Unown keeps none of Pikachu's moves and none is filled in, so the user picks Hidden Power
+    // (Unown's only move) before Keep (CreateRequiredFields).
+    require(s.setMove(0, 237), "Hidden Power");
     require(s.keep(*editor, 1, 0, error), "keep: " + error);
     const auto back = editor->boxedPokemon(1, 0, error);
     require(back && back->species == 201 && back->form == s.working.form, "reparsed letter == draft letter");

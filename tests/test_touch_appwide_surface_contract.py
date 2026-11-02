@@ -180,7 +180,8 @@ assert "drawNarrowPokemonActions(fb, screen.touchButtons, model, legacy.pokemonR
 assert 'screen.legacyProviderLabel() + " GB SOURCE / READ ONLY", 300' in gen1_popup
 assert 'screen.legacyProviderLabel() + " GBC SOURCE / READ ONLY", 500' in gen2_popup
 assert "const int w = pokemon ? 650 : 560;" not in gen2_popup
-assert "releaseActionCapabilities(),\n        !editor->pendingChanges().empty()" in gen2_popup
+# Round 11 ACTIONS: the live Gen II sheet lists from the ONE Gen II capability set (with Move).
+assert "gen2ActionCapabilities(screen),\n        !editor->pendingChanges().empty()" in gen2_popup
 assert "staged && !staged->pendingChanges().empty()" in gen1_popup
 
 # Shared narrow popup clears the dimmed background's touch targets before

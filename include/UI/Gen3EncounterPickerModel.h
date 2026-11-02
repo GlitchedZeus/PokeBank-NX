@@ -1,9 +1,14 @@
 #pragma once
 
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Names/LocationDisplayNames.h"
+#include "Names/SpeciesNames.h"
+#include "UI/ExactGameMetLocations.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace PokeBank::UIModel::Gen3EncounterPicker {
@@ -17,6 +22,8 @@ namespace Encounter = PokeVault::Integration::EncounterGuardrails;
 // but one whose level range does not contain the stored met level says so rather than reading as
 // this record's acquisition.
 inline constexpr uint16_t kKeepStoredRow = 0xFFFF;
+namespace MetRows = PokeBank::UIModel::ExactGameMetLocations;
+static_assert(kKeepStoredRow == MetRows::kKeepStoredRowValue);
 
 inline std::vector<uint16_t> rowValues(std::size_t count) {
     std::vector<uint16_t> rows;
@@ -84,6 +91,85 @@ inline int selectedRowWithStored(const std::vector<Choice>& choices, const std::
 template <typename Choice>
 inline const Choice* choiceAt(const std::vector<Choice>& choices, uint16_t rowValue) noexcept {
     return rowValue < choices.size() ? &choices[static_cast<std::size_t>(rowValue)] : nullptr;
+}
+
+// Round 11 FRLG: the catch templates come from the RECORD's origin game (PK3 origin 1-5), not the
+// save being edited: a Ruby-origin Pokémon in a FireRed save is offered Hoenn data under its Ruby
+// origin, and a FireRed / LeafGreen record is offered Kanto data. Colosseum / XD and unknown origins
+// have no Gen III GBA template list.
+inline std::vector<Encounter::EncounterProvenanceChoice> templatesForOrigin(uint8_t origin, uint16_t species) {
+    const auto game = MetRows::gen3GameIdForOrigin(origin);
+    if (game.empty()) return {};
+    return Encounter::forGameSpeciesWithGen3Provenance(game, species);
+}
+
+// The full picker (ExactGameMetLocations.h): keep-stored row, catch templates, then every other
+// location native to the record's origin game. It is empty only when there is nothing to keep and
+// the origin has no native Gen III GBA list; it never fails closed because a species has no
+// template in this game.
+template <typename Choice>
+inline std::vector<uint16_t> rowValuesWithNative(const std::vector<Choice>& choices, uint16_t storedLocation,
+                                                 uint8_t origin) {
+    auto rows = rowValuesWithStored(choices, storedLocation);
+    const bool keepRow = !rows.empty() && rows.front() == kKeepStoredRow;
+    const auto others = MetRows::otherNativeRows(
+        MetRows::gen3OfferedLocations(origin),
+        [&](uint16_t id) { return storedLocationListed(choices, id); }, keepRow, storedLocation);
+    rows.insert(rows.end(), others.begin(), others.end());
+    return rows;
+}
+
+// Initial focus over the full picker: keep-stored, else the matching template, else the stored
+// location's other-native row, else the first row.
+template <typename Choice>
+inline int selectedRowWithNative(const std::vector<Choice>& choices, const std::vector<uint16_t>& rows,
+                                 uint16_t currentLocation, uint8_t currentLevel) noexcept {
+    if (!rows.empty() && rows.front() == kKeepStoredRow) return 0;
+    if (storedLocationListed(choices, currentLocation)) return selectedRow(choices, currentLocation, currentLevel);
+    for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+        const auto row = rows[static_cast<std::size_t>(i)];
+        if (MetRows::isOtherNativeRow(row) && MetRows::otherNativeRowLocation(row) == currentLocation) return i;
+    }
+    return 0;
+}
+
+// One picker row as {place, detail}. Round 11 follow-up: a verified catch template says its method
+// and level ("Wild Lv. 3–5"); every other native location says "Not a listed catch; unverified" (or
+// names its trade / egg / event marker, also "unverified"), and the keep-stored row is the save's
+// own value, never judged. A template row is never labelled unverified, and no row says "legal".
+struct RowText {
+    std::string place;
+    std::string detail;
+    bool verifiedCatch = false;   // a catch template of the species / its ancestry in the origin game
+};
+template <typename Choice>
+inline RowText rowText(const std::vector<Choice>& choices, uint16_t value, uint8_t origin,
+                       uint16_t storedLocation, uint8_t storedMetLevel) {
+    if (value == kKeepStoredRow) {
+        // R2-BUG-008: the save's own met location, not judged (traded / hatched / event / other).
+        return {"Keep stored: " + Names::getMetLocationDisplayName(origin, storedLocation),
+                "Met Lv. " + std::to_string(storedMetLevel), false};
+    }
+    if (MetRows::isOtherNativeRow(value)) {
+        const auto location = MetRows::otherNativeRowLocation(value);
+        return {Names::getMetLocationDisplayName(origin, location), MetRows::gen3OtherDetail(location), false};
+    }
+    const auto* selected = choiceAt(choices, value);
+    if (!selected) return {"Unknown location", {}, false};
+    const auto& encounter = encounterOf(*selected);
+    RowText out{Names::getMetLocationDisplayName(origin, encounter.location), {}, true};
+    // Round 5 NEW-10: short enough that every row fits the 620 px window on one line
+    // (tests/test_met_location_fit.cpp).
+    out.detail = std::string(Encounter::methodName(encounter.method)) + " Lv. " + std::to_string(encounter.minLevel);
+    if (encounter.maxLevel != encounter.minLevel) out.detail += "–" + std::to_string(encounter.maxLevel);
+    if constexpr (requires { selected->evolved; }) {
+        if (selected->evolved) {
+            out.detail += ", met as " + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));
+            if (selected->minimumEvolutionLevel != 0)
+                out.detail += " (evo. " + std::to_string(selected->minimumEvolutionLevel) + ")";
+        }
+    }
+    return out;
 }
 
 } // namespace PokeBank::UIModel::Gen3EncounterPicker

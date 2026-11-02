@@ -2,12 +2,14 @@
 //
 //   POKEBANK_REAL_SAVES=<folder> ./build-host/test_bag_top_up_real_saves
 //
-// Every Gen III / IV / V save under <folder> whose file name names its game (Ruby, Sapphire, Emerald,
-// FireRed, LeafGreen, Diamond, Pearl, Platinum, HeartGold, SoulSilver, Black, White, Black2, White2)
-// is opened read-only into its staged editor; Top Up / Add Missing (both modes, every Bag pocket,
-// 999 asked) is planned and applied; the finalized / export candidate is strictly reparsed and every
-// planned count read back; the file bytes are compared before and after. Gen I / II Japanese saves
-// stay read-only (Integration/Common/JapaneseEditingGate.h) and are listed, not edited.
+// Every Gen I-V save under <folder> whose file name names its game (Red, Blue, Yellow, Gold, Silver,
+// Crystal, Ruby, Sapphire, Emerald, FireRed, LeafGreen, Diamond, Pearl, Platinum, HeartGold,
+// SoulSilver, Black, White, Black2, White2) is opened read-only into its staged editor; Top Up / Add
+// Missing (both modes, Bag + PC Items: every Bag pocket and, in Gen I-III, the PC; 999 asked) is
+// planned and applied; the finalized / export candidate is strictly reparsed and every planned count
+// read back; the file bytes are compared before and after. Gen I / II Japanese saves (a "_G1_" /
+// "_G2_" name, or a save whose layout is Japanese) stay read-only
+// (Integration/Common/JapaneseEditingGate.h) and are listed, not edited.
 // Saves are read in place and never copied into the repository. Without the variable this prints
 // NOT TESTED and passes; a save that cannot be opened prints NO FIXTURE / NOT TESTED with the reason.
 #include "Inventory/BulkItemAdaptersClassic.h"
@@ -41,11 +43,17 @@ std::vector<uint8_t> readFile(const fs::path& p) {
 }
 bool has(const std::string& name, const char* token) { return name.find(token) != std::string::npos; }
 
+// Round 11 (H34): Bag + PC Items, i.e. every Bag pocket plus the PC where the save has one (Gen I-III);
+// Gen IV / V have no PC Items, so this is exactly "All Bag pockets" there.
 B::Request everything(std::span<const B::PocketState> state) {
     Model::State s;
-    s.allPockets = true;
+    s.scope = Model::Scope::BagAndPc;
     s.quantity = 999;
-    return Model::request(s, B::Pocket::Items, B::bagPockets(state));
+    return Model::request(s, B::Pocket::Items, state);
+}
+void japaneseReadOnly(const std::string& name) {
+    std::cout << "  NOT EDITED " << name << ": Japanese Gen I / II saves stay read-only (JapaneseEditingGate "
+              << (PokeVault::Integration::Common::kJapaneseClassicEditingEnabled ? "open" : "closed") << ")\n";
 }
 template <class Editor, class Adapter>
 bool readsBack(const Editor& e, const B::Plan& plan, const Adapter& a) {
@@ -56,6 +64,52 @@ bool readsBack(const Editor& e, const B::Plan& plan, const Adapter& a) {
 void report(const std::string& file, const B::Plan& plan) {
     std::cout << "  TESTED " << file << ": " << Model::totals(plan) << ", strict reparse + read-back OK, source unchanged\n";
     ++tested;
+}
+
+void gen1(const fs::path& path, const std::string& name, PokeVault::Integration::Gen1::SourceGame game) {
+    namespace G1 = PokeVault::Integration::Gen1;
+    const auto bytes = readFile(path);
+    std::string err;
+    auto parsed = G1::parse(bytes, game);
+    if (!parsed) { std::cout << "  NOT TESTED " << name << ": " << parsed.detail << '\n'; return; }
+    auto editor = G1::StagedInventoryEditor::create(*parsed.save, err);
+    if (!editor) { std::cout << "  NOT TESTED " << name << ": " << err << '\n'; return; }
+    if (editor->region() == G1::RegionLayout::Japanese && !PokeVault::Integration::Common::kJapaneseClassicEditingEnabled) {
+        japaneseReadOnly(name);
+        return;
+    }
+    const auto state = B::Gen1Bag::pockets(*editor, err);
+    const auto plan = B::plan(B::Gen1Bag::game(*editor), everything(state), state);
+    if (!B::apply(*editor, plan, B::Gen1Bag::Adapter(*editor)).applied && !plan.empty()) { fail(name + ": apply refused"); return; }
+    const auto out = editor->finalize(err);
+    auto again = out.empty() ? G1::ParseResult{} : G1::parse(out, game);
+    auto check = again ? G1::StagedInventoryEditor::create(*again.save, err) : nullptr;
+    if (!plan.empty() && (!check || !readsBack(*check, plan, B::Gen1Bag::Adapter(*check)))) { fail(name + ": reparse / read-back: " + err); return; }
+    if (readFile(path) != bytes) { fail(name + ": source file changed"); return; }
+    report(name, plan);
+}
+
+void gen2(const fs::path& path, const std::string& name, PokeVault::Integration::Gen2::SourceGame game) {
+    namespace G2 = PokeVault::Integration::Gen2;
+    const auto bytes = readFile(path);
+    std::string err;
+    auto parsed = G2::parse(bytes, game);
+    if (!parsed) { std::cout << "  NOT TESTED " << name << ": " << parsed.detail << '\n'; return; }
+    auto editor = G2::StagedEditor::create(*parsed.save, err);
+    if (!editor) { std::cout << "  NOT TESTED " << name << ": " << err << '\n'; return; }
+    if (editor->metadata().region == G2::RegionLayout::Japanese && !PokeVault::Integration::Common::kJapaneseClassicEditingEnabled) {
+        japaneseReadOnly(name);
+        return;
+    }
+    const auto state = B::Gen2Bag::pockets(*editor, err);
+    const auto plan = B::plan(B::Gen2Bag::game(*editor), everything(state), state);
+    if (!B::apply(*editor, plan, B::Gen2Bag::Adapter{}).applied && !plan.empty()) { fail(name + ": apply refused"); return; }
+    const auto out = editor->finalizedBytes(err);
+    auto again = out.empty() ? G2::ParseResult{} : G2::parse(out, game);
+    auto check = again ? G2::StagedEditor::create(*again.save, err) : nullptr;
+    if (!plan.empty() && (!check || !readsBack(*check, plan, B::Gen2Bag::Adapter{}))) { fail(name + ": reparse / read-back: " + err); return; }
+    if (readFile(path) != bytes) { fail(name + ": source file changed"); return; }
+    report(name, plan);
 }
 
 void gen3(const fs::path& path, const std::string& name, PokeVault::Integration::Gen3::SourceGame game) {
@@ -128,6 +182,8 @@ int main() {
         std::cout << "Top Up / Add Missing on real saves: NO FIXTURE (" << root << " is not a folder)\n";
         return 0;
     }
+    namespace G1 = PokeVault::Integration::Gen1;
+    namespace G2 = PokeVault::Integration::Gen2;
     namespace G3 = PokeVault::Integration::Gen3;
     namespace G4 = PokeVault::Integration::Gen4;
     std::vector<fs::path> files;
@@ -137,8 +193,7 @@ int main() {
     for (const auto& path : files) {
         const std::string name = path.filename().string();
         if (has(name, "_G1_") || has(name, "_G2_")) {
-            std::cout << "  NOT EDITED " << name << ": Japanese Gen I / II saves stay read-only (JapaneseEditingGate "
-                      << (PokeVault::Integration::Common::kJapaneseClassicEditingEnabled ? "open" : "closed") << ")\n";
+            japaneseReadOnly(name);
             continue;
         }
         if (has(name, "LeafGreen")) gen3(path, name, G3::SourceGame::LeafGreenGBA);
@@ -155,6 +210,14 @@ int main() {
         else if (has(name, "White2")) gen5(path, name, "white2_nds");
         else if (has(name, "Black")) gen5(path, name, "black_nds");
         else if (has(name, "White")) gen5(path, name, "white_nds");
+        // English Gen I / II (Round 11 H34: these used to fall through to NO FIXTURE). Checked after
+        // FireRed / HeartGold / SoulSilver, whose names contain Red / Gold / Silver.
+        else if (has(name, "Yellow")) gen1(path, name, G1::SourceGame::Yellow);
+        else if (has(name, "Blue")) gen1(path, name, G1::SourceGame::Blue);
+        else if (has(name, "Red")) gen1(path, name, G1::SourceGame::Red);
+        else if (has(name, "Crystal")) gen2(path, name, G2::SourceGame::Crystal);
+        else if (has(name, "Silver")) gen2(path, name, G2::SourceGame::Silver);
+        else if (has(name, "Gold")) gen2(path, name, G2::SourceGame::Gold);
         else std::cout << "  NO FIXTURE " << name << ": game not named in the file name\n";
     }
     if (failures) {

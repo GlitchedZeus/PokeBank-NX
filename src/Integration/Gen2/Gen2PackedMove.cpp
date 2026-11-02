@@ -47,7 +47,7 @@ bool StagedEditor::beginPackedGroupMove(std::size_t sourceBox,std::span<const st
     if(std::adjacent_find(ordered.begin(),ordered.end())!=ordered.end()){error="Generation II move selection contains duplicate slots";return false;}
     const auto list=boxStart(layout,sourceBox); const std::size_t count=staged_[list];
     if(count==0||ordered.back()>=count){error="Generation II move selection contains an empty slot";return false;}
-    PackedMoveState state; state.active=true; state.sourceBox=sourceBox; state.sourceSlots=ordered; state.stagedBefore=staged_; state.changesBefore=changes_; state.expectationsBefore=pokemonExpectations_; state.carried.reserve(ordered.size());
+    PackedMoveState state; state.active=true; state.sourceBox=sourceBox; state.sourceSlots=ordered; state.stagedBefore=staged_; state.changesBefore=changes_; state.expectationsBefore=pokemonExpectations_; state.trainerNameBefore=trainerName_; state.moneyBefore=money_; state.carried.reserve(ordered.size());
     for(const auto slot:ordered){auto pokemon=boxedPokemon(sourceBox,slot,error);if(!pokemon)return false;state.carried.push_back(*pokemon);} packedMove_=std::move(state);
     const auto beforeRemove=staged_; std::size_t write=0;
     for(std::size_t read=0;read<count;++read){if(std::binary_search(ordered.begin(),ordered.end(),read))continue;if(write!=read)copyStoredSlot(beforeRemove,layout,sourceBox,read,staged_,sourceBox,write);++write;}
@@ -76,7 +76,7 @@ bool StagedEditor::placePackedGroupMove(std::size_t destinationBox,std::size_t d
     setChange("packed_group_move:"+std::to_string(packedMove_.sourceBox)+":"+std::to_string(packedMove_.sourceSlots.front())+":"+std::to_string(groupSize)+"->"+std::to_string(destinationBox)+":"+std::to_string(insert),groupSize==1?"Packed Pokemon move":"Packed Pokemon group move","Box "+std::to_string(packedMove_.sourceBox+1)+" / "+std::to_string(groupSize)+" Pokemon","Box "+std::to_string(destinationBox+1)+" Slot "+std::to_string(insert+1));
     firstPlacedSlot=insert;packedMove_={};return true;
 }
-bool StagedEditor::cancelPackedMove(std::string& error){error.clear();if(!packedMove_.active)return true;staged_=packedMove_.stagedBefore;changes_=packedMove_.changesBefore;pokemonExpectations_=packedMove_.expectationsBefore;packedMove_={};return true;}
+bool StagedEditor::cancelPackedMove(std::string& error){error.clear();if(!packedMove_.active)return true;staged_=packedMove_.stagedBefore;changes_=packedMove_.changesBefore;pokemonExpectations_=packedMove_.expectationsBefore;trainerName_=packedMove_.trainerNameBefore;money_=packedMove_.moneyBefore;packedMove_={};return true;}
 bool StagedEditor::stageReleaseBoxPokemon(std::size_t box,std::size_t slot,std::string& error){error.clear();if(packedMove_.active){error="Finish or cancel the current Pokemon move before Release";return false;}auto pokemon=boxedPokemon(box,slot,error);if(!pokemon)return false;if(!beginPackedMove(box,slot,error))return false;const std::string before=pokemon->nickname+" Lv. "+std::to_string(pokemon->level);packedMove_={};setChange("release:"+std::to_string(box)+":"+std::to_string(slot),"Box "+std::to_string(box+1)+" Slot "+std::to_string(slot+1)+" Release",before,"Released (staged only)");return true;}
 
 } // namespace PokeVault::Integration::Gen2

@@ -95,9 +95,10 @@ void verifyFrame(const std::string& where) {
 
 // Round 7 (owner Round 6 A22 / C01, lane C): Gen II Special uses the Gen I calculated-Special
 // presentation. One Special DV / Stat Exp row; the numeric Calculated column holds plain numbers
-// for HP, Attack, Defense and Speed only (nothing on the Special row, no tags, no "x / y"); the
-// derived values sit in the lower-middle of the STATS panel: "CALCULATED SPECIAL STATS", then one
-// line "Sp. Atk n   Sp. Def n", below the grid and the HP note and above Shiny.
+// (no tags, no "x / y"); the derived values sit in the lower-middle of the STATS panel:
+// "CALCULATED SPECIAL STATS", then one line "Sp. Atk n   Sp. Def n", below the grid and the HP
+// note and above Shiny. Round 11 (owner H22, deliberate change of the Round 7 "nothing on the
+// Special row" check): the Special row's Calculated cell shows the same two numbers, "<SpA>  <SpD>".
 void checkGen2Special(const std::string& where) {
     const HostUi::TextRect* find[7] = {};
     const char* names[7] = {"Calculated", "Special", "* HP DV derived / read-only", "CALCULATED SPECIAL STATS",
@@ -132,15 +133,23 @@ void checkGen2Special(const std::string& where) {
           where + ": the Special block is below the grid and the HP note, above Shiny");
     check(spa && spa->x + spa->w < spdTag.x, where + ": the Sp. Atk number ends before Sp. Def");
     // The numeric Calculated column (texts starting at its header's x, between the header and the
-    // Special row): exactly HP / Attack / Defense / Speed, plain numbers; nothing on the Special row.
+    // Special row): HP / Attack / Defense / Speed plain numbers, then on the Special row the block's
+    // two numbers, Sp. Atk then Sp. Def.
     int column = 0;
+    bool specialCell = false;
     for (const auto& t : HostUi::visibleText) {
         if (t.x != calculated.x || t.y <= calculated.y || t.y > special.y + 4) continue;
-        check(numeric(t), where + ": plain number in the Calculated column (\"" + t.text + "\")");
-        check(t.y + t.h <= special.y, where + ": nothing in the Special row's Calculated cell (\"" + t.text + "\")");
+        if (t.y == special.y) {
+            specialCell = true;
+            check(spa && spd && t.text == spa->text + "  " + spd->text,
+                  where + ": the Special row's Calculated cell shows Sp. Atk then Sp. Def (\"" + t.text + "\")");
+        } else {
+            check(numeric(t), where + ": plain number in the Calculated column (\"" + t.text + "\")");
+        }
         ++column;
     }
-    check(column == 4, where + ": four calculated values (HP, Attack, Defense, Speed), found " + std::to_string(column));
+    check(specialCell, where + ": the Special row's Calculated cell is drawn");
+    check(column == 5, where + ": five calculated cells (HP, Attack, Defense, Speed, Special), found " + std::to_string(column));
     for (const auto& t : HostUi::visibleText)
         if (t.x >= calculated.x - 100 && t.y > calculated.y && t.y <= special.y + 4)
             check(t.text.rfind("Sp", 0) != 0 && t.text.find(" / ") == std::string::npos,
@@ -448,6 +457,65 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
     if (gen5)
         if (auto* g5 = dynamic_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer*>(&screen.trainer))
             g5->sharedScreen().noteCreateMetLocationChosen();
+    // Round 11 (owner H28 / Extra 5 / Extra 6, CreateRequiredFields): a new Pokemon starts with no
+    // moves and Add needs one, and Gen III / IV need a chosen Met Location. Pick them through the
+    // real controls so the sweep can continue: the first Move from the move picker, and the first
+    // listed encounter location.
+    press(HidNpadButton_X);   // Add before choosing: refused with the one shared status, nothing staged
+    check(screen.storageStatus.find("at least one move") != std::string::npos,
+          game + ": Add of a moveless new Pokemon is refused (" + screen.storageStatus + ")");
+    const auto tap = [&](int id) {
+        frame();
+        for (const auto& b : screen.touchButtons) {
+            if (b.id != id) continue;
+            const auto x = static_cast<u32>(b.x + b.w / 2), y = static_cast<u32>(b.y + b.h / 2);
+            HostUi::touch = {true, x, y};
+            frame();
+            HostUi::touch = {false, x, y};
+            frame();
+            return true;
+        }
+        return false;
+    };
+    const auto has = [&](int id) {
+        for (const auto& b : screen.touchButtons) if (b.id == id) return true;
+        return false;
+    };
+    // Open Move 1's editor (tap the Move 1 row; A if the tap only focused it), choose the first
+    // move after Empty in its picker, then the editor's Apply / Done row.
+    const auto chooseFirstMove = [&](int moveRow, int editorBase) {
+        tap(moveRow);
+        frame();
+        if (!has(editorBase)) press(HidNpadButton_A);
+        tap(editorBase);                 // Move
+        press(HidNpadButton_Down);       // the first move after Empty
+        press(HidNpadButton_A);
+        tap(editorBase + 3);             // Apply / Done
+    };
+    if (game == "Red") {
+        chooseFirstMove(5200, 1100);
+    } else if (game == "FireRed") {
+        for (int i = 0; i < 20 && !has(31000 + 13); ++i) press(HidNpadButton_Down);
+        tap(31000 + 13);                 // Met Location: the first listed encounter
+        press(HidNpadButton_A);
+        chooseFirstMove(31300, 31400);
+    } else if (game == "Platinum" || game == "Black") {
+        if (game == "Platinum") {
+            for (int i = 0; i < 20 && !has(41000 + 13); ++i) press(HidNpadButton_Down);
+            tap(41000 + 13);             // Met Location: the first wild location after the unset row
+            press(HidNpadButton_Down);
+            press(HidNpadButton_A);
+        }
+        chooseFirstMove(41300, 41400);
+    } else {
+        press(HidNpadButton_L);          // Gen II: MOVES panel, Move 1
+        press(HidNpadButton_A);          // Move 1 editor
+        press(HidNpadButton_A);          // Choose Move
+        press(HidNpadButton_Down);       // the first move after Empty
+        press(HidNpadButton_A);
+        for (int i = 0; i < 3; ++i) press(HidNpadButton_Down);   // Done
+        press(HidNpadButton_A);
+    }
     // X adds the draft (a staged change), then Review: Gen I-IV through openStagedReview, Gen V on
     // its own surface (Boxes' Review key, Y since Round 7 ReviewEntry: Gen5SharedReadOnlySurface
     // openReviewFromBrowse).
@@ -481,7 +549,7 @@ void sweep(const std::string& game, UI::TrainerViewScreen& screen, int emptySlot
         const std::string where = game + " / Review (staged Create)";
         check(row("/ Add Pok\xC3\xA9mon"), where + ": the Add Pokémon header row");
         check(row("/ OT / TID"), where + ": a named OT / TID row");
-        if (game == "Red") check(row("/ Moves"), where + ": a named Moves row (Gen I Create has level-up moves)");
+        if (game == "Red") check(row("/ Moves"), where + ": a named Moves row (the Move the user picked)");
     }
     // Lane S CG74 (Gen III / V): the created Pokemon's Review lists its details too, in the shared
     // Gen I-V "<slot> / Field" row shape.

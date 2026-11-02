@@ -67,6 +67,31 @@ namespace Names {
                 return false;
         }
     }
+
+    /**
+     * Round 11 FRLG: true when a Gen III met-location ID belongs to the
+     * Pokémon's exact origin game. Mirrors PKHeX Locations.IsMetLocation3RS /
+     * 3E / 3FRLG plus the shared Gen III markers 253 (gift egg), 254 (in-game
+     * trade) and 255 (fateful encounter).
+     *
+     * R/S: 0..87 (Hoenn), Emerald: 0..87 and 197..212, FR/LG: 88..196 (Kanto
+     * and the Sevii Islands). A FireRed / LeafGreen record never takes a Hoenn
+     * id and an R/S/E record never takes a Kanto id. Colosseum / XD (15) and
+     * unknown origins have no native Gen III GBA list here.
+     */
+    inline bool isGen3NativeMetLocation(uint8_t originVersion, uint16_t locationId) noexcept {
+        if (originVersion < 1 || originVersion > 5) return false;
+        if (locationId >= 253 && locationId <= 255) return true;
+        switch (originVersion) {
+            case 1:  // Sapphire
+            case 2:  // Ruby
+                return locationId <= 87;
+            case 3:  // Emerald
+                return locationId <= 87 || (locationId >= 197 && locationId <= 212);
+            default: // 4 FireRed, 5 LeafGreen
+                return locationId >= 88 && locationId <= 196;
+        }
+    }
 }
 
 #endif

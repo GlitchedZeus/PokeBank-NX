@@ -6,7 +6,10 @@
 //   * Shiny on K asks "Shiny Unown can only be I and V. Change letter to ...?"; B cancels with
 //     nothing changed, A applies a shiny I / V;
 //   * picking K while shiny asks "Unown K can't be shiny. Turn Shiny off and use K?"; A applies;
-//   * Y (Reroll) in both states changes the DVs, keeps letter and shiny, and says so;
+//   * Y (Reroll) in both states changes the DVs and keeps letter and shiny;
+//   * Round 11 H22 (UI/EditFeedback.h): an applied letter, a confirmed Shiny and a successful
+//     Reroll post no bottom-centre toast (the changed letter / DVs / sprite are the feedback);
+//     the cancelled question still says "Unown unchanged";
 //   * X keeps the draft: the stored record's form (the Box sprite key) and Review name the letter
 //     the DVs give.
 #include "HostUi.h"
@@ -87,6 +90,12 @@ int main() {
     check(static_cast<bool>(parsed), "Silver fixture with an Unown parses");
     if (!parsed) return 1;
     std::string error;
+    const auto quiet = [](UI::TrainerViewScreen& s) { s.storageStatus.clear(); s.storageStatusFrames = 0; };
+    // The four editable DVs as drawn in the STATS grid (the value after each row label).
+    const auto dvsShown = [] {
+        return valueAfter("Attack") + "/" + valueAfter("Defense") + "/" + valueAfter("Speed") + "/" +
+               valueAfter("Special");
+    };
     auto trainer = PokeVault::Legacy::GSCReadOnlyTrainer::create(*parsed.save, error);
     check(trainer != nullptr, "Silver trainer: " + error);
     if (!trainer) return 1;
@@ -99,10 +108,32 @@ int main() {
     screen.selectedBoxIndex = 1;
     screen.selectedItemIndex = 0;
     d.frame();
+    // Round 11 H22: the Special row's Calculated cell shows Sp. Atk then Sp. Def ("<a>  <b>"), the
+    // same two numbers the labelled Special block below the grid shows, in View and in Edit.
+    const auto specialCellOk = [](const std::string& where) {
+        const std::string spa = valueAfter("Sp. Atk"), spd = valueAfter("Sp. Def");
+        check(!spa.empty() && spa[0] != '<' && !spd.empty() && spd[0] != '<', where + ": the Special block is drawn");
+        check(drew(spa + "  " + spd), where + ": the Special Calculated cell shows \"" + spa + "  " + spd + "\"");
+    };
+    {   // View on a screen of its own, so its passive focus does not carry into the Edit below.
+        UI::TrainerViewScreen viewScreen(*trainer, "Pokemon Silver", "/host/silver_gbc.sav", 0, AccountUid{},
+                                         PokeVault::Safety::SourceKind::RetroArchLegacy, "silver_gbc", "mGBA");
+        Driver v{viewScreen, {}, {}};
+        v.frame();
+        viewScreen.detailViewActive = true;
+        viewScreen.selectedMode = UI::TrainerViewScreen::ViewMode::Boxes;
+        viewScreen.selectedBoxIndex = 1;
+        viewScreen.selectedItemIndex = 0;
+        v.frame();
+        v.press(HidNpadButton_A);  // actions
+        v.press(HidNpadButton_A);  // View
+        specialCellOk("Gen II View");
+    }
     d.press(HidNpadButton_A);      // actions
     d.press(HidNpadButton_Down);   // Edit
     d.press(HidNpadButton_A);
     check(drew("Letter"), "Unown Edit shows the Letter row");
+    specialCellOk("Gen II Edit");
     check(valueAfter("Letter") == "A", "starts as Unown A, got " + valueAfter("Letter"));
     check(drew("Letter follows DVs; only I and V can be shiny"), "the Values note is visible");
 
@@ -116,8 +147,10 @@ int main() {
     // A..G on row 1, H..N on row 2: Down + Right x3 = K.
     d.press(HidNpadButton_Down);
     for (int i = 0; i < 3; ++i) d.press(HidNpadButton_Right);
+    quiet(screen);
     d.press(HidNpadButton_A);
     check(!drew("Unown letter: now"), "the grid closes after a pick");
+    check(screen.storageStatus.empty(), "H22: picking a letter posts no toast (got \"" + screen.storageStatus + "\")");
     check(valueAfter("Letter") == "K", "picked K, got " + valueAfter("Letter"));
     check(valueAfter("Shiny") == "No", "K stays not shiny");
 
@@ -128,15 +161,23 @@ int main() {
     layoutOk("Shiny question");
     d.press(HidNpadButton_B);
     check(valueAfter("Letter") == "K" && valueAfter("Shiny") == "No", "B cancels: still K, not shiny");
+    check(screen.storageStatus == "Unown unchanged", "B on the question still says nothing changed");
     d.press(HidNpadButton_A);
+    quiet(screen);
     d.press(HidNpadButton_A);      // confirm
+    check(screen.storageStatus.empty(), "H22: a confirmed Shiny letter change posts no toast (got \"" +
+                                            screen.storageStatus + "\")");
     const std::string shinyLetter = valueAfter("Letter");
     check(valueAfter("Shiny") == "Yes" && (shinyLetter == "I" || shinyLetter == "V"),
           "A confirms: shiny I or V, got " + shinyLetter);
 
-    // Reroll while shiny: different DVs, same letter and shiny, and it says so.
+    // Reroll while shiny: different DVs, same letter and shiny, and no toast (H22).
+    const std::string shinyDvs = dvsShown();
+    quiet(screen);
     d.press(HidNpadButton_Y);
-    check(drew("DVs re-rolled, Unown " + shinyLetter + ", shiny kept: "), "shiny Reroll names what it kept and changed");
+    check(screen.storageStatus.empty() && !drew("DVs re-rolled"),
+          "H22: a shiny Reroll posts no toast (got \"" + screen.storageStatus + "\")");
+    check(dvsShown() != shinyDvs, "shiny Reroll changes the DVs shown (" + shinyDvs + " -> " + dvsShown() + ")");
     check(valueAfter("Letter") == shinyLetter && valueAfter("Shiny") == "Yes", "shiny Reroll keeps letter and shiny");
 
     // Picking K while shiny asks to turn Shiny off; A applies K, not shiny.
@@ -150,12 +191,18 @@ int main() {
     check(drew("Unown K can't be shiny. Turn Shiny off and use K?"), "a non-shiny letter while shiny is asked");
     layoutOk("Letter question");
     check(valueAfter("Shiny") == "Yes", "nothing changes before the answer");
+    quiet(screen);
     d.press(HidNpadButton_A);
     check(valueAfter("Letter") == "K" && valueAfter("Shiny") == "No", "A: Shiny off, K");
+    check(screen.storageStatus.empty(), "H22: an applied letter posts no toast (got \"" + screen.storageStatus + "\")");
 
     // Reroll while not shiny.
+    const std::string plainDvs = dvsShown();
+    quiet(screen);
     d.press(HidNpadButton_Y);
-    check(drew("DVs re-rolled, Unown K, not shiny kept: "), "Reroll names what it kept and changed");
+    check(screen.storageStatus.empty() && !drew("DVs re-rolled"),
+          "H22: Reroll posts no toast (got \"" + screen.storageStatus + "\")");
+    check(dvsShown() != plainDvs, "Reroll changes the DVs shown (" + plainDvs + " -> " + dvsShown() + ")");
     check(valueAfter("Letter") == "K", "Reroll keeps K");
 
     // Keep: the stored record (Box sprite key pokemon->form()) and Review agree with the DVs.
@@ -178,7 +225,7 @@ int main() {
         std::cerr << failures << " of " << checks << " checks failed\n";
         return 1;
     }
-    std::cout << "Gen II Unown Letter grid, Shiny questions and Reroll through the real input (" << checks
+    std::cout << "Gen II Unown Letter grid, Shiny questions and silent Reroll through the real input (" << checks
               << " checks): PASS\n";
     return 0;
 }

@@ -204,10 +204,9 @@ bool beginCreate(TrainerViewScreen& screen, int box) {
     state.panel = Foundation::Panel::Identity;
     state.row = 0;
     state.column = 0;
+    // Round 11 (owner H28 / Extra 5 / Extra 6): a new Pokemon starts with no moves in every
+    // generation; the user picks them, and Add refuses until one is chosen.
     state.working = defaultCreateRecord(*editor);
-    // A new Pokemon starts with its species' native level-up moves, like a species change during
-    // Create and Gen I / III-V Create (Pikachu Lv 5: Thunder Shock, Growl).
-    Rules::seedNativeMoves(state.working, screen.sourceGameId);
     state.begin(state.working, Mode::Create);
     state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Unknown;
     state.crystalMetTime = 0;
@@ -314,6 +313,10 @@ bool stageCreate(TrainerViewScreen& screen) {
         screen.postStatus("Add blocked: correct red incompatible move rows first", 300);
         return false;
     }
+    if (const auto missing = state.missingRequiredFields(); !missing.empty()) {
+        screen.postStatus(missing, 300);
+        return false;
+    }
 
     const std::string displayName = state.working.nickname.empty()
         ? PokeBank::UIModel::classicDefaultNickname(state.working.species) : state.working.nickname;
@@ -407,27 +410,29 @@ std::string describeDVChanges(const std::array<uint8_t, 4>& before, const std::a
 
 // Unown's letter is bits 1-2 of the same DVs, so a shiny toggle keeps it whenever the letter
 // allows (Gen2UnownLetter.h) and says so when it cannot.
+// Round 11 H22 (UI/EditFeedback.h): a Shiny toggle is a routine edit; the Shiny value, sprite, DVs
+// and stats change in place, so success posts no toast. A change the player did not ask for (the
+// Unown letter, or the gender for this species' ratio) is still stated as a warning.
 void toggleUnownShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
     namespace Letter = PokeBank::UIModel::Gen2UnownLetter;
+    namespace EditFeedback = PokeBank::UIModel::EditFeedback;
     const auto before = editableDVs(p);
     const int oldLetter = PokeBank::UIModel::Gen12DVReroll::unownLetter(before);
     const auto toggled = Letter::toggleShiny(before);
     applyEditableDVs(p, toggled.dvs);
-    const std::string changes = "DVs " + describeDVChanges(before, toggled.dvs);
-    if (!p.shiny) {
-        screen.postStatus("Shiny off: Unown " + std::string(1, Letter::letterChar(oldLetter)) +
-                          " kept; " + changes, 300);
-    } else if (toggled.letterChanged) {
-        screen.postStatus("Only Unown " + Letter::shinyLettersText() + " can be shiny: letter " +
-                          std::string(1, Letter::letterChar(oldLetter)) + " -> " +
-                          std::string(1, Letter::letterChar(p.form)) + "; " + changes, 420);
+    if (p.shiny && toggled.letterChanged) {
+        EditFeedback::report(screen, EditFeedback::Kind::Shiny, EditFeedback::Outcome::Warning,
+                             "Only Unown " + Letter::shinyLettersText() + " can be shiny: letter " +
+                             std::string(1, Letter::letterChar(oldLetter)) + " -> " +
+                             std::string(1, Letter::letterChar(p.form)) + "; DVs " +
+                             describeDVChanges(before, toggled.dvs), 420);
     } else {
-        screen.postStatus("Shiny on: Unown " + std::string(1, Letter::letterChar(p.form)) +
-                          " kept; " + changes, 300);
+        EditFeedback::applied(screen, EditFeedback::Kind::Shiny);
     }
 }
 
 void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
+    namespace EditFeedback = PokeBank::UIModel::EditFeedback;
     if (p.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies) {
         toggleUnownShiny(screen, p);
         return;
@@ -439,8 +444,7 @@ void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
         dvs[1] = dvs[1] == 10 ? 9 : dvs[1];
         if (Gen2::StagedEditor::isShinyDVs(dvs)) dvs[2] = 9;
         applyEditableDVs(p, dvs);
-        screen.postStatus("Shiny off: DVs " + describeDVChanges(before, dvs) +
-                          " (stats and Hidden Power follow)", 300);
+        EditFeedback::applied(screen, EditFeedback::Kind::Shiny);
         return;
     }
 
@@ -456,12 +460,13 @@ void toggleShiny(TrainerViewScreen& screen, Gen2::PokemonRecord& p) {
     }
     const std::array<uint8_t, 4> shiny{static_cast<uint8_t>(best), 10, 10, 10};
     applyEditableDVs(p, shiny);
-    const std::string changes = "DVs " + describeDVChanges(before, shiny);
     if (Gen2::genderFromAttackDV(p.species, p.dvs[1]) != originalGender &&
         originalGender != Gen2::PokemonGender::Genderless)
-        screen.postStatus("Authentic shiny DVs changed gender for this species ratio; " + changes, 360);
+        EditFeedback::report(screen, EditFeedback::Kind::Shiny, EditFeedback::Outcome::Warning,
+                             "Authentic shiny DVs changed gender for this species ratio; DVs " +
+                             describeDVChanges(before, shiny), 360);
     else
-        screen.postStatus("Shiny on: " + changes + " (stats and Hidden Power follow)", 300);
+        EditFeedback::applied(screen, EditFeedback::Kind::Shiny);
 }
 
 // Y Random DVs: a new roll that keeps shiny state, Gen II gender (Attack DV vs. ratio) and the
@@ -503,6 +508,9 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             const auto result = Utils::promptNumber("Gen II Species ID", p.species, 1, 251);
             if (!result.accepted) return;
             state.setSpecies(static_cast<uint16_t>(result.value), screen.sourceGameId);
+            // A Create reset is visible: the status names what was reset (Pokerus, caught data).
+            if (const auto reset = state.speciesChangeResetStatus(); !reset.empty())
+                screen.postStatus(reset, 300);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
                 p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
             refreshDerived(p);
@@ -779,15 +787,15 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
     }
 
     if (down & HidNpadButton_Y) {
-        // Round 7 (B07): report what really happened; Unown names the kept letter / shiny state.
+        // Round 7 (B07): a roll that changes nothing says why. Round 11 H22 (UI/EditFeedback.h): a
+        // successful roll is a routine edit and posts no toast (same rule as the unified workspace).
         const auto before = editableDVs(state.working);
-        const bool rerolled = randomizeDVs(state);
-        if (state.working.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies)
-            screen.postStatus(PokeBank::UIModel::Gen2UnownLetter::rerollStatus(
-                before, editableDVs(state.working), rerolled), 360);
-        else
-            screen.postStatus(rerolled ? "Authentic Gen II DVs randomized (0-15); HP/gender/shiny re-derived"
-                                       : "No other DVs keep this Pokemon's gender and shiny state; DVs unchanged", 240);
+        if (!randomizeDVs(state)) {
+            if (state.working.species == PokeBank::UIModel::Gen2UnownLetter::kUnownSpecies)
+                screen.postStatus(PokeBank::UIModel::Gen2UnownLetter::rerollStatus(before, before, false), 360);
+            else
+                screen.postStatus("No other DVs keep this Pokemon's gender and shiny state; DVs unchanged", 240);
+        }
     }
     if (down & HidNpadButton_A) activateField(screen, state);
     if ((down & HidNpadButton_X) && state.mode == Mode::Create) stageCreate(screen);
@@ -873,7 +881,8 @@ void drawValues(PKSEFramebuffer& fb, const State& state, int x, int y, int w, in
                     dvColor, TextStyle::Caption);
         fb.drawText(x + 190, yy, std::to_string(p.statExperience[static_cast<std::size_t>(i)]),
                     statExpColor, TextStyle::Caption);
-        // Round 7: the same plain-number Calculated cell model as every Gen II STATS painter.
+        // Round 7 / Round 11 (H22): the same plain-number Calculated cell model as every Gen II
+        // STATS painter, Special row included.
         fb.drawText(x + 286, yy, PokeBank::UIModel::Gen2Workspace::calculatedCell(battle, i),
                     Colors::Text, TextStyle::Caption);
     }

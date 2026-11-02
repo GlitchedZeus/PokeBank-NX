@@ -119,6 +119,54 @@ int main() {
                    return s.itemId == 13 && s.reason == B::SkipReason::SeveralStacks; }) == 1);
         assert(B::skipReasonText(B::SkipReason::SeveralStacks) == "held in several stacks; edit it on its own");
     }
+    // Round 11 (H04 / H34): a list that runs out of slots is reported once with its native size; a
+    // shared list (Gen I) says every category shares it; a pocket's own list names its slot count.
+    {
+        B::PocketState items{Pocket::Items, {{0, 75, 1}}, 3, addable(C::ClassicGame::Red, C::ClassicPocket::Items)};
+        B::PocketState medicine{Pocket::Medicine, {{0, 20, 1}}, 3, addable(C::ClassicGame::Red, C::ClassicPocket::Medicines)};
+        B::PocketState pc{Pocket::PCItems, {}, 2, {10, 29, 30}};   // Moon Stone first in both lists
+        items.slotGroup = medicine.slotGroup = 0;
+        std::vector<B::PocketState> lists{items, medicine, pc};
+        const auto plan = B::plan(Game::Red, {B::Mode::AddMissing, 5, {}}, lists);
+        assert(plan.adds.size() == 3);   // 1 in the shared Bag, 2 in the PC
+        assert(plan.full.size() == 2);
+        assert(plan.full[0].pocket == Pocket::Items && plan.full[0].sharedList && plan.full[0].slots == 3 &&
+               plan.full[0].freeBefore == 1);
+        assert(plan.full[1].pocket == Pocket::PCItems && !plan.full[1].sharedList && plan.full[1].slots == 2 &&
+               plan.full[1].freeBefore == 2);
+        std::size_t bagFull = 0, pcFull = 0;
+        for (const auto& k : plan.skipped) {
+            if (k.reason != B::SkipReason::PocketFull) continue;
+            if (k.pocket == Pocket::PCItems) {
+                ++pcFull;
+                assert(!k.sharedList && B::skipText(k) == "pocket full (2 slots)");
+            } else {
+                ++bagFull;   // Items AND Medicine skips count against the one shared record
+                assert(k.sharedList && B::skipText(k) == "Bag full: its 3 slots are shared by every category");
+            }
+        }
+        assert(plan.full[0].notFitted == bagFull && plan.full[1].notFitted == pcFull && bagFull > 0 && pcFull > 0);
+        assert(B::skipText({Pocket::Items, 1, B::SkipReason::PocketFull}) == "pocket full");
+        assert(B::skipText({Pocket::Items, 1, B::SkipReason::KeyOrStoryItem}) == "Key Item or HM (excluded)");
+        // The same ordinary item may be added to the Bag AND the PC (native: a Potion in each).
+        const auto both = std::count_if(plan.adds.begin(), plan.adds.end(), [&](const B::Add& x) { return x.itemId == plan.adds[0].itemId; });
+        assert(plan.adds[0].pocket == Pocket::Items && both == 2);
+    }
+    // An item the game allows only once is never added while it is held in ANY list (defensive: in
+    // Gen I-V the only unique non-story items, Gen V TMs, live in one pocket).
+    {
+        std::vector<B::PocketState> lists{{Pocket::Items, {{0, 328, 1}}, 10, {}}, {Pocket::TMHM, {}, 101, {328, 329}}};
+        const auto plan = B::plan(Game::Black, {B::Mode::AddMissing, 5, {}}, lists);
+        assert(skipped(plan, 328, B::SkipReason::OnlyOnce) && !add(plan, 328));
+        assert(add(plan, 329) && add(plan, 329)->quantity == 1);
+    }
+    // PC Items alone; empty where the save has none.
+    {
+        std::vector<B::PocketState> bag{{Pocket::Items, {}, 1, {}}, {Pocket::PCItems, {}, 50, {}}};
+        assert((B::pcPockets(bag) == std::vector<Pocket>{Pocket::PCItems}) && B::hasPcItems(bag));
+        std::vector<B::PocketState> nds{{Pocket::Items, {}, 1, {}}, {Pocket::Medicine, {}, 1, {}}};
+        assert(B::pcPockets(nds).empty() && !B::hasPcItems(nds));
+    }
     // "Every pocket" never includes the PC.
     {
         std::vector<B::PocketState> bag{{Pocket::Items, {}, 1, {}}, {Pocket::PCItems, {}, 50, {}}, {Pocket::Balls, {}, 1, {}}};
