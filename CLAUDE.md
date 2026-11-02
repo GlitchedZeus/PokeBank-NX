@@ -1,12 +1,9 @@
-# PokeBank NX: instructions for Claude
+# PokeBank NX — instructions for Claude
 
-Follow [`docs/ENGINEERING_PROTOCOL.md`](docs/ENGINEERING_PROTOCOL.md). It is shared with Codex; see `AGENTS.md`.
+**READ FIRST:** [Binding project rules](docs/PROJECT_RULES.md), then [engineering protocol](docs/ENGINEERING_PROTOCOL.md), then [active handoff](docs/handoffs/MAIN_ACTIVE_HANDOFF.md). The project rules override older instructions where they conflict.
 
-Before any work, read [`docs/handoffs/MAIN_ACTIVE_HANDOFF.md`](docs/handoffs/MAIN_ACTIVE_HANDOFF.md) and resume from the pushed SHA it names.
-
-- Push every working milestone, verify the remote SHA, and update the handoff.
-- Never force-push or reset backward.
-- Unfinished work goes on `wip/...` branches.
-- Never weaken a test.
-- Original saves are immutable.
-- Keep #307 (application) and #314 (legality) separate.
+- No new per-task/round branches except under the binding rules. Stop treating a branch or PR per bug as progress.
+- Work toward a single shared Gen I–IX application, with separate legality. Never report modern generations or Vault as complete without evidence.
+- P0 save/profile failures take priority over new features; owner is not the default regression tester.
+- Reproduce bugs before and after, run tests on exact head, verify push and record real CI. Don't call code hardware accepted without device evidence.
+- Original saves stay immutable. No force-push, silent file replacements or test weakening. Respect one-writer-per-branch.
