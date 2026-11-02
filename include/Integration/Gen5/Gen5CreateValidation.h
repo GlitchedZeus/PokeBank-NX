@@ -5,6 +5,7 @@
 #include "Integration/Gen5/Gen5MovePP.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
 #include "Integration/Gen5/Gen5CreateInputRules.h"
+#include "Names/DefaultSpeciesName.h"
 
 #include <array>
 #include <optional>
@@ -46,8 +47,13 @@ struct CreateRequest5 {
     std::optional<uint32_t> pid;
     std::optional<CreateTrainer5> trainer;
     CreateEncounter5 encounter;
-    // Explicit custom nickname only: no guessed/localized species name.
+    // Explicit custom nickname (sets the PK5 nickname flag); empty when defaultNickname is set.
     std::string nickname;
+    // Round 12 R12-009: an un-nicknamed Pokemon, as Gen IV's Create makes. The record stores the
+    // species' default name in the OT language (PKHeX GetSpeciesNameGeneration(species, language,
+    // 5)) with the nickname flag clear, so a later Language change renames it (M1 D3) exactly as a
+    // caught Pokemon's name follows its language in the games.
+    bool defaultNickname = false;
     // Native order: HP, Attack, Defense, Speed, Sp. Attack, Sp. Defense.
     std::array<uint32_t, 6> ivs{}, evs{};
     std::array<CreateMove5, 4> moves{};
@@ -82,6 +88,14 @@ inline bool createAscii5(std::string_view text, size_t max) noexcept {
     if (text.empty() || text.size() > max) return false;
     for (const unsigned char c : text) if (c < 0x20 || c > 0x7e) return false;
     return true;
+}
+// The default (un-nicknamed) name a Create stores for `species` in `language`, or empty when it
+// does not fit the 10-character PK5 nickname field.
+inline std::u16string defaultCreateName5(uint32_t species, uint32_t language) {
+    auto name = Names::defaultSpeciesName(static_cast<uint16_t>(species), static_cast<uint8_t>(language), 5);
+    if (name.empty() || name.size() > 10) return {};
+    for (const char16_t c : name) if (c == 0 || c == 0xFFFF) return {};
+    return name;
 }
 inline bool createDate5(const CreateEncounter5& e) noexcept {
     if (e.year < 2000 || e.year > 2099 || e.month < 1 || e.month > 12) return false;
@@ -125,7 +139,10 @@ inline bool createDate5(const CreateEncounter5& e) noexcept {
     const auto language = r.trainer->language;
     if (!createLanguageAllowed5(language))
         return {E::Language, "Create currently supports ASCII text in Western-language records only"};
-    if (!createAscii5(r.nickname, 10) || !createAscii5(r.trainer->name, 7))
+    if (r.defaultNickname ? !r.nickname.empty() || defaultCreateName5(r.species, language).empty()
+                          : !createAscii5(r.nickname, 10))
+        return {E::Text, "Supply ASCII nickname (1..10) or the species' default name; no truncation or substitution"};
+    if (!createAscii5(r.trainer->name, 7))
         return {E::Text, "Supply ASCII nickname (1..10) and OT name (1..7); no truncation or substitution"};
     if (!r.pid) return {E::PID, "Explicit PID required; Create never rerolls identity or shininess"};
     if (r.gender > 2 || r.gender != createGenderForPID5(p.info->genderRatio, *r.pid))

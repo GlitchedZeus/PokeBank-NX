@@ -905,27 +905,50 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         // place. PK3 names are 5 / 5 characters in Japanese and 10 / 7 otherwise
         // (Gen3StagedPokemonEditor maxNicknameLength / maxOtLength), so a language the current
         // nickname or OT cannot fit is skipped with a clear message, never staged.
+        // Round 12 R12-008: a language is offered only when the exact preview of the draft in it
+        // succeeds (names re-stored in that language's table, PID / IVs / EVs / stats untouched).
+        // A language the editor refuses is skipped with its reason, so the panels never fall back
+        // to an unbuilt draft ("PID 0", stats "—") because of a language choice.
         const auto codepoints = [](const std::string& text) {
             std::size_t n = 0;
             for (unsigned char c : text) n += (c & 0xC0) != 0x80;
             return n;
         };
-        const auto fits = [&](uint8_t language) {
-            return codepoints(p.nickname) <= (language == 1 ? 5u : 10u) &&
-                   codepoints(p.otName) <= (language == 1 ? 5u : 7u);
+        const auto representable = [&](uint8_t language, std::string& why) {
+            if (codepoints(p.nickname) > (language == 1 ? 5u : 10u) ||
+                codepoints(p.otName) > (language == 1 ? 5u : 7u)) {
+                why = "Japanese needs a nickname and OT of 5 characters or fewer";
+                return false;
+            }
+            auto* staged = editor(screen);
+            if (!staged) return true;   // drawWorkspace reports "Exact preview unavailable"
+            auto trial = state.session;
+            trial.working.language = language;
+            why.clear();
+            const auto preview = trial.mode == SessionModel::Mode::Create
+                ? staged->previewCreate(state.box, state.slot, trial.createRequest(), why)
+                : state.party ? staged->previewPartyEdit(state.slot, trial.editRequest(), why)
+                : staged->previewEdit(state.box, state.slot, trial.editRequest(), why);
+            return preview.has_value();
         };
         uint8_t next = Presentation::nextGen3Language(p.language);
-        bool skipped = false;
-        for (std::size_t i = 0; i < Presentation::kGen3Languages.size() && !fits(next); ++i) {
-            skipped = true;
-            next = Presentation::nextGen3Language(next);
+        bool passedKorean = Presentation::gen3LanguageCyclePassesKorean(p.language, next);
+        std::string skipped;
+        std::string why;
+        for (std::size_t i = 0; i < Presentation::kGen3Languages.size() && next != p.language &&
+                                !representable(next, why); ++i) {
+            if (skipped.empty())
+                skipped = std::string(Enums::getLanguageName(next)) + " skipped: " + why;
+            const uint8_t after = Presentation::nextGen3Language(next);
+            passedKorean = passedKorean || Presentation::gen3LanguageCyclePassesKorean(next, after);
+            next = after;
         }
         if (next != p.language) {
             p.language = next;
             state.previewValid = false;
         }
-        if (skipped)
-            screen.postStatus("Japanese needs a nickname and OT of 5 characters or fewer", 300);
+        if (!skipped.empty()) screen.postStatus(skipped, 360);
+        else if (passedKorean) screen.postStatus(Presentation::kGen3NoKoreanNote, 300);
         return;
     }
     if (row == 11) { openValuePicker(screen, state, PickerTarget::Ball); return; }

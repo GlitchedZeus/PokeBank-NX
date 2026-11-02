@@ -54,8 +54,13 @@ struct CreateResult5 {
     plain[0x40] = static_cast<uint8_t>((r.form << 3) | (r.gender << 1));
     plain[0x41] = static_cast<uint8_t>(r.nature); // Gen V nature is NOT PID % 25.
     plain[0x42] = r.abilitySlot == 2 ? 1 : 0;
-    if (!encodeAsciiName5(plain, true, r.nickname) ||
-        !encodeAsciiName5(plain, false, r.trainer->name))
+    // A default name is written as the games write a caught Pokemon's (nickname flag clear); a
+    // custom one through the ASCII encoder, which sets the flag.
+    const bool nicknameWritten = r.defaultNickname
+        ? writeUnicodeName5(plain, true, defaultCreateName5(r.species, r.trainer->language),
+                            static_cast<uint8_t>(r.trainer->language))
+        : encodeAsciiName5(plain, true, r.nickname);
+    if (!nicknameWritten || !encodeAsciiName5(plain, false, r.trainer->name))
         return {{CreateError5::Verification, "Validated native text failed encoding"}, {}};
     plain[0x5F] = static_cast<uint8_t>(r.game);
     plain[0x7B] = static_cast<uint8_t>(r.encounter.year - 2000);

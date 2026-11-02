@@ -12,6 +12,8 @@
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "Integration/Gen5/Gen5EditorFields.h"
 #include "UI/SharedPokemonEditorContract.h"
+#include "Names/DefaultSpeciesName.h"
+#include "Utils/StringHelpers.h"
 
 #include <algorithm>
 #include <cassert>
@@ -436,6 +438,101 @@ void sharedCreateRoute(G::SaveFamily family, std::string_view game, uint8_t vers
     assert(sav == pristine);
 }
 
+// Round 12 R12-009 (owner H19: "gen 5 doesnt have any language glyph change, gen 4 does, infact
+// gen 4 should be how all gens work"). A default Create is un-nicknamed, as Gen IV's is, so its
+// shown name follows Language (M1 D3) in every Gen V language, Korean included. R12-008 check:
+// each Language step touches only the language byte, the nickname field and the checksum; PID,
+// IVs, EVs and stats stay put, and the kept record survives Review replay, export and reparse.
+void languageFollowsDefaultName5(G::SaveFamily family, std::string_view game, uint8_t version) {
+    using NF = G::StagedPokemon5Record::Field;
+    auto sav = fixture(family, version);
+    sav[0x19400 + 0x1E] = 2;  // English
+    sav[0x19400 + 0x21] = 1;  // female trainer
+    const auto& blank = G::encryptedBlankBoxSlot5();
+    for (size_t box = 0; box < L::BoxCount; ++box)
+        for (size_t slot = 0; slot < L::BoxSlots; ++slot) {
+            if (box == 0 && slot < 2) continue;
+            std::copy(blank.begin(), blank.end(),
+                      sav.begin() + static_cast<std::ptrdiff_t>(L::BoxOffset + box * L::BoxStride + slot * C::StoredSize));
+        }
+    const auto blocks = family == G::SaveFamily::BlackWhite ? std::span<const L::SaveBlock>(L::BlackWhite)
+                                                            : std::span<const L::SaveBlock>(L::Black2White2);
+    auto copy = std::span<uint8_t>(sav).subspan(0, family == G::SaveFamily::BlackWhite ? L::BlackWhiteCopySize
+                                                                                        : L::Black2White2CopySize);
+    for (const auto& b : blocks) {
+        const uint16_t crc = Utils::crc16ccitt(copy.data() + b.offset, b.length);
+        C::write16(copy, b.checksumOffset, crc);
+        C::write16(copy, b.mirrorOffset, crc);
+    }
+    const auto pristine = sav;
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, game, &error, G::SaveCopySelection::Primary);
+    assert(parsed);
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    G::Gen5SharedScreenState ui;
+    const auto ok = [](std::string&) { return true; };
+
+    // An empty nickname asks for the default (un-nicknamed) name; an explicit one stays custom.
+    const auto defaults = G::Gen5SharedScreenState::sharedCreateDefaults(ws, 0x00340000u, "", {2026, 11, 2}, error);
+    assert(defaults && defaults->defaultNickname && defaults->nickname.empty());
+    const auto custom = G::Gen5SharedScreenState::sharedCreateDefaults(ws, 0x00340000u, "Pikachu", {2026, 11, 2}, error);
+    assert(custom && !custom->defaultNickname);
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 5}, error));
+    assert(ui.activate(ws, Action::Add, error));
+    assert(ui.beginCreateDraft(ws, *defaults, ok, error));
+    // current() returns the record by value: keep it alive while its bytes are read.
+    const auto bytesNow = [&] {
+        const auto now = ui.draft().current();
+        return std::vector<uint8_t>(now->decodedBytes().begin(), now->decodedBytes().end());
+    };
+    const auto name = [&] { return G::displayName5(bytesNow(), true).value_or(""); };
+    const auto nicknamed = [&] { return (C::read32(bytesNow(), 0x38) & 0x80000000u) != 0; };
+    assert(name() == "Pikachu" && !nicknamed());
+    const auto start = bytesNow();
+    const auto pid = ui.draft().current()->pid();
+    const auto ivs = ui.draft().current()->ivs();
+    const auto evs = ui.draft().current()->evs();
+    for (const uint8_t language : {uint8_t{1}, uint8_t{3}, uint8_t{4}, uint8_t{5}, uint8_t{7}, uint8_t{8}, uint8_t{2}}) {
+        if (!ui.editDraft().stage(NF::Language, 0, language, error))
+            std::cerr << "R12-009 Gen V language " << int(language) << ": " << error << "\n";
+        const auto now = ui.draft().current();
+        assert(now->language() == language && !nicknamed());
+        assert(name() == Utils::utf16ToUtf8(Names::defaultSpeciesName(25, language, 5)));
+        if (language == 1) assert(name() == "ピカチュウ");
+        assert(now->pid() == pid && now->ivs() == ivs && now->evs() == evs);
+        const auto bytes = bytesNow();
+        for (size_t i = 0; i < start.size(); ++i)
+            if (bytes[i] != start[i]) assert(i == 0x06 || i == 0x07 || i == 0x17 || (i >= 0x48 && i < 0x48 + 22));
+    }
+    // A custom nickname is the user's and stays as typed through a language change.
+    {
+        G::Gen5StagedPokemonWorkspace other(*parsed);
+        G::Gen5SharedScreenState named;
+        assert(named.openActions(other, Slot{Region::Box, 0, 5}, error));
+        assert(named.activate(other, Action::Add, error));
+        assert(named.beginCreateDraft(other, *custom, ok, error));
+        assert(named.editDraft().stage(NF::Language, 0, 1, error));
+        const auto kept = named.draft().current();
+        assert(G::displayName5(kept->decodedBytes(), true) == "Pikachu");
+    }
+    // Keep in Japanese: Review replay verifies, export reparses the same PID / IVs / EVs and name.
+    assert(ui.editDraft().stage(NF::Language, 0, 1, error));
+    assert(ui.editDraft().stage(NF::Move, 0, 84, error));
+    ui.noteCreateMetLocationChosen();
+    assert(ui.keepWithPresentation(ws, ok, error));
+    for (const auto& change : ws.pendingReview()) assert(G::verifyStagedReview(change, &error));
+    const auto out = G::buildStagedSaveCandidate(ws, &error);
+    assert(out);
+    const auto reopened = G::Gen5ReadOnlySave::parse(out->bytes, game, &error, G::SaveCopySelection::Primary);
+    assert(reopened);
+    const auto made = reopened->boxPokemon(0, 5);
+    assert(made && made->valid() && made->language() == 1 && made->pid() == pid);
+    assert(made->ivs() == ivs && made->evs() == evs);
+    assert(G::displayName5(made->decodedBytes(), true) == "ピカチュウ");
+    assert((C::read32(made->decodedBytes(), 0x38) & 0x80000000u) == 0);
+    assert(sav == pristine);
+}
+
 } // namespace
 
 int main() {
@@ -453,6 +550,10 @@ int main() {
     sharedCreateRoute(G::SaveFamily::BlackWhite, "black_nds", 21);
     sharedCreateRoute(G::SaveFamily::Black2White2, "white2_nds", 22);
     sharedCreateRoute(G::SaveFamily::Black2White2, "black2_nds", 23);
+    languageFollowsDefaultName5(G::SaveFamily::BlackWhite, "white_nds", 20);
+    languageFollowsDefaultName5(G::SaveFamily::BlackWhite, "black_nds", 21);
+    languageFollowsDefaultName5(G::SaveFamily::Black2White2, "white2_nds", 22);
+    languageFollowsDefaultName5(G::SaveFamily::Black2White2, "black2_nds", 23);
     exercise(G::SaveFamily::BlackWhite, "white_nds", 20);
     exercise(G::SaveFamily::BlackWhite, "black_nds", 21);
     exercise(G::SaveFamily::Black2White2, "white2_nds", 22);

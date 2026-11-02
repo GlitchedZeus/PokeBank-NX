@@ -149,9 +149,9 @@ bool beginSharedCreate(TrainerViewScreen& screen,std::string& error) {
     const ScreenState::CreateDate5 date{static_cast<uint32_t>(local.tm_year+1900),
                                         static_cast<uint32_t>(local.tm_mon+1),
                                         static_cast<uint32_t>(local.tm_mday)};
-    const auto request=ScreenState::sharedCreateDefaults(
-        ws,pid,Names::getSpeciesName(static_cast<uint16_t>(ScreenState::kSharedCreateSpecies)),
-        date,error);
+    // Round 12 R12-009: no nickname -> an un-nicknamed Pikachu whose name follows Language, as in
+    // Gen IV (the default name in the save's language, nickname flag clear).
+    const auto request=ScreenState::sharedCreateDefaults(ws,pid,{},date,error);
     if(!request)return false;
     return state.beginCreateDraft(ws,*request,[&](std::string& why) {
         return trainer.refreshStagedPokemonPresentation(why);
