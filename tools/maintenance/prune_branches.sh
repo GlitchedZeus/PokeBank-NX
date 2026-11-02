@@ -50,7 +50,13 @@
 #     --skip-bundle             dry run only: skip the backup step (faster listing)
 #     --skip-drift-check        dry run only: skip the branch_audit.py --compare step
 #     --allow-legality-base     permit the legality-base group (still requires no open PR uses it)
-#     --with-metadata           with gh logged in: milestones, repo description/topics, milestone plan
+#     --with-metadata           with gh logged in: create the 4 milestones, set description/topics from
+#                               docs/maintenance/REPO_METADATA.md, apply docs/maintenance/MILESTONE_PLAN.md
+#     --archive-nro-fallback    with gh logged in: publish the missing nro/7fea1797 and nro/e10f307f
+#                               pre-releases from their original artifacts (verified against
+#                               docs/hardware/NRO_ARCHIVE.md; re-downloaded and re-verified after)
+#     Modes: without --group, --with-metadata / --archive-nro-fallback run alone (no branch prune).
+#     Every mode is a dry run unless --execute is given.
 #     --audit-json PATH         default docs/maintenance/branch_audit_2026-11-02.json
 #     --remote NAME             default origin
 #     -h | --help
@@ -73,6 +79,7 @@ SKIP_BUNDLE=0
 SKIP_DRIFT=0
 ALLOW_LEGALITY_BASE=0
 WITH_METADATA=0
+NRO_FALLBACK=0
 REMOTE="origin"
 AUDIT_JSON=""
 
@@ -90,6 +97,7 @@ while [[ $# -gt 0 ]]; do
     --skip-drift-check) SKIP_DRIFT=1 ;;
     --allow-legality-base) ALLOW_LEGALITY_BASE=1 ;;
     --with-metadata) WITH_METADATA=1 ;;
+    --archive-nro-fallback) NRO_FALLBACK=1 ;;
     --audit-json) AUDIT_JSON="${2:?}"; shift ;;
     --remote) REMOTE="${2:?}"; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -137,7 +145,7 @@ summary() {
   deletes=$(awk -F'\t' '$1=="DELETE"' "$DONE_FILE" | wc -l)
   echo
   echo "================ prune_branches.sh summary ($MODE, run $RUN_ID) ================"
-  echo "remote changes made this run: $tags tag(s) pushed, $deletes branch(es) deleted"
+  echo "remote changes made this run: $tags tag(s) pushed, $deletes branch(es) deleted, $(awk -F'\t' '$1=="NRO"' "$DONE_FILE" | wc -l) NRO pre-release(s) published"
   [[ -n "$BUNDLE_PATH" ]] && echo "backup bundle: $BUNDLE_PATH (keep it OFF the repository, permanently)"
   echo "decision log of this run: $PLAN_OUT"
   if (( EXECUTE )); then echo "deletion log: $REPO_ROOT/$LOG_MD and $REPO_ROOT/$LOG_TSV"; fi
@@ -217,6 +225,177 @@ remote_tag_commit() {  # peeled commit of a remote tag (empty if absent)
   out=$(git ls-remote "$REMOTE" "$t" "$t^{}")
   awk -v t="$t^{}" '$2==t{print $1}' <<<"$out"
 }
+
+# ---------------------------------------------------------------- metadata (--with-metadata) --
+MILESTONES=("Gen I–V hardware acceptance" "v1.0 Vault" "Gen VI–IX parity" "Legality integration")
+apply_metadata() {
+  local meta="docs/maintenance/REPO_METADATA.md" plan="docs/maintenance/MILESTONE_PLAN.md" m
+  (( GH_OK )) || die "--with-metadata needs gh to be logged in (gh auth login)"
+  note "metadata ($MODE): milestones"
+  gh api "repos/${OWNER_REPO}/milestones?state=all&per_page=100" --jq '.[].title' > "$WORK/milestones.txt"
+  for m in "${MILESTONES[@]}"; do
+    if grep -Fxq -- "$m" "$WORK/milestones.txt"; then echo "  exists: $m"
+    elif (( EXECUTE )); then gh api -X POST "repos/${OWNER_REPO}/milestones" -f title="$m" >/dev/null; echo "  created: $m"
+    else echo "  would create: $m"; fi
+  done
+  if [[ -f "$meta" ]]; then
+    local desc topics
+    desc="$(sed -n 's/^Description: //p' "$meta" | head -1)"
+    topics="$(sed -n 's/^Topics: //p' "$meta" | head -1 | tr -d ' ')"
+    if [[ -n "$desc" ]]; then
+      if (( EXECUTE )); then gh repo edit "$OWNER_REPO" --description "$desc" >/dev/null; echo "  description set"
+      else echo "  would set description: $desc"; fi
+    fi
+    if [[ -n "$topics" ]]; then
+      if (( EXECUTE )); then gh repo edit "$OWNER_REPO" --add-topic "$topics" >/dev/null; echo "  topics added: $topics"
+      else echo "  would add topics: $topics"; fi
+    fi
+  else
+    echo "  $meta not found; description/topics unchanged"
+  fi
+  if [[ ! -f "$plan" ]]; then echo "  $plan not found; no milestone assignments"; return 0; fi
+  # Rows "| <milestone title> | #1, #2 | #3 |" (every #N in the row) or "| #N | <milestone title> |".
+  gh api "repos/${OWNER_REPO}/milestones?state=all&per_page=100" --jq '.[] | "\(.number)\t\(.title)"' > "$WORK/ms.tsv"
+  local num title msnum
+  while IFS=$'\t' read -r num title; do
+    msnum="$(awk -F'\t' -v t="$title" '$2==t{print $1}' "$WORK/ms.tsv")"
+    if [[ -z "$msnum" ]]; then
+      if (( EXECUTE )); then echo "  skip #$num: milestone '$title' not found"; else echo "  would assign #$num -> $title (after creating it)"; fi
+      continue
+    fi
+    if (( EXECUTE )); then gh api -X PATCH "repos/${OWNER_REPO}/issues/$num" -F milestone="$msnum" >/dev/null; echo "  #$num -> $title"
+    else echo "  would assign #$num -> $title"; fi
+  done < <(python3 - "$plan" "${MILESTONES[@]}" <<'PY'
+import re, sys
+titles = set(sys.argv[2:])
+for line in open(sys.argv[1], encoding="utf-8"):
+    if not line.lstrip().startswith("|"):
+        continue
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    if len(cells) < 2:
+        continue
+    if cells[0] in titles:
+        for n in re.findall(r"#(\d+)", " ".join(cells[1:])):
+            print(f"{n}\t{cells[0]}")
+    else:
+        m = re.fullmatch(r"#?(\d+)", cells[0])
+        if m and cells[1] in titles:
+            print(f"{m.group(1)}\t{cells[1]}")
+PY
+)
+}
+
+# ---------------------------------------------------------------- NRO fallback (--archive-nro-fallback)
+# Rounds 1 and 2: archive-candidate-nro.yml failed with "HTTP 403: Resource not accessible by
+# integration" at release creation. Values are READ from docs/hardware/NRO_ARCHIVE.md and must also
+# equal the constants below (two independent sources); any mismatch aborts.
+NRO_EXPECTED=(
+  "1|7fea17971906cae557a7207bfb7b0bed3548cea2|217f24becaaa4eb940abaef01962c80a2fb5536bc6af77934add92d900bac1d5|175685297|38946941097|12066747065|owner-tested 42 PASS of 54 (docs/hardware/ROUND1_RESULTS_7fea1797.md) - not accepted as a release"
+  "2|e10f307faf7254a47429babc49093e407ed65f1a|1dd518b756274cfe70d7a87b06a2e30f027389aeaddd9640f03ef3c5a2eb7ac0|175791793|39120355693|12133189538|owner-tested (docs/hardware/ROUND2_RESULTS_e10f307f.md) - not accepted as a release"
+)
+gh_absent() {  # $1 = API path; 0 only on an explicit HTTP 404
+  local out
+  if out="$(gh api "$1" 2>&1)"; then return 1; fi
+  grep -q 'HTTP 404' <<<"$out" || die "cannot confirm that $1 is absent (not a 404)"
+}
+archive_nro_fallback() {
+  local doc="docs/hardware/NRO_ARCHIVE.md" entry round sha nsha size run art status
+  (( GH_OK )) || die "--archive-nro-fallback needs gh to be logged in (gh auth login)"
+  [[ -f "$doc" ]] || die "$doc not found"
+  for entry in "${NRO_EXPECTED[@]}"; do
+    IFS='|' read -r round sha nsha size run art status <<<"$entry"
+    local short="${sha:0:8}" tag="nro/${sha:0:8}" name="PokeBank-NX-Gen1-5-Candidate-${sha:0:8}"
+    local nro="$name.nro" dir="$WORK/nro-$short" docrow d_sha d_nsha d_size d_run d_art
+    note "NRO fallback ($MODE): Round $round $tag"
+    # 1. cross-check the archive table
+    docrow="$(grep -E "^\| Round $round \|" "$doc" | head -1)" || true
+    [[ -n "$docrow" ]] || die "Round $round row not found in $doc"
+    read -r d_sha d_nsha d_size d_run d_art < <(python3 - "$docrow" <<'PY'
+import re, sys
+c = [x.strip() for x in sys.argv[1].strip().strip("|").split("|")]
+run = re.search(r"\[(\d+)\]", c[4]); art = re.search(r"`(\d+)`", c[4])
+print(c[1].strip("`"), c[2].strip("`"), c[3], run.group(1) if run else "-", art.group(1) if art else "-")
+PY
+)
+    [[ "$d_sha|$d_nsha|$d_size|$d_run|$d_art" == "$sha|$nsha|$size|$run|$art" ]] \
+      || die "Round $round: $doc ($d_sha $d_nsha $d_size $d_run $d_art) disagrees with the script's expected values"
+    # 2. refuse an existing tag or release
+    gh_absent "repos/${OWNER_REPO}/releases/tags/$tag" || { echo "  release $tag already exists: nothing to do"; continue; }
+    gh_absent "repos/${OWNER_REPO}/git/ref/tags/$tag" || die "tag $tag exists without a release; review by hand"
+    # 3. bind run, artifact and commit to GitHub's own records
+    [[ "$(gh api "repos/${OWNER_REPO}/actions/runs/$run" --jq .head_sha)" == "$sha" ]] || die "run $run did not build $sha"
+    gh api "repos/${OWNER_REPO}/actions/artifacts/$art" > "$dir.art.json"
+    python3 - "$dir.art.json" "$name" "$run" <<'PY' || die "artifact $art does not match (name/run/expired)"
+import json, sys
+a = json.load(open(sys.argv[1]))
+ok = a["name"] == sys.argv[2] and str(a["workflow_run"]["id"]) == sys.argv[3] and not a["expired"]
+sys.exit(0 if ok else 1)
+PY
+    gh api "repos/${OWNER_REPO}/commits/$sha" --jq .sha >/dev/null || die "commit $sha is not on GitHub"
+    # 4. download the original artifact and verify bytes
+    mkdir -p "$dir"
+    gh run download "$run" -R "$OWNER_REPO" -n "$name" -D "$dir/artifact"
+    [[ -f "$dir/artifact/$nro" ]] || die "$nro not in artifact $name"
+    [[ "$(stat -c %s "$dir/artifact/$nro")" == "$size" ]] || die "$nro size differs from $size"
+    [[ "$(sha256sum "$dir/artifact/$nro" | cut -d' ' -f1)" == "$nsha" ]] || die "$nro SHA-256 differs from $nsha"
+    if [[ -f "$dir/artifact/BUILD_IDENTITY.txt" ]]; then
+      grep -qx "APPLICATION_SHA=$sha" "$dir/artifact/BUILD_IDENTITY.txt" || die "BUILD_IDENTITY.txt names another commit"
+      if grep -q '^SHA256=' "$dir/artifact/BUILD_IDENTITY.txt"; then
+        grep -qx "SHA256=$nsha" "$dir/artifact/BUILD_IDENTITY.txt" || die "BUILD_IDENTITY.txt names another SHA-256"
+      fi
+    fi
+    note "  artifact verified: $size bytes, sha256 $nsha"
+    mkdir -p "$dir/upload"
+    cp "$dir/artifact/$nro" "$dir/upload/"
+    (cd "$dir/upload" && sha256sum "$nro" > "$nro.sha256")
+    [[ -f "$dir/artifact/BUILD_IDENTITY.txt" ]] && cp "$dir/artifact/BUILD_IDENTITY.txt" "$dir/upload/BUILD_IDENTITY-$short.txt"
+    # 5. notes in the same format as archive-candidate-nro.yml / existing nro/* releases
+    {
+      echo "**DEVELOPMENT / TESTING ARCHIVE. This is not an approved release.**"
+      echo
+      echo "A preserved copy of an existing candidate build (Round $round candidate): the original GitHub Actions artifact,"
+      echo "byte for byte (no rebuild), kept here because Actions artifacts expire."
+      echo
+      echo "| Field | Value |"
+      echo "|---|---|"
+      echo "| NRO | \`$nro\` |"
+      echo "| Original SHA-256 | \`$nsha\` |"
+      echo "| Size | $size bytes |"
+      echo "| Source commit | \`$sha\` |"
+      echo "| Build run | https://github.com/${OWNER_REPO}/actions/runs/$run |"
+      echo "| Original artifact | \`$name\` (ID \`$art\`) |"
+      echo "| Hardware status | $status |"
+      echo
+      echo "Check the SHA-256 before use. Back up your saves; development builds can contain defects."
+      echo
+      echo "Published by the owner with tools/maintenance/prune_branches.sh --archive-nro-fallback (the archive workflow's"
+      echo "release step was refused with HTTP 403)."
+    } > "$dir/notes.md"
+    if (( ! EXECUTE )); then
+      echo "  would create pre-release $tag on $sha (title: Development archive $short: Round $round candidate (not a release)) with:"
+      (cd "$dir/upload" && ls -l | sed 's/^/    /')
+      continue
+    fi
+    gh release create "$tag" "$dir"/upload/* --repo "$OWNER_REPO" --target "$sha" --prerelease --latest=false \
+      --title "Development archive $short: Round $round candidate (not a release)" --notes-file "$dir/notes.md"
+    # 6. re-download and verify independently
+    mkdir -p "$dir/verify"
+    gh release download "$tag" --repo "$OWNER_REPO" --pattern "$nro" --dir "$dir/verify"
+    [[ "$(sha256sum "$dir/verify/$nro" | cut -d' ' -f1)" == "$nsha" ]] || die "published $tag asset SHA-256 mismatch: delete the release and investigate"
+    [[ "$(gh api "repos/${OWNER_REPO}/git/ref/tags/$tag" --jq .object.sha)" == "$sha" ]] || die "tag $tag does not point at $sha"
+    printf 'NRO\t%s\t%s\t%s\n' "$tag" "$sha" "$nsha" >> "$DONE_FILE"
+    note "  published and re-verified $tag (update the Pre-release column of $doc)"
+  done
+}
+
+# Modes: prune (default, or whenever --group is given) / --with-metadata / --archive-nro-fallback.
+# Given only metadata and/or NRO flags, the branch prune is not run.
+if (( (WITH_METADATA || NRO_FALLBACK) && ${#GROUPS_REQ[@]} == 0 )); then
+  (( WITH_METADATA )) && apply_metadata
+  (( NRO_FALLBACK )) && archive_nro_fallback
+  summary
+  exit 0
+fi
 
 # ---------------------------------------------------------------- plan from the audit JSON ---
 PLAN_ALL="$WORK/plan_all.tsv"     # group, branch, tip, recorded surviving ref, classification
@@ -661,57 +840,8 @@ for g in "${ORDERED[@]}"; do
   done
 done
 
-# ---------------------------------------------------------------- metadata (optional) -------
-apply_metadata() {
-  local meta="docs/maintenance/REPO_METADATA.md" plan="docs/maintenance/MILESTONE_PLAN.md"
-  if (( ! GH_OK )); then note "metadata: skipped (gh is not authenticated)"; return 0; fi
-  note "metadata: milestones"
-  gh api "repos/${OWNER_REPO}/milestones?state=all&per_page=100" --jq '.[].title' > "$WORK/milestones.txt"
-  local m
-  for m in "Gen I–V hardware acceptance" "v1.0 Vault" "Gen VI–IX parity" "Legality integration"; do
-    if grep -Fxq -- "$m" "$WORK/milestones.txt"; then echo "  exists: $m"
-    elif (( EXECUTE )); then gh api -X POST "repos/${OWNER_REPO}/milestones" -f title="$m" >/dev/null; echo "  created: $m"
-    else echo "  would create: $m"; fi
-  done
-  if [[ -f "$meta" ]]; then
-    local desc topics
-    desc="$(sed -n 's/^Description: //p' "$meta" | head -1)"
-    topics="$(sed -n 's/^Topics: //p' "$meta" | head -1 | tr -d ' ')"
-    if [[ -n "$desc" ]]; then
-      if (( EXECUTE )); then gh repo edit "$OWNER_REPO" --description "$desc" >/dev/null; echo "  description set"
-      else echo "  would set description: $desc"; fi
-    fi
-    if [[ -n "$topics" ]]; then
-      if (( EXECUTE )); then gh repo edit "$OWNER_REPO" --add-topic "$topics" >/dev/null; echo "  topics added: $topics"
-      else echo "  would add topics: $topics"; fi
-    fi
-  else
-    echo "  $meta not found; description/topics unchanged"
-  fi
-  if [[ -f "$plan" ]]; then
-    # Table rows "| #123 | Milestone title | ..." (first two columns). Unknown milestones are skipped.
-    gh api "repos/${OWNER_REPO}/milestones?state=all&per_page=100" --jq '.[] | "\(.number)\t\(.title)"' > "$WORK/ms.tsv"
-    local num title msnum
-    while IFS=$'\t' read -r num title; do
-      msnum="$(awk -F'\t' -v t="$title" '$2==t{print $1}' "$WORK/ms.tsv")"
-      if [[ -z "$msnum" ]]; then echo "  skip #$num: milestone '$title' not found"; continue; fi
-      if (( EXECUTE )); then gh api -X PATCH "repos/${OWNER_REPO}/issues/$num" -F milestone="$msnum" >/dev/null; echo "  #$num -> $title"
-      else echo "  would assign #$num -> $title"; fi
-    done < <(python3 - "$plan" <<'PY'
-import re, sys
-for line in open(sys.argv[1], encoding="utf-8"):
-    cells = [c.strip() for c in line.strip().strip("|").split("|")]
-    if len(cells) >= 2:
-        m = re.fullmatch(r"#?(\d+)", cells[0])
-        if m and cells[1]:
-            print(f"{m.group(1)}\t{cells[1]}")
-PY
-)
-  else
-    echo "  $plan not found; no milestone assignments"
-  fi
-}
 if (( WITH_METADATA )); then apply_metadata; fi
+if (( NRO_FALLBACK )); then archive_nro_fallback; fi
 
 # ---------------------------------------------------------------- report --------------------
 echo

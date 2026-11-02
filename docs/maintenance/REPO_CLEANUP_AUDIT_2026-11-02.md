@@ -9,7 +9,7 @@
 | `tools/maintenance/branch_audit.py` | Read-only generator; re-run it with `--compare` before Phase 2 to detect drift |
 | `tools/maintenance/render_branch_manifest.py` | Renders the manifest from the JSON |
 
-This audit builds on [GITHUB_CLEANUP_20261015.md](../GITHUB_CLEANUP_20261015.md), [THREE_BRANCH_CONSOLIDATION_PLAN.md](../THREE_BRANCH_CONSOLIDATION_PLAN.md) and the October 31 ledger `docs/MAIN_CONSOLIDATION_20261031.md` on `main`. That ledger has 316 refs; there are 8 more (net) since then, including `audit/gen12-independent-20261013`, which appeared during this audit. NRO preservation follows `docs/hardware/NRO_ARCHIVE.md` and `.github/workflows/archive-candidate-nro.yml`.
+This audit builds on [GITHUB_CLEANUP_20261015.md](../archive/sessions/GITHUB_CLEANUP_20261015.md), [THREE_BRANCH_CONSOLIDATION_PLAN.md](THREE_BRANCH_CONSOLIDATION_PLAN.md) and the October 31 ledger `docs/MAIN_CONSOLIDATION_20261031.md` on `main`. That ledger has 316 refs; there are 8 more (net) since then, including `audit/gen12-independent-20261013`, which appeared during this audit. NRO preservation follows `docs/hardware/NRO_ARCHIVE.md` and `.github/workflows/archive-candidate-nro.yml`.
 
 ## 1. Snapshot
 
@@ -173,7 +173,7 @@ There are 35 open issues: #5, #9, #15, #16, #17, #21, #26, #29, #30, #31, #49, #
 - **Owner hardware bugs:** #320, #322, #323, #324, #325, #326. Close each only after the owner verifies it on the current candidate.
 - **Save sessions / Inject:** #89.
 - **Backlog and research:** #5, #9, #16, #17, #26, #30, #49, #50.
-- **Deferred ideas** closed on October 15 stay indexed in `docs/FUTURE_AFTER_GEN15_BACKLOG.md`.
+- **Deferred ideas** closed on October 15 stay indexed in `docs/roadmap/FUTURE_AFTER_GEN15_BACKLOG.md`.
 
 ## 7. Tags, releases and the NRO archive
 

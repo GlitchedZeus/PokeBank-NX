@@ -70,3 +70,20 @@ git push origin 'refs/tags/archive/local-reflog-20261102/<12hex>^{commit}:refs/h
 - The no-tag groups depend on the containing branch staying alive. That branch is usually `main`, `fix/round11-gen15-repairs`, `development/gen6-plus`, `audit/gen1-4-legality-research-20261011` or `audit/legality-integration-hardening-20261012`. Before you delete one of those containers later, re-run `tools/maintenance/branch_audit.py`. Its contents then need their own tag or containment.
 - GitHub never re-opens a pull request that was closed because its branch was deleted. Restoring the branch lets you re-open it by hand.
 - Restoring a branch never needs a force push. If the name already exists with other content, restore it under a different name, such as `restore/<name>`.
+
+## Candidate NRO archives (`nro/*` pre-releases)
+
+The `nro/*` pre-releases hold the exact candidate NRO files. The table and SHA-256 values are in `docs/hardware/NRO_ARCHIVE.md`.
+
+Round 1 (`nro/7fea1797`) and Round 2 (`nro/e10f307f`) could not be published by the archive workflow: release creation returned `HTTP 403: Resource not accessible by integration`. To publish them from the owner's account:
+
+1. Run `tools/maintenance/prune_branches.sh --archive-nro-fallback`. This needs `gh` to be logged in. It is a dry run: it downloads and verifies but publishes nothing.
+2. Run the same command with `--execute` to publish.
+
+Before publishing, the script:
+
+- checks that the size, SHA-256, run and artifact in `NRO_ARCHIVE.md` match its own copy of those values;
+- refuses if the tag or release already exists;
+- downloads the original artifact and checks its bytes.
+
+After publishing, it re-downloads the asset and checks its SHA-256 again. The artifacts expire on 2027-01-14 (Round 1) and 2027-01-16 (Round 2).

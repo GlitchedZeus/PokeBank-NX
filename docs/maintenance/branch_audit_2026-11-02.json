@@ -4101,7 +4101,7 @@
     "Makefile.host (1)",
     "Makefile.host.editor (1)",
     "Makefile.host.gsc (1)",
-    "docs/CLASSIC_SAVE_EDITOR_ARCHITECTURE.md (1)",
+    "docs/development/CLASSIC_SAVE_EDITOR_ARCHITECTURE.md (1)",
     "include/Integration (1)"
    ],
    "unique_evidence_files": [],
@@ -4831,7 +4831,7 @@
     "PROJECT_STATUS.md (1)",
     "README.md (1)",
     "docs/CODEX_SESSION.md (1)",
-    "docs/GAME_SUPPORT_MATRIX.md (1)"
+    "docs/user/GAME_SUPPORT_MATRIX.md (1)"
    ],
    "unique_evidence_files": [],
    "evidence_blobs_not_in_protected": [],
