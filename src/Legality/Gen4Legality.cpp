@@ -1855,6 +1855,9 @@ Report Analyzer::run() {
     }
     if (!ancestryVerified_) r.coverage.moves = r.coverage.eggBreeding = CoverageLevel::Partial;
     if (!evExpVerified_) r.coverage.internal = CoverageLevel::Partial;
+    // A known host title survives unrelated uncertainty; a default personal
+    // table cannot certify an unknown caller's source game even with no issues.
+    r.coverage.sourceGame = cartKnown_ ? CoverageLevel::Complete : CoverageLevel::Partial;
     return r;
 }
 
@@ -1980,6 +1983,7 @@ Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSour
     if (evidence != nullptr) *evidence = Gen4::MoveEvidence{};
     Report r;
     r.coverage.structure = CoverageLevel::Complete;
+    r.coverage.sourceGame = Gen4::isGen4SourceGameId(exactSourceGameId) ? CoverageLevel::Complete : CoverageLevel::Partial;
     Gen4::Pk4 pk;
     if (!Gen4::read(decrypted, pk)) {
         r.coverage.structure = CoverageLevel::None;
@@ -1992,7 +1996,7 @@ Report analyzePk4(std::span<const uint8_t> decrypted, std::string_view exactSour
     if (Gen4::checksum(decrypted) != pk.checksum || pk.sanity != 0) {
         // The games treat such a record as a Bad Egg, but PKHeX's legality analysis does not
         // check the checksum, so this stays a Warning (lenient) and the record is not certified.
-        r.coverage.sourceGame = r.coverage.internal = r.coverage.moves = r.coverage.encounter = CoverageLevel::Partial;
+        r.coverage.internal = r.coverage.moves = r.coverage.encounter = CoverageLevel::Partial;
         r.coverage.eventGift = r.coverage.pidRng = r.coverage.eggBreeding = r.coverage.transfer = CoverageLevel::Partial;
         r.issues.push_back(Issue{Severity::Warning,
                                  "PK4 checksum or sanity word does not match its data (the games show it as a Bad Egg)",

@@ -4400,6 +4400,8 @@ namespace {
 Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exactSourceGameId, Verification* out, const Gen3BerryContext* berryContext) {
     Report r;
     setAllCoverage(r.coverage, CoverageLevel::Partial);
+    // Exact caller context is known independently of encounter/history proof.
+    r.coverage.sourceGame = isGbaSourceGame(exactSourceGameId) ? CoverageLevel::Complete : CoverageLevel::Partial;
     auto add = [&r](Severity sev, CheckIdentifier id, std::string text) {
         r.issues.push_back(Issue{sev, std::move(text), id});
     };

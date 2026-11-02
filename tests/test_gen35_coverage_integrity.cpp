@@ -41,8 +41,11 @@ int main(){
     auto gba=fromHex("B902FCB1F8BBFDA6BCCFC6BCBBCDBBCFCCFF0202CED9E7E8D9E6FF00F7D6000001000000870000000078000021002D00000000002328000000000000000000000000000000200021FFE6FF0D00000000");
     const auto completeGba=analyzePk3(gba,"ruby_gba");
     assert(completeGba.verdict()==Verdict::NoProblemsFound);
+    for(const char* game:{"","unknown_gba","diamond_nds","ruby_gba_extra"})
+        withoutWarnings(analyzePk3(gba,game),&CoverageSummary::sourceGame);
     gba[34]=175;gba[35]=0;sum3(gba);const auto original=gba;
     const auto berry=analyzePk3(gba,"ruby_gba");
+    assert(berry.coverage.sourceGame==CoverageLevel::Complete);
     withoutWarnings(berry,&CoverageSummary::internal);assert(gba==original);
     auto withoutText=berry;
     std::erase_if(withoutText.issues,[](const Issue&i){return i.severity==Severity::Warning;});
@@ -51,6 +54,7 @@ int main(){
     auto composed=completeGba;
     applyGen3Analyzer(composed,verification,"ruby_gba");
     assert(composed.problemCount()==0&&composed.verdict()==Verdict::Incomplete);
+    assert(composed.coverage.sourceGame==CoverageLevel::Complete);
     assert(composed.coverage.internal==CoverageLevel::Partial);
     applyGen3Analyzer(composed,verification,"ruby_gba");
     assert(composed.verdict()==Verdict::Incomplete);
@@ -82,6 +86,13 @@ int main(){
     withoutWarnings(analyzePk4(ranch,"diamond_nds"),&CoverageSummary::pidRng);
     const auto ordinary=fixture("tests/fixtures/gen15_session2/ranch_ability.txt","ordinary-pid-slot-control");
     assert(analyzePk4(ordinary,"diamond_nds").verdict()==Verdict::NoProblemsFound);
+    for(const char* game:{"","unknown_nds","ruby_gba","diamond_nds_extra"})
+        withoutWarnings(analyzePk4(ordinary,game),&CoverageSummary::sourceGame);
+    for(const char* game:{"diamond_nds","pearl_nds","platinum_nds","heartgold_nds","soulsilver_nds"}) {
+        const auto uncertain=analyzePk4(ranch,game);
+        assert(uncertain.coverage.sourceGame==CoverageLevel::Complete);
+        assert(uncertain.coverage.pidRng==CoverageLevel::Partial&&uncertain.verdict()==Verdict::Incomplete);
+    }
 
     // The GenV hidden-flag/actual ability uncertainty must not be overwritten by
     // successful name checks at the end of analysis.
