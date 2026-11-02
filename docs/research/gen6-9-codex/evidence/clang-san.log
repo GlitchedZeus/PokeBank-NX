@@ -1,0 +1,59 @@
+test_gen6_pk6: all 591 checks passed
+test_gen6_save: all 567 checks passed
+test_gen6_staged: all 166 checks passed
+test_gen6_editor_sources: all 232 checks passed
+test_gen6_stats: all 31270 checks passed
+test_gen6_bag: all 87 checks passed
+test_gen6_readouts: all 31 checks passed
+clang -std=gnu11 -O1 -w -fsanitize=address,undefined -fno-sanitize=shift-base -fno-omit-frame-pointer -c vendor/PKSM-Core/memecrypto/aes.c -o build-research/clang-san/gen7-meme/aes_sanitize.o
+clang -std=gnu11 -O1 -w -fsanitize=address,undefined -fno-sanitize=shift-base -fno-omit-frame-pointer -c vendor/PKSM-Core/memecrypto/memecrypto.c -o build-research/clang-san/gen7-meme/memecrypto_sanitize.o
+clang -std=gnu11 -O1 -w -fsanitize=address,undefined -fno-sanitize=shift-base -fno-omit-frame-pointer -c vendor/PKSM-Core/memecrypto/mini-gmp.c -o build-research/clang-san/gen7-meme/mini-gmp_sanitize.o
+clang -std=gnu11 -O1 -w -fsanitize=address,undefined -fno-sanitize=shift-base -fno-omit-frame-pointer -c vendor/PKSM-Core/memecrypto/rsa.c -o build-research/clang-san/gen7-meme/rsa_sanitize.o
+clang -std=gnu11 -O1 -w -fsanitize=address,undefined -fno-sanitize=shift-base -fno-omit-frame-pointer -c vendor/PKSM-Core/memecrypto/sha1.c -o build-research/clang-san/gen7-meme/sha1_sanitize.o
+clang++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -fsanitize=address,undefined -fno-omit-frame-pointer -O1 -Iinclude -Itests -isystem vendor/PKSM-Core/memecrypto -isystem vendor/PKSM-Core/include -D_PKSMCORE_CONFIGURED -fno-operator-names -fbracket-depth=1024 tests/test_gen7_save.cpp src/Integration/Gen7/Gen7Save.cpp src/Integration/Gen7/Gen7SaveSources.cpp src/Integration/Gen6/Gen6Save.cpp src/Integration/Gen6/Gen6SaveSources.cpp src/Utils/SHA256.cpp vendor/PKSM-Core/source/utils/crypto_checksums.cpp build-research/clang-san/gen7-meme/aes_sanitize.o build-research/clang-san/gen7-meme/memecrypto_sanitize.o build-research/clang-san/gen7-meme/mini-gmp_sanitize.o build-research/clang-san/gen7-meme/rsa_sanitize.o build-research/clang-san/gen7-meme/sha1_sanitize.o -o build-research/clang-san/test_gen7_save_sanitize
+clang++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -fsanitize=address,undefined -fno-omit-frame-pointer -O1 -Iinclude -Itests -isystem vendor/PKSM-Core/memecrypto -isystem vendor/PKSM-Core/include -D_PKSMCORE_CONFIGURED -fno-operator-names -fbracket-depth=1024 tests/test_gen7_staged.cpp src/Integration/Gen7/Gen7Save.cpp src/Integration/Gen7/Gen7StagedSession.cpp src/Utils/SHA256.cpp src/Pokemon/Experience.cpp build-research/clang-san/gen7-meme/aes_sanitize.o build-research/clang-san/gen7-meme/memecrypto_sanitize.o build-research/clang-san/gen7-meme/mini-gmp_sanitize.o build-research/clang-san/gen7-meme/rsa_sanitize.o build-research/clang-san/gen7-meme/sha1_sanitize.o -o build-research/clang-san/test_gen7_staged_sanitize
+clang++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -fsanitize=address,undefined -fno-omit-frame-pointer -O1 -Iinclude -Itests -isystem vendor/PKSM-Core/memecrypto -isystem vendor/PKSM-Core/include -D_PKSMCORE_CONFIGURED -fno-operator-names -fbracket-depth=1024 tests/test_gen7_stats.cpp src/Integration/Gen7/Gen7Save.cpp src/Integration/Gen7/Gen7StagedSession.cpp src/Utils/SHA256.cpp src/Pokemon/Experience.cpp build-research/clang-san/gen7-meme/aes_sanitize.o build-research/clang-san/gen7-meme/memecrypto_sanitize.o build-research/clang-san/gen7-meme/mini-gmp_sanitize.o build-research/clang-san/gen7-meme/rsa_sanitize.o build-research/clang-san/gen7-meme/sha1_sanitize.o -o build-research/clang-san/test_gen7_stats_sanitize
+clang++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -fsanitize=address,undefined -fno-omit-frame-pointer -O1 -Iinclude -Itests -isystem vendor/PKSM-Core/memecrypto -isystem vendor/PKSM-Core/include -D_PKSMCORE_CONFIGURED -fno-operator-names -fbracket-depth=1024 tests/test_gen7_readouts.cpp src/Integration/Gen7/Gen7Save.cpp src/Utils/SHA256.cpp build-research/clang-san/gen7-meme/aes_sanitize.o build-research/clang-san/gen7-meme/memecrypto_sanitize.o build-research/clang-san/gen7-meme/mini-gmp_sanitize.o build-research/clang-san/gen7-meme/rsa_sanitize.o build-research/clang-san/gen7-meme/sha1_sanitize.o -o build-research/clang-san/test_gen7_readouts_sanitize
+clang++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -fsanitize=address,undefined -fno-omit-frame-pointer -O1 -Iinclude -Itests -isystem vendor/PKSM-Core/memecrypto -isystem vendor/PKSM-Core/include -D_PKSMCORE_CONFIGURED -fno-operator-names -fbracket-depth=1024 tests/test_gen7_bag.cpp src/Integration/Gen7/Gen7Save.cpp src/Integration/Gen7/Gen7StagedSession.cpp src/Utils/SHA256.cpp src/Pokemon/Experience.cpp build-research/clang-san/gen7-meme/aes_sanitize.o build-research/clang-san/gen7-meme/memecrypto_sanitize.o build-research/clang-san/gen7-meme/mini-gmp_sanitize.o build-research/clang-san/gen7-meme/rsa_sanitize.o build-research/clang-san/gen7-meme/sha1_sanitize.o -o build-research/clang-san/test_gen7_bag_sanitize
+-----------------------------------------------------
+Suppressions used:
+  count      bytes template
+     51       7616 rsa_encrypt
+     44       6336 rsa_decrypt
+-----------------------------------------------------
+
+test_gen7_save: all 350 checks passed
+-----------------------------------------------------
+Suppressions used:
+  count      bytes template
+     63      10080 rsa_encrypt
+     20       2880 rsa_decrypt
+-----------------------------------------------------
+
+test_gen7_staged: all 574 checks passed
+-----------------------------------------------------
+Suppressions used:
+  count      bytes template
+      9       1440 rsa_encrypt
+      4        576 rsa_decrypt
+-----------------------------------------------------
+
+test_gen7_stats: all 30932 checks passed
+-----------------------------------------------------
+Suppressions used:
+  count      bytes template
+      6        960 rsa_encrypt
+      8       1152 rsa_decrypt
+-----------------------------------------------------
+
+test_gen7_readouts: all 17 checks passed
+-----------------------------------------------------
+Suppressions used:
+  count      bytes template
+     30       4800 rsa_encrypt
+      8       1152 rsa_decrypt
+-----------------------------------------------------
+
+test_gen7_bag: all 102 checks passed
+clang++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 -fsanitize=address,undefined -fno-omit-frame-pointer -O1 -Iinclude -Itests -isystem vendor/PKSM-Core/include -D_PKSMCORE_CONFIGURED -fno-operator-names -fbracket-depth=1024 tests/test_gen8_swsh.cpp src/Integration/Gen8/Gen8SwishCrypto.cpp src/Integration/Gen8/Gen8Save.cpp src/Utils/SHA256.cpp vendor/PKSM-Core/source/utils/crypto_swsh.cpp vendor/PKSM-Core/source/utils/crypto_sha256.cpp -o build-research/clang-san/test_gen8_swsh_sanitize
+test_gen8_swsh: all 1159 checks passed

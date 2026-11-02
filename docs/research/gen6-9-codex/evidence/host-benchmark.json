@@ -1,0 +1,18 @@
+[
+  {
+    "binary": "test_gen8_swsh",
+    "exit": 0,
+    "elapsed_seconds": 0.7718581699882634,
+    "child_max_rss_kib_cumulative": 18428,
+    "output": "test_gen8_swsh: all 1159 checks passed",
+    "scope": "host suite, not per-save or Switch benchmark"
+  },
+  {
+    "binary": "test_gen6_stats",
+    "exit": 0,
+    "elapsed_seconds": 0.017037243000231683,
+    "child_max_rss_kib_cumulative": 18428,
+    "output": "test_gen6_stats: all 31270 checks passed",
+    "scope": "host suite, not per-save or Switch benchmark"
+  }
+]

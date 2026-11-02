@@ -1,0 +1,9 @@
+==28==WARNING: MemorySanitizer: use-of-uninitialized-value
+    #0 0x5639e405048f in reverseCrypt /home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/PokeBank-NX-gen69-prep/vendor/PKSM-Core/memecrypto/memecrypto.c:218:9
+    #1 0x5639e404d1c4 in main /home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/PokeBank-NX-gen69-prep/docs/research/gen6-9-codex/tools/signature_probe.c:11:5
+    #2 0x7f127f027780  (/usr/lib/libc.so.6+0x27780) (BuildId: d320029ad1a23be2f4bce117fd321cbd23a2014b)
+    #3 0x7f127f0278b8 in __libc_start_main (/usr/lib/libc.so.6+0x278b8) (BuildId: d320029ad1a23be2f4bce117fd321cbd23a2014b)
+    #4 0x5639e3faa204 in _start (/tmp/gen69-signature-s6qz70ry/probe+0x33204) (BuildId: ea2878db53e1f1f40d6ca259458b57d873173bdc)
+
+SUMMARY: MemorySanitizer: use-of-uninitialized-value /home/user/.codex/.chatgpt-projects/g-p-6a9518ebef448191bfcc640287c6cb43/PokeBank-NX-gen69-prep/vendor/PKSM-Core/memecrypto/memecrypto.c:218:9 in reverseCrypt
+Exiting

@@ -1,0 +1,388 @@
+[
+  {
+    "id": 38333848100,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Action completed."
+        }
+      ],
+      "structuredContent": {
+        "jobs": [
+          {
+            "id": 115089405397,
+            "name": "Native domain & bounds / g++ / normal + sanitizers",
+            "status": "completed",
+            "conclusion": "failure",
+            "run_id": 38333848100,
+            "logs_url": null,
+            "steps": [
+              {
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 1
+              },
+              {
+                "name": "Checkout actual head, not synthetic PR merge",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 2
+              },
+              {
+                "name": "Verify exact checkout SHA",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 3
+              },
+              {
+                "name": "Compile and execute native format and transport contracts",
+                "status": "completed",
+                "conclusion": "failure",
+                "number": 4
+              },
+              {
+                "name": "Post Checkout actual head, not synthetic PR merge",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 8
+              },
+              {
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 9
+              }
+            ]
+          },
+          {
+            "id": 115089405573,
+            "name": "Native domain & bounds / clang++ / normal + sanitizers",
+            "status": "completed",
+            "conclusion": "failure",
+            "run_id": 38333848100,
+            "logs_url": null,
+            "steps": [
+              {
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 1
+              },
+              {
+                "name": "Checkout actual head, not synthetic PR merge",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 2
+              },
+              {
+                "name": "Verify exact checkout SHA",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 3
+              },
+              {
+                "name": "Compile and execute native format and transport contracts",
+                "status": "completed",
+                "conclusion": "failure",
+                "number": 4
+              },
+              {
+                "name": "Post Checkout actual head, not synthetic PR merge",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 8
+              },
+              {
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 9
+              }
+            ]
+          },
+          {
+            "id": 115089405606,
+            "name": "Pinned original PKHeX.Core and native PK5/PK6/PK7 differential",
+            "status": "completed",
+            "conclusion": "failure",
+            "run_id": 38333848100,
+            "logs_url": null,
+            "steps": [
+              {
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 1
+              },
+              {
+                "name": "Checkout exact coordinator expansion head",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 2
+              },
+              {
+                "name": "Checkout immutable upstream candidate (verification mandatory)",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 3
+              },
+              {
+                "name": "Run actions/setup-dotnet@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 4
+              },
+              {
+                "name": "Reject source trees that do not match owner's ZIP SHA map",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 5
+              },
+              {
+                "name": "Differential native Product PK5 against original PKHeX Core",
+                "status": "completed",
+                "conclusion": "failure",
+                "number": 6
+              },
+              {
+                "name": "Post Run actions/setup-dotnet@v4",
+                "status": "completed",
+                "conclusion": "skipped",
+                "number": 10
+              },
+              {
+                "name": "Post Checkout immutable upstream candidate (verification mandatory)",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 11
+              },
+              {
+                "name": "Post Checkout exact coordinator expansion head",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 12
+              },
+              {
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 13
+              }
+            ]
+          }
+        ]
+      },
+      "isError": false
+    }
+  },
+  {
+    "id": 39074620706,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Action completed."
+        }
+      ],
+      "structuredContent": {
+        "jobs": [
+          {
+            "id": 117519108594,
+            "name": "Exact-head audit of the published candidate NRO",
+            "status": "completed",
+            "conclusion": "failure",
+            "run_id": 39074620706,
+            "logs_url": null,
+            "steps": [
+              {
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 1
+              },
+              {
+                "name": "Checkout the head under test (full history, for the staleness guard)",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 2
+              },
+              {
+                "name": "Resolve the candidate identity from exactly one source",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 3
+              },
+              {
+                "name": "Bind the run and artifact to GitHub's own records",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 4
+              },
+              {
+                "name": "Candidate identity versus the head under test",
+                "status": "completed",
+                "conclusion": "failure",
+                "number": 5
+              },
+              {
+                "name": "Checkout the candidate's exact source (for the romfs:/ reference scan)",
+                "status": "completed",
+                "conclusion": "skipped",
+                "number": 6
+              },
+              {
+                "name": "Download the published artifact from its own run (no rebuild)",
+                "status": "completed",
+                "conclusion": "skipped",
+                "number": 7
+              },
+              {
+                "name": "Cross-check BUILD_IDENTITY.txt, SHA256SUMS.txt and the NRO bytes",
+                "status": "completed",
+                "conclusion": "skipped",
+                "number": 8
+              },
+              {
+                "name": "Cross-generation UI contracts on the candidate's own source (candidate mode)",
+                "status": "completed",
+                "conclusion": "skipped",
+                "number": 9
+              },
+              {
+                "name": "Audit",
+                "status": "completed",
+                "conclusion": "skipped",
+                "number": 10
+              },
+              {
+                "name": "Upload the audit record",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 11
+              },
+              {
+                "name": "Post Checkout the head under test (full history, for the staleness guard)",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 22
+              },
+              {
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 23
+              }
+            ]
+          }
+        ]
+      },
+      "isError": false
+    }
+  },
+  {
+    "id": 39093998123,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Action completed."
+        }
+      ],
+      "structuredContent": {
+        "jobs": [
+          {
+            "id": 117576626416,
+            "name": "gen5",
+            "status": "completed",
+            "conclusion": "failure",
+            "run_id": 39093998123,
+            "logs_url": null,
+            "steps": [
+              {
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 1
+              },
+              {
+                "name": "Run actions/checkout@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 2
+              },
+              {
+                "name": "Run actions/checkout@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 3
+              },
+              {
+                "name": "Exact heads",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 4
+              },
+              {
+                "name": "Run actions/setup-dotnet@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 5
+              },
+              {
+                "name": "Generated Gen V tables are up to date",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 6
+              },
+              {
+                "name": "Gen V tests (GCC and Clang, normal and ASan/UBSan)",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 7
+              },
+              {
+                "name": "libFuzzer (Clang, ASan/UBSan, 10 minutes)",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 8
+              },
+              {
+                "name": "PK5 verdicts against PKHeX (native, trades, events, transfers; 4 seeds)",
+                "status": "completed",
+                "conclusion": "failure",
+                "number": 9
+              },
+              {
+                "name": "Post Run actions/setup-dotnet@v4",
+                "status": "completed",
+                "conclusion": "skipped",
+                "number": 16
+              },
+              {
+                "name": "Post Run actions/checkout@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 17
+              },
+              {
+                "name": "Post Run actions/checkout@v4",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 18
+              },
+              {
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success",
+                "number": 19
+              }
+            ]
+          }
+        ]
+      },
+      "isError": false
+    }
+  }
+]
