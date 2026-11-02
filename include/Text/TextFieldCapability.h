@@ -160,7 +160,8 @@ public:
         }
         if (text.size() > maxChars_) return refused(Refusal::TooLong, maxChars_);
         // Read-back: what the cartridge will draw must be the requested name (width folded).
-        std::array<uint8_t, 16> scratch{};
+        std::array<uint8_t, 16> scratch{};   // every Gen III name field is at most 10 bytes
+        if (fieldBytes_ > scratch.size()) return refused(Refusal::TooLong);
         scratch.fill(Utils::GEN3_TERMINATOR);
         for (std::size_t i = 0; i < text.size(); ++i) scratch[i] = Utils::charToGen3(text[i], language_);
         if (Utils::gen3FoldWidth(decode(std::span<const uint8_t>(scratch.data(), fieldBytes_))) !=

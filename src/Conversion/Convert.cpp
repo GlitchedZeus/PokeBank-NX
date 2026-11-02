@@ -1257,10 +1257,8 @@ namespace Conversion {
                 auto pk3 = remapPK8toPK3(buf, destOriginVersion, sourceNicknamed,
                                          abilityMap.abilityBit, g3.ability1 != g3.ability2, report,
                                          textRefused);
-                if (!pk3) {
-                    result = textRefused ? Result::TextNotRepresentable : Result::TraitPreservationFailed;
-                    return nullptr;
-                }
+                if (!pk3 && textRefused) { result = Result::TextNotRepresentable; return nullptr; }
+                if (!pk3) { result = Result::TraitPreservationFailed; return nullptr; }
                 buf = std::move(*pk3);
             }
         }
