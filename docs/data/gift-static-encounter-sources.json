@@ -222,6 +222,7 @@
         "SingleSource": 74
       },
       "prerequisite_rows": {
+        "LinkOrDevice": 1,
         "OtherGame": 1
       },
       "species": 28
@@ -240,6 +241,7 @@
         "SingleSource": 74
       },
       "prerequisite_rows": {
+        "LinkOrDevice": 1,
         "OtherGame": 1
       },
       "species": 28
@@ -259,6 +261,7 @@
         "SingleSource": 154
       },
       "prerequisite_rows": {
+        "LinkOrDevice": 1,
         "OtherGame": 4,
         "TicketOrItem": 2
       },
@@ -281,7 +284,8 @@
       "prerequisite_rows": {
         "EventPokemon": 4,
         "OtherGame": 1,
-        "TicketOrItem": 1
+        "TicketOrItem": 1,
+        "Unconfirmed": 1
       },
       "species": 64
     },
@@ -302,7 +306,8 @@
       "prerequisite_rows": {
         "EventPokemon": 4,
         "OtherGame": 1,
-        "TicketOrItem": 1
+        "TicketOrItem": 1,
+        "Unconfirmed": 1
       },
       "species": 64
     },
@@ -360,7 +365,10 @@
       "by_confidence": {
         "SingleSource": 83
       },
-      "prerequisite_rows": {},
+      "prerequisite_rows": {
+        "LinkOrDevice": 3,
+        "OtherGame": 1
+      },
       "species": 74
     },
     "white2_nds": {
@@ -375,7 +383,10 @@
       "by_confidence": {
         "SingleSource": 83
       },
-      "prerequisite_rows": {},
+      "prerequisite_rows": {
+        "LinkOrDevice": 3,
+        "OtherGame": 1
+      },
       "species": 74
     }
   },

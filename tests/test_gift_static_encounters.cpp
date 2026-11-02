@@ -483,6 +483,20 @@ void acquisitionTiers() {
     incomplete45(20, 570, 10, 8, "event Pokémon", "White Zorua (event Celebi)");
     incomplete45(21, 571, 25, 72, "event Pokémon", "Black Zoroark (event beasts)");
     incomplete45(10, 486, 70, 64, "another game", "Diamond Regigigas");
+    // Coordinator follow-up (owner rule "unknown ... prerequisites -> Incomplete"; conservative):
+    // B2/W2 Key System Regis and Regigigas, HG/SS Embedded Tower Kyogre / Groudon, D/P/Pt Spiritomb.
+    for (const uint8_t origin : {22, 23}) {
+        incomplete45(origin, 377, 65, 150, "link play", "B2/W2 Regirock (Key System)");
+        incomplete45(origin, 378, 65, 151, "link play", "B2/W2 Regice (Key System)");
+        incomplete45(origin, 379, 65, 152, "link play", "B2/W2 Registeel (Key System)");
+        incomplete45(origin, 486, 68, 38, "another game", "B2/W2 Regigigas (the three Regis)");
+    }
+    incomplete45(7, 382, 50, 232, "not confirmed", "HeartGold Kyogre (Embedded Tower)");
+    incomplete45(8, 383, 50, 232, "not confirmed", "SoulSilver Groudon (Embedded Tower)");
+    for (const uint8_t origin : {10, 11, 12})
+        incomplete45(origin, 442, 25, 24, "link play", "D/P/Pt Spiritomb (32 Underground players)");
+    // Prerequisite-free statics stay verified (no blanket downgrade).
+    gen45Verified(23, 488, 68, 68, "Static Lv. 68", "Black 2 Cresselia Marvelous Bridge");
     // A Gen IV / V verified data row says it is single source; a wild row keeps "" (unchanged).
     require(C45::unverifiedMetNote45(7, 152, 126, 5) == "Encounter data: single source (PKHeX)",
             "HeartGold Chikorita gift: verified, single source: " + C45::unverifiedMetNote45(7, 152, 126, 5));
