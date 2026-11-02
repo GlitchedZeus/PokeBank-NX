@@ -11,6 +11,7 @@
 //    the picker draws) and the focused row's info line fits its header slot (w - 195).
 #include "Integration/Encounter/EncounterContext45.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
+#include "Integration/Encounter/MetListScope.h"
 #include "Names/SpecialMetLocationNotes.h"
 #include "UI/SharedMenuGeometry.h"
 
@@ -204,8 +205,14 @@ void testInfoLineFitsAndIsWired() {
     const std::string surface = read("src/UI/SharedPokemonEditorSurface.inc");
     assert(surface.find("const std::string note = Names::specialMetLocationNote(state.pickerMetContext.origin(), focused);") !=
            std::string::npos);
-    assert(surface.find("note.empty() ? state.pickerMetContext.scope(state.pickerOtherHistories) : note, w - 195") !=
-           std::string::npos);
+    // Round 14 (owner R06, Integration/Encounter/MetListScope.h): the DEFAULT caption says why a list
+    // has no verified row; the unverified list keeps the catalogue's own scope. Both fit the same room.
+    assert(surface.find("note.empty() ? scope : note, w - 195") != std::string::npos);
+    assert(surface.find("PokeVault::Integration::MetListScope::defaultScope(state.pickerMetContext)") != std::string::npos);
+    for (const std::string& caption : {std::string("Verified + markers; 12 more need Lv. 100+"),
+                                      std::string("No catch at Lv. 100; 12 need Lv. 100+ (unverified list)"),
+                                      std::string(PokeVault::Integration::MetListScope::kNotInGameData)})
+        assert(G::textWidth(caption, G::Text::Caption) <= kInfoRoom);
     std::cout << "focused info line fits (" << widest << " / " << kInfoRoom << " px) and is wired ok\n";
 }
 } // namespace

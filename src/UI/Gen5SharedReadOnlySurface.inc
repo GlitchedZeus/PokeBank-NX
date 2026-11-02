@@ -1141,6 +1141,7 @@ void handleGen5TopUp(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput
             auto snapshot=ws;
             auto* bag=ws.stagedBag(&error);
             const auto result=bag?BI::apply(*bag,ui.model.plan,BI::Gen5Bag::Adapter{}):BI::ApplyResult{};
+            auto lines=ui.model.lines;   // Round 14 (P0-9): RESULT lists what was / was not staged
             Model::close(ui.model);
             ui.scrollbar.reset();
             if(!result.applied) {
@@ -1157,6 +1158,7 @@ void handleGen5TopUp(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput
             syncBagCursor(screen);
             screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again,
                 [](BI::Pocket p){return gen5TopUpPocketName(p);}),400);   // again == the applied plan
+            Model::showResult(ui.model,std::move(lines),again);
             return;
         }
     }

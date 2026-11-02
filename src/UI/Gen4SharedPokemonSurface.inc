@@ -1849,6 +1849,7 @@ void handleGen4TopUp(TrainerViewScreen& screen,State& state,u64 down,const Touch
             }
             auto backup=*staged;
             const auto result=BI::apply(*staged,ui.model.plan,BI::Gen4Bag::Adapter{});
+            auto lines=ui.model.lines;   // Round 14 (P0-9): RESULT lists what was / was not staged
             Model::close(ui.model);
             ui.scrollbar.reset();
             if(!result.applied) {screen.postStatus("Nothing staged: "+result.error,400);return;}
@@ -1864,6 +1865,7 @@ void handleGen4TopUp(TrainerViewScreen& screen,State& state,u64 down,const Touch
                 screen.selectedItemIndex=rows?static_cast<int>(rows)-1:0;
             screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again,
                 [](BI::Pocket p){return gen4TopUpPocketName(p);}),400);   // again == the applied plan
+            Model::showResult(ui.model,std::move(lines),again);
             return;
         }
     }

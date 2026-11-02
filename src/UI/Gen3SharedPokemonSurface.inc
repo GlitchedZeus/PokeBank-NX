@@ -17,6 +17,7 @@
 #include "Integration/Gen3/Gen3ExportTransaction.h"
 #include "Integration/Gen3/Gen3LearnsetTable.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Integration/Encounter/MetListScope.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Enums/Ball.h"
 #include "Enums/GameVersion.h"
@@ -2120,9 +2121,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     if (metLocationList) {
         // Round 12 (R12-004): which list this is; a species with no verified row here says so.
         namespace Policy = PokeVault::Integration::MetLocationPolicy;
-        const char* scope = state.metUnverifiedList ? Policy::kUnverifiedListScope
-            : EncounterPicker::verifiedRowCount(state.encounterChoices, state.pickerValues) == 0
-                ? Policy::kMarkersOnlyScope : Policy::kDefaultListScope;
+        // Round 14 (R06 / P1-9, Integration/Encounter/MetListScope.h): the shared caption says why a
+        // list has no verified row ("No catch at Lv. 5; 1 needs Lv. 25+ (unverified list)").
+        PokeVault::Integration::MetListScope::LevelGap gap;
+        gap.level = state.session.working.level;
+        for (const auto& choice : state.encounterChoices)
+            if (!EncounterPicker::levelReached(choice, gap.level))
+                gap.add(EncounterPicker::encounterOf(choice).location, EncounterPicker::encounterOf(choice).minLevel);
+        const std::string scope = state.metUnverifiedList ? std::string(Policy::kUnverifiedListScope)
+            : PokeVault::Integration::MetListScope::defaultScope(
+                  EncounterPicker::verifiedRowCount(state.encounterChoices, state.pickerValues), gap);
         fb.drawText(x + 165, y + 55, SharedMovesPanel::fit(fb, scope, w - 195, TextStyle::Caption),
                     Colors::TextSecondary, TextStyle::Caption);
     }

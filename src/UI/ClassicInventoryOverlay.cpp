@@ -742,6 +742,7 @@ void handleTopUpInput(TrainerViewScreen& screen, uint64_t down, int touchId, con
             }
             const auto result = applyTopUp(screen, ui.model.plan);
             const BI::Plan applied = ui.model.plan;   // kept for the result status (partial fits)
+            auto lines = ui.model.lines;   // Round 14 (P0-9): RESULT lists what was / was not staged
             Model::close(ui.model);
             ui.scrollbar.reset();
             if (!result.applied) {
@@ -761,6 +762,7 @@ void handleTopUpInput(TrainerViewScreen& screen, uint64_t down, int touchId, con
             screen.postStatus(Model::appliedStatus(result.toppedUp, result.added, applied, [&](BI::Pocket p) {
                 return named ? topUpPocketName(game, p) : std::string("A pocket");
             }), 420);
+            Model::showResult(ui.model, std::move(lines), applied);
             return;
         }
     }

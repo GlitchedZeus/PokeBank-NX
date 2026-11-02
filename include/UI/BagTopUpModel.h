@@ -24,6 +24,14 @@
 //   not fit", "Balls (16 slots): 16 free, all 11 missing added"), and a partial result names the full list and its native size,
 //   so a list the game itself limits (Ruby / Sapphire Items: 20) is never mistaken for a cap of ours.
 //   Round 12 (owner H12): TMs and HMs are planned; only Key Items are excluded (SETUP says so).
+//   Round 14 (owner H07 "again only adds some of the items"; shared-UX audit P0-9: a partial fill
+//   with no list of what was skipped is a silent drop): before A, PREVIEW opens with one emphasised
+//   line per native list in plain words -- "Items: 20 native slots, 0 used. Only 20 fit; 118
+//   missing items won't fit" -- its totals count "won't fit" apart from other skips, and every item
+//   that is not added is listed with its reason (no room in <list> (N native slots) / added to PC
+//   Items instead, only one allowed, Key Item, not valid for this game). After A, RESULT shows the
+//   same list as what WAS staged and what was NOT (A / B close it). The pocket on screen is planned
+//   first, so a shared list (Gen I's 20-slot Bag) fills from the category being looked at.
 
 #include "Inventory/BulkItemPlan.h"
 
@@ -37,7 +45,7 @@ namespace PokeBank::UIModel::BagTopUp {
 
 namespace BI = PokeVault::Inventory::BulkItems;
 
-enum class Step : uint8_t { Closed, Setup, Preview };
+enum class Step : uint8_t { Closed, Setup, Preview, Result };
 enum class Row : int { Scope = 0, Mode, Amount, Preview, Cancel };
 enum class Scope : uint8_t { ThisPocket, AllBag, PcItems, BagAndPc };
 inline constexpr int kRows = 5;
@@ -57,6 +65,7 @@ enum class LineKind : uint8_t { Heading, TopUp, Add, Skip, Note };
 struct Line {
     LineKind kind = LineKind::Note;
     std::string text;
+    bool emphasis = false;   // a native list's capacity line (drawn in the accent colour)
 };
 
 struct State {
@@ -209,12 +218,19 @@ inline void setAmount(State& s, int value) {
     BI::Request r;
     r.mode = s.mode;
     r.quantity = s.quantity;
+    // Round 14 (H07 / H08): the pocket on screen is planned first (a shared list fills from it).
+    const auto bag = [&] {
+        auto pockets = BI::bagPockets(state);
+        const auto at = std::find(pockets.begin(), pockets.end(), current);
+        if (at != pockets.end()) std::rotate(pockets.begin(), at, at + 1);
+        return pockets;
+    };
     switch (s.scope) {
         case Scope::ThisPocket: r.pockets = {current}; break;
-        case Scope::AllBag: r.pockets = BI::bagPockets(state); break;
+        case Scope::AllBag: r.pockets = bag(); break;
         case Scope::PcItems: r.pockets = BI::pcPockets(state); break;
         case Scope::BagAndPc:
-            r.pockets = BI::bagPockets(state);
+            r.pockets = bag();
             for (const auto p : BI::pcPockets(state)) r.pockets.push_back(p);
             break;
     }
@@ -222,28 +238,33 @@ inline void setAmount(State& s, int value) {
     return r;
 }
 
+// Round 14 (H07): one native list's room in plain words (PREVIEW's first lines).
+template <class PocketName>
+[[nodiscard]] inline std::string capacityText(const BI::ListRoom& r, PocketName&& pocketName) {
+    const std::string name = r.sharedList
+        ? "Bag (all categories share " + std::to_string(r.slots) + " native slots)"
+        : std::string(pocketName(r.pocket)) + ": " + std::to_string(r.slots) + " native slots";
+    const std::size_t used = r.slots > r.freeBefore ? r.slots - r.freeBefore : 0;
+    std::string text = name + (r.sharedList ? ": " : ", ") + std::to_string(used) + " used";
+    const auto items = [](std::size_t n) { return std::to_string(n) + (n == 1 ? " missing item" : " missing items"); };
+    if (r.eligible == 0) return text + ". Nothing missing to add";
+    if (r.notFitted == 0) return text + ". All " + items(r.planned) + " fit";
+    return text + ". " + (r.planned == 0 ? std::string("None fit") : "Only " + std::to_string(r.planned) + " fit") +
+           "; " + items(r.notFitted) + " won't fit";
+}
+
 // PREVIEW lines: per pocket its top-ups, adds and skips, in plan order.
 template <class ItemName, class PocketName>
 [[nodiscard]] inline std::vector<Line> previewLines(const BI::Plan& plan, const std::vector<BI::Pocket>& pockets,
                                                     ItemName&& itemName, PocketName&& pocketName) {
     std::vector<Line> out;
-    const auto listName = [&](BI::Pocket pocket, std::size_t slots, bool shared) {
-        return shared ? std::string("Bag (every category shares ") + std::to_string(slots) + " slots)"
-                      : std::string(pocketName(pocket)) + " (" + std::to_string(slots) + " slots)";
-    };
-    // A list that ran out of slots says so first, with its native size: the "pocket full" lines
-    // below are the game's own limit, not a failure (Gen I: one 20-slot Bag for every category).
-    for (const auto& f : plan.full)
-        out.push_back({LineKind::Note, listName(f.pocket, f.slots, f.sharedList) + ": " + std::to_string(f.freeBefore) +
-                                           " free, " + std::to_string(f.notFitted) + " more did not fit"});
-    // Round 12 (H14): every other list Add Missing covered states its exact count against its native
-    // size, so "all of them fit" is visible as plainly as "the pocket is full".
-    for (const auto& r : plan.rooms) {
-        if (r.notFitted > 0) continue;
-        out.push_back({LineKind::Note, listName(r.pocket, r.slots, r.sharedList) + ": " + std::to_string(r.freeBefore) +
-                                           " free, " + (r.eligible == 0 ? std::string("nothing missing to add")
-                                                                         : "all " + std::to_string(r.planned) + " missing added")});
-    }
+    // Round 14 (H07): one line per native list, full lists first, in plain words: its native slot
+    // count, how many are used, how many new items fit and how many missing items will NOT fit
+    // ("Items: 20 native slots, 0 used. Only 20 fit; 118 missing items won't fit"). The "won't
+    // fit" item lines below are the game's own limit, not a cap of ours (Gen I: one 20-slot Bag).
+    for (const bool fullLists : {true, false})
+        for (const auto& r : plan.rooms)
+            if ((r.notFitted > 0) == fullLists) out.push_back({LineKind::Note, capacityText(r, pocketName), true});
     for (const auto pocket : pockets) {
         const auto first = out.size();
         for (const auto& t : plan.topUps)
@@ -263,9 +284,14 @@ template <class ItemName, class PocketName>
     return out;
 }
 
+// Round 14 (H07): "won't fit" (the game's slot limit) is counted apart from other skips.
 [[nodiscard]] inline std::string totals(const BI::Plan& plan) {
-    return std::to_string(plan.topUps.size()) + " topped up, " + std::to_string(plan.adds.size()) +
-           " added, " + std::to_string(plan.skipped.size()) + " skipped";
+    const auto noRoom = static_cast<std::size_t>(std::count_if(plan.skipped.begin(), plan.skipped.end(),
+        [](const BI::Skip& k) { return k.reason == BI::SkipReason::PocketFull; }));
+    const std::string head = std::to_string(plan.topUps.size()) + " topped up, " + std::to_string(plan.adds.size()) + " added, ";
+    if (noRoom == 0) return head + std::to_string(plan.skipped.size()) + " skipped";
+    return head + std::to_string(noRoom) + " won't fit (native slots), " +
+           std::to_string(plan.skipped.size() - noRoom) + " skipped";
 }
 
 template <class ItemName, class PocketName>
@@ -301,6 +327,31 @@ inline void showPreview(State& s, BI::Plan plan, const std::vector<BI::Pocket>& 
     if (k.pageDown) s.scroll += page;
     s.scroll = std::clamp(s.scroll, 0, maxScroll(s, visible));
     if (k.a && !s.plan.empty()) return Action::Confirm;
+    return Action::None;
+}
+
+// Round 14 (P0-9): after A stages the plan, RESULT lists what WAS staged ("+" / arrow lines) and
+// what was NOT (each with its reason) -- the preview's lines, headed by the applied status. A or B
+// closes it; Up / Down / L / R scroll. Nothing is staged here.
+// `applied` is the plan A staged; the caption is its totals ("Staged: 0 topped up, 20 added, ...").
+inline void showResult(State& s, std::vector<Line> lines, const BI::Plan& applied) {
+    const std::string status = "Staged: " + totals(applied);
+    s.plan = {};
+    s.lines = std::move(lines);
+    s.lines.insert(s.lines.begin(), Line{LineKind::Note, "Staged: every + and \xE2\x86\x92 line. Not added: every line with a reason."});
+    s.totals = status;
+    s.scroll = 0;
+    s.step = Step::Result;
+}
+[[nodiscard]] inline Action resultInput(State& s, const Keys& k, int visible) {
+    if (s.step != Step::Result) return Action::None;
+    if (k.a || k.b) { close(s); return Action::Close; }
+    const int page = std::max(1, visible - 1);
+    if (k.up) s.scroll -= 1;
+    if (k.down) s.scroll += 1;
+    if (k.pageUp) s.scroll -= page;
+    if (k.pageDown) s.scroll += page;
+    s.scroll = std::clamp(s.scroll, 0, maxScroll(s, visible));
     return Action::None;
 }
 
