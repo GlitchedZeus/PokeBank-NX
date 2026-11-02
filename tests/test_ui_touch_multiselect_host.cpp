@@ -6,12 +6,15 @@
 // step must leave both screens in the same state:
 //   * rectangle selection: a drag from one cell to another highlights the same cells as Y hold + D-pad;
 //   * group pickup: lifting the finger picks up the same group as releasing Y, silently;
-//   * full-destination refusal: a tap on the carried group's cell (the cursor) is A - the same refusal
-//     text, nothing staged, the carry stays;
+//   * one tap on a box cell during a carry is the controller's "cursor there + A" (owner Nov 2): a full
+//     or occupied destination gives the same refusal text, stages nothing and keeps the carry; a valid
+//     one stages exactly the bytes A stages, silently (a group and a single Pokemon);
 //   * cancel: B during the drag, or a tap outside every touch target during the carry, cancels exactly
 //     like B, silently;
-//   * placement: a tap on the cursor's cell stages exactly the bytes A stages, silently;
-//   * a single tap keeps its meaning (first tap focuses a cell, a tap on the focused cell opens Actions);
+//   * NOT a cancel or a place: the box arrows (they change box like L / R, Gen I / II packed carries
+//     included), the summary panel, a footer tap, a drag outside the grid or across cells, - Help over
+//     a carry, a tap under Help and the tap that closes Help;
+//   * a single tap with nothing carried keeps its meaning (Gen V: focus, then Actions; Gen I-IV: Actions);
 //   * a modal (Help, the Actions menu) owns the touch layer: a drag over the box cells behind it selects
 //     and picks up nothing.
 // Gen V is the generation the owner asked for. Gen I-IV run the SAME shared overlay (ClassicPackedMove)
@@ -132,6 +135,12 @@ struct Driver {
         if (!fingerDown(slot)) return false;
         lift();
         frame();
+        return true;
+    }
+    bool tapId(int id) {
+        const auto* b = cell(id);
+        if (!b) return false;
+        tapAt(b->x + b->w / 2, b->y + b->h / 2);
         return true;
     }
     void tapAt(int x, int y) {
@@ -451,6 +460,7 @@ struct Obs {
     std::vector<uint8_t> snapshot;            // the staged image
     int box = 0, slot = 0;                    // the cursor
     std::vector<std::string> rows;            // an open Actions menu
+    bool help = false;                        // Help is open
 };
 Obs observe(const Driver& d, const Fixture& f, const std::string& label) {
     Obs o;
@@ -465,6 +475,7 @@ Obs observe(const Driver& d, const Fixture& f, const std::string& label) {
     o.box = d.screen.selectedBoxIndex;
     o.slot = d.screen.selectedItemIndex;
     o.rows = d.rows;
+    o.help = d.screen.helpOverlayActive;
     return o;
 }
 
@@ -491,21 +502,37 @@ bool fingerSelect(Driver& d) {
     d.hover(0, 4);
     return d.fingerDown(0) && d.slideTo(7);
 }
-// Touch's A on a carry: a first tap on the destination cell moves the carry there (the cursor), a tap on
-// the carried group's own cell is A. (Over a packed Gen I / II box the cursor settles on the landing slot,
-// so the second tap lands on whatever cell the carry shows.)
-void fingerPlaceAt(Driver& d, const Fixture& f, int box, int slot, std::vector<Obs>& out, const std::string& label) {
-    d.hover(box, d.screen.selectedItemIndex);
-    check(d.tap(slot), "Gen " + std::to_string(f.generation) + ": tap " + label);
-    out.push_back(observe(d, f, label + ": focus tap"));
-    check(d.tap(d.screen.selectedItemIndex), "Gen " + std::to_string(f.generation) + ": tap the carried cell");
+// Changing box during a carry: the controller's L / R, the finger's box arrows (1000 / 1001). A tap on a
+// box arrow is another control: it must change the box, never place or cancel.
+void toBox(Driver& d, bool touch, int box) {
+    for (int guard = 0; guard < 30 && d.screen.selectedBoxIndex != box; ++guard) {
+        const bool next = d.screen.selectedBoxIndex < box;
+        if (touch) check(d.tapId(next ? 1001 : 1000), "the box arrows publish touch targets");
+        else d.press(next ? HidNpadButton_R : HidNpadButton_L);
+    }
+}
+// Owner Nov 2: "tapping a valid destination places" - ONE tap on a cell is the controller's cursor + A.
+void placeAt(Driver& d, bool touch, int box, int slot) {
+    toBox(d, touch, box);
+    if (touch) {
+        check(d.tap(slot), "tap a box cell");
+    } else {
+        d.hover(box, slot);
+        d.press(HidNpadButton_A);
+    }
+}
+int firstOccupied(const Fixture& f, int box) {
+    for (int s = 0; s < f.capacity; ++s)
+        if (f.occupied(box, s)) return s;
+    return -1;
 }
 
 std::vector<Obs> script(Driver& d, const Fixture& f, bool touch) {
     std::vector<Obs> out;
+    const std::string g = "Gen " + std::to_string(f.generation) + (touch ? " touch: " : " controller: ");
     enterBoxes(d);
     // 1. Rectangle selection.
-    if (touch) check(fingerSelect(d), "Gen " + std::to_string(f.generation) + ": the box cells publish touch targets");
+    if (touch) check(fingerSelect(d), g + "the box cells publish touch targets");
     else padSelect(d);
     out.push_back(observe(d, f, "selecting"));
     // 2. B during the selection.
@@ -519,7 +546,7 @@ std::vector<Obs> script(Driver& d, const Fixture& f, bool touch) {
     out.push_back(observe(d, f, "selection cancelled"));
     // 3. Group pickup: lift the finger / release Y.
     if (touch) {
-        check(fingerSelect(d), "Gen " + std::to_string(f.generation) + ": drag again");
+        check(fingerSelect(d), g + "drag again");
         d.lift();
     } else {
         padSelect(d);
@@ -527,35 +554,104 @@ std::vector<Obs> script(Driver& d, const Fixture& f, bool touch) {
     }
     d.frame();
     out.push_back(observe(d, f, "picked up"));
-    // 4. Full destination (Box 2).
-    if (touch) fingerPlaceAt(d, f, 1, 8, out, "Box 2 / Slot 9");
-    else {
-        d.hover(1, 8);
-        d.press(HidNpadButton_A);
-    }
+    // 4. Box 2 by its arrow / R (never a place or a cancel), then the full destination refused like A.
+    toBox(d, touch, 1);
+    out.push_back(observe(d, f, "box arrow"));
+    placeAt(d, touch, 1, 8);
     out.push_back(observe(d, f, "full destination"));
-    // 5. Cancel the carry: B, or a tap outside every touch target.
+    // 5. Taps and drags that are NOT a cancel or a place: the summary panel, a footer tap, a drag outside
+    // the grid, a drag across cells, and the tap that closes Help.
+    if (touch) {
+        if (d.cell(2000)) check(d.tapId(2000), g + "tap the summary panel");
+        d.tapAt(1272, 708);   // the footer band
+        if (const auto outside = d.outsidePoint()) {   // a drag that starts and ends outside the grid
+            d.fx = outside->first;
+            d.fy = outside->second;
+            HostUi::touch = {true, static_cast<u32>(d.fx), static_cast<u32>(d.fy)};
+            d.frame();
+            for (int k = 1; k <= 4; ++k) {
+                HostUi::touch = {true, static_cast<u32>(d.fx), static_cast<u32>(d.fy + 8 * k)};
+                d.frame();
+            }
+            HostUi::touch = {false, static_cast<u32>(d.fx), static_cast<u32>(d.fy + 32)};
+            d.frame();
+            d.frame();
+        }
+        check(d.fingerDown(10) && d.slideTo(17), g + "drag across cells");
+        d.lift();
+        d.frame();
+    }
+    out.push_back(observe(d, f, "controls, drags"));
+    d.press(HidNpadButton_Minus);
+    out.push_back(observe(d, f, "help over the carry"));
+    if (touch) {
+        // A tap where a box cell is drawn while Help is up: Help owns it (7D may close Help with it); it
+        // never places or cancels the carry underneath. Then the tap outside Help that closes it.
+        // (Gen I / II keep - inside a packed carry, so Help only opens over a Gen III-V carry.)
+        if (const auto* c = d.cell(3); c && d.screen.helpOverlayActive) d.tapAt(c->x + c->w / 2, c->y + c->h / 2);
+        out.push_back(observe(d, f, "tap under help"));
+        if (d.screen.helpOverlayActive) d.tapAt(8, 120);
+        if (f.generation >= 3)
+            check(!d.screen.helpOverlayActive, g + "a tap outside Help closed it (the modal-close tap under test)");
+        if (d.screen.helpOverlayActive) d.press(HidNpadButton_Minus);
+    } else {
+        out.push_back(observe(d, f, "tap under help"));
+        d.press(HidNpadButton_Minus);
+    }
+    d.frame();
+    out.push_back(observe(d, f, "help closed"));
+    // 6. Cancel the carry: B, or a tap outside every touch target.
     if (touch) {
         const auto outside = d.outsidePoint();
-        check(outside.has_value(), "Gen " + std::to_string(f.generation) + ": the screen has an area outside the grid");
+        check(outside.has_value(), g + "the screen has an area outside the grid");
         if (outside) d.tapAt(outside->first, outside->second);
     } else {
         d.press(HidNpadButton_B);
     }
     out.push_back(observe(d, f, "carry cancelled"));
-    // 6. Placement on Box 3 / Slot 9.
+    // 7. Group placement on Box 3 / Slot 9 with one tap (controller: cursor + A).
     if (touch) {
-        check(fingerSelect(d), "Gen " + std::to_string(f.generation) + ": drag a third time");
+        check(fingerSelect(d), g + "drag a third time");
         d.lift();
-        d.frame();
-        fingerPlaceAt(d, f, 2, 8, out, "Box 3 / Slot 9");
     } else {
         padSelect(d);
         d.frame();
-        d.hover(2, 8);
-        d.press(HidNpadButton_A);
     }
+    d.frame();
+    placeAt(d, touch, 2, 8);
     out.push_back(observe(d, f, "placed"));
+    // 8. One Pokemon: a one-cell drag / Y hold picks it up; an occupied (or full) slot is refused like A;
+    // one tap on an empty slot places it.
+    const int single = firstOccupied(f, 2);
+    check(single >= 0, g + "the placed group is in Box 3");
+    d.hover(2, single);
+    if (touch) {
+        const auto* c = d.cell(single);
+        check(c != nullptr, g + "the cell publishes a target");
+        if (c) {
+            d.fx = c->x + 8;
+            d.fy = c->y + 8;
+            HostUi::touch = {true, static_cast<u32>(d.fx), static_cast<u32>(d.fy)};
+            d.frame();
+            HostUi::touch = {true, static_cast<u32>(c->x + c->w - 8), static_cast<u32>(c->y + c->h - 8)};
+            d.frame();
+            d.fx = c->x + c->w - 8;
+            d.fy = c->y + c->h - 8;
+            d.lift();
+        }
+    } else {
+        d.frame(HidNpadButton_Y, HidNpadButton_Y);
+        for (int i = 0; i < 9; ++i) d.frame(0, HidNpadButton_Y);
+        d.frame();
+    }
+    d.frame();
+    out.push_back(observe(d, f, "single picked up"));
+    if (f.generation != 4) {   // Gen IV swaps a single Pokemon losslessly onto an occupied slot
+        placeAt(d, touch, 1, 5);
+        out.push_back(observe(d, f, "single occupied"));
+    }
+    placeAt(d, touch, 3, 3);
+    out.push_back(observe(d, f, "single placed"));
     // 7. A single tap keeps today's meaning. Gen V: a tap focuses a cell and a tap on the focused cell is
     // A (decodeGen5BoxTouch); Gen I-IV: a tap on a cell opens its Actions at once (the same sheet as A).
     d.hover(1, 3);
@@ -678,15 +774,31 @@ void runParity(const Fixture& a, const Fixture& b) {
         check(!at(*run, "actions").rows.empty(), g + who + "a tap on the focused cell / A opens Actions");
         check(at(*run, "actions closed").rows.empty(), g + who + "B closes Actions");
     }
-    for (const auto& label : {"Box 2 / Slot 9: focus tap", "Box 3 / Slot 9: focus tap"}) {
-        const auto& o = at(touch, label);
-        check(o.carrying && o.status.empty() == at(touch, "picked up").status.empty() && o.rows.empty(),
-              g + "touch: " + label + " only moves the carry");
+    for (const auto* run : {&controller, &touch}) {
+        const std::string who = run == &controller ? "controller: " : "touch: ";
+        const auto& picked = at(*run, "picked up");
+        for (const std::string label : {"box arrow", "controls, drags", "help over the carry", "tap under help",
+                                         "help closed"}) {
+            const bool help = label == "help over the carry" || label == "tap under help";   // Help hides the footer
+            check((at(*run, label).carrying || help) && (at(*run, label).count == picked.count || help) &&
+                      at(*run, label).snapshot == picked.snapshot && at(*run, label).box == 1 &&
+                      (label == "box arrow" || at(*run, label).slot == at(*run, "full destination").slot),
+                  g + who + label + ": the carry stays, nothing placed or cancelled, Box 2 shown (" +
+                      std::to_string(at(*run, label).box) + ")");
+        }
+        if (a.generation >= 3)
+            check(at(*run, "help over the carry").help && !at(*run, "help closed").help,
+                  g + who + "- opens Help over the carry and it closes again");
+        check(at(*run, "single picked up").carrying && at(*run, "single picked up").count.empty(),
+              g + who + "one Pokemon is picked up");
+        if (a.generation != 4)
+            check(at(*run, "single occupied").carrying && !at(*run, "single occupied").status.empty() &&
+                  at(*run, "single occupied").snapshot == at(*run, "single picked up").snapshot,
+              g + who + "an occupied / full slot is refused, the carry stays (\"" + at(*run, "single occupied").status + "\")");
+        check(!at(*run, "single placed").carrying && at(*run, "single placed").status.empty() &&
+                  at(*run, "single placed").snapshot != at(*run, "placed").snapshot && at(*run, "single placed").box == 3,
+              g + who + "one tap / cursor + A places it in Box 4, silently (\"" + at(*run, "single placed").status + "\")");
     }
-    // (Gen I-III take the carried group out of the staged image at pickup; B puts it back.)
-    check(at(touch, "Box 3 / Slot 9: focus tap").snapshot == at(touch, "picked up").snapshot &&
-              at(touch, "Box 2 / Slot 9: focus tap").snapshot == at(touch, "picked up").snapshot,
-          g + "touch: a focus tap stages nothing");
     // Parity: every checkpoint the player sees is the same.
     for (const auto& c : controller) {
         const auto& t = at(touch, c.label);
