@@ -1,3 +1,35 @@
+# PokeBank NX host test rules: sources.mk
+# Consolidated from the original Makefile.host.* fragments in their EXACT include order.
+# Do not modify host-test recipes or weaken coverage while reorganizing infrastructure.
+
+# ---- BEGIN original Makefile.host.source-instances ----
+# Provider-neutral Save Instances model gate. Generation-specific parsers are exercised by their
+# existing suites; this pins the shared metadata/dedupe/order/profile contract itself.
+SAVE_INSTANCE_MODEL_TEST := $(HOST_BUILD)/test_save_instance_model
+SAVE_INSTANCE_MODEL_SANITIZE := $(HOST_BUILD)/test_save_instance_model_sanitize
+
+HOST_TESTS += $(SAVE_INSTANCE_MODEL_TEST)
+HOST_SANITIZE_TESTS += $(SAVE_INSTANCE_MODEL_SANITIZE)
+host-test: $(SAVE_INSTANCE_MODEL_TEST)
+host-sanitize: $(SAVE_INSTANCE_MODEL_SANITIZE)
+
+$(SAVE_INSTANCE_MODEL_TEST): tests/test_save_instance_model.cpp include/Source/SaveInstance.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(SAVE_INSTANCE_MODEL_SANITIZE): tests/test_save_instance_model.cpp include/Source/SaveInstance.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+.PHONY: save-instance-architecture-contract
+save-instance-architecture-contract:
+	python3 tests/test_save_instance_architecture_contract.py
+
+host-test: save-instance-architecture-contract
+host-sanitize: save-instance-architecture-contract
+# ---- END original Makefile.host.source-instances ----
+
+# ---- BEGIN original Makefile.host.product-ui ----
 # Product-shell model tests are intentionally header-only: they prove navigation and honest
 # capability classification without pulling libnx/UI rendering into the host suite.
 PRODUCT_UI_TESTS := $(HOST_BUILD)/test_app_shell_model $(HOST_BUILD)/test_organization_preview_model $(HOST_BUILD)/test_game_launch_model $(HOST_BUILD)/test_quick_games_drawer_motion
@@ -196,3 +228,128 @@ $(SESSION_PROVIDER_TEST): $(SESSION_PROVIDER_INPUTS)
 $(SESSION_PROVIDER_SANITIZE): $(SESSION_PROVIDER_INPUTS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+# ---- END original Makefile.host.product-ui ----
+
+# ---- BEGIN original Makefile.host.exports ----
+# Verified app-owned working-copy exports shared by Gen I-IV (Integration/Common).
+CLASSIC_EXPORT_SOURCES := tests/test_classic_verified_export.cpp \
+	src/Integration/Common/VerifiedStagedExport.cpp \
+	src/Integration/Gen1/Gen1ReadOnlySave.cpp src/Integration/Gen2/Gen2ReadOnlySave.cpp \
+	src/Utils/SHA256.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+CLASSIC_EXPORT_HEADERS := include/Integration/Common/VerifiedStagedExport.h \
+	include/Integration/Common/ClassicStrictValidators.h
+
+HOST_TESTS += $(HOST_BUILD)/test_classic_verified_export
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_classic_verified_export_sanitize
+host-test: $(HOST_BUILD)/test_classic_verified_export
+host-sanitize: $(HOST_BUILD)/test_classic_verified_export_sanitize
+
+$(HOST_BUILD)/test_classic_verified_export: $(CLASSIC_EXPORT_SOURCES) $(CLASSIC_EXPORT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CLASSIC_EXPORT_SOURCES) -o $@
+
+$(HOST_BUILD)/test_classic_verified_export_sanitize: $(CLASSIC_EXPORT_SOURCES) $(CLASSIC_EXPORT_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CLASSIC_EXPORT_SOURCES) -o $@
+
+# Optional verbatim source-file backup + container facts (Gen IV .dsv) on the shared export.
+VERBATIM_EXPORT_SOURCES := tests/test_verified_export_verbatim.cpp \
+	src/Integration/Common/VerifiedStagedExport.cpp src/Utils/SHA256.cpp
+
+HOST_TESTS += $(HOST_BUILD)/test_verified_export_verbatim
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_verified_export_verbatim_sanitize
+host-test: $(HOST_BUILD)/test_verified_export_verbatim
+host-sanitize: $(HOST_BUILD)/test_verified_export_verbatim_sanitize
+
+$(HOST_BUILD)/test_verified_export_verbatim: $(VERBATIM_EXPORT_SOURCES) include/Integration/Common/VerifiedStagedExport.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(VERBATIM_EXPORT_SOURCES) -o $@
+
+$(HOST_BUILD)/test_verified_export_verbatim_sanitize: $(VERBATIM_EXPORT_SOURCES) include/Integration/Common/VerifiedStagedExport.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(VERBATIM_EXPORT_SOURCES) -o $@
+# ---- END original Makefile.host.exports ----
+
+# ---- BEGIN original Makefile.host.home-providers ----
+# Thread 2H: Home card provider identity + fingerprinted current-save snapshot
+# for every generation (Gen I-V). Pure model gate plus real Gen IV / Gen V
+# synthetic-save gates through the same request/parse wiring as the UI.
+HOME_PROVIDERS_TEST := $(HOST_BUILD)/test_home_card_providers
+HOME_PROVIDERS_SANITIZE := $(HOST_BUILD)/test_home_card_providers_sanitize
+HOME_PROVIDERS_HEADERS := include/Source/HomeCardSnapshot.h include/Source/SaveProviderIdentity.h \
+    include/Source/SaveInstance.h include/Legacy/LegacySourceBindings.h
+
+HOME_GEN5_TEST := $(HOST_BUILD)/test_home_card_gen5_snapshot
+HOME_GEN5_SANITIZE := $(HOST_BUILD)/test_home_card_gen5_snapshot_sanitize
+HOME_GEN5_SOURCES := tests/test_home_card_gen5_snapshot.cpp \
+    src/Integration/Gen5/Gen5SourceDiscovery.cpp src/Utils/SHA256.cpp src/Games/GameIdentity.cpp \
+    src/Integration/Gen5/Gen5AssignedSource.cpp src/Legacy/LegacySourceBindings.cpp
+HOME_GEN5_HEADERS := $(HOME_PROVIDERS_HEADERS) $(wildcard include/Integration/Gen5/*.h) \
+    include/Pokemon/Pokemon5ReadOnly.h include/Encryption/Encryption5.h include/Utils/CRC16.h
+
+HOME_GEN4_TEST := $(HOST_BUILD)/test_home_card_gen4_snapshot
+HOME_GEN4_SANITIZE := $(HOST_BUILD)/test_home_card_gen4_snapshot_sanitize
+HOME_GEN4_SOURCES := tests/test_home_card_gen4_snapshot.cpp \
+    src/Integration/Gen4/Gen4ReadOnlySave.cpp \
+    src/Pokemon/Pokemon4ReadOnly.cpp src/Pokemon/Pokemon4ReadOnlyView.cpp src/Pokemon/PersonalRecord4.cpp \
+    src/Pokemon/PersonalInfo4DP.cpp src/Pokemon/PersonalInfo4PT.cpp src/Pokemon/PersonalInfo4HGSS.cpp \
+    src/Encryption/Encryption4.cpp src/Utils/SHA256.cpp \
+    src/Integration/Gen4/Gen4AssignedSource.cpp src/Integration/Gen4/Gen4SourceDiscovery.cpp \
+    src/Legacy/LegacySourceBindings.cpp src/Names/SpeciesNames.cpp src/Pokemon/Experience.cpp \
+    src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+    vendor/PKSM-Core/source/utils/crypto_checksums.cpp
+HOME_GEN4_HEADERS := $(HOME_PROVIDERS_HEADERS) $(wildcard include/Integration/Gen4/*.h) \
+    include/Encryption/Encryption4.h
+
+# Gen I-III Home party adapters (the same slot fields as Gen IV / Gen V).
+HOME_PARTY_TEST := $(HOST_BUILD)/test_home_party_preview
+HOME_PARTY_SANITIZE := $(HOST_BUILD)/test_home_party_preview_sanitize
+HOME_PARTY_SOURCES := tests/test_home_party_preview.cpp src/Integration/Gen2/Gen2PersonalData.cpp
+HOME_PARTY_HEADERS := $(HOME_PROVIDERS_HEADERS) include/Integration/Common/HomePartyPreview.h \
+    include/Conversion/Gen3PidSearch.h include/Integration/Gen2/Gen2PersonalData.h
+
+HOST_TESTS += $(HOME_PROVIDERS_TEST) $(HOME_GEN5_TEST) $(HOME_GEN4_TEST) $(HOME_PARTY_TEST)
+HOST_SANITIZE_TESTS += $(HOME_PROVIDERS_SANITIZE) $(HOME_GEN5_SANITIZE) $(HOME_GEN4_SANITIZE) \
+    $(HOME_PARTY_SANITIZE)
+host-test: $(HOME_PROVIDERS_TEST) $(HOME_GEN5_TEST) $(HOME_GEN4_TEST) $(HOME_PARTY_TEST)
+host-sanitize: $(HOME_PROVIDERS_SANITIZE) $(HOME_GEN5_SANITIZE) $(HOME_GEN4_SANITIZE) \
+    $(HOME_PARTY_SANITIZE)
+
+$(HOME_PARTY_TEST): $(HOME_PARTY_SOURCES) $(HOME_PARTY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(HOME_PARTY_SOURCES) -o $@
+
+$(HOME_PARTY_SANITIZE): $(HOME_PARTY_SOURCES) $(HOME_PARTY_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(HOME_PARTY_SOURCES) -o $@
+
+$(HOME_PROVIDERS_TEST): tests/test_home_card_providers.cpp $(HOME_PROVIDERS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+
+$(HOME_PROVIDERS_SANITIZE): tests/test_home_card_providers.cpp $(HOME_PROVIDERS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+$(HOME_GEN5_TEST): $(HOME_GEN5_SOURCES) $(HOME_GEN5_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(HOME_GEN5_SOURCES) -o $@
+
+$(HOME_GEN5_SANITIZE): $(HOME_GEN5_SOURCES) $(HOME_GEN5_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(HOME_GEN5_SOURCES) -o $@
+
+$(HOME_GEN4_TEST): $(HOME_GEN4_SOURCES) $(HOME_GEN4_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include $(HOME_GEN4_SOURCES) -o $@
+
+$(HOME_GEN4_SANITIZE): $(HOME_GEN4_SOURCES) $(HOME_GEN4_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude -Ivendor/PKSM-Core/include $(HOME_GEN4_SOURCES) -o $@
+
+.PHONY: home-card-provider-contract
+home-card-provider-contract:
+	python3 tests/test_home_card_provider_contract.py
+host-test: home-card-provider-contract
+host-sanitize: home-card-provider-contract
+# ---- END original Makefile.host.home-providers ----

@@ -65,6 +65,9 @@ jobs:
       - name: Verify CI repository safety contract
         run: python3 tests/test_ci_repository_safety_contract.py
 
+      - name: Verify consolidated host Makefile layout
+        run: python3 tests/test_host_makefile_layout.py
+
       - name: Verify v1 polish contracts
         run: python3 tests/test_v1_polish_contract.py
 

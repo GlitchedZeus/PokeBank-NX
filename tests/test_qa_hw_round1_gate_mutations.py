@@ -21,7 +21,7 @@ spec.loader.exec_module(gate)
 
 def shadow_tree(dst: Path) -> None:
     for entry in ROOT.iterdir():
-        if entry.name in (".git", "build-host") or entry.name.startswith("build"):
+        if entry.name in (".git", "build", "build-host") or (entry.name.startswith("build-") and entry.name != "build-system"):
             continue
         if entry.is_dir() and entry.name in ("src", "include", "tests", "docs"):
             # Real copies (~15 MB): the contract loader resolves paths, so symlinks would escape the copy.

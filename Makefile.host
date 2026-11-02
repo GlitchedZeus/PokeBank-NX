@@ -1,44 +1,17 @@
-# Permanent host suite is split only to keep the accepted pre-GSC test graph byte-identical.
-include Makefile.host.base
-include Makefile.host.gsc
-include Makefile.host.editor
-include Makefile.host.cleanup3
-include Makefile.host.standalone
-include Makefile.host.shared-editor
-include Makefile.host.hardware-fixes
-include Makefile.host.gen4
-include Makefile.host.gen5
-include Makefile.host.source-instances
-include Makefile.host.product-ui
-include Makefile.host.exports
-include Makefile.host.home-providers
-include Makefile.host.gen14
-include Makefile.host.qa
-include Makefile.host.item-quantity-policy
-include Makefile.host.pickers
-include Makefile.host.reroll-mechanics
-include Makefile.host.species-change-moves
-include Makefile.host.round4-r
-include Makefile.host.round4-codex
-include Makefile.host.host-ui
-include Makefile.host.review-entry
-include Makefile.host.pkse-upstream
-include Makefile.host.multilingual
-include Makefile.host.pkse-october
-include Makefile.host.pkse-october-pid
-include Makefile.host.pkfile-gen12
-include Makefile.host.pkfile-gen3
-include Makefile.host.pkfile-gen4
-include Makefile.host.pkfile-gen5
-include Makefile.host.pokemon-file-ui
-include Makefile.host.recovery-view
-include Makefile.host.jp-gen12
-include Makefile.host.jp-gen1
-include Makefile.host.jp-gen2
-include Makefile.host.bag-top-up
-include Makefile.host.pokemon-file-menus
+# Host (desktop/CI) test entry point. Keep this file intentionally small.
+# Every former Makefile.host.* recipe appears once, in its previous parse order.
+# Two independent suites are kept outside this include graph.
+# Run: make -f Makefile.host host-test / host-sanitize / host-clean
 
-include Makefile.host.machine
+include build-system/host/core.mk
+include build-system/host/classic.mk
+include build-system/host/generations.mk
+include build-system/host/sources.mk
+include build-system/host/regressions.mk
+include build-system/host/ui.mk
+include build-system/host/pokemon-files.mk
+include build-system/host/localization.mk
+include build-system/host/inventory.mk
 
-# Must stay last: wraps $(CXX) for header dependency tracking (Makefile.host.deps).
-include Makefile.host.deps
+# MUST BE LAST: compiler wrapper and header-dependency sweep.
+include build-system/host/deps.mk

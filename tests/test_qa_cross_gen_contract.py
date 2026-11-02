@@ -2982,7 +2982,8 @@ def round6_contracts(sources):
                "a host test enumerates the native choices (owner Oct 25 R2-CHECK-011)")
     # Host tests and Makefiles are outside the scanned sources: read them from the same checkout.
     root = Path(str(sources[0].path)[:-len(sources[0].rel)]) if sources else Path(".")
-    mk = "\n".join(m.read_text(errors="replace") for m in root.glob("Makefile.host*"))
+    makefiles = [root / "Makefile.host", *sorted((root / "build-system" / "host").glob("*.mk"))]
+    mk = "\n".join(m.read_text(errors="replace") for m in makefiles if m.is_file())
     proof = []
     for t in sorted((root / "tests").glob("*.cpp")):
         code = t.read_text(errors="replace")
