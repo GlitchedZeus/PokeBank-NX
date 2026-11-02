@@ -187,6 +187,10 @@ def write_ledger(issues, C):
         extra = f" (of which {C['hardware_accepted_needing_r12_recheck']} need an R12 recheck)" if s == "Hardware Accepted" else ""
         out.append(f"| {s} | {C['by_status'][s]}{extra} |")
     out += [f"| **Total unique issues** | **{C['unique_issues']}** |", ""]
+    if os.path.isfile(os.path.join(OUT, "RECHECK_REGRESSIONS.md")):
+        out += [f"The {C['hardware_accepted_needing_r12_recheck']} *(recheck)* rows stay marked for re-verification; "
+                "the commits that changed each one since its accepted candidate and the targeted regression "
+                "tests are in [`RECHECK_REGRESSIONS.md`](RECHECK_REGRESSIONS.md).", ""]
     cols = ("| ID | Title | Gen | First seen (round · test ID) | Original result | Current status | Repair commit(s) | "
             "Automated test(s) | Hardware acceptance candidate | Next required action |")
     sep = "|---|---|---|---|---|---|---|---|---|---|"
@@ -510,7 +514,8 @@ def write_matrix(issues, accepted, extras, lineage, C):
     for i in sc:
         out.append(f"- `{i['id']}` {cell(i.get('title'), 160)} — {i['status']}")
     out += ["", "## 6. Every round's hardware checklist must include", "",
-            "1. Every row in §1 with *recheck = yes* whose code changed since its last PASS.",
+            "1. Every row in §1 with *recheck = yes* whose code changed since its last PASS "
+            "(changed commits and targeted regressions: [`RECHECK_REGRESSIONS.md`](RECHECK_REGRESSIONS.md)).",
             "2. Every ledger row with status Fixed in Code — Awaiting Hardware (its acceptance candidate).",
             "3. Every safety function in §5 that an ordinary owner save can exercise.",
             "4. No row may be removed from a checklist unless it is owner-PASSed or the owner records a decision; "
