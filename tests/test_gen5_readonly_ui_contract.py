@@ -452,7 +452,7 @@ require(read("tests/test_gen5_box_touch.cpp"),
         "for(int selected=-1;selected<30;++selected)",
         "1002,1003,1100,2001,77000,80000",
         "G::advanceGen5BoxIndex(index,count,delta)")
-require(read("Makefile.host.gen5"),
+require(read("build-system/host/Makefile.host.gen5"),
         "GEN5_BOX_TOUCH_TEST :=","GEN5_BOX_TOUCH_SANITIZE :=",
         "host-test: $(GEN5_BOX_TOUCH_TEST)",
         "host-sanitize: $(GEN5_BOX_TOUCH_SANITIZE)")
@@ -549,7 +549,7 @@ require(read("include/Integration/Gen5/Gen5SharedScreenState.h"),
         "createLanguageAllowed5(trainer.language)",
         "if(const auto checked=validateCreate5(r);!checked)",
         "r.gender=createGenderForPID5(personal.info->genderRatio,pid);")
-require(read("Makefile.host.gen5"),
+require(read("build-system/host/Makefile.host.gen5"),
         "GEN5_CREATE_INPUT_TEST :=","GEN5_CREATE_INPUT_SANITIZE :=")
 require(read(".github/workflows/gen5-focused-host.yml"),
         "test_gen5_box_touch test_gen5_create_input_rules ",
