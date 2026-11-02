@@ -346,24 +346,11 @@ Everything the owner has accepted on hardware, per generation, and how it is pro
 
 ## 3. Regression guard coverage
 
-`tests/test_hw_round1_regression_gate.py` pins owner PASS items from Round 1 (42), Round 2 (6), Round 3 (30 new), Oct 24 (27), Oct 25 (10) and Oct 26 (19) to host tests and contracts and runs on every PR. **It has no Round 11 table**, so Round 11 PASS items that are not on the Round 12 checklist are not protected:
+`tests/test_hw_round1_regression_gate.py` pins owner PASS items from Round 1 (42), Round 2 (6), Round 3 (30 new), Oct 24 (27), Oct 25 (10), Oct 26 (19) and Round 11 (34, `GUARDS_ROUND11`, keyed by the worksheet IDs and count-checked against `docs/hardware/ROUND11_OWNER_WORKSHEET.md`) to host tests and contracts and runs on every PR. Accepted items that left the checklist with no guard: none.
 
-- R11 H09 Gen V Trainer Gender and Pokédex (last PASS R11 (3634d1e6 inferred) H09 PASS)
-- R11 H10 Gen I Play Time editable (to 255) (last PASS R11 (3634d1e6 inferred) H10 PASS)
-- R11 H24 Gen III edit and discard (last PASS R11 (3634d1e6 inferred) H24 PASS)
-- R11 H30 Create, back out, keep (last PASS R11 (3634d1e6 inferred) H30 PASS)
-- R11 H36 Malformed Gen IV pocket safe refusal (optional) (last PASS R11 (3634d1e6 inferred) H36 PASS)
-- R11 H38 Cross-generation import refusal (last PASS R11 (3634d1e6 inferred) H38 PASS)
-- R11 H44 Recovery display: latest prior generation protected (last PASS R11 (3634d1e6 inferred) H44 PASS)
-- R11 H46 Export Copy reload and compare (S06-like, optional) (last PASS R11 (3634d1e6 inferred) H46 PASS)
-- R11 H48 Exit and relaunch after discard (last PASS R11 (3634d1e6 inferred) H48 PASS)
-- R11 H05 Export same Pokémon twice -> distinct ' (2)' file (last PASS R11 (3634d1e6 inferred) H05 PASS)
-- R11 H06 Import exported Pokémon into empty slot (last PASS R11 (3634d1e6 inferred) H06 PASS)
-- R11 H13 Japanese Gen I/II read-only (last PASS R11 (3634d1e6 inferred) H13 PASS)
+Known gate caveats: the Oct 26 table keys rows by Round 6 sheet number (its B01/C02 are not the Round 1 items of the same name), and the Round 11 table by Round 11 worksheet number (its H01-H48 are not the Round 12 checklist's); the E02 guard pins the pre-Round-11 Actions order; the E12/C14 guards were updated for the owner's Round 11 reversal (Create starts with no moves). Round 11 guards for behaviour the owner later asked to change (H07, H21, H23, H28; Round 12 R12-001/002/003) pin the current owner-requested behaviour. H13 (no Japanese save opened) and H46 (no game or comparison notes recorded; the guard covers export-copy verification only, not the owner's emulator reload) are owner PASS without evidence notes.
 
-Known gate caveats: the Oct 26 table keys rows by Round 6 sheet number (its B01/C02 are not the Round 1 items of the same name); the E02 guard pins the pre-Round-11 Actions order; the E12/C14 guards were updated for the owner's Round 11 reversal (Create starts with no moves).
-
-**Required next step:** add a Round 11 guard table (the 34 R11 PASS items) and a Round 12 table once the owner reports Round 12, so no accepted behaviour can leave a checklist unguarded.
+**Required next step:** add a Round 12 table for the owner's 066e1db9 PASS results (`docs/hardware/round12/ROUND12_OWNER_HARDWARE_INTAKE.md`), so no accepted behaviour can leave a checklist unguarded.
 
 ## 4. Bag / PC item operations (mandatory feature 7)
 
