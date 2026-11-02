@@ -14,7 +14,7 @@
 
 ---
 
-**Checked October 14, 2026.** GitHub remains authoritative: re-fetch every PR HEAD and exact-run CI before any integration. [Detailed cross-lane audit](docs/ENGINEERING_SNAPSHOT_20261014.md).
+**Checked October 14, 2026.** GitHub remains authoritative: re-fetch every PR HEAD and exact-run CI before any integration. [Detailed cross-lane audit](docs/archive/sessions/ENGINEERING_SNAPSHOT_20261014.md).
 
 ## Hardware acceptance and release
 - Product: **PokeBank NX**, offline native C++20 Nintendo Switch homebrew; **active alpha**, no v1.0 release.
@@ -56,4 +56,4 @@ Missing independently proven acquisition histories and authenticated event data 
 4. Reconcile [#298](https://github.com/GlitchedZeus/PokeBank-NX/pull/298)/[#303](https://github.com/GlitchedZeus/PokeBank-NX/pull/303) from original source and exact-head test evidence, independently of app development.
 5. Track all build artifacts by exact SHA/hash. No direct installed/emulator save injection, global unsafe write toggle or persistent Master Vault approval.
 
-**Governance:** never reset/rebase backwards, force-push, overwrite newer commits or quietly merge other agents' branches. Read-only original source saves remain immutable; staged/export copies are separate. See [Game Support](docs/GAME_SUPPORT_MATRIX.md), [Roadmap](docs/V1_ROADMAP.md), [Build Record](docs/BUILD_RECORD.md).
+**Governance:** never reset/rebase backwards, force-push, overwrite newer commits or quietly merge other agents' branches. Read-only original source saves remain immutable; staged/export copies are separate. See [Game Support](docs/user/GAME_SUPPORT_MATRIX.md), [Roadmap](docs/V1_ROADMAP.md), [Build Record](docs/BUILD_RECORD.md).

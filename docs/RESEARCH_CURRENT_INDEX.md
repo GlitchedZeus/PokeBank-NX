@@ -2,7 +2,7 @@
 
 > **AUTHORITY NOTE (2026-09-29):** Research router only. It does not define the active branch, PR, milestone, or task. Start with `docs/ENGINEERING_AUTHORITY.md` and live GitHub state; older authority-chain wording below is historical.
 
-> **2026-09-22 navigation update:** use `docs/REFERENCE_INDEX.md` as the consolidated current lookup for external repositories, license/reuse classification, and “what to use this for.” This file remains valuable deeper research/history and is intentionally preserved.
+> **2026-09-22 navigation update:** use `docs/research/REFERENCE_INDEX.md` as the consolidated current lookup for external repositories, license/reuse classification, and “what to use this for.” This file remains valuable deeper research/history and is intentionally preserved.
 
 Last updated: 2026-09-22
 
@@ -33,7 +33,7 @@ Do not read every research note by default.
 Open:
 
 ```text
-docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
+docs/research/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
 ```
 
 Key findings preserved there:
@@ -221,9 +221,9 @@ Contains:
 Also keep:
 
 ```text
-docs/RESEARCH_REFERENCE_MATRIX.md
-docs/RESEARCH_INTAKE_2026-09-09.md
-docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
+docs/research/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
 docs/research/2026-09-09/SOURCE_MANIFEST.md
 ```
 

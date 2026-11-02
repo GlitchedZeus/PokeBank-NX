@@ -62,7 +62,7 @@ The official Bank shutdown date is anchored to the official Pokémon page rather
 docs/RESEARCH_CURRENT_INDEX.md
     short AI router for the whole sweep
 
-docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
+docs/research/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
     libnx/fsdev, DNS-MITM_Manager, badpiggies_nx, open-handle/destination-exists failure modes
 
 docs/research/2026-09-09/SAVE_FORMATS_PROFILES_CONTAINERS.md

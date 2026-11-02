@@ -444,7 +444,7 @@ CI artifacts expire, after 90 days for candidate builds. Important NROs are copi
 
 ## 7. Project board
 
-Issues and PRs are organised on the **PokeBank NX** GitHub Projects board (Backlog / To Do / In Progress / Review / Done, with a Resolution field separating Completed, Superseded and Deferred work). See `docs/PROJECT_BOARD.md`.
+Issues and PRs are organised on the **PokeBank NX** GitHub Projects board (Backlog / To Do / In Progress / Review / Done, with a Resolution field separating Completed, Superseded and Deferred work). See `docs/development/PROJECT_BOARD.md`.
 
 ## 8. Rules applied
 
