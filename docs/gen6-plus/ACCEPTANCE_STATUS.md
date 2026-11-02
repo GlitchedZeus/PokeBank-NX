@@ -51,6 +51,10 @@ common Actions menu and Vault transfer are v1.0 requirements that Gen VI–IX do
 
 ## Specific owner retest items (next candidate only)
 
+Candidate: commit `43c296dc`, CI run 41378109195 (green), artifact `PokeBank-NX-Gen6Plus-Experimental-43c296dc`
+(id 13113401512, zip sha256 `e9a204cd77ef8a35989087474218bf550c4f642fbe0952046dd2fd9cb7066860`), NRO sha256
+`fd67dd1fdb21f835b6b6e392dc25bdf73a041b07aca77cc711de0716b124e251`. EXPERIMENTAL, NOT DEVICE TESTED.
+
 - **R1 (Pokémon Y):** HOME → Pokémon Y → A. Read the Save Instances message: it now names the file and says
   whether it is all-zero (the game never saved: save once in the emulator, retry), has an empty footer, or is not
   a decrypted `main`. Report that sentence.
