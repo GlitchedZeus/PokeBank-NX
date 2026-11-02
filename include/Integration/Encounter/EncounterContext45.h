@@ -198,7 +198,9 @@ public:
             if (encounter.species != species_) text += " via " + std::string(name(encounter.species));
             return tagged(text + "; " + MetLocationPolicy::kLevelBelowEncounter);
         }
-        return tagged("Gift / static / other history; unverified");
+        // Round 14 (R06): 0 (Mystery Zone) is "no place recorded" -- a new Pokemon's placeholder --,
+        // not a gift / static history.
+        return tagged(location == 0 ? "no place recorded; unverified" : "Gift / static / other history; unverified");
     }
 
 private:

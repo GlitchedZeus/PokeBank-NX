@@ -1,0 +1,18 @@
+# Round 14 (owner Round 13 R06 / H05 Gen V and Pikachu met locations; shared-UX audit P1-9): the ONE
+# Met Location caption and unverified-list order for Crystal and Gen III-V
+# (include/Integration/Encounter/MetListScope.h), with the Gen V encounter data measured per level.
+# The Bag Top Up / Add Missing capacity test (Round 14 H07 / H08 / P0-9) is in Makefile.host.bag-top-up.
+MET_LIST_SCOPE_DEPS := include/Integration/Encounter/MetListScope.h include/Integration/Encounter/MetLocationPolicy.h \
+	include/Integration/Encounter/EncounterContext45.h include/Integration/Encounter/EncounterContext45Data.inc \
+	include/Integration/Encounter/GiftStaticEncountersData.inc include/UI/Gen3EncounterPickerModel.h \
+	include/Integration/Gen5/Gen5EncounterLocations.h
+HOST_TESTS += $(HOST_BUILD)/test_met_list_scope
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_met_list_scope_sanitize
+host-test: $(HOST_BUILD)/test_met_list_scope
+host-sanitize: $(HOST_BUILD)/test_met_list_scope_sanitize
+$(HOST_BUILD)/test_met_list_scope: tests/test_met_list_scope.cpp src/Names/LocationNames.cpp $(MET_LIST_SCOPE_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_met_list_scope.cpp src/Names/LocationNames.cpp -o $@
+$(HOST_BUILD)/test_met_list_scope_sanitize: tests/test_met_list_scope.cpp src/Names/LocationNames.cpp $(MET_LIST_SCOPE_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_met_list_scope.cpp src/Names/LocationNames.cpp -o $@

@@ -4,6 +4,7 @@
 #include "UI/Gen2NativePresentation.h"
 #include "UI/Gen2PokemonSession.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Integration/Encounter/MetListScope.h"
 #include "UI/ExactGameMetLocations.h"
 #include "Names/SpeciesNames.h"
 
@@ -66,6 +67,9 @@ struct Model {
     // Rows run encounterChoices, levelBlocked, otherLocations, then the entry row.
     std::vector<Encounter::EncounterTemplate> encounterChoices;
     std::vector<Encounter::EncounterTemplate> levelBlocked;
+    // Round 14 (R06 / P1-9, Integration/Encounter/MetListScope.h): the places above the current level
+    // in either list, so the DEFAULT caption can say why it has no verified row.
+    PokeVault::Integration::MetListScope::LevelGap levelGap;
     std::vector<uint16_t> otherLocations;
     bool unverifiedList = false;
     bool unverifiedEntry = false;
@@ -129,9 +133,13 @@ struct Model {
             if (same != all.end()) same->timeMask = static_cast<uint8_t>(same->timeMask | e.timeMask);
             else all.push_back(e);
         }
-        for (const auto& encounter : all)
-            (Policy::levelReachesEncounter(encounter.minLevel, pokemonLevel) ? encounterChoices : levelBlocked)
-                .push_back(encounter);
+        levelGap = {};
+        levelGap.level = pokemonLevel;
+        for (const auto& encounter : all) {
+            const bool reached = Policy::levelReachesEncounter(encounter.minLevel, pokemonLevel);
+            (reached ? encounterChoices : levelBlocked).push_back(encounter);
+            if (!reached) levelGap.add(encounter.location, encounter.minLevel);
+        }
         if (unverified) encounterChoices.clear();
         else levelBlocked.clear();
         const auto reachedAt = [&](uint16_t id) {
