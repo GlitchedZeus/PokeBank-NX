@@ -10,6 +10,7 @@
 #include "UI/Common.h"
 #include "UI/SpriteManager.h"
 #include "UI/StatsRadar.h"
+#include "UI/TransientStatusScope.h"
 #include "Names/SpeciesNames.h"
 
 namespace UI::SharedPokemonShell {
@@ -42,6 +43,8 @@ inline void drawHeaderGender(PKSEFramebuffer& fb, int x, int y, uint8_t gender) 
 inline void drawChrome(PKSEFramebuffer& fb, uint16_t species, const std::string& nickname,
     uint8_t level, uint8_t gender, bool shiny, ClassicContext::SurfaceMode surfaceMode,
     const std::string& recordContext, const std::string& sourceGameId) {
+    // R12-010: the Gen II-V editor is a status-scope layer, keyed by the record it shows.
+    TransientStatusScope::noteEditor(recordContext);
     fb.drawVerticalGradient(0, 0, fb.getWidth(), fb.getHeight(),
         Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 250),
         Color(Colors::Background.r, Colors::Background.g, Colors::Background.b, 255));

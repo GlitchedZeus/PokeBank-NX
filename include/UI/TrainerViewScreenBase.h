@@ -11,6 +11,7 @@
 #include <switch.h>
 
 #include "Globals.h"
+#include "UI/TransientStatusScope.h"
 #include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Safety/WritePolicy.h"
 #include "UI/ActionSheetModel.h"
@@ -245,6 +246,11 @@ namespace UI {
         }
         // Paints the postStatus line on top of whatever owns the frame (see draw()).
         void drawTransientStatus(PKSEFramebuffer& fb);
+        // R12-010: the status line belongs to the context it was posted in (UI/TransientStatusScope.h).
+        // Run once per frame after every layer is drawn: a different Pokemon's sheet or editor, or a
+        // new modal, ends a status raised before it, so an old export result is never painted over it.
+        UI::TransientStatusScope::Scope storageStatusScope;
+        void scopeTransientStatus();
         // --- The carried block ---
         // Cells of the rectangle currently in hand, row-major over selectDimensions (w x h). A null
         // cell is a hole -- the source slot was empty, or it was locked and deliberately left behind.

@@ -2656,6 +2656,14 @@ int reviewGeneration(const std::string& gameId) {
         fb.drawText(bx + padX, by + 7, storageStatus, Colors::Text);
     }
 
+    // R12-010: end a status whose context was left (see UI/TransientStatusScope.h). Only the frame
+    // countdown is cleared: storageStatus keeps the last message's text.
+    void TrainerViewScreen::scopeTransientStatus() {
+        if (!TransientStatusScope::keep(storageStatusScope, storageStatus, storageStatusFrames,
+                                        TransientStatusScope::frameLayers()))
+            storageStatusFrames = 0;
+    }
+
     void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         const HidAnalogStickState stick = padGetStickPos(&pad, 0);
         u64 kDown = controllerNavigation.apply(

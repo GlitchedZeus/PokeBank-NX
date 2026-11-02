@@ -15,6 +15,7 @@
 #include "UI/SharedBoxedRows.h"
 #include "UI/SharedReviewPresentation.h"
 #include "UI/SharedPopupDismiss.h"
+#include "UI/TransientStatusScope.h"
 
 #include <string>
 #include <vector>
@@ -43,8 +44,12 @@ inline void drawPickerFooter(PKSEFramebuffer& fb, const Presentation::PickerFoot
 // badges and glyph buttons (ScreenChrome::beginTopTouchLayer, the P0 #320 rule), clear the
 // screen's own row hitboxes, then let the modal publish only what it visibly offers.
 // Same pattern as Gen2WorkspaceLayers (ae099c77): a footer under a modal is never tappable.
+// R12-010: every modal is a status-scope layer, keyed by the call site that draws it, so a status
+// raised before the modal opened is not painted over it (UI/TransientStatusScope.h).
 template <class Buttons>
-inline void beginModal(Buttons& screenTouchButtons) {
+inline void beginModal(Buttons& screenTouchButtons,
+                       std::source_location where = std::source_location::current()) {
+    TransientStatusScope::noteModal(where);
     beginTopTouchLayer();
     SharedPopupDismiss::clear();   // 7D: only a picker re-publishes a tap-outside frame
     screenTouchButtons.clear();

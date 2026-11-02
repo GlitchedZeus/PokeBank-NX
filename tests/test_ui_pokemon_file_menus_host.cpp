@@ -42,6 +42,7 @@
 #include "Utils/Settings.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -132,6 +133,26 @@ bool drawn(const std::string& text) {
 bool drawnContaining(const std::string& part) {
     return std::any_of(HostUi::texts.begin(), HostUi::texts.end(),
                        [&](const std::string& t) { return t.find(part) != std::string::npos; });
+}
+// Any drawn text naming "Box <box> Slot <slot>" in a Review row's spelling (case and " / " vary).
+bool drawnSlot(int box, int slot) {
+    const auto norm = [](std::string t) {
+        std::string out;
+        for (char ch : t) {
+            if (ch == '/') continue;
+            const char low = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+            if (low == ' ' && !out.empty() && out.back() == ' ') continue;
+            out += low;
+        }
+        return out;
+    };
+    const std::string want = "box " + std::to_string(box) + " slot " + std::to_string(slot);
+    return std::any_of(HostUi::texts.begin(), HostUi::texts.end(), [&](const std::string& t) {
+        const std::string n = norm(t);
+        const auto at = n.find(want);
+        return at != std::string::npos &&
+               (at + want.size() == n.size() || !std::isdigit(static_cast<unsigned char>(n[at + want.size()])));
+    });
 }
 std::string allTexts() {
     std::string out;
@@ -377,8 +398,13 @@ void run(Case& c) {
     const auto key = Entry::footerHint(Entry::Screen::Boxes, c.generation).glyph[0] == 'Y' ? HidNpadButton_Y
                                                                                           : HidNpadButton_Plus;
     d.press(key);
-    check(drawn("Review Pending Changes") &&
-              drawnContaining("Box " + std::to_string(c.importBox + 1) + " / Slot " + std::to_string(c.importSlot + 1)),
+    // R12-010: Review is a new modal, so the "Imported ... into Box n / Slot m" toast is no longer
+    // painted over it; the slot must come from Review's own rows ("Box 2 Slot 1", "Box 2 slot 5" or
+    // "Box 1 / Slot 1"), not from that stale toast.
+    check(drawn("Review Pending Changes") && !drawn(imported), g + ": the import toast is not drawn over Review");
+    for (int page = 0; page < 8 && drawn("Review Pending Changes") && !drawnSlot(c.importBox + 1, c.importSlot + 1); ++page)
+        d.press(HidNpadButton_R);   // L/R Review Pages
+    check(drawn("Review Pending Changes") && drawnSlot(c.importBox + 1, c.importSlot + 1),
           g + ": Review lists the imported slot " + allTexts());
     d.press(HidNpadButton_B);
 
@@ -508,6 +534,106 @@ void run(Case& c) {
     std::cout << g << ": Export / Import from file checked\n";
 }
 
+// ---- R12-010: a stale export toast never sits over another Pokemon's editor or modal ----------
+// Owner Round 12 screenshots 2026110114225300_c / 2026110114253600_c: "Exported to .../Pidgeotto_*.pk4"
+// (Diamond) and ".../Raichu_*.pk5" (Black 2) were still painted over Arbok's Met Location picker.
+// The export itself was right; the 600-frame toast simply outlived its context.
+
+// Focus the DETAILS "Met Location" row and tap it: in an editable session a completed tap activates
+// the row exactly like A. The row sits below the fold, so the DETAILS panel is focused first (a tap
+// on the lowest visible row, whose picker B closes again) and Down scrolls it into view.
+bool openMetLocation(Driver& d) {
+    const auto rowAt = [&](int cy) -> int {
+        for (const auto& b : d.screen.touchButtons)
+            if (b.id >= 41000 && b.id < 41100 && cy >= b.y && cy < b.y + b.h) return b.id;
+        return -1;
+    };
+    const auto metRow = [&]() -> int {
+        for (const auto& t : HostUi::visibleText)
+            if (t.text.rfind("Met Loc", 0) == 0 && t.x < 330) return rowAt(t.y + t.h / 2);
+        return -1;
+    };
+    if (metRow() < 0) {
+        int lowest = -1;
+        for (const auto& b : d.screen.touchButtons)
+            if (b.id >= 41000 && b.id < 41100 && b.id > lowest) lowest = b.id;
+        if (lowest < 0) return false;
+        d.tap(lowest);
+        d.press(HidNpadButton_B);
+    }
+    for (int i = 0; i < 24 && metRow() < 0; ++i) d.press(HidNpadButton_Down);
+    const int id = metRow();
+    if (id < 0) return false;
+    d.tap(id);
+    return drawn("Choose Met Location");
+}
+
+void staleExportToast(UI::TrainerViewScreen& screen, const std::string& g, int box, int exportSlot, int otherSlot,
+                      const std::function<std::optional<uint16_t>(int, int)>& speciesAt) {
+    Driver d{screen, {}, {}};
+    d.frame();
+    // Start from the Boxes grid (the generation's run above may leave its Review open).
+    for (int i = 0; i < 4 && drawn("Review Pending Changes"); ++i) d.press(HidNpadButton_B);
+    const auto exportedSpecies = speciesAt(box, exportSlot);
+    const auto otherSpecies = speciesAt(box, otherSlot);
+    check(exportedSpecies && otherSpecies && *exportedSpecies != *otherSpecies,
+          g + " R12-010: two different Pokemon in Box " + std::to_string(box + 1));
+    if (!exportedSpecies || !otherSpecies) return;
+
+    // 1. Export the first Pokemon. The file is named after, and holds, THAT record.
+    openSheet(d, View::Boxes, box, exportSlot);
+    if (!chooseAction(d, "Export to file")) {
+        check(false, g + " R12-010: Export to file row (" + joined(sheetRows()) + ") " + allTexts());
+        return;
+    }
+    const std::string status = d.screen.storageStatus;
+    const std::string path = status.rfind("Exported to ", 0) == 0 ? status.substr(12) : std::string{};
+    const std::string exportedName = Names::getSpeciesName(*exportedSpecies);
+    check(fs::path(path).filename().string().rfind(exportedName + "_", 0) == 0,
+          g + " R12-010: the export file is named after the exported Pokemon " + exportedName + " (" + path + ")");
+    std::string error;
+    const auto decoded = Io::loadPokemonFile(path, error);
+    check(decoded && decoded->plain.size() > 0x09 &&
+              static_cast<uint16_t>(decoded->plain[0x08] | (decoded->plain[0x09] << 8)) == *exportedSpecies,
+          g + " R12-010: the export file holds the exported record (species " + std::to_string(*exportedSpecies) +
+              ") " + error);
+
+    // The result stays on screen while the user is still in the same context (the Boxes grid).
+    for (int i = 0; i < 30; ++i) d.frame();
+    check(drawn(status), g + " R12-010: the export result stays visible in the same context " + allTexts());
+
+    // 2. Another Pokemon's Actions sheet, its editor, then its Met Location picker.
+    openSheet(d, View::Boxes, box, otherSlot);
+    check(sheetRow("Edit") >= 0 && !drawnContaining("Exported to "),
+          g + " R12-010: the old export toast is gone once another Pokemon's Actions open " + allTexts());
+    if (!chooseAction(d, "Edit")) { check(false, g + " R12-010: Edit row"); return; }
+    const std::string otherName = Names::getSpeciesName(*otherSpecies);
+    check(drawnContaining("Box " + std::to_string(box + 1) + " / Slot " + std::to_string(otherSlot + 1)) &&
+              !drawnContaining("Exported to "),
+          g + " R12-010: the old export toast is not drawn over " + otherName + "'s editor " + allTexts());
+    const bool picker = openMetLocation(d);
+    check(picker, g + " R12-010: " + otherName + "'s Met Location picker opens " + allTexts());
+    // 3. The screenshot: the picker is up and the old export toast is not painted over it.
+    for (int i = 0; i < 3; ++i) d.frame();
+    check(picker && drawn("Choose Met Location") && !drawnContaining("Exported to "),
+          g + " R12-010: the old export toast is not drawn over " + otherName + "'s Met Location modal " + allTexts());
+
+    // A message raised inside the current modal (a refusal) is kept, and closing the modal keeps it.
+    d.screen.postStatus("R12-010 refusal probe", 300);
+    for (int i = 0; i < 5; ++i) d.frame();
+    check(drawn("Choose Met Location") && drawn("R12-010 refusal probe"),
+          g + " R12-010: a status raised inside the modal stays visible " + allTexts());
+    d.press(HidNpadButton_B);
+    check(!drawn("Choose Met Location") && drawn("R12-010 refusal probe"),
+          g + " R12-010: closing the modal keeps its status " + allTexts());
+    const std::string editorContext = "Box " + std::to_string(box + 1) + " / Slot " + std::to_string(otherSlot + 1) + " •";
+    // B leaves the editor (Y discards the draft if focusing rows on the way left it dirty).
+    for (int i = 0; i < 4 && drawnContaining(editorContext); ++i)
+        d.press(drawn("Unsaved changes") ? HidNpadButton_Y : HidNpadButton_B);
+    check(!drawnContaining(editorContext), g + " R12-010: B leaves the editor " + allTexts());
+    d.screen.storageStatusFrames = 0;
+}
+
 // ---- Gen I / II / IV: synthetic saves through the real strict parsers (openBackupTrainer). ----
 struct Opened {
     std::unique_ptr<Trainer::Trainer> trainer;
@@ -626,6 +752,14 @@ void gen4() {
         return p ? std::optional<uint16_t>(p->species()) : std::nullopt;
     };
     run(c);
+
+    // R12-010 (Diamond screenshot): export Box 1 / Slot 1, then open an Arbok's Met Location.
+    if (!e->boxedPokemon(0, 2)) {
+        auto arbok = e->createBoxDraft(0, 2, 24, &error);
+        check(arbok && e->stageCreateBoxPokemon(0, 2, *arbok, &error) && g4->refreshStagedPokemonPresentation(error),
+              "Gen 4 R12-010: an Arbok in Box 1 / Slot 3: " + error);
+    }
+    staleExportToast(*c.screen, "Gen 4 platinum_nds", 0, 0, 2, c.speciesAt);
 }
 
 // ---- Gen III (FireRed, one party Pikachu) and Gen V (Black, one party Pikachu). ----
@@ -713,6 +847,18 @@ void gen5() {
         return p && p->valid() && !p->empty() ? std::optional<uint16_t>(p->species()) : std::nullopt;
     };
     run(c);
+
+    // R12-010 (Black 2 screenshot): export Box 1 / Slot 1, then open an Arbok's Met Location.
+    {
+        namespace C = PokeVault::Integration::Gen5::Crypto;
+        auto arbok = pk5();
+        C::write16(arbok, 0x08, 24);
+        C::write16(arbok, 0x06, C::checksum(arbok));
+        const auto file = PF::decode(arbok, "arbok.pk5", error);
+        check(file && G5::importPokemonFile5(trainer->stagedPokemon(), *file, 0, 4, &error) &&
+                  trainer->refreshStagedPokemonPresentation(error), "Gen V R12-010: an Arbok in Box 1 / Slot 5: " + error);
+        staleExportToast(*out.screen, "Gen 5 black_nds", 0, 0, 4, c.speciesAt);
+    }
 
     // Party: Export to file writes the party record (220 bytes) and changes nothing.
     Driver d{*out.screen, {}, {}};

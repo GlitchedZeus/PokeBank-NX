@@ -1082,6 +1082,7 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     namespace GameContext = PokeBank::UIModel::ClassicGameContext;
     std::string record = state.party?"Party "+std::to_string(state.slot+1):"Box " + std::to_string(state.box + 1);
     if (!state.party && state.slot >= 0) record += " / Slot " + std::to_string(state.slot + 1);
+    TransientStatusScope::noteEditor(record);   // R12-010: the editor is a status-scope layer
     fb.drawText(workspaceX + 24, workspaceY + 50,
                 GameContext::contextLine(record, screen.sourceGameId,
                                          state.mode == Mode::Create ? GameContext::SurfaceMode::CreateDraft
