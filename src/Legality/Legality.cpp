@@ -1581,7 +1581,55 @@ namespace Legality {
                 }
             }
         } else if (!sourceProfile &&
+                   Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 1) {
+            // Native PK1 proves Gen I format, not which exact R/B/Y
+            // save once contained it. A move occurring in ANY audited
+            // game pool can be reported as POSSIBLE; tradebacks/events
+            // and evolution chronology remain unproven.
+            using Source=PokeVault::Integration::Gen1::SourceGame;
+            for(int i=0;i<4;++i){
+                const uint16_t moveId=pk.move(i);
+                if(moveId==0 || moveId>165)continue;
+                if(PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
+                       Source::Red,species,moveId) ||
+                   PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
+                       Source::Blue,species,moveId) ||
+                   PokeVault::Integration::Gen1::MoveCompatibility::canLearnMove(
+                       Source::Yellow,species,moveId)) {
+                    add(r,Severity::Info,
+                        "Source-free native PK1 move occurs in at least one audited Red/Blue/Yellow compatibility pool: " +
+                        std::string(Names::getMoveName(moveId)) +
+                        "; exact retail game and tradeback history remain unresolved",
+                        CheckIdentifier::Moves);
+                }
+            }
+        } else if (!sourceProfile &&
+                   Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 2 &&
+                   !pk.isEgg()) {
+            // Native PK2 retains the current move IDs, but may have
+            // passed through Gold/Silver/Crystal and the Time Capsule.
+            // This union gives evidence of a POSSIBLE pool, not proof
+            // of breeding, trainer or tradeback history.
+            using Source=PokeVault::Integration::Gen2::SourceGame;
+            for(int i=0;i<4;++i){
+                const uint16_t moveId=pk.move(i);
+                if(moveId==0 || moveId>251)continue;
+                if(PokeVault::Integration::Gen2::MoveCompatibility::canLearnMove(
+                       Source::Gold,species,moveId) ||
+                   PokeVault::Integration::Gen2::MoveCompatibility::canLearnMove(
+                       Source::Silver,species,moveId) ||
+                   PokeVault::Integration::Gen2::MoveCompatibility::canLearnMove(
+                       Source::Crystal,species,moveId)) {
+                    add(r,Severity::Info,
+                        "Source-free native PK2 move occurs in at least one audited Gold/Silver/Crystal native/Time Capsule pool: " +
+                        std::string(Names::getMoveName(moveId)) +
+                        "; breeding and transfer history remain unresolved",
+                        CheckIdentifier::Moves);
+                }
+            }
+        } else if (!sourceProfile &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
+                   !pk.isEgg() &&
                    !Gen4Origin::exactGen3GameId(pk.originGame()).empty()) {
             // Banked/native PK3 retains the original GBA game code even
             // without a save source. Use pinned pret-derived direct and
@@ -1619,6 +1667,95 @@ namespace Legality {
                     // are not exclusive-proof sources: never hard Invalid.
                 }
             }
+        } else if (!sourceProfile &&
+                   Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                   !pk.isEgg() &&
+                   Gen4Origin::isNativeRetailGen4(pk.originGame())) {
+            // Detached PK4 keeps its original retail game. The pinned
+            // PokeAPI-derived Gen IV level-up/egg/tutor/machine source
+            // pools can prove COMPATIBILITY with a direct original-game
+            // move, or availability in a *different* Gen IV game.
+            // Neither is a reconstructed acquisition/transfer history.
+            const auto retainedRetail=
+                Gen4Origin::exactRetailGameId(pk.originGame());
+            using Availability=PokeVault::Integration::Gen4MoveCompatibility::Availability;
+            for (int i=0;i<4;++i) {
+                const uint16_t moveId=pk.move(i);
+                if (moveId==0 || moveId>467)continue;
+                const auto available=
+                    PokeVault::Integration::Gen4MoveCompatibility::classify(
+                        retainedRetail,species,pk.form(),moveId,true);
+                if (available==Availability::Direct) {
+                    add(r,Severity::Info,
+                        "Source-free PK4 move is in the audited direct move pool for its stored original Generation IV game: " +
+                        std::string(Names::getMoveName(moveId)) +
+                        "; historical acquisition remains unresolved",
+                        CheckIdentifier::Moves);
+                } else if (available==Availability::Transfer) {
+                    add(r,Severity::Info,
+                        "Source-free PK4 move is compatible with another Generation IV game's audited move pool: " +
+                        std::string(Names::getMoveName(moveId)) +
+                        "; historical trading and acquisition remain unresolved",
+                        CheckIdentifier::Moves);
+                }
+                // Retained unknown or event-exclusive moves are never
+                // hard Invalid without historical encounter evidence.
+            }
+        } else if (!sourceProfile &&
+                   Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
+                   Gen4Origin::kind(pk.originGame()) ==
+                       Gen4Origin::Kind::Gen3Handheld) {
+            // Pal Park preserves the original GBA game ID inside PK4.
+            // Only a structurally compatible non-egg Pal Park record
+            // with consistent split Ball bytes may provide POSITIVE
+            // Gen III move-retention compatibility evidence. This
+            // does not prove the move was known at transfer time:
+            // a Pokémon can learn newer Gen IV moves after transfer.
+            const auto palPark=Gen4Transfer::classifyStoredFields(
+                3,pk.gen4MetLocationDP(),pk.gen4MetLocationExtended(),pk.isEgg());
+            if ((palPark==Gen4Transfer::Evidence::PalParkDiamondPearlFields ||
+                 palPark==Gen4Transfer::Evidence::PalParkPtHgssFields) &&
+                Gen4Transfer::validPalParkBallFields(
+                    palPark,pk.gen4BallDPPt(),pk.gen4BallHGSS())) {
+                using Source=PokeVault::Integration::Gen3::SourceGame;
+                using Availability=PokeVault::Integration::Gen3::Learnset::Availability;
+                Source original=Source::RubyGBA;
+                const auto oldGame=Gen4Origin::exactGen3GameId(pk.originGame());
+                if (exactGen3Source(oldGame,original)) {
+                    const std::array<uint16_t,4> moves{
+                        pk.move(0),pk.move(1),pk.move(2),pk.move(3)
+                    };
+                    for (const uint16_t moveId : moves) {
+                        // A Gen IV-only move may be acquired *after*
+                        // Pal Park and cannot prove impossible history.
+                        if (moveId==0 || moveId>354)continue;
+                        const auto available=
+                            PokeVault::Integration::Gen3::Learnset::classify(
+                                original,species,moveId,moves);
+                        if (available==Availability::Direct) {
+                            add(r,Severity::Info,
+                                "Source-free Pal Park PK4 move is compatible with the original GBA game's direct Generation III move pool: " +
+                                std::string(Names::getMoveName(moveId)) +
+                                "; actual move retention at transfer remains unproven",
+                                CheckIdentifier::Moves);
+                        } else if(available==Availability::Transfer) {
+                            add(r,Severity::Info,
+                                "Source-free Pal Park PK4 move is compatible with another Generation III game's audited move pool: " +
+                                std::string(Names::getMoveName(moveId)) +
+                                "; pre-transfer acquisition remains unresolved",
+                                CheckIdentifier::Moves);
+                        }
+                    }
+                }
+            }
+        } else if (!sourceProfile && pk.isEgg() &&
+                   (Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 2 ||
+                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 ||
+                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4)) {
+            // Unhatched eggs require parent-inheritance and egg-specific
+            // learnset analysis. Generic adult direct/tutor/TM/HM union
+            // pools can emit false warnings on an unknown parent history.
+            // Keep such history unresolved, not fabricated invalidity.
         } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
             for (int i = 0; i < 4; ++i) {
                 const uint16_t moveId = pk.move(i);
