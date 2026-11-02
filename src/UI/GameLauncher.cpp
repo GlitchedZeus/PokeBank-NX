@@ -130,6 +130,38 @@ const ReturnHostReadiness& returnHostReadiness() {
     return g_returnHost;
 }
 
+// What the outer loader will do after a plain emulator Quit depends on the loader that started
+// PokeBank (Round 15 R04). Read-only facts; host builds report "unknown".
+GameLaunchLoaderFacts currentLoaderFacts() {
+    GameLaunchLoaderFacts facts;
+#ifdef __SWITCH__
+    facts.known = true;
+    facts.loaderInfo = gameLaunchLoaderInfoLine(envGetLoaderInfo(),
+                                                static_cast<size_t>(envGetLoaderInfoSize()));
+    const AppletType applet = appletGetAppletType();
+    facts.isApplication = applet == AppletType_Application || applet == AppletType_SystemApplication;
+    facts.hbmenuPresent = regularFile("sdmc:/hbmenu.nro");
+    facts.pokeBankNroPath = g_gameLaunchReturnPath;
+#endif
+    return facts;
+}
+
+#ifdef __SWITCH__
+// Best-effort per-launch record for hardware diagnosis; never blocks or changes the launch.
+void writeLaunchHandoffRecord(const GameLaunchDescriptor& descriptor, const GameLaunchChainPlan& plan) {
+    const std::string runtimeDir = PokeBank::Paths::root() + "/runtime";
+    std::string dirError;
+    if (!PokeBank::Paths::ensureDirectoryTree(runtimeDir, &dirError)) return;
+    const std::string record = formatGameLaunchHandoffRecord(descriptor, plan, currentLoaderFacts());
+    const std::string target = runtimeDir + "/last-launch.txt";
+    FILE* f = std::fopen(target.c_str(), "wb");
+    if (!f) return;
+    const bool ok = std::fwrite(record.data(), 1, record.size(), f) == record.size();
+    std::fclose(f);
+    if (!ok) Utils::logErrorToFile("Launch record", "could not write runtime/last-launch.txt");
+}
+#endif
+
 GameLaunchReturnOptions returnOptionsFor(const ReturnHostReadiness& readiness) {
     GameLaunchReturnOptions options;
     if (readiness.ready) {
@@ -1397,6 +1429,7 @@ bool requestGameLaunch(const GameLaunchDescriptor& descriptor, std::string& erro
         }
         Utils::logInfoToFile(plan.viaReturnHost ? "Launch handoff via return host"
                                                 : "Launch handoff direct", plan.argv.c_str());
+        writeLaunchHandoffRecord(descriptor, plan);
         g_gameLaunchHandoffRequested = true;
         return true;
     }
@@ -1444,7 +1477,8 @@ bool planGameLaunchHandoff(const GameLaunchDescriptor& descriptor, GameLaunchCha
 
 std::string gameLaunchDialogNotice(const GameLaunchDescriptor& descriptor) {
     std::string notice = descriptor.launchNotice;
-    const std::string route = gameLaunchQuitRouteNotice(previewGameLaunchQuitRoute(descriptor));
+    const std::string route =
+        gameLaunchQuitNotice(previewGameLaunchQuitRoute(descriptor), currentLoaderFacts());
     if (!route.empty()) {
         if (!notice.empty()) notice += ' ';
         notice += route;

@@ -757,6 +757,120 @@ inline const char* gameLaunchQuitRouteNotice(GameLaunchQuitRoute route) noexcept
 }
 
 // ---------------------------------------------------------------------------------------------
+// Round 15 R04 (RetroArch Gen I-III quit). After a plain RetroArch Quit nothing is scheduled
+// (RetroArch b2538f12 platform_switch.c frontend_switch_exitspawn: FRONTEND_FORK_NONE returns),
+// so the OUTER loader that started PokeBank decides what follows. Stock nx-hbloader (82b95122
+// main.c loadNro) opens DEFAULT_NRO "sdmc:/hbmenu.nro" and, if that open fails, aborts with
+// diagAbortWithResult(MAKERESULT(Module_HomebrewLoader, 3)) = error 2347-0003. Forwarders and other
+// loaders behave as they were built. These facts are read before PokeBank exits; nothing here
+// changes the launch itself.
+// ---------------------------------------------------------------------------------------------
+struct GameLaunchLoaderFacts {
+    bool known = false;           // collected on the device (false on host builds)
+    std::string loaderInfo;       // gameLaunchLoaderInfoLine(envGetLoaderInfo())
+    bool isApplication = false;   // application (title override / forwarder) vs applet
+    bool hbmenuPresent = false;   // sdmc:/hbmenu.nro is a regular file
+    std::string pokeBankNroPath;  // argv[0] of the running PokeBank
+};
+
+enum class GameLaunchQuitExpectation : uint8_t {
+    None,
+    ReturnsToPokeBank,         // return host route
+    EmulatorLauncher,          // DraStic "Quit to launcher"
+    HomebrewMenu,              // stock hbloader, hbmenu present
+    LoaderErrorMissingHbmenu,  // stock hbloader, hbmenu missing: 2347-0003
+    LoaderDecides,             // forwarder / unknown loader (often HOME)
+};
+
+// First NUL-terminated part of envGetLoaderInfo(), control bytes replaced, capped at 96 bytes.
+inline std::string gameLaunchLoaderInfoLine(const char* data, size_t size) {
+    std::string out;
+    if (!data) return out;
+    for (size_t i = 0; i < size && data[i] != '\0' && out.size() < 96; ++i) {
+        const unsigned char c = static_cast<unsigned char>(data[i]);
+        out.push_back(c < 0x20 || c == 0x7F ? '?' : static_cast<char>(c));
+    }
+    return out;
+}
+
+inline bool gameLaunchLoaderIsStockHbloader(const GameLaunchLoaderFacts& facts) noexcept {
+    return facts.known && facts.loaderInfo.rfind("nx-hbloader", 0) == 0;
+}
+
+inline GameLaunchQuitExpectation gameLaunchQuitExpectation(GameLaunchQuitRoute route,
+                                                           const GameLaunchLoaderFacts& facts) {
+    switch (route) {
+        case GameLaunchQuitRoute::ReturnsToPokeBank: return GameLaunchQuitExpectation::ReturnsToPokeBank;
+        case GameLaunchQuitRoute::EmulatorLauncher:  return GameLaunchQuitExpectation::EmulatorLauncher;
+        case GameLaunchQuitRoute::LoaderDefault:
+            if (!gameLaunchLoaderIsStockHbloader(facts)) return GameLaunchQuitExpectation::LoaderDecides;
+            return facts.hbmenuPresent ? GameLaunchQuitExpectation::HomebrewMenu
+                                       : GameLaunchQuitExpectation::LoaderErrorMissingHbmenu;
+        case GameLaunchQuitRoute::None: break;
+    }
+    return GameLaunchQuitExpectation::None;
+}
+
+inline const char* gameLaunchQuitExpectationKey(GameLaunchQuitExpectation e) noexcept {
+    switch (e) {
+        case GameLaunchQuitExpectation::ReturnsToPokeBank:        return "returns-to-pokebank";
+        case GameLaunchQuitExpectation::EmulatorLauncher:         return "emulator-launcher";
+        case GameLaunchQuitExpectation::HomebrewMenu:             return "homebrew-menu";
+        case GameLaunchQuitExpectation::LoaderErrorMissingHbmenu: return "loader-error-2347-0003-missing-hbmenu";
+        case GameLaunchQuitExpectation::LoaderDecides:            return "loader-decides";
+        case GameLaunchQuitExpectation::None:                     break;
+    }
+    return "none";
+}
+
+// The launch dialog's quit sentence. Identical to gameLaunchQuitRouteNotice() except when PokeBank
+// can prove the stock loader will fail after Quit because sdmc:/hbmenu.nro is missing.
+inline const char* gameLaunchQuitNotice(GameLaunchQuitRoute route, const GameLaunchLoaderFacts& facts) {
+    if (gameLaunchQuitExpectation(route, facts) == GameLaunchQuitExpectation::LoaderErrorMissingHbmenu)
+        return "sdmc:/hbmenu.nro is missing: quitting may show error 2347-0003.";
+    return gameLaunchQuitRouteNotice(route);
+}
+
+// Per-launch record (runtime/last-launch.txt) the owner can send back after a quit test.
+inline std::string formatGameLaunchHandoffRecord(const GameLaunchDescriptor& descriptor,
+                                                 const GameLaunchChainPlan& plan,
+                                                 const GameLaunchLoaderFacts& facts) {
+    const auto clean = [](std::string_view value) {
+        std::string out;
+        out.reserve(value.size());
+        for (const char ch : value) {
+            const unsigned char c = static_cast<unsigned char>(ch);
+            out.push_back(c < 0x20 || c == 0x7F ? '?' : ch);
+        }
+        return out;
+    };
+    std::string out = "POKEBANK_LAUNCH_HANDOFF_V1\n";
+    const auto line = [&](const char* key, std::string_view value) {
+        out += key;
+        out += '=';
+        out += clean(value);
+        out += '\n';
+    };
+    const char* backend = descriptor.backend == GameLaunchBackend::RetroArch ? "retroarch"
+                        : descriptor.backend == GameLaunchBackend::HomebrewNro ? "homebrew-nro"
+                        : descriptor.backend == GameLaunchBackend::SwitchTitle ? "switch-title" : "none";
+    line("backend", backend);
+    line("provider", descriptor.providerId);
+    line("route", !plan.ok ? "refused" : plan.viaReturnHost ? "return-host" : "direct");
+    line("nro", plan.nroPath);
+    line("argv", plan.argv);
+    line("content", descriptor.contentPath);
+    line("pokebank", facts.known ? std::string_view(facts.pokeBankNroPath) : std::string_view("unknown"));
+    line("loader", facts.known && !facts.loaderInfo.empty() ? std::string_view(facts.loaderInfo)
+                                                            : std::string_view("unknown"));
+    line("applet", !facts.known ? "unknown" : facts.isApplication ? "application" : "applet");
+    line("hbmenu", !facts.known ? "unknown" : facts.hbmenuPresent ? "present" : "missing");
+    line("return_host_skipped", plan.returnHostSkipped);
+    line("quit", gameLaunchQuitExpectationKey(gameLaunchQuitExpectation(plan.quitRoute, facts)));
+    return out;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Return selection: Product Home's exact focus at the moment a launch handed off, so the next
 // PokeBank start (after the emulator quits) reopens on the same game instead of the first card.
 // Consumed once; text format, one key per line; values may not contain control characters.
