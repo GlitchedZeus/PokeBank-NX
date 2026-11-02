@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "policy": "Local-only sensitive inventories retain exact per-file paths. This public summary intentionally exposes categories/counts, not private filenames or conversation contents. No excluded item is authorized for deletion.",
+  "initial_classification_counts": {
+    "sensitive/private material": 6462,
+    "essential source/reference or local instructions; retain": 64959,
+    "essential source / Git recovery metadata": 3668,
+    "essential source or irreplaceable cache evidence; retain unless individually verified": 51723,
+    "recoverable generated data": 5612,
+    "irreplaceable evidence": 5426
+  },
+  "initial_classification_allocated_bytes": {
+    "sensitive/private material": 1089110016,
+    "essential source/reference or local instructions; retain": 3523354624,
+    "essential source / Git recovery metadata": 643059712,
+    "essential source or irreplaceable cache evidence; retain unless individually verified": 3607740416,
+    "recoverable generated data": 1552261120,
+    "irreplaceable evidence": 16761921536
+  },
+  "retained_local_only": [
+    {
+      "scope": "Global Codex auth/configuration/hooks/skills/history/conversations/attachments/database/backups and unrelated projects",
+      "private_backup": "No private endpoint authorized; keep local; UNSAFE TO DELETE"
+    },
+    {
+      "scope": "Read-only synced project sources",
+      "backup": "Not modified or deleted; remain local synced references; excluded from cleanup"
+    },
+    {
+      "scope": "Unreviewed Git object metadata",
+      "count_unreferenced_commit_objects_remaining": 6747,
+      "backup": "Original Git directories retained; named branch tips and 61 orphaned reflog commits independently remote-pinned; unknown remaining objects are not claimed externally backed up"
+    },
+    {
+      "scope": "Downloads/PokeBank-NX NRO and external temporary transaction remnants",
+      "backup": "Provenance/need not established; retained locally and excluded from cleanup"
+    },
+    {
+      "scope": "Dependency SDK/public source caches and unique fuzz/source-uncertain paths",
+      "backup": "Retained; not in cleanup list"
+    },
+    {
+      "scope": "Private archival inventories",
+      "backup": "Retained locally; never public release assets"
+    }
+  ],
+  "missing_compressed_originals": {
+    "count": 3,
+    "recovery": "Original compressed bytes cannot be claimed archived. All Part B 889 payload-name/hash bindings recovered with original manifest SHA; all 2846+688 older EABE payload bindings located and included in the audited storage parts. Final remote status is in VERIFICATION_REPORT.v2.json."
+  }
+}

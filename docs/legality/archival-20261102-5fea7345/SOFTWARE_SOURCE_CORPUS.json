@@ -1,0 +1,234 @@
+{
+  "schema": 1,
+  "host": "EndeavourOS / Arch Linux x86_64",
+  "engine_anchor": "2144a6820490fa81c932dd2d917b5153283feefc",
+  "versions": {
+    "git": "git version 2.56.0",
+    "gh": "gh version 2.102.1 (2026-10-21)",
+    "gcc": "gcc (GCC) 16.2.1 20260810",
+    "clang": "clang version 23.1.4",
+    "python": "Python 3.14.9",
+    "make": "GNU Make 4.4.1",
+    "tar": "tar (GNU tar) 1.35",
+    "dotnet": "10.0.100"
+  },
+  "source_pins": [
+    {
+      "path": ".cache/legality-hardening-20261027/pkhex261018",
+      "commit": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": ".cache/legality-hardening-20261027/pkhex6042",
+      "commit": "6042efa241a9925ce57e645329ea7f976deabdd3",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": ".cache/legality-hardening-20261027/pkhex6501",
+      "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-audit/vendor/PKSM-Core",
+      "commit": "aa22d7a4f87c0351baf7da5962ba5acd01039a7c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-audit/vendor/PKSM-Core/memecrypto",
+      "commit": "bd3b16ee2c12bd9ee353cf3098cb998e7880638c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-audit/vendor/PKSM-Core/pcg-cpp",
+      "commit": "428802d1a5634f96bcd0705fab379ff0113bcf13",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-gen12-independent/vendor/PKSM-Core",
+      "commit": "aa22d7a4f87c0351baf7da5962ba5acd01039a7c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-gen12-independent/vendor/PKSM-Core/memecrypto",
+      "commit": "bd3b16ee2c12bd9ee353cf3098cb998e7880638c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-gen12-independent/vendor/PKSM-Core/pcg-cpp",
+      "commit": "428802d1a5634f96bcd0705fab379ff0113bcf13",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-gen5-create/vendor/PKSM-Core",
+      "commit": "aa22d7a4f87c0351baf7da5962ba5acd01039a7c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-gen5-create/vendor/PKSM-Core/memecrypto",
+      "commit": "bd3b16ee2c12bd9ee353cf3098cb998e7880638c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-gen5-create/vendor/PKSM-Core/pcg-cpp",
+      "commit": "428802d1a5634f96bcd0705fab379ff0113bcf13",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-gen69-prep/vendor/PKSM-Core",
+      "commit": "aa22d7a4f87c0351baf7da5962ba5acd01039a7c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-gen69-prep/vendor/PKSM-Core/memecrypto",
+      "commit": "bd3b16ee2c12bd9ee353cf3098cb998e7880638c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-gen69-prep/vendor/PKSM-Core/pcg-cpp",
+      "commit": "428802d1a5634f96bcd0705fab379ff0113bcf13",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-legality-completion/vendor/PKSM-Core",
+      "commit": "aa22d7a4f87c0351baf7da5962ba5acd01039a7c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-legality-completion/vendor/PKSM-Core/memecrypto",
+      "commit": "bd3b16ee2c12bd9ee353cf3098cb998e7880638c",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "PokeBank-NX-legality-completion/vendor/PKSM-Core/pcg-cpp",
+      "commit": "428802d1a5634f96bcd0705fab379ff0113bcf13",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/EventsGallery",
+      "commit": "154d81be88453f6f78ec1d6d86e85fe0f2f5c240",
+      "dirty_paths_at_inventory": 16397,
+      "note": "EventsGallery sparse/deleted worktree retained; public fixture provenance read from pinned Git blobs."
+    },
+    {
+      "path": "research-sources/PKHeX",
+      "commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/pokecrystal",
+      "commit": "3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/pokeemerald",
+      "commit": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/pokefirered",
+      "commit": "037335f4c725d7c9aecdac87066f2002b4bd7e14",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/pokegold",
+      "commit": "ef0201d8daf47e8b3ea1518eacf890f37d4cd5e8",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/pokeheartgold",
+      "commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/pokeplatinum",
+      "commit": "637bb186e11b5ce1ee578981311c057498e57126",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/pokered",
+      "commit": "af519899719f0754965776faac0e836a3b906e6d",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/pokeruby",
+      "commit": "5784633ce4ef7ade1a7f2d2d0c288e3d5e6cdd7f",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    },
+    {
+      "path": "research-sources/pokeyellow",
+      "commit": "e89ead154b9968aa50eed9328ff2b38b6c194382",
+      "dirty_paths_at_inventory": 0,
+      "note": ""
+    }
+  ],
+  "official_pkhex_release": "26.10.18",
+  "official_pkhex_commit": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "older_ci_primary_pkhex_commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "fresh_differential": {
+    "gen34_seed": 2026110101,
+    "gen5_seed": 2026110102,
+    "mutations_per_baseline": 2,
+    "rows": 143934,
+    "exclusions": 0,
+    "gen3": {
+      "agree": 23991,
+      "total": 24567,
+      "false_invalid": 0,
+      "false_clean": 0,
+      "incomplete": 576,
+      "fishy": 2321,
+      "reference_errors": 0
+    },
+    "gen4": {
+      "agree": 37806,
+      "total": 38343,
+      "false_invalid": 21,
+      "false_clean": 0,
+      "incomplete": 516,
+      "fishy": 2385,
+      "reference_errors": 0
+    },
+    "gen5": {
+      "agree": 80344,
+      "total": 81024,
+      "false_invalid": 0,
+      "false_clean": 0,
+      "incomplete": 680,
+      "fishy": 19084,
+      "reference_errors": 344
+    }
+  },
+  "warnings": [
+    "Raw Gen IV false-Invalid records remain counted; adjudication is additional evidence.",
+    "Reference errors remain in total rows, with separate diagnostic reproduction.",
+    "No new authenticated real-acquisition specimens; public fixtures and conversion derivatives are labelled.",
+    "No full twenty-title UI/device acceptance; no 100% completeness claim."
+  ]
+}
