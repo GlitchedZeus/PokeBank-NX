@@ -88,6 +88,18 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
         if (!Gen2Picker::applyMoveChoice(state, picker.model.moveSlot, picker.model.moveChoice())) return false;
     } else if (picker.model.kind == Gen2Picker::Kind::Location) {
         if (!state.editable() || screen.sourceGameId != "crystal_gbc") return false;
+        if (picker.model.unverifiedEntrySelected()) {
+            // Round 12 (R12-004): "Other location (unverified)..." is not a location; it opens the
+            // unverified list (every other landmark, and templates above the current level).
+            const auto stored = Gen2Native::decodeCrystalCaughtData(state.working.caughtData);
+            picker.model.openLocation(screen.sourceGameId, state.working.species, stored.location,
+                                      stored.levelCode, state.working.level, true);
+            picker.model.index = 0;
+            picker.scroll.reset();
+            picker.locationViewport.reset();
+            screen.controllerNavigation.reset();
+            return true;
+        }
         const auto* encounter = picker.model.locationChoice();
         if (!encounter) {
             // Round 11 (FRLG closed-list fix, Crystal path): a native landmark with no Crystal
@@ -214,8 +226,14 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
         fb.drawFilledRect(0, 0, fb.getWidth(), fb.getHeight(), Color(0, 0, 0, 165));
         drawPanelSurface(fb, g.x, g.y, g.width, g.height, false, 18);
         SharedPopupDismiss::publish(g.x, g.y, g.width, g.height);   // 7D
-        fb.drawText(g.x + 24, g.y + 18, "Met Location", Colors::Text, TextStyle::Heading);
-        fb.drawText(g.x + 24, g.y + 52, "Where this Pokémon was caught in Crystal",
+        // Round 12 (R12-004): which list this is; a species with no verified row here says so.
+        namespace Policy = PokeVault::Integration::MetLocationPolicy;
+        fb.drawText(g.x + 24, g.y + 18, model.unverifiedList ? "Met Location (unverified)" : "Met Location",
+                    Colors::Text, TextStyle::Heading);
+        fb.drawText(g.x + 24, g.y + 52,
+                    model.unverifiedList ? Policy::kUnverifiedListScope
+                    : model.encounterChoices.empty() ? Policy::kMarkersOnlyScope
+                                                     : "Verified Crystal encounters + markers",
                     Colors::TextDim, TextStyle::Caption);
         overlay.locationViewport.ensure(model.index, count, g.visible);
         const int first = overlay.locationViewport.firstRow;

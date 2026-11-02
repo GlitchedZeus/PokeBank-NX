@@ -2,6 +2,7 @@
 #include "Integration/Gen1/Gen12CreateReview.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "UI/HistoryConsistencyFacts.h"
+#include "UI/Gen3EncounterPickerModel.h"
 
 #include "Encryption/Encryption3FRLG.h"
 #include "Enums/GameVersion.h"
@@ -267,6 +268,18 @@ uint32_t deterministicCreatePid(uint16_t tid, uint16_t sid, std::size_t box,
 
 std::string recordLabel(std::size_t box, std::size_t slot) {
     return "Box " + std::to_string(box + 1) + " / Slot " + std::to_string(slot + 1);
+}
+
+// Round 12 (R12-004 / R12-005): the Review note for a Met Location that is not a verified encounter
+// of the species / its pre-evolutions that the record's level reaches ("" when it is one). The same
+// line the editor's "Encounter origin" row shows (Gen3EncounterPickerModel.h).
+constexpr const char* kMetEvidenceLabel = "Met evidence";
+template <typename Record>
+std::string metEvidenceNote(const Record& record) {
+    namespace Picker = PokeBank::UIModel::Gen3EncounterPicker;
+    const auto choices = Picker::templatesForOrigin(record.originGame, record.species);
+    if (Picker::verifiedTemplate(choices, record.metLocation, record.metLevel, record.level)) return {};
+    return Picker::encounterOriginText(choices, record.species, record.metLocation, record.metLevel, record.level);
 }
 
 } // namespace
@@ -758,6 +771,14 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
     }
     field("Met Location",oldMet,newMet);
     field("Met Level",std::to_string(before->metLevel),std::to_string(after->metLevel));
+    // Round 12 (R12-004 / R12-005): a changed Met Location / Met Level that is not a verified
+    // encounter of the species (or its pre-evolutions) at the current level stays labelled
+    // unverified in Review (one note; nothing is refused or changed because of it).
+    if((before->metLocation!=after->metLocation || before->metLevel!=after->metLevel || before->level!=after->level) &&
+       after->metLocation!=0)
+        if(const auto note=metEvidenceNote(*after);!note.empty())
+            changes_.push_back({static_cast<uint8_t>(box),static_cast<uint8_t>(slot),location+" "+kMetEvidenceLabel,
+                                "",note,party,true});
     field("Friendship",std::to_string(before->friendship),std::to_string(after->friendship));
     field("PID",std::to_string(before->pid),std::to_string(after->pid));
     field("Shiny",before->shiny?"Yes":"No",after->shiny?"Yes":"No");
@@ -993,6 +1014,8 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     detail("Ball",Enums::getBallName(after->ball));
     detail("Met",Names::getMetLocationDisplayName(after->originGame,after->metLocation)+
            ", Lv "+std::to_string(after->metLevel));
+    if(after->metLocation!=0)
+        if(const auto note=metEvidenceNote(*after);!note.empty())detail(kMetEvidenceLabel,note);   // Round 12
     detail("Nature",Names::getNatureName(after->nature));
     detail("Gender",after->gender==0?"Male":after->gender==1?"Female":"Genderless");
     if(after->shiny)detail("Shiny","Yes");

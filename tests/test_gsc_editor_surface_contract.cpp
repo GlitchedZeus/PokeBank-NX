@@ -245,7 +245,10 @@ int main() {
     assert(finalFix.find("fb.clearClip()") != std::string::npos);
     assert(unified.find("\"OT Name\", p.originalTrainer") != std::string::npos);
     assert(unified.find("Met Level for selected Crystal encounter") != std::string::npos);
-    assert(unified.find("Encounter::forGameSpecies(screen.sourceGameId, p.species)") != std::string::npos);
+    // Round 12 (owner H08 "evolved", R12-005; updated pin): the Met Level row reads the species' and
+    // its pre-evolutions' Crystal templates that the current level reaches.
+    assert(unified.find("ExactGameMetLocations::crystalTemplatesWithAncestry(\n                    screen.sourceGameId, p.species)") != std::string::npos);
+    assert(unified.find("MetLocationPolicy::levelReachesEncounter(encounter.minLevel, p.level)") != std::string::npos);
 
     assert(unified.find("Choose a legitimate Crystal encounter first") != std::string::npos);
     assert(unified.find("focus.row == 10 && !caught.present") != std::string::npos);
@@ -269,8 +272,10 @@ int main() {
     // Round 11 (deliberately updated): the chooser draws each row through locationRowTextAt, which
     // keeps locationRowText for every catch template and labels the other native landmarks.
     assert(picker.find("Gen2Picker::locationRowTextAt(model, i)") != std::string::npos);
+    // Round 12 (owner H08 "evolved"; updated pin): a catch template still draws through
+    // locationRowText, plus "via <pre-evolution>" on an ancestry row.
     assert(readFile("include/UI/Gen2PokemonPickerModel.h").find(
-               "return locationRowText(model.encounterChoices[static_cast<std::size_t>(row)]);") != std::string::npos);
+               "return via(encounter, locationRowText(encounter));") != std::string::npos);
     assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("encounterTimeLabel(encounter.timeMask)") !=
            std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
@@ -305,7 +310,8 @@ int main() {
 
     // Crystal Met Location is species/exact-game aware; accepting it writes the native
     // location and encounter-minimum caught level rather than an arbitrary landmark.
-    assert(pickerModel.find("Encounter::forGameSpecies(sourceGameId, species)") != std::string::npos);
+    // Round 12 (owner H08 "evolved"; updated pin): the species' and its pre-evolutions' templates.
+    assert(pickerModel.find("MetRows::templatesWithAncestry(sourceGameId, species, 251)") != std::string::npos);
     // The Crystal location chooser is a proportional "Met Location" window (phase 11). Preserve
     // actual species-scoped encounters and native minimum-level presentation.
     assert(picker.find("\"Met Location\"") != std::string::npos);

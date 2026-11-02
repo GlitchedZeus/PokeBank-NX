@@ -150,7 +150,9 @@ void testStoredLocationKeptAndNotRepeated() {
     // A stored Hoenn id on an FRLG record (written by the old Create) is kept, not re-offered.
     const auto legacy = Picker::rowValuesWithNative(choices, 1, kFireRed);
     assert(legacy.front() == Picker::kKeepStoredRow);
-    for (std::size_t i = 1; i < legacy.size(); ++i) assert(kanto(Rows::otherNativeRowLocation(legacy[i])));
+    // (Round 12: Charmander's Pallet Town gift is now a template row too -- ancestry)
+    const auto legacyLocations = rowLocations(choices, legacy, 1);
+    for (std::size_t i = 1; i < legacyLocations.size(); ++i) assert(kanto(legacyLocations[i]));
     // Colosseum / XD origin: only the stored value can be kept.
     const auto cxd = Picker::rowValuesWithNative(Picker::templatesForOrigin(15, 25), 255, 15);
     assert(cxd.size() == 1 && cxd.front() == Picker::kKeepStoredRow);
@@ -169,7 +171,7 @@ void testRecordOriginNotSaveGame() {
     assert(std::any_of(fr.begin(), fr.end(), [](const auto& c) { return c.encounter.location == 126; }));
     for (const auto location : rowLocations(fr, Picker::rowValuesWithNative(fr, 0, kFireRed), 0))
         assert(kanto(location));
-    // The provenance edge still reads "met as Horsea (evo. 32)" from the record's own origin game.
+    // The provenance edge still reads "met as Horsea" (gate 32 kept in the data) from the record's own origin game.
     const auto seadra = Picker::templatesForOrigin(kSapphire, 117);
     assert(!seadra.empty() && seadra.front().evolved && seadra.front().minimumEvolutionLevel == 32);
     std::cout << "templates follow the record's origin game ok\n";

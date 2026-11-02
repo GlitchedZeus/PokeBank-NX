@@ -5,6 +5,7 @@
 #include "UI/Gen2PokemonSession.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 #include "UI/ExactGameMetLocations.h"
+#include "Names/SpeciesNames.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -38,13 +39,29 @@ struct Model {
     int index = 0;
     bool previewShiny = false;
     std::size_t moveSlot = 0;
+    // Round 12 (R12-004 / R12-005, Integration/Encounter/MetLocationPolicy.h): the Crystal Met
+    // Location chooser shows ONE of two lists.
+    //  DEFAULT (unverifiedList == false): encounterChoices = the verified Crystal templates of the
+    //    species and its pre-evolutions that its current level reaches; otherLocations = the Gift /
+    //    Event markers; then the one "Other location (unverified)..." row (unverifiedEntry).
+    //  UNVERIFIED (unverifiedList == true): levelBlocked = the templates above the current level
+    //    ("level is below this encounter"), then otherLocations = every other native landmark.
+    // Rows run encounterChoices, levelBlocked, otherLocations, then the entry row.
     std::vector<Encounter::EncounterTemplate> encounterChoices;
-    // Round 11 FRLG / Crystal: the other native Crystal landmarks, after the catch templates
-    // (ExactGameMetLocations.h). Row i >= encounterChoices.size() is otherLocations[i - size].
+    std::vector<Encounter::EncounterTemplate> levelBlocked;
     std::vector<uint16_t> otherLocations;
+    bool unverifiedList = false;
+    bool unverifiedEntry = false;
+    uint16_t locationSpecies = 0;   // the species the list was built for ("via Ekans" on ancestry rows)
 
     bool active() const noexcept { return kind != Kind::None; }
-    void close() noexcept { kind = Kind::None; encounterChoices.clear(); otherLocations.clear(); }
+    void close() noexcept {
+        kind = Kind::None;
+        encounterChoices.clear();
+        levelBlocked.clear();
+        otherLocations.clear();
+        unverifiedList = unverifiedEntry = false;
+    }
 
     void openSpecies(uint16_t current, bool shiny = false) noexcept {
         previewShiny = shiny;
@@ -64,22 +81,52 @@ struct Model {
         return static_cast<uint16_t>(std::clamp(index, 0, 251));
     }
 
+    // `currentLocation` / `currentLevel` are the stored caught landmark / level code (initial
+    // focus); `pokemonLevel` is the Pokémon's CURRENT level (R12-005: 0 = not judged).
     void openLocation(std::string_view sourceGameId, uint16_t species,
-                      uint8_t currentLocation, uint8_t currentLevel) {
-        kind = Kind::Location;
-        encounterChoices = Encounter::forGameSpecies(sourceGameId, species);
-        // Never a closed list: a species with no Crystal catch template (traded in, evolved, or
-        // not wild in Crystal) still gets every native landmark, labelled as unverified history.
+                      uint8_t currentLocation, uint8_t currentLevel,
+                      uint8_t pokemonLevel = 0, bool unverified = false) {
         namespace MetRows = PokeBank::UIModel::ExactGameMetLocations;
+        namespace Policy = PokeVault::Integration::MetLocationPolicy;
+        kind = Kind::Location;
+        locationSpecies = species;
+        unverifiedList = unverified;
+        unverifiedEntry = !unverified;
+        encounterChoices.clear();
+        levelBlocked.clear();
         otherLocations.clear();
-        for (const auto row : MetRows::otherNativeRows(
-                 MetRows::crystalOfferedLocations(),
-                 [&](uint16_t id) {
-                     return std::any_of(encounterChoices.begin(), encounterChoices.end(),
-                                        [id](const auto& e) { return e.location == id; });
-                 },
-                 false, 0))
-            otherLocations.push_back(MetRows::otherNativeRowLocation(row));
+        // Never a closed list: a species with no Crystal catch template (traded in, evolved, or
+        // not wild in Crystal) still has the markers and every native landmark (unverified list).
+        // One row per slot: Crystal lists a slot once per time of day; rows that differ only in
+        // time are one row whose detail names every time ("Morning/Day"), so the list stays short.
+        std::vector<Encounter::EncounterTemplate> all;
+        for (const auto& choice : MetRows::templatesWithAncestry(sourceGameId, species, 251)) {
+            const auto& e = choice.encounter;
+            const auto same = std::find_if(all.begin(), all.end(), [&](const auto& a) {
+                return a.species == e.species && a.location == e.location && a.method == e.method &&
+                       a.minLevel == e.minLevel && a.maxLevel == e.maxLevel && a.timeMask != 0 && e.timeMask != 0;
+            });
+            if (same != all.end()) same->timeMask = static_cast<uint8_t>(same->timeMask | e.timeMask);
+            else all.push_back(e);
+        }
+        for (const auto& encounter : all)
+            (Policy::levelReachesEncounter(encounter.minLevel, pokemonLevel) ? encounterChoices : levelBlocked)
+                .push_back(encounter);
+        if (unverified) encounterChoices.clear();
+        else levelBlocked.clear();
+        const auto reachedAt = [&](uint16_t id) {
+            return std::any_of(all.begin(), all.end(), [&](const auto& e) {
+                return e.location == id && Policy::levelReachesEncounter(e.minLevel, pokemonLevel);
+            });
+        };
+        const auto templateAt = [&](uint16_t id) {
+            return std::any_of(all.begin(), all.end(), [id](const auto& e) { return e.location == id; });
+        };
+        for (const auto id : MetRows::crystalOfferedLocations()) {
+            if (MetRows::crystalMarkerLocation(id) ? (unverified || reachedAt(id)) : (!unverified || templateAt(id)))
+                continue;
+            otherLocations.push_back(id);
+        }
         index = 0;
         for (int i = 0; i < static_cast<int>(encounterChoices.size()); ++i) {
             const auto& encounter = encounterChoices[static_cast<std::size_t>(i)];
@@ -89,26 +136,39 @@ struct Model {
                 return;
             }
         }
-        for (std::size_t i = 0; i < otherLocations.size(); ++i)
-            if (currentLocation != 0 && otherLocations[i] == currentLocation) {
-                index = static_cast<int>(encounterChoices.size() + i);
+        for (int i = 0; i < locationCount(); ++i)
+            if (const auto other = otherLocationChoiceAt(i); other && currentLocation != 0 && *other == currentLocation) {
+                index = i;
                 return;
             }
     }
     int locationCount() const noexcept {
-        return static_cast<int>(encounterChoices.size() + otherLocations.size());
+        return static_cast<int>(encounterChoices.size() + levelBlocked.size() + otherLocations.size()) +
+               (unverifiedEntry ? 1 : 0);
     }
-    // The catch template under the cursor, or nullptr on an other-native row.
+    // The verified catch template under the cursor (default list), or nullptr on any other row.
     const Encounter::EncounterTemplate* locationChoice() const noexcept {
         return index >= 0 && index < static_cast<int>(encounterChoices.size())
             ? &encounterChoices[static_cast<std::size_t>(index)] : nullptr;
     }
-    // The landmark of an other-native row under the cursor (no template; unverified history).
-    std::optional<uint8_t> otherLocationChoice() const noexcept {
-        const int other = index - static_cast<int>(encounterChoices.size());
-        if (index < 0 || other < 0 || other >= static_cast<int>(otherLocations.size())) return std::nullopt;
+    // A template above the current level at `row` (unverified list), or nullptr.
+    const Encounter::EncounterTemplate* levelBlockedAt(int row) const noexcept {
+        const int blocked = row - static_cast<int>(encounterChoices.size());
+        return row >= 0 && blocked >= 0 && blocked < static_cast<int>(levelBlocked.size())
+            ? &levelBlocked[static_cast<std::size_t>(blocked)] : nullptr;
+    }
+    // "Other location (unverified)..." at `row`: not a location; it opens the unverified list.
+    bool unverifiedEntryAt(int row) const noexcept { return unverifiedEntry && row == locationCount() - 1; }
+    bool unverifiedEntrySelected() const noexcept { return unverifiedEntryAt(index); }
+    // The landmark of a row that is not a verified template: a marker / other landmark, or the place
+    // of a template above the current level (no template is applied; unverified history).
+    std::optional<uint8_t> otherLocationChoiceAt(int row) const noexcept {
+        if (const auto* blocked = levelBlockedAt(row)) return static_cast<uint8_t>(blocked->location);
+        const int other = row - static_cast<int>(encounterChoices.size() + levelBlocked.size());
+        if (row < 0 || other < 0 || other >= static_cast<int>(otherLocations.size())) return std::nullopt;
         return static_cast<uint8_t>(otherLocations[static_cast<std::size_t>(other)]);
     }
+    std::optional<uint8_t> otherLocationChoice() const noexcept { return otherLocationChoiceAt(index); }
     void stepList(int delta) noexcept {
         const int count = kind == Kind::Species ? 251 : kind == Kind::Move ? 252 :
                           kind == Kind::Location ? locationCount() : 0;
@@ -214,21 +274,39 @@ inline LocationRowText locationRowText(const Encounter::EncounterTemplate& encou
                  std::to_string(encounter.minLevel);
     if (encounter.maxLevel != encounter.minLevel)
         out.detail += "–" + std::to_string(encounter.maxLevel);
-    const auto time = encounterTimeLabel(encounter.timeMask);
+    // Round 12: a slot met at every time of day (merged Morning/Day/Night rows) needs no time text.
+    const auto time = (encounter.timeMask & 0x0E) == 0x0E ? std::string() : encounterTimeLabel(encounter.timeMask);
     if (!time.empty()) out.detail += " · " + time;
     return out;
 }
 
-// Row `row` of the open Crystal Met Location chooser: a catch template, or an other native landmark
-// whose detail says it is not a listed catch (or names the Gift / Event marker), never a catch.
+// Row `row` of the open Crystal Met Location chooser: a verified catch template (an ancestry row
+// says the species it was met as), a template above the current level (says so), a Gift / Event
+// marker or other native landmark (unverified), or the "Other location (unverified)..." row.
 inline LocationRowText locationRowTextAt(const Model& model, int row) {
-    if (row >= 0 && row < static_cast<int>(model.encounterChoices.size()))
-        return locationRowText(model.encounterChoices[static_cast<std::size_t>(row)]);
-    const int other = row - static_cast<int>(model.encounterChoices.size());
-    if (row < 0 || other >= static_cast<int>(model.otherLocations.size())) return {"Unknown location", {}};
-    const auto location = model.otherLocations[static_cast<std::size_t>(other)];
-    return {Gen2Native::crystalCaughtLocationName(static_cast<uint8_t>(location)),
-            PokeBank::UIModel::ExactGameMetLocations::crystalOtherDetail(location)};
+    namespace Policy = PokeVault::Integration::MetLocationPolicy;
+    const auto via = [&](const Encounter::EncounterTemplate& encounter, LocationRowText text) {
+        if (model.locationSpecies != 0 && encounter.species != model.locationSpecies)
+            text.detail += " · via " + std::string(Names::getSpeciesName(encounter.species));
+        return text;
+    };
+    if (model.unverifiedEntryAt(row)) return {Policy::kUnverifiedListRowPlace, Policy::kUnverifiedListRowDetail};
+    if (row >= 0 && row < static_cast<int>(model.encounterChoices.size())) {
+        const auto& encounter = model.encounterChoices[static_cast<std::size_t>(row)];
+        return via(encounter, locationRowText(encounter));
+    }
+    if (const auto* blocked = model.levelBlockedAt(row)) {
+        // R12-005: kept, never offered as verified; method and time dropped so the reason fits.
+        LocationRowText text{Gen2Native::crystalCaughtLocationName(static_cast<uint8_t>(blocked->location)),
+                             "Lv. " + std::to_string(blocked->minLevel) + "+"};   // the minimum the level misses
+        text = via(*blocked, text);
+        text.detail += std::string("; ") + Policy::kLevelBelowEncounter;
+        return text;
+    }
+    const auto location = model.otherLocationChoiceAt(row);
+    if (!location) return {"Unknown location", {}};
+    return {Gen2Native::crystalCaughtLocationName(*location),
+            PokeBank::UIModel::ExactGameMetLocations::crystalOtherDetail(*location)};
 }
 
 } // namespace PokeBank::UIModel::Gen2PokemonPicker
