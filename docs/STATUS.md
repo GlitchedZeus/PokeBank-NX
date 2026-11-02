@@ -7,7 +7,7 @@
 | Area | Status |
 |---|---|
 | **Gen I–V application** (Game Boy, Game Boy Color, GBA and DS games played through emulators on the Switch) | The product. Active alpha, repaired round by round against the owner's hardware tests. Not yet accepted across all 20 releases. |
-| **Current candidate** | Round 13, `PokeBank-NX-Gen1-5-Candidate-9c301c48.nro`, SHA-256 `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d`, build run [41392463888](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/41392463888). **Awaiting owner hardware acceptance; not device tested.** Built from `fix/round12-gen15-repairs` (draft PR #333, stacked on #332); not on `main` yet. |
+| **Current candidate** | Round 13, `PokeBank-NX-Gen1-5-Candidate-9c301c48.nro`, SHA-256 `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d`, build run [41392463888](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/41392463888). Owner hardware test Nov 2, 2026: **15 PASS / 12 FAIL / 0 NOT TESTED** (27 checks), **not accepted** ([results](hardware/round13/OWNER_RESULTS_9c301c48.json)). Built from `fix/round12-gen15-repairs` (draft PR #333, stacked on #332); not on `main` yet. |
 | **Last owner hardware result** | Round 12 `066e1db9`: 20 PASS / 4 FAIL on the owner's 24-item checklist (Gen V move/review controls, Clone/Move pop-ups and carry cursor, Gen II/III Met Location lists, Bag Top Up). Round 13 targets those findings. |
 | **Gen VI–IX** | **Paused** on `development/gen6-plus`. Not feature complete. The first experimental hardware candidate (`5895e6b9`) **failed** owner testing. |
 | **Legality engine** | **Paused** at PR #314 (lanes #327 and #328). Read-only research engine, **not integrated into the app**. |

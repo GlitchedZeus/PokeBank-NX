@@ -13,7 +13,7 @@ Dates are the candidate commit dates.
 - Repository documentation reorganised: `docs/README.md` index, `docs/STATUS.md`, this changelog,
   contributor guide and security policy.
 
-## Round 13 — `9c301c48` (2026-11-02) — alpha candidate, NOT DEVICE TESTED
+## Round 13 — `9c301c48` (2026-11-02) — alpha candidate, owner-tested: 15 PASS / 12 FAIL, not accepted
 
 - NRO SHA-256 `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d`, build run 41392463888.
 - Addresses the Round 12 owner findings (R12-001 … R12-010): Gen V Boxes controls, routine Move/Clone

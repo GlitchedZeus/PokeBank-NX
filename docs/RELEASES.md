@@ -21,7 +21,7 @@ real Switch. A passing CI run, a newer commit or an earlier accepted build never
 
 | Build | Status | NRO SHA-256 |
 |---|---|---|
-| Round 13, `PokeBank-NX-Gen1-5-Candidate-9c301c48.nro` (commit `9c301c483af97acf60058546c9b35bfec45c7b0e`, build run [41392463888](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/41392463888), 177,118,897 bytes) | **Not yet tested**: awaiting owner hardware acceptance | `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d` |
+| Round 13, `PokeBank-NX-Gen1-5-Candidate-9c301c48.nro` (commit `9c301c483af97acf60058546c9b35bfec45c7b0e`, build run [41392463888](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/41392463888), 177,118,897 bytes) | **Partial**: owner-tested Nov 2, 2026, 15 PASS / 12 FAIL / 0 NOT TESTED ([results](hardware/round13/OWNER_RESULTS_9c301c48.json)); not accepted | `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d` |
 
 Round 13 is built from `fix/round12-gen15-repairs` (draft PR #333, stacked on #332) and is not on `main`.
 Checklist: [`RETEST_9c301c48.md`](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/hardware/RETEST_9c301c48.md).
@@ -46,7 +46,7 @@ acceptance.
 | 9 | `d6a20a2a` | `57b2c1186942473ee53f78df6f44bc5ab430acb0b86f26ecddc8326c87c0494a` | none recorded ([checklist](hardware/RETEST_d6a20a2a.md)) | **Not yet tested** (superseded) | [`nro/d6a20a2a`](https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/nro%2Fd6a20a2a) |
 | 10 | `3634d1e6` | `b6cd0b89e25c83627558b4d3d70949431c40947c3c8cd26fe46b67bb2c9e8cd9` | 34 / 13 / 1, recorded as the Round 11 worksheet ([checklist](hardware/RETEST_3634d1e6.md), [worksheet](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/hardware/ROUND11_OWNER_WORKSHEET.md)) | **Partial** | [`nro/3634d1e6`](https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/nro%2F3634d1e6) |
 | 12 | `066e1db9` | `ba6aea09f9032fcab52b397cdd9c9d04fdf5b9b9cb4babf2bfa2f0fa7bd63c03` | 20 / 4 / 0 on the owner's own 24-item checklist ([results](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/hardware/round12/README.md)) | **Partial** | [`nro/066e1db9`](https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/nro%2F066e1db9) |
-| 13 | `9c301c48` | `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d` | awaiting ([checklist](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/hardware/RETEST_9c301c48.md)) | **Not yet tested** | [`nro/9c301c48`](https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/nro%2F9c301c48) |
+| 13 | `9c301c48` | `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d` | 15 PASS / 12 FAIL ([results](hardware/round13/OWNER_RESULTS_9c301c48.json)) | **Partial** | [`nro/9c301c48`](https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/nro%2F9c301c48) |
 
 Round 11 was not a new build: it is the owner's worksheet for the Round 10 file. Run IDs, artifact IDs and sizes
 for Rounds 1–10 are in the [candidate NRO archive](hardware/NRO_ARCHIVE.md).
