@@ -54,10 +54,10 @@ jobs:
         working-directory: application
         run: |
           set -euo pipefail
-          make -f Makefile.host.classic_inventory host-classic-inventory
-          make -f Makefile.host.base build-host/test_inventory_ui_contract
+          make -f build-system/host/Makefile.host.classic_inventory host-classic-inventory
+          make -f build-system/host/Makefile.host.base build-host/test_inventory_ui_contract
           ./build-host/test_inventory_ui_contract
-          make -f Makefile.host.base build-host/test_inventory_ui_contract_sanitize
+          make -f build-system/host/Makefile.host.base build-host/test_inventory_ui_contract_sanitize
           ASAN_OPTIONS=detect_leaks=0 ./build-host/test_inventory_ui_contract_sanitize
           echo 'INVENTORY PRESENTATION STATE: PASS'
           echo 'sourceIsNew/stagedModified SEPARATION: PASS'
@@ -167,10 +167,10 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf build-host
-          make -f Makefile.host.classic_inventory host-classic-inventory
-          make -f Makefile.host.base build-host/test_legacy_frlg_browse
+          make -f build-system/host/Makefile.host.classic_inventory host-classic-inventory
+          make -f build-system/host/Makefile.host.base build-host/test_legacy_frlg_browse
           ./build-host/test_legacy_frlg_browse
-          make -f Makefile.host.base build-host/test_rby_readonly_bridge
+          make -f build-system/host/Makefile.host.base build-host/test_rby_readonly_bridge
           ./build-host/test_rby_readonly_bridge
           echo 'GEN I: PASS'
           echo 'GEN II: PASS'
