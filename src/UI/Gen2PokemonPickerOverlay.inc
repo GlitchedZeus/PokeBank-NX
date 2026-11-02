@@ -82,7 +82,7 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
         // policy. A Create draft's Pokerus and a chosen Crystal location that is no longer a catch of
         // the new species reset, and the status says so; an EXISTING Pokemon keeps its caught data
         // (it was cleared here before, in Edit too) and a misfit is flagged in the editor and Review.
-        if (const auto reset = state.speciesChangeResetStatus(); !reset.empty())
+        if (const auto reset = state.speciesChangeResetStatus(screen.sourceGameId); !reset.empty())
             screen.postStatus(reset, 300);
     } else if (picker.model.kind == Gen2Picker::Kind::Move) {
         if (!Gen2Picker::applyMoveChoice(state, picker.model.moveSlot, picker.model.moveChoice())) return false;
@@ -122,6 +122,7 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
                 state.crystalOtGender = Gen2Native::CrystalOtGenderChoice::Male;
             caught.originalTrainerFemale = Gen2Native::crystalOtGenderFemale(state.crystalOtGender);
             state.working.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
+            state.noteMetLocationChosen();   // Round 14 (owner R09): Create may now Add
             closePicker(screen, picker);
             return true;
         }
@@ -141,6 +142,7 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
         state.crystalMetTime = caught.timeOfDay;
         if (!choice.status.empty()) screen.postStatus(choice.status, 300);
         state.working.caughtData = Gen2Native::encodeCrystalCaughtData(caught);
+        state.noteMetLocationChosen();   // Round 14 (owner R09): Create may now Add
     } else {
         return false;
     }

@@ -351,7 +351,7 @@ int main() {
     // too. Session::setSpecies owns the policy now: a Create draft's no-longer-valid location resets
     // with a visible status; an existing Pokemon keeps its caught data and is flagged instead.
     assert(picker.find("state.working.caughtData = 0") == std::string::npos);
-    assert(picker.find("state.speciesChangeResetStatus()") != std::string::npos);
+    assert(picker.find("state.speciesChangeResetStatus(screen.sourceGameId)") != std::string::npos);   // Round 14 R09: exact game
 
     // Move slots must enter the accepted Gen I-style Move N contextual editor first.
     const auto contextualMoveEditor = unified.substr(unified.find("bool handleUnifiedMoveEditor("),

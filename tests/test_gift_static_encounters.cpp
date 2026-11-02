@@ -405,6 +405,7 @@ void crystalTimeRoundTrip() {
         const auto choice = Picker::caughtForTemplate(*c.encounter, c.pending, false);
         require(choice.caught.timeOfDay == c.time, what + ": written time");
         create.working.caughtData = Native::encodeCrystalCaughtData(choice.caught);
+        create.noteMetLocationChosen();   // what the picker does on this row (Round 14, owner R09)
         std::size_t slot = 99;
         require(create.add(*editor, 2, slot, error), what + ": add " + error);
         bool unverifiedNote = false;

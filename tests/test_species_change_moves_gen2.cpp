@@ -125,12 +125,25 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 create.working.pp == (std::array<uint8_t, 4>{}), "Create starts with no moves (C14 reversed)");
         require(create.setLevel(5), "Create level 5");
         std::size_t slot = 99;
-        require(!create.add(*createEditor, 2, slot, error) && error == "Choose at least one move before Add",
+        // Round 14 (owner R09, updated deliberately): Crystal also asks for its Met Location.
+        require(!create.add(*createEditor, 2, slot, error) &&
+                    error == (crystal ? "Choose a Met Location and at least one move before Add"
+                                      : "Choose at least one move before Add"),
                 "Add refuses a moveless Pokemon with the shared message: " + error);
         require(createEditor->finalizedBytes(error) == beforeBytes && !createEditor->hasPendingChanges(),
                 "a refused Add stages nothing");
         require(create.mode == SessionMode::Create, "the draft stays open");
         require(create.setMove(0, 84) && create.setMove(1, 45), "user picks Thunder Shock, Growl");
+        if (crystal) {
+            // Round 14 (owner R09): the user picks a Crystal Met Location (what the picker writes).
+            require(!create.add(*createEditor, 2, slot, error) && error == "Choose a Met Location before Add",
+                    "Crystal Create without a Met Location is refused: " + error);
+            namespace Native = PokeBank::UIModel::Gen2Native;
+            Native::CrystalCaughtData met;
+            met.present = true; met.timeOfDay = 2; met.levelCode = 5; met.location = 50;
+            create.working.caughtData = Native::encodeCrystalCaughtData(met);
+            create.noteMetLocationChosen();
+        }
         require(create.add(*createEditor, 2, slot, error), "Create add: " + error);
         const auto added = createEditor->boxedPokemon(2, slot, error);
         require(added && added->species == 25 && added->level == 5 &&
@@ -229,8 +242,8 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
     }
 
     // Round 11 follow-up (independent QA finding 1): every species 1-251 has at least one Crystal Met
-    // Location row, so no species x Crystal combination is empty. Crystal caught data stays optional
-    // (Create is not refused without it); a chosen row still round-trips through Add -> export ->
+    // Location row, so no species x Crystal combination is empty. Round 14 (owner R09): Create is
+    // refused until a row is chosen; a chosen row round-trips through Add -> export ->
     // strict reparse.
     // Round 12 (R12-004 / R12-005, owner H08 "pokemon crysal now has massive amounts for met lcoation
     // for paokmon that arnt legit"; updated deliberately): the chooser opens on the DEFAULT list --
@@ -337,7 +350,11 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 require(create.setSpecies(species, sourceId) && create.setMove(0, move),
                         "Crystal Create " + std::to_string(species));
                 require(create.setLevel(level), what + ": the Create level the lists were built for");
-                require(create.missingRequiredFields().empty(), "Crystal caught data stays optional");
+                // Round 14 (owner R09, updated deliberately): "met location should always be a part
+                // od the stuff before a pokemon is added ... pokemon crystal". A Crystal Create with
+                // no chosen Met Location is refused; choosing a row below makes it addable.
+                require(create.missingRequiredFields(game) == "Choose a Met Location before Add",
+                        "Crystal Create needs a chosen Met Location (owner R09)");
                 Picker::Model& list = fromUnverified ? all : model;
                 const int real = list.locationCount() - (list.unverifiedEntry ? 1 : 0);
                 list.index = species % real;
@@ -354,6 +371,7 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                     caught.location = *list.otherLocationChoice();
                 }
                 create.working.caughtData = Native::encodeCrystalCaughtData(caught);
+                create.noteMetLocationChosen();   // what the Met Location picker does on a choice
                 const auto note = Rows::crystalUnverifiedNote(sourceId, species, caught.location, caught.levelCode,
                                                               create.working.level);
                 // (a landmark that also has a verified row the level reaches reads verified exactly when
@@ -474,7 +492,7 @@ void createEntryStartsBlank() {
             body.find("seedNativeMoves") == std::string::npos, "beginCreate starts with the moveless default");
     const auto stage = src.find("bool stageCreate(TrainerViewScreen& screen) {");
     const auto stageBody = src.substr(stage, src.find("\n}\n", stage) - stage);
-    require(stageBody.find("state.missingRequiredFields()") < stageBody.find("state.add("),
+    require(stageBody.find("state.missingRequiredFields(Rules::exactGameFromSourceId(screen.sourceGameId))") < stageBody.find("state.add("),   // Round 14 R09: exact game
             "stageCreate checks the required fields before Add");
 }
 

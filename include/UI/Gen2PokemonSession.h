@@ -1,5 +1,7 @@
 #pragma once
 #include <algorithm>
+#include <optional>
+#include <string_view>
 #include "UI/ClassicDefaultNickname.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "UI/Gen12DVReroll.h"
@@ -42,9 +44,14 @@ struct Session {
     Gen2::PokemonRecord baseline{}, working{};
     // The last Create species change cleared a non-zero Pokerus / the chosen caught data.
     bool pokerusCleared = false, caughtDataCleared = false;
+    // Round 14 (owner R09): the Crystal Met Location picker marks a Create draft's location as
+    // CHOSEN (a stored value alone is never a choice). Gold / Silver have no caught data.
+    bool metLocationChosen = false;
+    void noteMetLocationChosen() noexcept { if (mode == SessionMode::Create) metLocationChosen = true; }
     void begin(const Gen2::PokemonRecord& p, SessionMode next) {
         baseline = working = p; mode = next; confirmExit = false;
         pokerusCleared = caughtDataCleared = false;
+        metLocationChosen = false;
         progression = next == SessionMode::Create ? ProgressionSource::Level : ProgressionSource::Unchanged;
     }
     bool editable() const noexcept { return mode == SessionMode::Create || mode == SessionMode::Edit; }
@@ -111,13 +118,16 @@ struct Session {
         pokerusCleared = history.resetPokerus && working.pokerus != 0;
         caughtDataCleared = history.resetMetLocation;
         if (history.resetPokerus) working.pokerus = 0;
-        if (history.resetMetLocation) working.caughtData = 0;
+        if (history.resetMetLocation) { working.caughtData = 0; metLocationChosen = false; }
         return true;
     }
-    // The status a Create species change posts: what it reset ("" when nothing was). Crystal caught
-    // data is optional, so a cleared location is reported, not demanded again.
-    std::string speciesChangeResetStatus() const {
-        return SpeciesChangeHistoryPolicy::resetStatus(pokerusCleared, caughtDataCleared, false);
+    // The status a Create species change posts: what it reset ("" when nothing was). Round 14
+    // (owner R09): a Crystal Create needs a chosen Met Location, so a cleared one asks for a new
+    // choice; Gold / Silver have no caught data and only report a clear.
+    std::string speciesChangeResetStatus(std::string_view sourceGameId = {}) const {
+        return SpeciesChangeHistoryPolicy::resetStatus(
+            pokerusCleared, caughtDataCleared,
+            PokeBank::UIModel::CreateRequiredFields::metLocationRequiredForGame(2, sourceGameId));
     }
     // Round 11 (owner H25 clarification 2): an existing Crystal Pokemon whose species was changed
     // in this session keeps its caught data; a misfit is flagged (editor + Review), never cleared.
@@ -221,12 +231,21 @@ struct Session {
         if (progression == ProgressionSource::Experience) create.experience = working.experience;
         return create;
     }
-    // The shared Round 11 rule (UI/CreateRequiredFields.h): Create needs at least one move (Gen II
-    // has no required met data; Crystal caught data stays optional); an Edit is refused only when
-    // this session took the last move away. Checked before anything is staged.
-    std::string missingRequiredFields() const {
+    // The shared rule (UI/CreateRequiredFields.h): Create needs at least one move and, in Crystal
+    // (Round 14, owner R09), a chosen Met Location; Gold / Silver store no met data. An Edit is
+    // refused only when this session took the last move away (an existing traded Crystal Pokemon
+    // keeps "no caught data"). `game` is the exact save's game; unknown asks for no location.
+    // Checked before anything is staged.
+    std::string missingRequiredFields(std::optional<Gen2::SourceGame> game = std::nullopt) const {
         namespace Required = PokeBank::UIModel::CreateRequiredFields;
-        if (mode == SessionMode::Create) return Required::message(Required::forCreate(2, false, working.moves), "Add");
+        const std::string_view gameId = !game ? std::string_view{}
+            : *game == Gen2::SourceGame::Crystal ? std::string_view("crystal_gbc")
+            : *game == Gen2::SourceGame::Silver ? std::string_view("silver_gbc") : std::string_view("gold_gbc");
+        // Chosen = the picker reported a choice AND it wrote real caught data (every picker row
+        // encodes a non-zero record: level code >= 2, or the Gift landmark).
+        const bool chosen = metLocationChosen && Gen2Native::decodeCrystalCaughtData(working.caughtData).present;
+        if (mode == SessionMode::Create)
+            return Required::message(Required::forCreateInGame(2, gameId, chosen, working.moves), "Add");
         if (mode == SessionMode::Edit) return Required::message(Required::forEdit(baseline.moves, working.moves));
         return {};
     }
@@ -234,7 +253,7 @@ struct Session {
         if (mode != SessionMode::Edit || !movesAllowCommit(editor.metadata().sourceGame)) {
             error = "Keep unavailable or incompatible new move"; return false;
         }
-        if (auto missing = missingRequiredFields(); !missing.empty()) { error = std::move(missing); return false; }
+        if (auto missing = missingRequiredFields(editor.metadata().sourceGame); !missing.empty()) { error = std::move(missing); return false; }
         if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
                     editor.stageBoxPokemonEdit(box,slot,editRequest(),error))) return false;
         mode = SessionMode::None; confirmExit = false; return true;
@@ -243,7 +262,7 @@ struct Session {
         if (mode != SessionMode::Create || !movesAllowCommit(editor.metadata().sourceGame)) {
             error = "Create unavailable or incompatible move"; return false;
         }
-        if (auto missing = missingRequiredFields(); !missing.empty()) { error = std::move(missing); return false; }
+        if (auto missing = missingRequiredFields(editor.metadata().sourceGame); !missing.empty()) { error = std::move(missing); return false; }
         if (!editor.stageAddBoxPokemon(box,createRequest(),slot,error)) return false;
         mode = SessionMode::None; return true;
     }

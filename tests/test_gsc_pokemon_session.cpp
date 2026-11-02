@@ -83,6 +83,14 @@ void runSession(const L& layout,SourceGame game) {
         // Serialize the same visible result into a separate staged workspace.
         auto committed = StagedEditor::create(*parsed.save, error); assert(committed);
         size_t changedSlot = 0;
+        if (mode == SessionMode::Create && game == SourceGame::Crystal) {
+            // Round 14 (owner R09, updated deliberately): a Crystal Create needs a chosen Met Location.
+            assert(!species.add(*committed, 2, changedSlot, error) && error == "Choose a Met Location before Add");
+            auto met = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(0);
+            met.present = true; met.timeOfDay = 1; met.levelCode = 2; met.location = 50;
+            species.working.caughtData = PokeBank::UIModel::Gen2Native::encodeCrystalCaughtData(met);
+            species.noteMetLocationChosen();
+        }
         if (mode == SessionMode::Create) assert(species.add(*committed, 2, changedSlot, error));
         else assert(species.keep(*committed, 0, 0, error));
         const auto result = committed->boxedPokemon(mode == SessionMode::Create ? 2 : 0, changedSlot, error);
@@ -292,7 +300,16 @@ void runSession(const L& layout,SourceGame game) {
     assert(session.setExperience(9267));assert(session.working.level==21);
     const auto visible=session.working;
     auto create=session.createRequest();assert(create.experience==9267);
-    size_t slot=0;assert(session.add(*editor,2,slot,error));
+    size_t slot=0;
+    if(game==SourceGame::Crystal){
+        // Round 14 (owner R09, updated deliberately): a Crystal Create needs a chosen Met Location.
+        assert(!session.add(*editor,2,slot,error)&&error=="Choose a Met Location before Add");
+        auto met=PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(0);
+        met.present=true;met.timeOfDay=1;met.levelCode=21;met.location=50;
+        session.working.caughtData=PokeBank::UIModel::Gen2Native::encodeCrystalCaughtData(met);
+        session.noteMetLocationChosen();
+    }
+    assert(session.add(*editor,2,slot,error));
     auto added=*editor->boxedPokemon(2,slot,error);
     assert(added.level==visible.level&&added.experience==visible.experience&&added.moves==visible.moves&&added.pp==visible.pp);
     assert(added.nickname==visible.nickname&&added.statExperience==visible.statExperience);
@@ -322,6 +339,13 @@ void runSession(const L& layout,SourceGame game) {
     session.begin(kept,SessionMode::Create);session.working.heldItem=0;
     for(size_t i=0;i<4;++i)session.setMove(i,0);
     assert(session.setMove(0,84)&&session.setPP(0,0));
+    if(game==SourceGame::Crystal){
+        // Round 14 (owner R09, updated deliberately): the Met Location picker's choice comes first.
+        auto met=PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(0);
+        met.present=true;met.timeOfDay=2;met.levelCode=5;met.location=50;
+        session.working.caughtData=PokeBank::UIModel::Gen2Native::encodeCrystalCaughtData(met);
+        session.noteMetLocationChosen();
+    }
     assert(session.add(*editor,4,slot,error));
     assert(editor->boxedPokemon(4,slot,error)->pp[0]==0);
 

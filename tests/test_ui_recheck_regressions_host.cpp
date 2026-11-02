@@ -113,6 +113,27 @@ bool chooseFirstMove(Driver& d) {
     return applied && visible("DRAFT");
 }
 
+// Round 14 (owner R09): a Crystal Create needs a chosen Met Location before Add. The real UI route:
+// R through the panels to the "Met Location" row, tap it (the shared row tap = A), A on the first
+// listed Crystal encounter. Returns true when the picker applied a choice and the draft is back.
+bool chooseCrystalMetLocation(Driver& d) {
+    // Tap the Details "Friendship" row (row 7) to focus it, Down x4 to "Location" (Pokerus, Met time,
+    // Met level, Location), A opens the Crystal Met Location picker, A takes its first listed row.
+    int x = -1, y = -1;
+    for (const auto& t : HostUi::visibleText)
+        if (t.text == "Friendship") { x = t.x + 4; y = t.y + 4; }
+    if (x < 0) return false;
+    HostUi::touch = {true, static_cast<u32>(x), static_cast<u32>(y)};
+    d.frame();
+    HostUi::touch = {false, static_cast<u32>(x), static_cast<u32>(y)};
+    d.frame();
+    for (int i = 0; i < 4; ++i) d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    const bool picker = visible("Met Location");
+    d.press(HidNpadButton_A);
+    return picker && visible("DRAFT") && !visible("Met Location");
+}
+
 void scenario(const std::string& game, bool crystal) {
     const std::string what = game + " Create: ";
     std::vector<uint8_t> bytes = fixture(crystal ? C : GS, true);
@@ -166,6 +187,16 @@ void scenario(const std::string& game, bool crystal) {
     check(visible("PIKACHU") && visible("DRAFT"), what + "B closes the picker; the draft is still Pikachu");
 
     check(chooseFirstMove(d), what + "Move 1 chosen through the real Move picker");
+    if (crystal) {
+        // Round 14 (owner R09, updated deliberately): "met location should always be a part od the
+        // stuff before a pokemon is added ... pokemon crystal". Add is refused until one is chosen.
+        d.press(HidNpadButton_B);   // exit question
+        d.press(HidNpadButton_A);   // Keep / Add -> refused
+        check(visible("DRAFT") && screen.storageStatus.find("Choose a Met Location") != std::string::npos,
+              what + "Add without a Met Location is refused and says why (got \"" + screen.storageStatus + "\")");
+        d.press(HidNpadButton_B);   // Back: keep editing
+        check(chooseCrystalMetLocation(d), what + "Met Location chosen through the real Crystal picker");
+    }
     d.press(HidNpadButton_B);   // exit question
     d.press(HidNpadButton_A);   // Keep / Add
 

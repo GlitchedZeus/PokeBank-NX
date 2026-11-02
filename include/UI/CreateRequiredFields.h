@@ -8,8 +8,11 @@
 //    (Gen V's H07 behaviour, now everywhere it applies). "Chosen" is a flag the Met Location picker
 //    sets, never "value != 0": a real native Pokemon can carry location 0 (Gen III R/S/E index 0)
 //    or a special / "----" / trade / event entry (Gen IV / V). Gen I has no met data and
-//    Gold/Silver have none; Crystal's caught data stays optional because "no caught data" is
-//    native for a traded Pokemon. No field is invented.
+//    Gold/Silver have none, so they never ask. Crystal stores caught data, and Round 14 (owner R09,
+//    Round 13 hardware: "met location should always be a part od the stuff before a pokemon is
+//    added ... pokemon crystal") makes a Crystal CREATE need a chosen Met Location too: the exact
+//    game decides (metLocationRequiredForGame), never the generation alone. "No caught data" stays
+//    native only for an EXISTING (e.g. traded) Pokemon: Edit never demands one. No field is invented.
 //  - at least one move, in every generation. This is a PokeBank APP POLICY, not a legality or
 //    native-format rule: the formats store a moveless Pokemon without complaint, but PokeBank wants
 //    every Pokemon it adds to be usable in battle. A new Create draft starts with no moves (the
@@ -43,14 +46,31 @@ template <class Moves>
     return false;
 }
 
-// Gen III-V store a Met Location every new Pokemon must have; Gen I and Gen II do not require one.
+// Generation-level rule: every Gen III-V game stores a Met Location every new Pokemon must have.
+// Gen I has none. Gen II is game-dependent (Crystal yes, Gold/Silver no), so a Gen II caller must
+// use the exact-game rule below; this generation-only form answers "not every Gen II game".
 [[nodiscard]] constexpr bool metLocationRequired(int generation) noexcept {
     return generation >= 3 && generation <= 5;
+}
+
+// Exact-game rule (Round 14, owner R09): the one Create gate every generation's Add/Keep asks.
+// Crystal (crystal_gbc) stores caught data, so its Create needs a chosen Met Location like Gen III-V;
+// Red/Blue/Yellow and Gold/Silver store no met data and never ask.
+[[nodiscard]] constexpr bool metLocationRequiredForGame(int generation, std::string_view gameId) noexcept {
+    if (generation == 2) return gameId == "crystal_gbc";
+    return metLocationRequired(generation);
 }
 
 template <class Moves>
 [[nodiscard]] constexpr Missing forCreate(int generation, bool metLocationChosen, const Moves& moves) noexcept {
     return {metLocationRequired(generation) && !metLocationChosen, !hasAnyMove(moves)};
+}
+
+// Create in an exact game (preferred): Crystal included.
+template <class Moves>
+[[nodiscard]] constexpr Missing forCreateInGame(int generation, std::string_view gameId,
+                                                bool metLocationChosen, const Moves& moves) noexcept {
+    return {metLocationRequiredForGame(generation, gameId) && !metLocationChosen, !hasAnyMove(moves)};
 }
 
 // Edit: refused only when this session emptied a moveset that had a move.

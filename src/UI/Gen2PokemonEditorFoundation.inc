@@ -313,7 +313,8 @@ bool stageCreate(TrainerViewScreen& screen) {
         screen.postStatus("Add blocked: correct red incompatible move rows first", 300);
         return false;
     }
-    if (const auto missing = state.missingRequiredFields(); !missing.empty()) {
+    // Round 14 (owner R09): the exact game decides; Crystal Create needs a chosen Met Location.
+    if (const auto missing = state.missingRequiredFields(Rules::exactGameFromSourceId(screen.sourceGameId)); !missing.empty()) {
         screen.postStatus(missing, 300);
         return false;
     }
@@ -509,7 +510,7 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             if (!result.accepted) return;
             state.setSpecies(static_cast<uint16_t>(result.value), screen.sourceGameId);
             // A Create reset is visible: the status names what was reset (Pokerus, caught data).
-            if (const auto reset = state.speciesChangeResetStatus(); !reset.empty())
+            if (const auto reset = state.speciesChangeResetStatus(screen.sourceGameId); !reset.empty())
                 screen.postStatus(reset, 300);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
                 p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
