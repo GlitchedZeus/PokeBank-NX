@@ -55,7 +55,7 @@ Run from the repository root, using distinct build folders for each compiler or
 configuration. Clang runs against the untouched integration baseline:
 
 ```sh
-make -f Makefile.host.gen5-create CXX=clang++ CREATE_BUILD=build-host/gen5-create-clang test debug sanitize
+make -f build-system/host/Makefile.host.gen5-create CXX=clang++ CREATE_BUILD=build-host/gen5-create-clang test debug sanitize
 ```
 
 `test_gen5_native_create.cpp` has a test-only decoder with its own byte reads,
@@ -76,7 +76,7 @@ production tree. After applying them there, one may run the new tests from this
 checkout with the patched dependency headers first on the include path:
 
 ```sh
-make -f Makefile.host.gen5-create CPPFLAGS=-I/absolute/test-checkout/include CREATE_BUILD=build-host/gen5-create-patched test debug sanitize integration integration-sanitize
+make -f build-system/host/Makefile.host.gen5-create CPPFLAGS=-I/absolute/test-checkout/include CREATE_BUILD=build-host/gen5-create-patched test debug sanitize integration integration-sanitize
 ```
 
 Without the patches GCC 16 debug/sanitizer compilation fails in existing
