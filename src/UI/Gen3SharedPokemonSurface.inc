@@ -17,6 +17,7 @@
 #include "Integration/Gen3/Gen3ExportTransaction.h"
 #include "Integration/Gen3/Gen3LearnsetTable.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Integration/Encounter/MetListScope.h"
 #include "Legacy/FRLGReadOnlyTrainer.h"
 #include "Enums/Ball.h"
 #include "Enums/GameVersion.h"
@@ -600,7 +601,7 @@ std::pair<std::string, std::string> metLocationChoiceText(const State& state, ui
     // markers name themselves, and keep-stored is the save's own value, never judged.
     const auto& stored = state.session.working;
     auto text = EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,
-                                         stored.metLocation, stored.metLevel, stored.level);
+                                         stored.metLocation, stored.metLevel, stored.level, stored.species);
     return {std::move(text.place), std::move(text.detail)};
 }
 
@@ -1394,6 +1395,9 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
             // A Create reset is visible: the status names what was reset (Pokerus, Met Location).
             if (const auto reset = state.session.speciesChangeResetStatus(); !reset.empty())
                 screen.postStatus(reset, 300);
+            // Round 13 owner decision 9: an existing Pokemon keeps its level; an EXP change is named.
+            else if (const auto exp = state.session.speciesChangeExperienceNote(); !exp.empty())
+                screen.postStatus(exp, 300);
         }
         else
             screen.postStatus("Species is not representable in Generation III");
@@ -1821,7 +1825,7 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
     if (!staged || (!staged->hasPendingChanges() &&
                     !(inventory && inventory->hasPendingChanges()) &&
                     !(trainer && trainer->hasPendingChanges()))) {
-        screen.postStatus("No staged Generation III changes to export", 240);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::kNothingToExport, 240);
         return;
     }
     std::string error;
@@ -1834,7 +1838,7 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
     const std::string timestamp = Utils::getTimestamp();
     if (!PokeBank::Paths::ensureDirectoryTree(root, &error) ||
         !PokeBank::Paths::isSafeTimestamp(timestamp)) {
-        screen.postStatus(error.empty() ? "Could not prepare the Generation III export folder" : error, 420);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error.empty() ? "could not prepare the export folder" : error), 420);
         return;
     }
     Gen3::Gen3ExportRequest request;
@@ -1850,10 +1854,10 @@ void exportStagedGen3Copy(TrainerViewScreen& screen) {
     // save carries every workspace.
     const auto result = Gen3::publishVerifiedGen3Export(*staged, request, inventory, trainer);
     if (!result.success) {
-        screen.postStatus(result.error.empty() ? "Verified Generation III export failed" : result.error, 480);
+        screen.postStatus(PokeBank::UIModel::ExportMessages::failed(result.error), 480);
         return;
     }
-    screen.postStatus("Verified copy exported: " + result.directory + "/edited.sav (source unchanged)", 600);
+    screen.postStatus(PokeBank::UIModel::ExportMessages::exported(result.directory + "/edited.sav"), 600);
 }
 
 bool handleReview(TrainerViewScreen& screen, State& state, u64 down, const TouchInput& touch) {
@@ -2117,9 +2121,16 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
     if (metLocationList) {
         // Round 12 (R12-004): which list this is; a species with no verified row here says so.
         namespace Policy = PokeVault::Integration::MetLocationPolicy;
-        const char* scope = state.metUnverifiedList ? Policy::kUnverifiedListScope
-            : EncounterPicker::verifiedRowCount(state.encounterChoices, state.pickerValues) == 0
-                ? Policy::kMarkersOnlyScope : Policy::kDefaultListScope;
+        // Round 14 (R06 / P1-9, Integration/Encounter/MetListScope.h): the shared caption says why a
+        // list has no verified row ("No catch at Lv. 5; 1 needs Lv. 25+ (unverified list)").
+        PokeVault::Integration::MetListScope::LevelGap gap;
+        gap.level = state.session.working.level;
+        for (const auto& choice : state.encounterChoices)
+            if (!EncounterPicker::levelReached(choice, gap.level))
+                gap.add(EncounterPicker::encounterOf(choice).location, EncounterPicker::encounterOf(choice).minLevel);
+        const std::string scope = state.metUnverifiedList ? std::string(Policy::kUnverifiedListScope)
+            : PokeVault::Integration::MetListScope::defaultScope(
+                  EncounterPicker::verifiedRowCount(state.encounterChoices, state.pickerValues), gap);
         fb.drawText(x + 165, y + 55, SharedMovesPanel::fit(fb, scope, w - 195, TextStyle::Caption),
                     Colors::TextSecondary, TextStyle::Caption);
     }

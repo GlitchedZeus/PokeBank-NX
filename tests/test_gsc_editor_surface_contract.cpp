@@ -260,7 +260,10 @@ int main() {
     assert(unified.find("crystalAllowedTimeMask") != std::string::npos);
     // Met Time cycles inline (round 2 phase 11) over the same pending/recorded + allowed-time rules.
     assert(unified.find("Selector::nextMetTime(caught.timeOfDay, true, crystalAllowedTimeMask(screen, p, caught))") != std::string::npos);
-    assert(picker.find("resolvedMetTime = state.crystalMetTime") != std::string::npos);
+    // Round 13 (owner decision 8 "do not lose encounter-time distinctions"; updated pin): the
+    // pending Met Time is resolved by the shared model rule, which states any defaulted time.
+    assert(picker.find("Gen2Picker::caughtForTemplate(\n            *encounter, state.crystalMetTime,") != std::string::npos);
+    assert(picker.find("if (!choice.status.empty()) screen.postStatus(choice.status, 300);") != std::string::npos);
     assert(unified.find("passiveViewMoveColumn") != std::string::npos);
     assert(parity.find("passiveViewMoveColumn") != std::string::npos);
     assert(unified.find("Intentionally do not touch p.caughtData") != std::string::npos);
@@ -274,9 +277,14 @@ int main() {
     assert(picker.find("Gen2Picker::locationRowTextAt(model, i)") != std::string::npos);
     // Round 12 (owner H08 "evolved"; updated pin): a catch template still draws through
     // locationRowText, plus "via <pre-evolution>" on an ancestry row.
+    // Round 13 owner decision (Nov 2, updated pin): an access-prerequisite row (GS Ball Celebi) adds
+    // "; access unverified" after the same locationRowText + via text.
     assert(readFile("include/UI/Gen2PokemonPickerModel.h").find(
-               "return via(encounter, locationRowText(encounter));") != std::string::npos);
-    assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("encounterTimeLabel(encounter.timeMask)") !=
+               "auto text = via(encounter, locationRowText(encounter));") != std::string::npos);
+    assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("Gifts::kAccessUnverified") != std::string::npos);
+    // Round 13 (owner decision 8 "do not lose encounter-time distinctions"; updated pin): every
+    // timed row names its times in the short form ("morn/day", "night", "any time").
+    assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("encounterTimeShortLabel(encounter.timeMask)") !=
            std::string::npos);
     assert(sharedShell.find("drawVerticalScrollIndicator") != std::string::npos);
     assert(finalFix.find("drawVerticalScrollIndicator") != std::string::npos);
@@ -294,8 +302,10 @@ int main() {
 
     const auto overlay = readFile("src/UI/TrainerViewScreenGSCOverlay.inc");
     assert(overlay.find("publishVerifiedStagedEditorExport(editor, request)") != std::string::npos);
-    assert(overlay.find("Verified staged export: ") != std::string::npos);
-    assert(overlay.find("source remains unchanged") != std::string::npos);
+    // Round 14 R08 (owner regression list "save-export messages"): the one Gen I-V wording
+    // (UI/ExportMessages.h), which says the original save is unchanged.
+    assert(overlay.find("PokeBank::UIModel::ExportMessages::exported(exportDir)") != std::string::npos);
+    assert(overlay.find("PokeBank::UIModel::ExportMessages::failed(error)") != std::string::npos);
     assert(overlay.find("std::fopen") == std::string::npos);
     assert(overlay.find("std::fwrite") == std::string::npos);
     assert(overlay.find("writeBytes(") == std::string::npos);
@@ -323,8 +333,11 @@ int main() {
     assert(picker.find("Gen2Picker::locationRowTextAt(model, i)") != std::string::npos);
     assert(pickerModel.find("model.encounterChoices[static_cast<std::size_t>(row)]") != std::string::npos);
     assert(picker.find("picker.model.otherLocationChoice()") != std::string::npos);
-    assert(picker.find("encounter->minLevel") != std::string::npos);
-    assert(picker.find("Encounter::timeAllowed(*encounter, resolvedMetTime)") != std::string::npos);
+    // Round 13 (owner decisions 7 / 8; updated pin): the template's level / allowed-time rule moved
+    // to the shared model function caughtForTemplate, which the overlay calls.
+    assert(pickerModel.find("std::clamp<int>(encounter.minLevel, 2, 63)") != std::string::npos);
+    assert(pickerModel.find("!Encounter::timeAllowed(encounter, time)") != std::string::npos);
+    assert(picker.find("Gen2Picker::caughtForTemplate(") != std::string::npos);
     assert(picker.find("drawPokerusPicker") == std::string::npos);
     assert(picker.find("Kind::Pokerus") == std::string::npos);
     assert(picker.find("Pokerus strain") == std::string::npos);
@@ -340,7 +353,7 @@ int main() {
     // too. Session::setSpecies owns the policy now: a Create draft's no-longer-valid location resets
     // with a visible status; an existing Pokemon keeps its caught data and is flagged instead.
     assert(picker.find("state.working.caughtData = 0") == std::string::npos);
-    assert(picker.find("state.speciesChangeResetStatus()") != std::string::npos);
+    assert(picker.find("state.speciesChangeResetStatus(screen.sourceGameId)") != std::string::npos);   // Round 14 R09: exact game
 
     // Move slots must enter the accepted Gen I-style Move N contextual editor first.
     const auto contextualMoveEditor = unified.substr(unified.find("bool handleUnifiedMoveEditor("),

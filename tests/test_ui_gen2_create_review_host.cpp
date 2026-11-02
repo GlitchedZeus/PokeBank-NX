@@ -113,6 +113,25 @@ bool chooseFirstMove(Driver& d) {
 
 constexpr const char* kReviewTitle = "Review Pending Changes";
 
+// Round 14 (owner R09): a Crystal Create needs a chosen Met Location before Add. Real UI route: tap
+// the Details "Friendship" row (row 7) to focus it, Down x4 to "Location", A opens the Crystal Met
+// Location picker, A takes its first listed row.
+bool chooseCrystalMetLocation(Driver& d) {
+    int x = -1, y = -1;
+    for (const auto& t : HostUi::visibleText)
+        if (t.text == "Friendship") { x = t.x + 4; y = t.y + 4; }
+    if (x < 0) return false;
+    HostUi::touch = {true, static_cast<u32>(x), static_cast<u32>(y)};
+    d.frame();
+    HostUi::touch = {false, static_cast<u32>(x), static_cast<u32>(y)};
+    d.frame();
+    for (int i = 0; i < 4; ++i) d.press(HidNpadButton_Down);
+    d.press(HidNpadButton_A);
+    const bool picker = visible("Met Location");
+    d.press(HidNpadButton_A);
+    return picker && visible("DRAFT") && !visible("Met Location");
+}
+
 void scenario(const std::string& game, bool crystal, bool unown) {
     const std::string what = game + (unown ? " Unown" : " Pikachu") + " Create";
     std::vector<uint8_t> bytes = fixture(crystal ? C : GS, true);
@@ -138,6 +157,8 @@ void scenario(const std::string& game, bool crystal, bool unown) {
     openCreate(d, 1);
     if (unown) chooseSpecies(d, downs);
     check(chooseFirstMove(d), what + ": Move 1 chosen through the real Move picker");
+    // Round 14 (owner R09, updated deliberately): Crystal Add needs a chosen Met Location.
+    if (crystal) check(chooseCrystalMetLocation(d), what + ": Met Location chosen through the real Crystal picker");
     dump("create 1");
     check(visible(title) && visible("DRAFT"), what + ": the Create workspace shows the " + title + " draft");
     d.press(HidNpadButton_B);

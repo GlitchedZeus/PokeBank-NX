@@ -99,6 +99,14 @@ void runCreateParity(const L& layout, SourceGame game) {
         std::array<uint16_t,6>{1,2,3,4,5,6}) == std::array<uint16_t,6>{1,2,3,4,5,6}));
 
     size_t slot = 0;
+    if (game == SourceGame::Crystal) {
+        // Round 14 (owner R09, updated deliberately): a Crystal Create needs a chosen Met Location.
+        assert(!session.add(*editor, 2, slot, error) && error == "Choose a Met Location before Add");
+        auto met = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(0);
+        met.present = true; met.timeOfDay = 1; met.levelCode = 18; met.location = 50;
+        session.working.caughtData = PokeBank::UIModel::Gen2Native::encodeCrystalCaughtData(met);
+        session.noteMetLocationChosen();
+    }
     assert(session.add(*editor, 2, slot, error));
     const auto added = editor->boxedPokemon(2, slot, error);
     assert(added);

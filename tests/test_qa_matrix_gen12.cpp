@@ -1500,6 +1500,17 @@ void runGen2Version(Matrix& m, const Spec& spec) {
             c.expect(!session.setLevel(0) && !session.setLevel(101), "level outside 1..100 accepted");
             c.expect(!session.setMove(0, 252), "move 252 accepted");
             size_t slot = 0;
+            if (crystal) {
+                // Round 14 (owner R09, updated deliberately): a Crystal Create needs a chosen Met
+                // Location; the picker writes real caught data and marks it chosen.
+                c.expect(!session.add(*e, 2, slot, error) && error == "Choose a Met Location before Add",
+                         "Crystal Add without a Met Location accepted: " + error);
+                namespace Native = PokeBank::UIModel::Gen2Native;
+                Native::CrystalCaughtData met;
+                met.present = true; met.timeOfDay = 2; met.levelCode = 5; met.location = 50;
+                session.working.caughtData = Native::encodeCrystalCaughtData(met);
+                session.noteMetLocationChosen();
+            }
             c.expect(session.add(*e, 2, slot, error), "Session::add: " + error);
             G2::BoxPokemonCreate none{};
             size_t ignored = 0;

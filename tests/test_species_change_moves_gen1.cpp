@@ -141,8 +141,7 @@ void run(SourceGame game) {
     for (const uint16_t species : {26, 22, 1, 150, 129, 25}) {
         const auto was = *editor->boxedPokemon(2, 0, error);
         BoxPokemonEdit edit;
-        edit.species = species;
-        edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId(game), species);
+        edit.species = species;   // Round 13 owner decision 9: the UI stages no level (it is kept)
         const auto slots = Reset::gen1(editor.get(), species, was.moves, was.pp, was.ppUps);
         Reset::writeEdit(slots, edit);
         if (Required::forEdit(was.moves, *edit.moves).move) {
@@ -187,8 +186,7 @@ void run(SourceGame game) {
     require(editor->stageEdit(2, 0, teach, error), "teach: " + error);
     const auto taught = *editor->boxedPokemon(2, 0, error);
     BoxPokemonEdit edit;
-    edit.species = 22;
-    edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId(game), 22);
+    edit.species = 22;   // Round 13 owner decision 9: the UI stages no level (it is kept)
     Reset::writeEdit(Reset::gen1(editor.get(), 22, taught.moves, taught.pp, taught.ppUps), edit);
     require(*edit.moves == (std::array<uint8_t, 4>{45, 0, 0, 0}), "Fearow keeps Growl only");
     require(editor->stageEdit(2, 0, edit, error), "stage Fearow: " + error);

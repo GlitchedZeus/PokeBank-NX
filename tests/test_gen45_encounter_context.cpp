@@ -54,12 +54,31 @@ int main() {
                 assert(!distinct.count(id));
                 distinct.insert(id);
             }
-            assert(distinct.size() == native.size() + 1);
+            // Round 13 (owner decision 7; updated deliberately): a verified gift / trade data row
+            // whose place the name table stops short of (HG/SS Pikachu's in-game trade at 2001) is
+            // offered too, so the lists hold every native id plus those data-row places.
+            // Round 13 (owner decisions 5 / 6; updated deliberately): Gen IV also offers its judged
+            // rows -- "Hatched from a Day-Care egg", 2001 and 2002 -- in one of the two lists.
+            std::size_t dataPlaces = 0, judged = 0;
+            for (const auto id : distinct)
+                if (id != 65534 && std::find(native.begin(), native.end(), id) == native.end()) {
+                    if (gen == 4 && (C::Catalogue::isHatchedEggRow(id) || id == 2002 ||
+                                     (id == 2001 && context.wildRow(id) == nullptr))) { ++judged; continue; }
+                    assert(context.wildRow(id) != nullptr);
+                    ++dataPlaces;
+                }
+            assert(distinct.size() == native.size() + 1 + dataPlaces + judged);
+            if (gen == 4)
+                assert(distinct.count(Policy::kHatchedEggRow) && distinct.count(2001) && distinct.count(2002));
             for (const auto id : native) assert(distinct.count(id));
             for (const auto id : context.choices()) {
                 if (id == 65534 || id == Policy::kUnverifiedListRow) continue;
-                if (Policy::gen45DefaultMarker(gen, id)) {
+                if (Policy::gen45DefaultMarker(gen, id) && !context.verifiedEncounter(id)) {
                     assert(context.detail(id, name).find("Lv.") == std::string::npos);
+                    continue;
+                }
+                if (gen == 4 && (C::Catalogue::isHatchedEggRow(id) || id == 2001 || id == 2002)) {
+                    assert(context.gen4RowVerified(id));   // in the default list only when verified
                     continue;
                 }
                 const auto* row = context.wildRow(id);
@@ -133,18 +152,34 @@ int main() {
     }
     // The default list is never empty: a species with no wild row shows the stored row, the native
     // markers and the entry row, and says so in its header.
+    // Round 13 (owner decision 7; updated deliberately): Turtwig / Tepig now have their source-backed
+    // starter gift (Lake Verity / Nuvema Town Lv 5) as a verified row, so the "no verified row" case
+    // uses Mew, which has no wild / gift / static data in Diamond or Black.
     {
-        const C::Catalogue turtwig(10, 387, 0, all, {}, 5);
+        const C::Catalogue turtwigGift(10, 387, 0, all, {}, 5);
+        assert(turtwigGift.verifiedEncounter(76) && turtwigGift.detail(76, name) == "Gift Lv. 5");
+        // Tepig, Nuvema Town gift Lv 5: verified, and (owner decision, Nov 2) says it has one source.
+        assert(C::unverifiedMetNote45(21, 498, 4, 5) == "Encounter data: single source (PKHeX)");
+        const C::Catalogue turtwig(10, 151, 0, all, {}, 5);
         assert(turtwig.verifiedCount() == 0 && turtwig.choices().back() == Policy::kUnverifiedListRow &&
                std::string(turtwig.scope(false)) == Policy::kMarkersOnlyScope);
-        const C::Catalogue tepig(21, 498, 0, std::vector<uint16_t>(NativeMetLocations5.begin(), NativeMetLocations5.end()),
+        const C::Catalogue tepig(21, 151, 0, std::vector<uint16_t>(NativeMetLocations5.begin(), NativeMetLocations5.end()),
                                  {}, 5);
         assert(std::find(tepig.choices().begin(), tepig.choices().end(), 30002) != tepig.choices().end());
-        assert(std::find(tepig.choices().begin(), tepig.choices().end(), 60003) != tepig.choices().end());
+        // Round 13 (owner decision 5; updated deliberately): 60003 (Pokémon Breeder) is an Egg
+        // Location value, never a Met Location, so it is only in the unverified list.
+        assert(std::find(tepig.choices().begin(), tepig.choices().end(), 60003) == tepig.choices().end());
+        assert(std::find(tepig.choices(true).begin(), tepig.choices(true).end(), 60003) != tepig.choices(true).end());
+        // Round 13: a hatched Gen V record (Met Level 0, Day-Care Egg Location 60002) reads verified
+        // only for a species that hatches; Gen V has no hatched-egg row to write (no native Egg
+        // Location edit), so nothing else changes there.
+        assert(C::unverifiedMetNote45(21, 498, 4, 1, 60002, 0).empty());
+        assert(C::unverifiedMetNote45(21, 494, 4, 15, 60002, 0).find("Undiscovered") != std::string::npos);
+        assert(C::unverifiedMetNote45(21, 151, 4, 1, 60003, 0) == "Not a listed encounter; unverified");
         assert(std::find(tepig.choices().begin(), tepig.choices().end(), 40001) == tepig.choices().end());
         assert(std::string(tepig.detail(Policy::kUnverifiedListRow, name)) == Policy::kUnverifiedListRowDetail);
-        assert(C::unverifiedMetNote45(21, 498, 30002, 5).find("unverified") != std::string::npos);
-        assert(C::unverifiedMetNote45(21, 498, 4, 5) == "Not a listed encounter; unverified");
+        assert(C::unverifiedMetNote45(21, 151, 30002, 5).find("unverified") != std::string::npos);
+        assert(C::unverifiedMetNote45(21, 151, 4, 5) == "Not a listed encounter; unverified");
     }
     assert(C::gameId(77).empty() && C::generation(1)==0); // group ids are not PKM origins
     assert(!C::ancestry(4,649)[649] && !C::ancestry(0,25)[25]);

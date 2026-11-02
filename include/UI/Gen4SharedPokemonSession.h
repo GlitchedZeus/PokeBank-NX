@@ -9,6 +9,7 @@
 #include "UI/CreateRequiredFields.h"
 #include "UI/HistoryConsistencyFacts.h"
 #include "UI/PokemonEditorExitGuard.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "UI/SpeciesChangeHistoryPolicy.h"
 #include "UI/SpeciesChangeMoves.h"
 
@@ -53,6 +54,7 @@ struct Session {
     // value: 0 and the special / "----" entries are real stored values in Gen IV.
     bool metLocationChosen = false;
     bool pokerusCleared = false;               // the last Create species change cleared Pokerus
+    std::string experienceNote;                // the last Edit species change's EXP reconciliation
 
     bool begin(const Pokemon::Pokemon4ReadOnly& record,
                Enums::GameVersion group, Mode next, std::string& error) {
@@ -74,6 +76,7 @@ struct Session {
         confirmExit = false;
         metLocationChosen = false;
         pokerusCleared = false;
+        experienceNote.clear();
         return true;
     }
 
@@ -91,6 +94,7 @@ struct Session {
         confirmExit = false;
         metLocationChosen = false;
         pokerusCleared = false;
+        experienceNote.clear();
         return true;
     }
 
@@ -140,7 +144,19 @@ struct Session {
         const auto before = working->encryptedBytes();
         const bool chosenBefore = metLocationChosen;
         const uint16_t previousSpecies = working->species();
+        const uint32_t previousExperience = working->experience();
+        const uint8_t previousLevel = working->level();
+        // Round 13 owner decision 9: Pokemon4Mutable::setSpecies keeps the level and reconciles EXP
+        // (Pokemon/SpeciesChangeExperience.h); an Edit names an EXP change.
+        if (value != previousSpecies) experienceNote.clear();
         bool ok = working->setSpecies(value);
+        if (ok && value != previousSpecies && mode == Mode::Edit) {
+            ::Pokemon::SpeciesChangeExperience::Result kept;
+            kept.level = previousLevel;
+            kept.experience = working->experience();
+            kept.experienceChanged = kept.experience != previousExperience;
+            experienceNote = ::Pokemon::SpeciesChangeExperience::note(previousExperience, kept);
+        }
         if (ok && working->shiny() != shinyWanted) ok = working->setShiny(shinyWanted);
         if (ok && value != previousSpecies) {
             namespace Compat = PokeVault::Integration::Gen4MoveCompatibility;
@@ -158,13 +174,18 @@ struct Session {
                 creating() ? History::Mode::Create : History::Mode::Edit, metLocationChosen, [&] {
                     const PokeVault::Integration::EncounterContext45::Catalogue context(
                         met->origin, value, met->location, {}, {});
+                    // Round 13 (owner decision 5): a chosen hatched-egg history stays only while the
+                    // new species (or a pre-evolution) hatches from a Day-Care egg here.
+                    if (hatchedEggHistory(group))
+                        return context.eggVerdict().verified();
                     return context.wildRow(met->location) != nullptr ||
                            !::Names::specialMetLocation(met->origin, met->location).empty();
                 });
             const bool hadPokerus = ok && working->pokerus() != 0;
             if (ok && decision.resetPokerus) ok = working->setPokerusMode(Pokemon::PokerusMode::None);
             if (ok && decision.resetMetLocation)
-                ok = working->setMetLocation(0) && working->setMetLevel(working->level());
+                ok = working->setMetLocation(0) && working->setMetLevel(working->level()) &&
+                     working->setEggLocation(0);
             encounterReset = ok && decision.resetMetLocation;
             pokerusCleared = ok && decision.resetPokerus && hadPokerus;
             if (encounterReset) metLocationChosen = false;
@@ -174,15 +195,29 @@ struct Session {
             if (restored) working = std::move(*restored);
             encounterReset = false;
             pokerusCleared = false;
+            experienceNote.clear();
             metLocationChosen = chosenBefore;
         }
         return ok;
+    }
+
+    // Round 13: the draft carries the "Hatched from a Day-Care egg" fields (Met Level 0 and a
+    // bred-egg Egg Location 2000 / 2002, PKHeX Locations.IsEggLocationBred4).
+    bool hatchedEggHistory(Enums::GameVersion group) const {
+        if (!working || working->metLevel() != 0) return false;
+        const auto bytes = working->encryptedBytes();
+        const Pokemon::Pokemon4ReadOnly record(bytes, group);
+        if (!record.valid()) return false;
+        const uint16_t egg = Pokemon::Pokemon4ReadOnlyView(record).eggLocation();
+        return egg == 2000 || egg == 2002;
     }
 
     // The Met Location picker applied a location the user chose (Create only).
     void noteMetLocationChosen() noexcept { if (creating()) metLocationChosen = true; }
 
     // The status a Create species change posts: what it reset ("" when nothing was).
+    // Round 13 owner decision 9: what the last Edit species change did to EXP ("" when unchanged).
+    std::string speciesChangeExperienceNote() const { return experienceNote; }
     std::string speciesChangeResetStatus(bool encounterReset) const {
         return SpeciesChangeHistoryPolicy::resetStatus(pokerusCleared, encounterReset);
     }
@@ -278,6 +313,7 @@ struct Session {
         baselineSpecies = 0;
         metLocationChosen = false;
         pokerusCleared = false;
+        experienceNote.clear();
         working.reset();
     }
 };

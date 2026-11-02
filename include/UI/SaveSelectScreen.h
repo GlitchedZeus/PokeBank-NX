@@ -19,6 +19,7 @@
 #include "UI/QuickGamesDrawerMotion.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/GameLaunchModel.h"
+#include "UI/SaveOpenGate.h"
 #include "Legacy/FRLGSourceBrowser.h"
 #include "Legacy/LegacySourceBindings.h"
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
@@ -210,6 +211,14 @@ namespace UI {
         int launchFileScroll = 0;
         TouchScrollState launchFileTouchScroll;
         bool launchFileReturnToLegacy = false;
+        // Round 14 (owner H01 / R02): the same browser assigns a Gen IV / V SAVE file when a game
+        // has none ("the file menu pop up to assign a save"). Game files stay the default purpose.
+        enum class FilePickerPurpose : uint8_t { GameFile, SaveFile };
+        FilePickerPurpose launchFilePurpose = FilePickerPurpose::GameFile;
+        int launchSaveGeneration = 0;
+        // Backups opened from the save chooser ("+" there) return Home on B, never to the Game
+        // Workspace menu of a game without a validated save.
+        bool emuBackupsReturnHome = false;
 
         bool titleSelected = false;
         bool exitRequested = false;     // return from Games & Sources to product Home
@@ -439,12 +448,18 @@ namespace UI {
         void browseGameFileParent();
         void selectCurrentTitle();
         void selectCurrentTitleForItems();
+        // Round 14 (owner H01 / R02): the ONE save gate every workspace entry asks first, and the
+        // save chooser it opens instead (UI/SaveOpenGate.h).
+        PokeBank::UIModel::SaveOpenGate::Decision saveGateForTitle(const TitleEntry& title);
+        void openSaveChooserForTitle(const TitleEntry& title, const std::string& message);
+        void openSaveFilePicker(const std::string& gameId, int generation, std::string notice);
+        bool assignGen4ManualPath(const std::string& path, std::string& failure);
+        bool assignGen5ManualPath(const std::string& path, std::string& failure);
         void selectCurrentLegacyInstance();
         void openGen4Setup(const std::string& gameId, std::string notice = {},
                            bool returnToGamesDrawer = false, bool returnToClassicGames = false);
         void discoverGen4Candidates();
         bool assignGen4Candidate(const PokeVault::Integration::Gen4::SourceCandidate& candidate);
-        void chooseGen4ManualFile();
         bool unassignCurrentGen4Game();
         void selectAssignedGen4Title();
         void openGen5Setup(const std::string& gameId, std::string notice = {},
@@ -452,7 +467,6 @@ namespace UI {
         void discoverGen5Candidates();
         void closeGen5Setup();
         bool assignGen5Candidate(const PokeVault::Source::SaveInstance& chosen);
-        void chooseGen5ManualFile();
         bool unassignCurrentGen5Game();
 
         const UserEntry* currentUser() const;

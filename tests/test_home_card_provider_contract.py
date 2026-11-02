@@ -56,7 +56,8 @@ written |= set(re.findall(r'appendProvider\([^;]*?,\s*"([^"]+)"', legacy))
 written |= set(re.findall(r'std::string_view provider = "([^"]+)"', legacy))
 for browser in ("src/Legacy/RBYSourceBrowser.cpp", "src/Legacy/GSCSourceBrowser.cpp"):
     written |= set(re.findall(r'instance\.providerLabel = "([^"]+)"', text(browser)))
-written |= set(re.findall(r'inspectSource(?:File|Choices)\(\s*chosen\.text,\s*"([^"]+)"', ui))
+# Round 14: the manual choice is the save-file browser's `path` (was the typed `chosen.text`).
+written |= set(re.findall(r'inspectSource(?:File|Choices)\(\s*(?:chosen\.text|path),\s*"([^"]+)"', ui))
 written.add("RetroArch/DeSmuME")  # Gen IV sourceTypeForPath for .dsv under RetroArch
 assert {"DraStic", "melonDS", "RetroArch", "mGBA", "Tico", "Manual"} <= written, written
 unknown = sorted(w for w in written if w.lower() not in {k.lower() for k in known})

@@ -56,6 +56,7 @@
 #include <string>
 #include <string_view>
 #include "Integration/Encounter/EncounterContext45.h"
+#include "Integration/Encounter/MetListScope.h"
 #include <utility>
 #include <vector>
 
@@ -214,7 +215,9 @@ inline void openContextualMetLocationPicker(TrainerViewScreen& screen, EditorSta
     PokeVault::Integration::EncounterContext45::Catalogue context(origin, species, current,
                                                                std::move(native), history, currentLevel);
     openPicker(screen, state, PickerTarget::MetLocation, context.choices(), current);
-    state.pickerNativeValues = context.choices(true);
+    // Round 14 (R06 / P1-9): the unverified list in the shared order (Integration/Encounter/
+    // MetListScope.h): stored, then the "level too low" places, then every other native place.
+    state.pickerNativeValues = PokeVault::Integration::MetListScope::unverifiedChoices(context);
     state.pickerMetContext = std::move(context);
     state.pickerMetContextActive = true;
 }
@@ -273,6 +276,8 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
             state.pickerValues[static_cast<size_t>(state.pickerRow)];
         state.pickerOtherHistories = !state.pickerOtherHistories;
         state.pickerValues = state.pickerMetContext.choices(state.pickerOtherHistories);
+        if (state.pickerOtherHistories)   // Round 14 (R06 / P1-9): the shared unverified order
+            state.pickerValues = PokeVault::Integration::MetListScope::unverifiedChoices(state.pickerMetContext);
         const auto it = std::find(state.pickerValues.begin(), state.pickerValues.end(), focused);
         state.pickerRow = it == state.pickerValues.end() ? 0 : static_cast<int>(it - state.pickerValues.begin());
         state.pickerScroll.reset();
@@ -527,7 +532,7 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
     if (state.pickerTarget == PickerTarget::MetLocation && state.pickerMetContextActive &&
         PokeVault::Integration::EncounterContext45::Catalogue::isUnverifiedListRow(value)) {
         state.pickerOtherHistories = true;
-        state.pickerValues = state.pickerMetContext.choices(true);
+        state.pickerValues = PokeVault::Integration::MetListScope::unverifiedChoices(state.pickerMetContext);
         state.pickerRow = 0;
         state.pickerScroll.reset();
         state.pickerViewport.reset();
@@ -1001,8 +1006,13 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         const uint16_t focused = state.pickerRow >= 0 && state.pickerRow < count
             ? state.pickerValues[static_cast<size_t>(state.pickerRow)] : 0;
         const std::string note = Names::specialMetLocationNote(state.pickerMetContext.origin(), focused);
+        // Round 14 (R06): a default list without a verified row says why (MetListScope.h):
+        // "No catch at Lv. 5; 6 need Lv. 12+ (unverified list)" or "Not in this game's data".
+        const std::string scope = state.pickerOtherHistories
+            ? std::string(state.pickerMetContext.scope(true))
+            : PokeVault::Integration::MetListScope::defaultScope(state.pickerMetContext);
         fb.drawText(x + 165, y + 55, SharedMovesPanel::fit(fb,
-            note.empty() ? state.pickerMetContext.scope(state.pickerOtherHistories) : note, w - 195, TextStyle::Caption),
+            note.empty() ? scope : note, w - 195, TextStyle::Caption),
             note.empty() ? Colors::TextSecondary : Colors::Text, TextStyle::Caption);
     }
     const int visible = compactChoices ? visibleChoices : 10;

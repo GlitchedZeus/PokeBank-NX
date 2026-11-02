@@ -352,7 +352,8 @@ void applyPathContracts() {
     require(overlay.find("CreateRequiredFields::forCreate(1, false, state.draft.moves)") < overlay.find("if (!e->stageAdd("),
             "Gen I oldest overlay Add");
     const auto legacyGen2 = functionBody(read("src/UI/TrainerViewScreenGSCOverlay.inc"), "bool stageAddPokemon(TrainerViewScreen& screen, int box)");
-    require(legacyGen2.find("CreateRequiredFields::forCreate(2, false, create.moves)") < legacyGen2.find("stageAddBoxPokemon("),
+    // Round 14 (owner R09, updated deliberately): the exact game decides (Crystal needs Met data).
+    require(legacyGen2.find("CreateRequiredFields::forCreateInGame(2, screen.sourceGameId, crystalMetChosen, create.moves)") < legacyGen2.find("stageAddBoxPokemon("),
             "Gen II legacy prompt Add");
     for (const auto& [text, fn] : {std::pair{gen2, std::string("bool add(Gen2::StagedEditor& editor,size_t box,size_t& slot,std::string& error)")},
                                    std::pair{gen2, std::string("bool keep(Gen2::StagedEditor& editor,size_t box,size_t slot,std::string& error,bool party=false)")},

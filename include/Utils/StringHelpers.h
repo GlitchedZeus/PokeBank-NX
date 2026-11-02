@@ -29,14 +29,21 @@ namespace Utils {
     /// surrogate pairs. Malformed/truncated byte sequences are skipped. The inverse of utf16ToUtf8.
     std::u16string utf8ToUtf16(const std::string& utf8str);
 
-    /// Writes a UTF-16LE string into dest (up to maxChars code units), then
-    /// zero-fills the rest of the data_size bytes (null terminator + padding).
-    /// data_size is the full field width in bytes (e.g. 26 for a 13-slot name).
+    /// LOW-LEVEL, TRUNCATING: writes up to maxChars code units, then zero-fills the rest of the
+    /// data_size bytes. It cuts silently (and can split a surrogate pair), so it must not be used
+    /// for save data: every save-data name writer goes through setStringChecked (Round 14 P0-3).
     void setString(uint8_t* dest, size_t data_size, const std::u16string& value, size_t maxChars);
 
+    /// The check setStringChecked makes, without writing: the text must be well-formed UTF-16 with
+    /// no NUL, at most maxUnits code units, and fit the field with its terminator.
+    CheckedTextResult checkStringFits(size_t data_size, const std::u16string& value, size_t maxUnits);
+    inline bool stringFits(size_t data_size, const std::u16string& value, size_t maxUnits) {
+        return checkStringFits(data_size, value, maxUnits) == CheckedTextResult::Accepted;
+    }
+
     /// Checked modern-text writer. maxUnits is a count of UTF-16 code units, not Unicode code points.
-    /// Rejected input leaves dest unchanged; embedded NUL is rejected because it would terminate the
-    /// stored field before the caller's requested logical string ends.
+    /// Rejected input (over maxUnits or over the field, malformed UTF-16, embedded NUL) leaves dest
+    /// unchanged; it is never cut, so a surrogate pair is never split.
     CheckedTextResult setStringChecked(uint8_t* dest, size_t data_size,
                                        const std::u16string& value, size_t maxUnits);
 }

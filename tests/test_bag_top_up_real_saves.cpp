@@ -20,6 +20,7 @@
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "UI/BagTopUpModel.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -55,9 +56,19 @@ void japaneseReadOnly(const std::string& name) {
     std::cout << "  NOT EDITED " << name << ": Japanese Gen I / II saves stay read-only (JapaneseEditingGate "
               << (PokeVault::Integration::Common::kJapaneseClassicEditingEnabled ? "open" : "closed") << ")\n";
 }
+// Round 14: a top-up reads back by its item once the adds are in. A writer that keeps a pocket in
+// native order (Gen IV TM/HM and Berries: SortPocket) moves a stack's row when an add lands before
+// it, so the row a top-up named before the adds is no longer that stack (the real Japanese Pearl
+// save failed here although BulkItems::apply had read every top-up back by its row before adding).
+// An item topped up in two stacks (Gen II) is still read by row: those writers never move rows.
 template <class Editor, class Adapter>
 bool readsBack(const Editor& e, const B::Plan& plan, const Adapter& a) {
-    for (const auto& t : plan.topUps) if (a.quantity(e, t.pocket, t.itemId, t.slot) != t.to) return false;
+    for (const auto& t : plan.topUps) {
+        const auto stacks = std::count_if(plan.topUps.begin(), plan.topUps.end(), [&](const B::TopUp& o) {
+            return o.pocket == t.pocket && o.itemId == t.itemId;
+        });
+        if (a.quantity(e, t.pocket, t.itemId, stacks == 1 ? SIZE_MAX : t.slot) != t.to) return false;
+    }
     for (const auto& x : plan.adds) if (a.quantity(e, x.pocket, x.itemId, SIZE_MAX) != x.quantity) return false;
     return true;
 }

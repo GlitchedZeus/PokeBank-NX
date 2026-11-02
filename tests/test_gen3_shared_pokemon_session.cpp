@@ -167,9 +167,9 @@ int main() {
     assert(source.ivs[0] == 10);
     assert(source.pid == 0x12345678);
 
-    // Species replacement is one shared new-species initialization policy in both
-    // Edit and Create. Exercise every exact Generation III game identity here so a
-    // future per-game integration cannot silently restore inherited level semantics.
+    // A Create draft's species replacement is one shared new-species initialization policy;
+    // an Edit keeps its level (Round 13 owner decision 9). Exercise every exact Generation III
+    // game identity here so a future per-game integration cannot silently diverge.
     struct ExactGameCase {
         const char* sourceGameId;
         uint16_t replacementSpecies;
@@ -195,21 +195,27 @@ int main() {
                 game.sourceGameId, game.replacementSpecies);
         assert(expected == game.expectedMinimum);
 
+        // Round 13 owner decision 9 (replaces the shared "new-species default level" for an
+        // EXISTING Pokemon): an Edit keeps its current level and reconciles EXP to the new growth
+        // rate (Pokemon/SpeciesChangeExperience.h); only a Create draft takes the default level.
         Session speciesEdit{};
         speciesEdit.begin(source, Mode::Edit);
         assert(speciesEdit.setLevel(80));
+        const uint32_t level80 = speciesEdit.working.experience;
         assert(speciesEdit.setSpecies(game.replacementSpecies, game.sourceGameId));
         assert(speciesEdit.working.species == game.replacementSpecies);
-        assert(speciesEdit.working.level == expected);
-        assert(speciesEdit.working.level != 80);
+        assert(speciesEdit.working.level == 80);
+        const uint8_t newGrowth = Pokemon::getGrowthRate(game.replacementSpecies);
+        const bool fits = level80 >= Pokemon::getExpForLevel(80, newGrowth) &&
+                          level80 < Pokemon::getExpForLevel(81, newGrowth);
         assert(speciesEdit.working.experience ==
-               Pokemon::getExpForLevel(
-                   expected, Pokemon::getGrowthRate(game.replacementSpecies)));
+               (fits ? level80 : Pokemon::getExpForLevel(80, newGrowth)));
+        assert(Pokemon::getLevelFromExp(speciesEdit.working.experience, newGrowth) == 80);
         const auto speciesRequest = speciesEdit.editRequest();
         assert(speciesRequest.species &&
                *speciesRequest.species == game.replacementSpecies);
-        assert(speciesRequest.level && *speciesRequest.level == expected);
-        assert(!speciesRequest.experience);
+        assert(!speciesRequest.level);
+        assert(speciesRequest.experience && *speciesRequest.experience == speciesEdit.working.experience);
 
         // Encounter legality is reporting context, not an editing restriction.
         // Manual progression remains freely stageable across the full 1..100 range.

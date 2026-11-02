@@ -69,8 +69,15 @@ require(select_body, "openAssignedSource(",
         "remembered Gen IV open no longer revalidates the exact assigned source")
 require(select_body, "OpenStatus::Ready",
         "remembered Gen IV open no longer fails closed on validation status")
-require(select_body, "openGen4Setup(",
-        "invalid remembered Gen IV source no longer routes to safe source setup")
+# Round 14 (owner H01 / R02, updated deliberately): an invalid remembered source routes to the ONE
+# shared save chooser (Save Instances, else the save-file browser), which still runs Gen IV setup and
+# discovery underneath.
+require(select_body, "openSaveChooserForTitle(",
+        "invalid remembered Gen IV source no longer routes to the shared save chooser")
+chooser_start = ui.index("void SaveSelectScreen::openSaveChooserForTitle(")
+chooser_body = ui[chooser_start:ui.index("void SaveSelectScreen::openSaveFilePicker(", chooser_start)]
+require(chooser_body, "openGen4Setup(",
+        "the shared save chooser no longer routes Gen IV through safe source setup")
 if "discoverGen4Candidates();" in select_body:
     raise AssertionError("normal remembered Gen IV open regressed into the candidate grid")
 require(ui, "remembered.binding.sourcePath",

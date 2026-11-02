@@ -1,5 +1,6 @@
 #include "UI/SharedPanelHeading.h"
 #include "UI/TrainerViewScreen.h"
+#include "UI/ExportMessages.h"   // Round 14 R08: the one Gen I-V export-result wording
 #include "UI/Gen1PokemonEditorOverlay.h"
 #include "UI/ClassicDefaultNickname.h"
 #include "UI/ClassicJapaneseNames.h"
@@ -221,7 +222,7 @@ bool TrainerViewScreen::openStagedReview(bool exportCopy) {
     } else return false;
     // Opened outside Box Actions: its B returns here, not to an Actions sheet for a stale slot.
     PokeBank::UIModel::ClassicReviewOrigin::markStandalone(*this);
-    if (exportCopy && !exported.empty()) postStatus("Verified copy exported: " + exported, 600);
+    if (exportCopy && !exported.empty()) postStatus(PokeBank::UIModel::ExportMessages::exported(exported), 600);
     else if (!error.empty()) postStatus(error, 480);
     saveConfirmActive = false;
     exitingWithUnsavedChanges = false;

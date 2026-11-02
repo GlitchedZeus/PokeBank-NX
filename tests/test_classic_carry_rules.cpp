@@ -341,6 +341,56 @@ void testHelp() {
 
 } // namespace
 
+// Round 13 owner decision 4: touch drag multi-select with controller parity, ONE implementation for
+// Gen I-V (behaviour: tests/test_ui_touch_multiselect_host.cpp; this pins the rule and the wiring).
+void testTouchParity() {
+    using Tap = Carry::Tap;
+    // Owner Nov 2: one tap on a cell places there (the controller's cursor + A); outside is B.
+    check(Carry::carryTap(7, 30, false) == Tap::Place, "a tap on a cell is cursor there + A");
+    check(Carry::carryTap(0, 30, true) == Tap::Place, "a cell tap is never a cancel");
+    check(Carry::carryTap(-1, 30, true) == Tap::Cancel, "a tap outside every target is B");
+    check(Carry::carryTap(-1, 30, false) == Tap::None, "a tap on another target keeps its meaning");
+    check(Carry::carryTap(1000, 30, false) == Tap::None && Carry::carryTap(1001, 30, false) == Tap::None &&
+              Carry::carryTap(2000, 30, false) == Tap::None,
+          "box arrows and the summary panel are not cells");
+    check(Carry::carryTap(25, 20, false) == Tap::None, "a cell past the box capacity is not a cell");
+    const auto overlay = read("src/UI/ClassicPackedMoveOverlay.inc");
+    const auto gen5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
+    const auto gen5Touch = between(overlay, "bool handleGen5BoxTouch(", "\n}\n");
+    const auto classic = between(overlay, "bool handleInput(TrainerViewScreen& screen, uint64_t down", "\n}\n");
+    check(has(gen5Touch, "touchSelectionInput(screen, state, down, touch, gen5TouchGridOwnsInput(screen))") &&
+              has(classic, "touchSelectionInput(screen, state, down, touch, gridOwnsInput(screen))"),
+          "Gen V and Gen I-IV share one touch rectangle selection");
+    check(has(gen5Touch, "carryTouch(screen, state, touch, gen5TouchGridOwnsInput(screen), slot)") &&
+              has(classic, "carryTouch(screen, state, touch, boxesGridOwnsInput(screen), tappedCell)"),
+          "Gen V and Gen I-IV share one carry tap rule");
+    for (const auto* site : {&gen5Touch, &classic}) {
+        check(has(*site, "case Carry::Tap::Place: return tapPlace(screen, state, ") &&
+                  has(*site, "case Carry::Tap::Cancel: return cancel(screen, state);"),
+              "a carry tap runs the same place() / cancel() as A / B");
+        check(!has(*site, "Tap::Focus"), "no focus-only carry tap any more");
+        check(!has(*site, "postStatus"), "no new toast from touch");
+    }
+    const auto selection = between(overlay, "                         bool owns) {", "\n}\n");
+    check(has(selection, "return beginSelectedGroup(screen, state);") && !has(selection, "postStatus"),
+          "lifting the finger picks up through the Y-release path, silently");
+    check(has(overlay, "bool gen5TouchGridOwnsInput(") &&
+              has(between(overlay, "bool gen5TouchGridOwnsInput(", "\n}\n"), "!screen.actionSheet.isOpen()"),
+          "Gen V touch is refused while a modal is up");
+    check(has(gen5, "ClassicPackedMove::handleGen5BoxTouch(screen,down,touch))return true;") &&
+              gen5.find("ClassicPackedMove::handleGen5BoxTouch(") < gen5.find("ClassicPackedMove::handleGen5BoxInput("),
+          "the Gen V Boxes grid gives the finger to the shared overlay first");
+    const auto tapRule = between(overlay, "Carry::Tap carryTouch(", "\n}\n");
+    check(has(tapRule, "state.carryTapArmed = owns;") && has(tapRule, "if (!armed) return Carry::Tap::None;") &&
+              has(tapRule, "SharedPopupDismiss::kFooterTop"),
+          "a carry tap needs a touch-down the grid owned (no modal-close tap), above the footer");
+    check(has(between(overlay, "bool tapPlace(", "\n}\n"), "settlePackedFocus(screen, state);\n    return place(screen, state);"),
+          "a tapped cell places exactly as cursor + A");
+    check(has(between(overlay, "bool gen5BoxLayerBusy(", "\n}\n"), "state.touchSelecting"),
+          "Gen V draws the touch rectangle");
+    std::cout << "touch drag multi-select: one rule and one selection for Gen I-V ok\n";
+}
+
 int main() {
     testKeys();
     testRoutineFeedback();
@@ -348,6 +398,7 @@ int main() {
     testCloneDestinations();
     testOverlayUsesTheRules();
     testGen5BoxesKeys();
+    testTouchParity();
     testCloneIsTheSharedCarry();
     testHelp();
     if (failures) {

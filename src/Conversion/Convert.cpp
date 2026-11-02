@@ -1,6 +1,7 @@
 #include "Conversion/Convert.h"
 #include "Conversion/Gen3PidSearch.h"
 #include "Conversion/Fidelity.h"
+#include "Text/TextFieldCapability.h"   // all-or-nothing Gen 3 name writer (Round 14 P0-2)
 
 #include <cstdint>
 #include <span>
@@ -274,27 +275,32 @@ namespace Conversion {
             for (; di + 1 < dstBytes; di += 2) wr16(d, doff + di, 0);
         }
 
-        // All-or-nothing for unmappable characters. Truncation at the native field width is allowed,
-        // but storing only a mappable prefix would silently change the player's name.
+        // All-or-nothing (Round 14 P0-2): the whole source name must fit the native field and every
+        // character must have a glyph in the destination language's table, or nothing is written
+        // and the caller decides (default nickname with a reported adaptation, or refuse the
+        // conversion for an OT). Cutting at the field width used to be allowed, which silently
+        // changed a long name; storing only a mappable prefix was already refused.
         bool utf16ToG3Name(std::vector<std::byte>& d, size_t doff,
                            const std::vector<std::byte>& src, size_t soff,
                            int srcBytes, int maxG3, uint8_t languageId) {
-            uint8_t staged[GEN3_NICKNAME_CHARS] = {0};
-            const int writable = std::min(maxG3, GEN3_NICKNAME_CHARS);
-            int gi = 0;
-            bool mapped = true;
+            std::u16string name;
             for (int i = 0; i + 2 <= srcBytes; i += 2) {
                 const char16_t c = static_cast<char16_t>(rd16(src, soff + i));
                 if (c == 0) break;
-                if (gi >= writable) break;
-                const uint8_t b = Utils::charToGen3(c, languageId);
-                if (b == Utils::GEN3_TERMINATOR) { mapped = false; break; }
-                staged[gi++] = b;
+                name.push_back(c);
             }
-            if (!mapped) gi = 0;
+            const int writable = std::min(maxG3, GEN3_NICKNAME_CHARS);
+            const PokeBank::Text::Gen3NameField field(PokeBank::Text::FieldKind::Nickname, languageId,
+                                                      static_cast<size_t>(writable),
+                                                      static_cast<size_t>(writable));
+            uint8_t staged[GEN3_NICKNAME_CHARS];
+            std::fill(std::begin(staged), std::end(staged), Utils::GEN3_TERMINATOR);
+            if (!field.encode16(name, std::span<uint8_t>(staged, static_cast<size_t>(writable))).ok())
+                return false;
+            const int gi = static_cast<int>(name.size());
             for (int i = 0; i < gi; ++i) wr8(d, doff + i, staged[i]);
             for (int i = gi; i < maxG3; ++i) wr8(d, doff + i, Utils::GEN3_TERMINATOR);
-            return mapped;
+            return true;
         }
 
         bool g3NameEqualsIgnoringTrash(const std::vector<std::byte>& lhs, size_t lhsOff,
@@ -807,7 +813,9 @@ namespace Conversion {
                                                                bool sourceNicknamed,
                                                                uint8_t targetAbilityBit,
                                                                bool constrainPidAbilityBit,
-                                                               Report* report) {
+                                                               Report* report,
+                                                               bool& textRefused) {
+            textRefused = false;
             std::vector<std::byte> d(0x64, std::byte{0});
             const uint32_t pid      = rd32(s, 0x1C);
             const uint16_t national = rd16(s, 0x08);
@@ -865,8 +873,13 @@ namespace Conversion {
                     GEN3_NICKNAME_CHARS, destinationLanguage);
                 if (report) report->addAdaptation(Adaptation::DefaultNicknameCanonicalized);
             }
-            // If OT text cannot be represented, leave the native field blank rather than write a prefix.
-            utf16ToG3Name(d, 0x14, s, 0xF8, 26, GEN3_OT_NAME_CHARS, destinationLanguage);
+            // Round 14 P0-2: an OT the destination cannot hold exactly (a glyph its table lacks, or
+            // longer than the native 7 characters) refuses the conversion. It used to leave the OT
+            // BLANK with nothing in the report, so the converted Pokemon silently lost its trainer.
+            if (!utf16ToG3Name(d, 0x14, s, 0xF8, 26, GEN3_OT_NAME_CHARS, destinationLanguage)) {
+                textRefused = true;
+                return std::nullopt;
+            }
 
             copyBytes(d, 0x2C, s, 0x72, 8);                         // Moves 1-4
             copyBytes(d, 0x34, s, 0x7A, 4);                         // Move PP
@@ -1240,8 +1253,11 @@ namespace Conversion {
                 const auto abilityMap = Fidelity::mapModernAbilityToGen3(
                     rd16(buf, 0x14), rd8(buf, 0x16) & 0x07, g3.ability1, g3.ability2);
                 if (!abilityMap.ok) { result = Result::AbilityNotRepresentable; return nullptr; }
+                bool textRefused = false;
                 auto pk3 = remapPK8toPK3(buf, destOriginVersion, sourceNicknamed,
-                                         abilityMap.abilityBit, g3.ability1 != g3.ability2, report);
+                                         abilityMap.abilityBit, g3.ability1 != g3.ability2, report,
+                                         textRefused);
+                if (!pk3 && textRefused) { result = Result::TextNotRepresentable; return nullptr; }
                 if (!pk3) { result = Result::TraitPreservationFailed; return nullptr; }
                 buf = std::move(*pk3);
             }

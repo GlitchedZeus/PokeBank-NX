@@ -166,12 +166,18 @@ void classicRouter() {
             assert(screen.closeReview() && same(where(screen), trainerBefore));
         }
 
-        // The Bag routes Review through its own handler; the save hub is not a page here.
+        // The Bag routes Review through its own handler.
         screen.selectedMode = StubScreen::ViewMode::Items;
         assert(!Browse::open(screen, kPlus, gen, true));
+        // Round 14 R08 (owner Round 13: "gen 5 has almost none of the proper footers"): the save hub's
+        // + opens Review in every generation (Gen V since Round 7), as its footer says; Y does nothing
+        // there, and a busy hub (grid not idle) is left alone.
         screen.selectedMode = StubScreen::ViewMode::Party;
         screen.detailViewActive = false;   // the save hub
-        assert(!Browse::open(screen, kPlus | kY, gen, true));
+        assert(!Browse::open(screen, kY, gen, true) && !screen.reviewOpen);
+        assert(!Browse::open(screen, kPlus, gen, false) && !screen.reviewOpen);
+        assert(Browse::open(screen, kPlus, gen, true) && screen.reviewOpen);
+        assert(screen.closeReview() && !screen.detailViewActive);
         screen.detailViewActive = true;
 
         // Nothing staged: the Party's Review key (Y) is answered, nothing opens.

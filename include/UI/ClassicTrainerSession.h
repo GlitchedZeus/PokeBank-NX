@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <string>
 
@@ -23,9 +24,36 @@ inline constexpr int kReviewTouchId = 61240;
 
 // Round 6 (B08): Y Review whether or not the focused row is editable; on a page without the
 // staged Trainer session the Gen I-IV grid router (ClassicBrowseReview.h) handles the key.
+// Round 14 R08: this is the drawn footer, exactly (the old "+: Exit App" tail was always erased by the
+// HOME footer pass and "-: Help" appended); trainerFooterHints below is the same list as entries.
 constexpr const char* trainerPageInstructions(bool editable) noexcept {
-    return editable ? "Up/Down: Select  |  A: Edit  |  Y: Review  |  B: Back  |  +: Exit App"
-                    : "Up/Down: Select  |  Y: Review  |  B: Back  |  +: Exit App";
+    return editable ? "Up/Down: Select  |  A: Edit  |  Y: Review  |  B: Back  |  -: Help"
+                    : "Up/Down: Select  |  Y: Review  |  B: Back  |  -: Help";
+}
+
+// Round 14 R08 (owner: "gen 5 has almost none of the proper footers and im guessing controls"): the
+// ONE Trainer page footer model every generation draws (Gen I-IV through trainerPageInstructions, Gen V
+// through Gen5TrainerScreen::footer). `aLabel` names what A does on the focused row ("Edit"; Gen V's
+// Pokedex row says "Open Pokedex"); nullptr when the focused row cannot act on A.
+struct TrainerFooterHint {
+    const char* glyph;
+    const char* label;
+};
+struct TrainerFooter {
+    TrainerFooterHint hints[5]{};
+    std::size_t count = 0;
+    constexpr void push(const char* glyph, const char* label) noexcept { hints[count++] = {glyph, label}; }
+    constexpr const TrainerFooterHint* begin() const noexcept { return hints; }
+    constexpr const TrainerFooterHint* end() const noexcept { return hints + count; }
+};
+constexpr TrainerFooter trainerFooterHints(const char* aLabel) noexcept {
+    TrainerFooter f;
+    f.push("Up/Down", "Select");
+    if (aLabel) f.push("A", aLabel);
+    f.push("Y", "Review");
+    f.push("B", "Back");
+    f.push("-", "Help");
+    return f;
 }
 
 // R2-BUG-001: on an editable Trainer page "A: Edit" is offered for the FOCUSED row only: Money

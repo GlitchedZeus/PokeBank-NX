@@ -11,6 +11,7 @@
 #include "UI/ClassicPackedMovePresentation.h"
 #include "UI/ClassicBrowseFooter.h"
 #include "UI/EditFeedback.h"
+#include "UI/SharedPopupDismiss.h"
 #include "UI/SpriteManager.h"
 
 #include <algorithm>
@@ -91,6 +92,10 @@ struct CarryState {
     // a finger drag owns the grid directly and never synthesizes a held controller button.
     bool touchArmed = false;
     bool touchSelecting = false;
+    // Round 13 (owner Nov 2): a carry tap counts only when the carry grid owned its touch-down (no
+    // modal); the start point tells that gesture apart from a later one whose down it never saw.
+    bool carryTapArmed = false;
+    int carryTapX = 0, carryTapY = 0;
 
     // Part 9 item 8: true when this interaction started in the Gen IV Storage view's SAVE pane.
     // Its cursor is then stSaveBox / stSaveSlot and its cells are the pane's storage targets, so
@@ -756,6 +761,8 @@ bool packedCarryNavigation(TrainerViewScreen& screen, CarryState& state, uint64_
     } else if (tapped == 1002 || tapped == 2000) {
         return true;
     } else {
+        // Round 13 (owner Nov 2): the box arrows (1000 / 1001) are L / R here too, so a touch-only player
+        // can change box during a packed carry (they were swallowed before).
         const uint64_t nav = screen.controllerNavigation.apply(
             down, held, stickX, stickY,
             HidNpadButton_Up, HidNpadButton_Down, HidNpadButton_Left, HidNpadButton_Right);
@@ -765,8 +772,8 @@ bool packedCarryNavigation(TrainerViewScreen& screen, CarryState& state, uint64_
         keys.down = nav & HidNpadButton_Down;
         keys.left = nav & HidNpadButton_Left;
         keys.right = nav & HidNpadButton_Right;
-        keys.previousBox = down & HidNpadButton_L;
-        keys.nextBox = down & HidNpadButton_R;
+        keys.previousBox = (down & HidNpadButton_L) || tapped == 1000;
+        keys.nextBox = (down & HidNpadButton_R) || tapped == 1001;
         auto next = CarryGrid::step({cursorBox(screen, state), cursorSlot(screen, state)}, keys, boxes,
                                     classicCapacity(screen));
         if (down & (HidNpadButton_ZL | HidNpadButton_ZR)) {
@@ -1441,6 +1448,45 @@ bool storageCarryNavigation(TrainerViewScreen& screen, CarryState& state, uint64
     return true;
 }
 
+// Round 13 owner decision 4 / owner Nov 2: a release-confirmed tap during a Boxes carry (ClassicCarryRules
+// carryTap), the same for Gen I-IV (handleInput) and Gen V (handleGen5BoxTouch). A tap on a cell is "move
+// the cursor there + A" (tapPlace); a tap outside every touch target, above the footer (whose badges keep
+// their keys), is B. `owns`: the carry grid owns input (no modal). Called every carry frame so it sees
+// the touch-down: a tap whose down it did not own (under Help / a menu / a dialog, or the tap that closed
+// one) and any drag are None. `slot` receives the tapped cell.
+Carry::Tap carryTouch(TrainerViewScreen& screen, CarryState& state, const TouchInput& touch, bool owns, int& slot) {
+    if (touch.justTouchedDown()) {
+        state.carryTapArmed = owns;
+        state.carryTapX = touch.startX();
+        state.carryTapY = touch.startY();
+    }
+    if (!touch.justTapped()) {
+        if (!touch.isDown()) state.carryTapArmed = false;   // a drag's release, or no finger
+        return Carry::Tap::None;
+    }
+    const bool armed = state.carryTapArmed && owns && touch.startX() == state.carryTapX &&
+                       touch.startY() == state.carryTapY;
+    state.carryTapArmed = false;
+    if (!armed) return Carry::Tap::None;
+    slot = screen.touchedButtonId(touch);
+    bool outside = slot < 0 && touch.startY() < SharedPopupDismiss::kFooterTop &&
+                   touch.y() < SharedPopupDismiss::kFooterTop;
+    for (const auto& b : screen.touchButtons) {
+        if (!outside) break;
+        const auto inside = [&](int x, int y) { return x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h; };
+        if (inside(touch.startX(), touch.startY()) || inside(touch.x(), touch.y())) outside = false;
+    }
+    return Carry::carryTap(slot, classicCapacity(screen), outside);
+}
+
+// The controller's "move the cursor to that cell + A": the same cursor (re-settled over a packed Gen I / II
+// box, exactly as the A frame settles it) and the same place(), refusals included.
+bool tapPlace(TrainerViewScreen& screen, CarryState& state, int slot) {
+    cursorSlot(screen, state) = slot;
+    settlePackedFocus(screen, state);
+    return place(screen, state);
+}
+
 // The Y hold rectangle and the pending Y tap, shared by the Gen I-IV grid (handleInput) and the Gen V
 // grid (handleGen5BoxInput, Round 12 R12-001): a Y released before kMultiHoldFrames picks up the
 // Pokemon under the cursor; a held Y draws a rectangle (D-pad / stick resize) and its release picks
@@ -1655,7 +1701,41 @@ bool gen5BoxesGridOwnsInput(const TrainerViewScreen& screen) noexcept {
 
 bool gen5BoxLayerBusy(TrainerViewScreen& screen) {
     const auto& state = stateFor(screen);
-    return isGen5(screen) && ((state.active && state.generation == CarryGeneration::Gen5) || state.selecting);
+    return isGen5(screen) &&
+           ((state.active && state.generation == CarryGeneration::Gen5) || state.selecting || state.touchSelecting);
+}
+
+// Round 13 owner decision 4: the Gen V Boxes grid owns a finger only while no modal is up (CG08: a modal
+// owns the touch layer). The Gen V surface reaches this only on its Browse surface (never under Actions,
+// Review, a confirmation or the Import from file dialog); Help and any inherited dialog are refused here.
+bool gen5TouchGridOwnsInput(const TrainerViewScreen& screen) noexcept {
+    return gen5BoxesGridOwnsInput(screen) && !screen.details.active && !screen.actionSheet.isOpen() &&
+           !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive;
+}
+
+bool touchSelectionInput(TrainerViewScreen& screen, CarryState& state, uint64_t down, const TouchInput& touch,
+                         bool owns);   // below handleInput: the Gen I-IV grid's touch selection, shared
+
+// Round 13 owner decision 4 ("implement Gen V touchscreen drag multi-select with controller parity"): the
+// Gen V Boxes grid takes the SAME finger gestures as Gen I-IV, through the same code. A drag across cells
+// selects the Y hold rectangle and lifting the finger picks the group up (touchSelectionInput); during a
+// carry a tap on a cell is "cursor there + A" and a tap outside the grid is B (carryTouch). With nothing
+// carried, a plain tap on a cell is not taken here: it keeps focusing / opening that cell
+// (decodeGen5BoxTouch). True when it was used.
+bool handleGen5BoxTouch(TrainerViewScreen& screen, uint64_t down, const TouchInput& touch) {
+    if (!isGen5(screen)) return false;
+    auto& state = stateFor(screen);
+    if (touchSelectionInput(screen, state, down, touch, gen5TouchGridOwnsInput(screen))) return true;
+    if (!gen5CarryActive(screen)) return false;
+    int slot = -1;
+    const auto tap = carryTouch(screen, state, touch, gen5TouchGridOwnsInput(screen), slot);
+    if (Carry::carryKey(down) != Carry::Key::None) return false;   // a key this frame wins (handleGen5CarryInput)
+    switch (tap) {
+        case Carry::Tap::Place: return tapPlace(screen, state, slot);
+        case Carry::Tap::Cancel: return cancel(screen, state);
+        case Carry::Tap::None: break;
+    }
+    return false;
 }
 
 bool handleGen5BoxInput(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX, int stickY, int tap) {
@@ -1676,11 +1756,75 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
                  int stickX, int stickY, const TouchInput& touch) {
     auto& state = stateFor(screen);
 
-    // Touch-native rectangle selection for classic packed boxes. A stationary release remains the
-    // ordinary single-cell tap handled by the base box/action path. Once drag slop is crossed, this
-    // layer owns the gesture: the rectangle follows the finger and release picks up the group.
-    // This gives touch full multi-select parity without faking a physical Y hold.
-    if (!state.active && !state.selecting && gridOwnsInput(screen)) {
+    // Touch-native rectangle selection (touchSelectionInput, below): the same gesture as the Gen V grid.
+    if (touchSelectionInput(screen, state, down, touch, gridOwnsInput(screen))) return true;
+
+    if (state.active) {
+        // Round 11 H23 (owner): Y picks up, A places, B cancels, in every generation (ClassicCarryRules).
+        // Y / X are consumed so they never reach an editor handler mid-carry.
+        setLegacyHoldingPresentation(screen, true);
+        settlePackedFocus(screen, state);   // R12-003: a packed box's cursor is the landing slot
+        // Round 13 (owner Nov 2, CG08): while Help or any modal is up over the Boxes grid, the modal owns
+        // every key and tap; the carry waits underneath (nothing placed, cancelled or moved).
+        if (!state.storage && !boxesGridOwnsInput(screen)) return false;
+        switch (Carry::carryKey(down)) {
+            case Carry::Key::Cancel: return cancel(screen, state);
+            case Carry::Key::Place: return place(screen, state);
+            case Carry::Key::Leave:
+                cancel(screen, state);
+                return false;
+            case Carry::Key::Consume: return true;   // Y / X never fall through mid-carry
+            case Carry::Key::None: break;
+        }
+        if (state.storage) return storageCarryNavigation(screen, state, down, held, stickX, stickY, touch);
+        // Round 13 owner decision 4 / Nov 2: a tap on a cell is "cursor there + A", a tap outside the grid
+        // is B (Gen V too).
+        int tappedCell = -1;
+        switch (carryTouch(screen, state, touch, boxesGridOwnsInput(screen), tappedCell)) {
+            case Carry::Tap::Place: return tapPlace(screen, state, tappedCell);
+            case Carry::Tap::Cancel: return cancel(screen, state);
+            case Carry::Tap::None: break;
+        }
+        if (packedCarry(state)) return packedCarryNavigation(screen, state, down, held, stickX, stickY, touch);
+        const int tapped = screen.touchedButtonId(touch);
+        if (tapped >= 0 && tapped < classicCapacity(screen)) {
+            cursorSlot(screen, state) = tapped;
+            return true;
+        }
+        if (tapped == 1002 || tapped == 2000) return true;
+        return false; // D-pad and L/R keep using the accepted box navigation path.
+    }
+
+    // The Y hold rectangle and the pending Y tap: the same code as the Gen V grid (selectionInput).
+    if (state.selecting || state.yPending) return selectionInput(screen, state, down, held, stickX, stickY);
+
+    if (!(down & HidNpadButton_Y) || !gridOwnsInput(screen)) return false;
+    const int capacity = classicCapacity(screen);
+    if (cursorSlot(screen, state) < 0 || cursorSlot(screen, state) >= capacity) return true;
+    state.storage = storageGridOwnsInput(screen);
+    state.yPending = true;
+    state.yFrames = 0;
+    state.pendingBox = cursorBox(screen, state);
+    state.pendingSlot = cursorSlot(screen, state);
+    return true;
+}
+
+// Touch-native rectangle selection, ONE implementation for the Gen I-IV grid (handleInput) and the Gen V
+// grid (handleGen5BoxTouch; Round 13 owner decision 4). A stationary release remains the ordinary
+// single-cell tap handled by each grid's own box/action path. Once drag slop is crossed, this layer owns
+// the gesture: the rectangle follows the finger (the cells a Y hold + D-pad would cover) and release
+// picks up the group through beginSelectedGroup, exactly as a Y release does. This gives touch full
+// multi-select parity without faking a physical Y hold. `owns`: the grid owns input (no modal is up);
+// a gesture a modal interrupted, or whose release was never seen, is dropped silently.
+bool touchSelectionInput(TrainerViewScreen& screen, CarryState& state, uint64_t down, const TouchInput& touch,
+                         bool owns) {
+    if (state.active || state.selecting) return false;
+    if ((state.touchArmed || state.touchSelecting) && (!owns || (!touch.isDown() && !touch.justReleased()))) {
+        state.touchArmed = false;
+        state.touchSelecting = false;
+        screen.currentlySelecting = false;
+    }
+    if (owns) {
         if (down & HidNpadButton_B && state.touchArmed) {
             cursorBox(screen, state) = state.selectionBox;
             cursorSlot(screen, state) = state.selectionAnchor;
@@ -1726,44 +1870,7 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, uint64_t held,
             // A tap is intentionally not consumed; the normal cell/action-sheet path owns it.
         }
     }
-
-    if (state.active) {
-        // Round 11 H23 (owner): Y picks up, A places, B cancels, in every generation (ClassicCarryRules).
-        // Y / X are consumed so they never reach an editor handler mid-carry.
-        setLegacyHoldingPresentation(screen, true);
-        settlePackedFocus(screen, state);   // R12-003: a packed box's cursor is the landing slot
-        switch (Carry::carryKey(down)) {
-            case Carry::Key::Cancel: return cancel(screen, state);
-            case Carry::Key::Place: return place(screen, state);
-            case Carry::Key::Leave:
-                cancel(screen, state);
-                return false;
-            case Carry::Key::Consume: return true;   // Y / X never fall through mid-carry
-            case Carry::Key::None: break;
-        }
-        if (state.storage) return storageCarryNavigation(screen, state, down, held, stickX, stickY, touch);
-        if (packedCarry(state)) return packedCarryNavigation(screen, state, down, held, stickX, stickY, touch);
-        const int tapped = screen.touchedButtonId(touch);
-        if (tapped >= 0 && tapped < classicCapacity(screen)) {
-            cursorSlot(screen, state) = tapped;
-            return true;
-        }
-        if (tapped == 1002 || tapped == 2000) return true;
-        return false; // D-pad and L/R keep using the accepted box navigation path.
-    }
-
-    // The Y hold rectangle and the pending Y tap: the same code as the Gen V grid (selectionInput).
-    if (state.selecting || state.yPending) return selectionInput(screen, state, down, held, stickX, stickY);
-
-    if (!(down & HidNpadButton_Y) || !gridOwnsInput(screen)) return false;
-    const int capacity = classicCapacity(screen);
-    if (cursorSlot(screen, state) < 0 || cursorSlot(screen, state) >= capacity) return true;
-    state.storage = storageGridOwnsInput(screen);
-    state.yPending = true;
-    state.yFrames = 0;
-    state.pendingBox = cursorBox(screen, state);
-    state.pendingSlot = cursorSlot(screen, state);
-    return true;
+    return false;
 }
 
 void draw(TrainerViewScreen& screen, PKSEFramebuffer& fb) {

@@ -186,3 +186,17 @@ $(HOST_BUILD)/test_gsc_workspace_render $(HOST_BUILD)/test_gsc_workspace_render_
 
 # Populated and Empty outer move-focus regressions exercise both real session models.
 $(HOST_BUILD)/test_gsc_pokemon_session $(HOST_BUILD)/test_gsc_pokemon_session_sanitize $(HOST_BUILD)/test_gen3_shared_pokemon_session $(HOST_BUILD)/test_gen3_shared_pokemon_session_sanitize: tests/fixtures/main_workspace_move_focus.h include/UI/SharedPokemonEditorContract.h
+
+# Round 14 (owner R09): the one Create Met Location gate for every Gen I-V game (Crystal included)
+# and the real Gen II session on synthetic Gold / Silver / Crystal saves.
+CREATE_MET_GATE_SOURCES := tests/test_create_met_location_gate_gen15.cpp $(GEN2_STAGED_EDITOR_COMMON) src/Integration/Gen2/Gen2MoveCompatibility.cpp src/Integration/Gen1/Gen1MoveCompatibility.cpp
+HOST_TESTS += $(HOST_BUILD)/test_create_met_location_gate_gen15
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_create_met_location_gate_gen15_sanitize
+host-test: $(HOST_BUILD)/test_create_met_location_gate_gen15
+host-sanitize: $(HOST_BUILD)/test_create_met_location_gate_gen15_sanitize
+$(HOST_BUILD)/test_create_met_location_gate_gen15: $(CREATE_MET_GATE_SOURCES) include/UI/CreateRequiredFields.h include/UI/Gen2PokemonSession.h tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(CREATE_MET_GATE_SOURCES) -o $@
+$(HOST_BUILD)/test_create_met_location_gate_gen15_sanitize: $(CREATE_MET_GATE_SOURCES) include/UI/CreateRequiredFields.h include/UI/Gen2PokemonSession.h tests/fixtures/gsc_pokemon_fixture.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(CREATE_MET_GATE_SOURCES) -o $@

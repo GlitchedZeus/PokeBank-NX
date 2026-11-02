@@ -18,6 +18,7 @@ include Makefile.host.item-quantity-policy
 include Makefile.host.pickers
 include Makefile.host.reroll-mechanics
 include Makefile.host.species-change-moves
+include Makefile.host.species-change-level
 include Makefile.host.round4-r
 include Makefile.host.round4-codex
 include Makefile.host.host-ui
@@ -38,6 +39,10 @@ include Makefile.host.jp-gen2
 include Makefile.host.bag-top-up
 include Makefile.host.pokemon-file-menus
 include Makefile.host.carry
+include Makefile.host.recheck
+include Makefile.host.encdata
+include Makefile.host.topupmet
+include Makefile.host.textsafety
 
 include Makefile.host.machine
 

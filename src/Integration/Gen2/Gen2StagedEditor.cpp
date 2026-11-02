@@ -13,6 +13,7 @@
 #include "UI/Gen2NativePresentation.h"
 #include "UI/HistoryConsistencyFacts.h"
 #include "Pokemon/Experience.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "PokemonFile/NativePokemonFile.h"
 
 #include <algorithm>
@@ -1069,6 +1070,15 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
         }
         after.experience = *edit.experience;
         after.level = Pokemon::getLevelFromExp(after.experience, personal->experienceGrowth);
+    } else if (edit.species && after.species != before.species) {
+        // Round 13 owner decision 9: an existing Pokemon keeps the level it shows (the stored
+        // level byte) and its EXP is reconciled to the new growth rate.
+        const auto* previous = personalRecord(before.species);
+        const auto kept = Pokemon::SpeciesChangeExperience::keepLevel(before.level, before.experience,
+            previous && previous->experienceGrowth == personal->experienceGrowth,
+            [&](uint8_t level) { return Pokemon::getExpForLevel(level, personal->experienceGrowth); });
+        after.level = kept.level;
+        after.experience = kept.experience;
     } else if (edit.species) {
         const uint32_t maxExperience = Pokemon::getExpForLevel(100, personal->experienceGrowth);
         if (after.experience > maxExperience) after.experience = maxExperience;
@@ -1241,7 +1251,8 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
         const auto caught = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(verified->caughtData);
         if (caught.present)
             if (const auto note = PokeBank::UIModel::ExactGameMetLocations::crystalUnverifiedNote(
-                    "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level);
+                    "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level,
+                    caught.timeOfDay);
                 !note.empty())
                 setChange(prefix + "met_evidence", labelPrefix + "Met evidence", "", note);
     }
@@ -1527,7 +1538,8 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
                           PokeBank::UIModel::Gen2Native::crystalCaughtLevelText(caught));
         // Round 12 (R12-004 / R12-005): an unverified caught history stays labelled in Review.
         if (const auto note = PokeBank::UIModel::ExactGameMetLocations::crystalUnverifiedNote(
-                "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level);
+                "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level,
+                caught.timeOfDay);
             !note.empty())
             detail("Met evidence", note);
     }

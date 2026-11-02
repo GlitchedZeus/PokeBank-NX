@@ -32,10 +32,10 @@ void testPlusOnlyWhereHandled() {
         for (const auto page : kPages)
             for (const auto& line : Help::lines(page, gen)) {
                 if (line.rfind("+   ", 0) != 0) continue;
-                // Round 6: + opens Review on Boxes / Party / Bag in every generation and on Gen V's
-                // hub; the Gen I-IV hub reaches it through the staged exit menu instead.
-                const bool ok = (gen == 5 || page != Help::Page::Hub) &&
-                                line.find("Review") != std::string::npos;
+                // Round 6: + opens Review on Boxes / Party / Bag in every generation. Round 14 R08 (owner:
+                // "gen 5 has almost none of the proper footers"): every hub's + opens Review too (Gen I-IV
+                // ClassicBrowseReview::open, Gen V routeHub5), so the Hub row is checked in every generation.
+                const bool ok = line.find("Review") != std::string::npos;
                 if (!ok) std::cerr << "Gen " << gen << ": " << line << '\n';
                 assert(ok);
             }

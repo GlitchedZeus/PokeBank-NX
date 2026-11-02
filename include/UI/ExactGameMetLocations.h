@@ -21,8 +21,10 @@
 // stored row, the verified rows of the species AND its pre-evolutions whose level the Pokémon has
 // reached, the game's own markers and one "Other location (unverified)..." row; every other
 // native location (and each verified row above the Pokémon's level) is in the unverified list.
+#include "Integration/Encounter/BreedingPolicy.h"
 #include "Integration/Encounter/EncounterContext45.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Integration/Encounter/GiftStaticEncounters.h"
 #include "Integration/Encounter/MetLocationPolicy.h"
 #include "Names/LocationNames.h"
 
@@ -44,10 +46,14 @@ inline constexpr uint16_t kUnverifiedListRowValue = PokeVault::Integration::MetL
 constexpr uint16_t otherNativeRow(uint16_t location) noexcept {
     return static_cast<uint16_t>(kOtherNativeRowFlag | (location & 0x7FFF));
 }
+// Round 13 (owner decision 5): "Hatched from a Day-Care egg" (MetLocationPolicy::kHatchedEggRow).
+inline constexpr uint16_t kHatchedEggRowValue = PokeVault::Integration::MetLocationPolicy::kHatchedEggRow;
 constexpr bool isOtherNativeRow(uint16_t row) noexcept {
-    return row != kKeepStoredRowValue && row != kUnverifiedListRowValue && (row & kOtherNativeRowFlag) != 0;
+    return row != kKeepStoredRowValue && row != kUnverifiedListRowValue && row != kHatchedEggRowValue &&
+           (row & kOtherNativeRowFlag) != 0;
 }
-static_assert(!isOtherNativeRow(kUnverifiedListRowValue) && !isOtherNativeRow(kKeepStoredRowValue));
+static_assert(!isOtherNativeRow(kUnverifiedListRowValue) && !isOtherNativeRow(kKeepStoredRowValue) &&
+              !isOtherNativeRow(kHatchedEggRowValue));
 constexpr uint16_t otherNativeRowLocation(uint16_t row) noexcept {
     return static_cast<uint16_t>(row & 0x7FFF);
 }
@@ -58,7 +64,7 @@ constexpr uint16_t otherNativeRowLocation(uint16_t row) noexcept {
 inline constexpr const char* kOtherPlaceDetail = "Not a listed catch; unverified";
 inline constexpr const char* kTradeMarkerDetail = "Trade marker; unverified";
 inline constexpr const char* kEventMarkerDetail = "Event marker; unverified";
-inline constexpr const char* kEggMarkerDetail = "Egg marker; unverified";
+inline constexpr const char* kEggMarkerDetail = "Gift-egg marker; unverified";
 inline constexpr const char* kGiftMarkerDetail = "Gift marker; unverified";
 
 // ---- Generation III (PK3 origin 1 Sapphire, 2 Ruby, 3 Emerald, 4 FireRed, 5 LeafGreen) ----
@@ -91,8 +97,14 @@ inline std::vector<uint16_t> gen3OfferedLocations(uint8_t origin) {
 }
 
 // The game's own history markers (Gen III gift egg 253, in-game trade 254, fateful encounter
-// 255): offered in the default list, labelled as markers.
+// 255), labelled as markers.
 constexpr bool gen3MarkerLocation(uint16_t location) noexcept { return location >= 253 && location <= 255; }
+// Round 13 (owner decision 5, "no generic egg histories presented as verified"): the DEFAULT list
+// offers only the trade / fateful markers. 253 is the Met Location of an UNHATCHED gift egg
+// (pokeemerald METLOC_SPECIAL_EGG; replaced by the hatch place when it hatches), never a bred
+// egg's: the verified gift-egg templates (Emerald Wynaut, FR/LG Togepi) are template rows, a bred
+// egg is the "Hatched from a Day-Care egg" row, and the bare marker is in the unverified list.
+constexpr bool gen3DefaultMarker(uint16_t location) noexcept { return location == 254 || location == 255; }
 
 constexpr const char* gen3OtherDetail(uint16_t location) noexcept {
     switch (location) {
@@ -129,6 +141,9 @@ constexpr const char* crystalOtherDetail(uint16_t location) noexcept {
 
 // Round 12 (owner H08 "evolved"): the exact game's verified catch / gift / static / egg templates
 // for the species, then for each of its pre-evolutions (an evolved Pokémon was met as an ancestor).
+// Round 13 (owner decision 7): the gift / static / in-game trade / fossil / prize / roaming / event
+// rows come from the source-backed table (Integration/Encounter/GiftStaticEncounters.h), each with
+// its kind as the method ("Gift Lv. 25", "Trade Lv. 5+"), level-checked like a wild row.
 // Ancestry comes from the EncounterContext45 Gen IV evolution edges, which cover every Gen I-III
 // family; a member above `maxSpecies` (a later-generation baby) is not of this game. A row says the
 // species it was met as (originalEncounterSpecies); the Gen III Horsea edge keeps its level gate.
@@ -137,14 +152,15 @@ templatesWithAncestry(std::string_view gameId, uint16_t species, uint16_t maxSpe
     namespace Encounter = PokeVault::Integration::EncounterGuardrails;
     std::vector<Encounter::EncounterProvenanceChoice> out;
     if (gameId.empty() || species == 0 || species > maxSpecies) return out;
-    for (const auto& encounter : Encounter::forGameSpecies(gameId, species))
+    namespace Gifts = PokeVault::Integration::GiftStaticEncounters;
+    for (const auto& encounter : Gifts::metTemplates(gameId, species))
         out.push_back({encounter, species, species, 0, false});
     const auto family = PokeVault::Integration::EncounterContext45::ancestry(4, species);
     const auto edge = Encounter::gen3EvolutionParent(species);
     for (uint16_t member = 1; member <= maxSpecies; ++member) {
         if (member == species || !family[member]) continue;
         const uint8_t gate = edge && edge->originSpecies == member ? edge->minimumEvolutionLevel : 0;
-        for (const auto& encounter : Encounter::forGameSpecies(gameId, member))
+        for (const auto& encounter : Gifts::metTemplates(gameId, member))
             out.push_back({encounter, species, member, gate, true});
     }
     return out;
@@ -177,19 +193,34 @@ inline std::vector<uint16_t> otherNativeRows(const std::vector<uint16_t>& offere
 // Round 12 (R12-004 / R12-005): the Crystal editor / Review line for recorded caught data. "" when
 // the landmark and level code are a verified Crystal template of the species or a pre-evolution
 // that the current level reaches; otherwise an honest unverified label (markers name themselves).
+// Round 13 (owner decisions 7 / 8): a gift / trade at LANDMARK_GIFT (0x7E) is verified with the
+// caught level and time Crystal writes for it (pret SetGiftMonCaughtData: level 0, time 0), and a
+// recorded time of day (1 morning, 2 day, 3 night; 0 = not judged) must be one the slot occurs at.
 inline std::string crystalUnverifiedNote(std::string_view gameId, uint16_t species, uint8_t location,
-                                         uint8_t levelCode, uint8_t level) {
+                                         uint8_t levelCode, uint8_t level, uint8_t timeOfDay = 0) {
     namespace Encounter = PokeVault::Integration::EncounterGuardrails;
     namespace Policy = PokeVault::Integration::MetLocationPolicy;
-    bool templateHere = false;
+    namespace Gifts = PokeVault::Integration::GiftStaticEncounters;
+    bool templateHere = false, otherTime = false;
+    const Gifts::Row* incomplete = nullptr;   // owner decision (Nov 2): encounter in game, access unknown
     for (const auto& encounter : crystalTemplatesWithAncestry(gameId, species)) {
         if (encounter.location != location) continue;
         templateHere = true;
-        const bool levelFits = levelCode == 1 ? encounter.method == Encounter::Method::Egg
+        const auto* gift = Gifts::rowOf(encounter);
+        const bool unrecorded = gift && (gift->flags & Gifts::kCaughtLevelUnrecorded);
+        const bool levelFits = unrecorded ? levelCode == 0
+                             : levelCode == 1 ? encounter.method == Encounter::Method::Egg
                                               : levelCode >= 2 && encounter.containsLevel(levelCode);
-        if (levelFits && Policy::levelReachesEncounter(encounter.minLevel, level)) return {};
+        const bool timeFits = unrecorded ? timeOfDay == 0
+                                         : timeOfDay == 0 || Encounter::timeAllowed(encounter, timeOfDay);
+        if (!levelFits || !Policy::levelReachesEncounter(encounter.minLevel, level)) continue;
+        if (!timeFits) { otherTime = true; continue; }
+        if (gift && !Gifts::fullyVerifiable(*gift)) { incomplete = gift; continue; }
+        return {};
     }
+    if (incomplete) return Gifts::incompleteNote(*incomplete);
     if (crystalMarkerLocation(location)) return crystalOtherDetail(location);
+    if (otherTime) return "Not a listed catch at this time of day; unverified";
     return templateHere ? "Not a listed catch at this level; unverified" : kOtherPlaceDetail;
 }
 

@@ -17,9 +17,11 @@
 //     then A stages it, B stages nothing; Round 11 (H04 / H34): the row names the scopes it offers
 //     (Gen I-III this pocket, the whole Bag or PC Items; Gen IV / V have no PC item storage);
 //     (classicRemoveConfirmStep, the Gen IV item-remove confirm, Gen V ConfirmRemove);
-//   - L / R change category (Gen I-III) or pocket (Gen IV / V);
-//   - + opens the shared Review (ReviewEntry: + is the Bag's Review key in every generation; the
-//     Gen V Bag offers it once something is staged, as its footer does);
+//   - L / R change category (the Gen IV / V native pockets are its categories);
+//   - + opens the shared Review (ReviewEntry: + is the Bag's Review key in every generation);
+// Round 14 R08 (owner: "gen 4 footer says edit quanitty not edit amout or what gen 1-3 have"): the rows
+// use the Bag footer's words (InventoryUIContract inventoryFooterHints: "Edit Amount", "Category"),
+// identical in every generation.
 //   - B goes back; B or - closes this Help.
 // tests/test_classic_inventory_ui_model.cpp pins the rows; tests/test_footer_help_handlers.py maps every
 // row key to each generation's Bag input code.
@@ -33,14 +35,13 @@ inline std::vector<std::string> lines(int generation) {
     std::vector<std::string> out{
         "Original save unchanged; Bag edits are staged until Export Copy",
         "D-pad / Left Stick   Choose an item (hold to scroll)",
-        classic ? "L / R   Previous / next category" : "L / R   Previous / next pocket",
-        "A   Edit the quantity (items with an editable quantity; unique items stay at 1)",
+        "L / R   Previous / next category",
+        "A   Edit the amount (items with an editable amount; unique items stay at 1)",
         "X   Add an item from this game's catalog     Y   Ask to remove the selected item",
         classic ? "ZR   Top Up / Add Missing: pocket, Bag or PC (preview first; TMs / HMs too, no Key Items)"
                 : "ZR   Top Up / Add Missing: pocket or whole Bag (preview first; TMs / HMs too, no Key Items)",
         "A / B   Remove question: A removes, B cancels",
-        generation == 5 ? "+   Review staged changes (shown once something is staged)"
-                        : "+   Review staged changes (Export Copy and Discard All are there)",
+        "+   Review staged changes (Export Copy and Discard All are there)",
         "B   Back to the save hub; edits stay staged",
         kCloseHelp,
     };

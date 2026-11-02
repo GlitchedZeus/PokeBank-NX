@@ -480,6 +480,17 @@ int main() {
         assert(boxTap.find("selectedOccupied") == std::string::npos);
         assert(boxTap.find("beginCreate") == std::string::npos);
         assert(boxTap.find("screen.selectedItemIndex = previous;") != std::string::npos);
+        // Ported from PR #280 (2f5cfa56 / e02995b2): valid-tap bounding through
+        // Gen4BoxTouchActions::selectsTappedBoxSlot happens inside the Boxes tap route, before the
+        // cell becomes the selection and opens Actions; a tap never performs the X shortcut
+        // itself (old X = Add; since Round 11 X = Import / Export to file).
+        const auto bound = boxTap.find("PokeBank::UIModel::Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)");
+        assert(bound != std::string::npos);
+        assert(bound < boxTap.find("screen.selectedItemIndex = tapped;"));
+        assert(boxTap.find("screen.selectedItemIndex = tapped;") < boxTap.find("beginActions(screen);"));
+        assert(boxTap.find("PokemonFileMenus::") == std::string::npos);
+        assert(boxTap.find("beginImport") == std::string::npos);
+        assert(boxTap.find("exportPokemon") == std::string::npos);
     }
     // A stale six-party hit target cannot pick an out-of-range party member.
     contains(surface, "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())");
@@ -734,9 +745,13 @@ int main() {
     contains(baseUi, "hasUnsavedChanges || trainer.hasStagedChanges()");
     contains(baseUi, "PokeVault::Integration::Gen4::BagPocketCount");
     contains(baseUi, "sourceGameId==\"platinum_nds\"");
-    contains(baseUi, "footer.push(\"A\", \"Edit Quantity\");"); // only for a quantity-editable item (QuantityPolicy)
+    // Round 14 R08 (owner: "gen 4 footer says edit quanitty not edit amout or what gen 1-3 have for the A
+    // button"): the Gen IV Bag draws the ONE Gen I-V Bag footer model (Gen I-III wording), whose A is
+    // shown only for a quantity-editable item (the Gen IV QuantityPolicy query feeds it).
+    contains(baseUi, "quantityEditable = raw < pouch.size() &&");
     contains(baseUi, "PokeBank::UIModel::Gen4BagQuantity::rule(");
-    contains(baseUi, "footer.push(\"X\", \"Add Item\");");
+    contains(baseUi, "true, true, hasItem, quantityEditable,");   // PokeBank::UIModel::inventoryFooter(
+    assert(baseUi.find("Edit Quantity") == std::string::npos);
 
     contains(baseUi, "immutableSourceBlocksSaveDialog(");
     contains(baseUi, "exitOnlySaveConfirm");

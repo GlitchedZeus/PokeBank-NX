@@ -1,5 +1,6 @@
 #include "UI/ClassicSourceGuard.h"
 #include "UI/CreateRequiredFields.h"
+#include "UI/Gen2NativePresentation.h"
 #include "UI/SharedEditorPresentation.h"
 #include "UI/TrainerViewScreen.h"
 
@@ -363,8 +364,12 @@ bool stageAddPokemon(TrainerViewScreen& screen, int box) {
     if (!caught.accepted) return false;
     create.caughtData = static_cast<uint16_t>(caught.value);
 
-    // Round 11 shared Create rule (UI/CreateRequiredFields.h): never add a Pokemon with no move.
-    if (const auto missing = PokeBank::UIModel::CreateRequiredFields::forCreate(2, false, create.moves); missing.any()) {
+    // Shared Create rule (UI/CreateRequiredFields.h): never add a Pokemon with no move, and in
+    // Crystal (Round 14, owner R09) never without Met data: entering non-empty Caught/Met data at
+    // this prompt is the explicit choice. Gold / Silver store none.
+    const bool crystalMetChosen =
+        PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(create.caughtData).present;
+    if (const auto missing = PokeBank::UIModel::CreateRequiredFields::forCreateInGame(2, screen.sourceGameId, crystalMetChosen, create.moves); missing.any()) {
         screen.postStatus(PokeBank::UIModel::CreateRequiredFields::message(missing, "Add"), 300);
         return false;
     }
@@ -526,11 +531,10 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
             std::string error;
             const std::string exportDir = exportStagedCopy(screen, *editor, error);
             if (exportDir.empty()) {
-                const std::string reason = error.empty() ? "Verified staged export failed" : error;
-                screen.postStatus(reason + "; source remains unchanged", 360);
+                screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error), 360);
             } else {
                 state.lastExportDirectory = exportDir;
-                screen.postStatus("Verified staged export: " + exportDir, 360);
+                screen.postStatus(PokeBank::UIModel::ExportMessages::exported(exportDir), 360);
             }
         }
         return;

@@ -859,6 +859,15 @@ struct Gen5Editor {
             screen.postStatus("Could not reconcile Species/Shiny while preserving PID-linked traits: " + error, 360);
             return false;
         }
+        // Round 13 owner decision 9: the Pokemon kept its level; an EXP change is named.
+        if (species != p.species()) {
+            ::Pokemon::SpeciesChangeExperience::Result kept;
+            kept.level = Fields::level(*probe.current(), b2w2(screen));
+            kept.experience = probe.current()->experience();
+            kept.experienceChanged = kept.experience != p.experience();
+            if (const auto note = ::Pokemon::SpeciesChangeExperience::note(p.experience(), kept); !note.empty())
+                screen.postStatus(note, 300);
+        }
         return offer(screen, state, std::move(probe),
                      std::string("Species ") + Names::getSpeciesName(species) +
                          (state.speciesPreviewShiny ? ", Shiny" : ", not Shiny"));
@@ -1132,6 +1141,7 @@ void handleGen5TopUp(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput
             auto snapshot=ws;
             auto* bag=ws.stagedBag(&error);
             const auto result=bag?BI::apply(*bag,ui.model.plan,BI::Gen5Bag::Adapter{}):BI::ApplyResult{};
+            auto lines=ui.model.lines;   // Round 14 (P0-9): RESULT lists what was / was not staged
             Model::close(ui.model);
             ui.scrollbar.reset();
             if(!result.applied) {
@@ -1148,6 +1158,7 @@ void handleGen5TopUp(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput
             syncBagCursor(screen);
             screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again,
                 [](BI::Pocket p){return gen5TopUpPocketName(p);}),400);   // again == the applied plan
+            Model::showResult(ui.model,std::move(lines),again);
             return;
         }
     }
@@ -1202,6 +1213,9 @@ bool handleBag(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput& touc
             }
             if(keys&HidNpadButton_B) {
                 bag.cancel();
+            } else if(keys&HidNpadButton_X) {
+                // Round 14 R08: the Gen I-IV picker Sort, named in the ONE Add picker footer.
+                bag.cycleAddSort([&](uint16_t id){return bagItemLabel(screen,id);});
             } else if(keys&HidNpadButton_A) {
                 // Shared Gen I-V Add (UI/SharedBagAddFlow.h): stage x1 with no keypad, or
                 // focus the existing stack; A on the row edits the quantity afterwards.
@@ -1638,6 +1652,13 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
     // Round 12 R12-001: the Boxes grid has the Gen I-IV keys (shared ClassicPackedMove overlay). A Y
     // tap picks up to Move, a Y hold multi-selects, and a Move or Clone carry owns A / B / Y / X and
     // cell taps; navigation keys fall through to the box grid below, and + is Review there.
+    // Round 13 owner decision 4: the finger first - a drag across cells is the Y hold rectangle (lift =
+    // pick up), and during a carry a tap on a cell is "cursor there + A" and a tap outside the grid is B,
+    // through the same shared code as Gen I-IV. With nothing carried a plain cell tap still falls through
+    // to decodeGen5BoxTouch below.
+    if(state.surface()==Surface::Browse && screen.detailViewActive &&
+       screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
+       ClassicPackedMove::handleGen5BoxTouch(screen,down,touch))return true;
     if(state.surface()==Surface::Browse && screen.detailViewActive &&
        screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
        ClassicPackedMove::handleGen5BoxInput(screen,down,held,stickX,stickY,tap))return true;
@@ -1785,7 +1806,7 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             if(keys&HidNpadButton_B)(void)state.back();
             else if(keys&HidNpadButton_X) {
                 if(!state.requestExport(staged))
-                    screen.postStatus("Gen V needs verified staged changes to export",300);
+                    screen.postStatus(PokeBank::UIModel::ExportMessages::kNothingToExport,300);
             }
             else if(keys&HidNpadButton_Y)state.requestDiscardAll();
             else if(keys&(HidNpadButton_Left|HidNpadButton_Up|
@@ -1807,7 +1828,7 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 std::string error,container;
                 if(!PokeVault::Integration::Gen5::readSourceFileReadOnly(
                        screen.backupDir,observedFile,observed,error,&container)) {
-                    screen.postStatus("Gen V export blocked: "+error,400);
+                    screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error),400);
                     return true;
                 }
                 PokeVault::Integration::Gen5::WorkingCopyExportRequest request;
@@ -1828,12 +1849,11 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                 const auto result=
                     PokeVault::Integration::Gen5::publishGen5WorkingCopy(staged,request);
                 if(!result.success) {
-                    screen.postStatus("Gen V export blocked: "+result.error,480);
+                    screen.postStatus(PokeBank::UIModel::ExportMessages::failed(result.error),480);
                     return true;
                 }
                 state.finishExport();
-                screen.postStatus("Verified app-owned Gen V copy: "+result.directory+
-                                  " (original SAV5 unchanged)",480);
+                screen.postStatus(PokeBank::UIModel::ExportMessages::exported(result.directory),480);
                 screen.controllerNavigation.reset();
             }
             return true;
@@ -2264,7 +2284,8 @@ void drawBag(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         const int count=static_cast<int>(choices.size());
         const int selected=static_cast<int>(bag.addIndex());
         UI::SharedBagAddPicker::drawPicker(fb,screen.touchButtons,kGen5BagAddTouchBase,game,
-            "Add Item",std::string(G::bagPocketName5(bag.pocket()))+"  |  released items only",
+            "Add Item",std::string(G::bagPocketName5(bag.pocket()))+"  |  released items only  |  Sort: "+
+                ItemPickerSort::label(bag.addSort()),
             count,selected,
             [&](int index){return bagItemLabel(screen,choices[static_cast<size_t>(index)]);},
             [&](int index){return choices[static_cast<size_t>(index)];},
@@ -2405,9 +2426,23 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         for(const auto& hint:BrowseFooter::hints(spec))hints.push_back({hint.glyph,hint.label});
         drawNavBar(fb,hints);
     }
-    else
-        drawNavBar(fb,{{"D-pad/Stick","Navigate"},{"A","Actions"},
-                       {"Y","Review"},{"B","Back"}});
+    else {
+        // Round 14 R08 (owner: "gen 5 has almost none of the proper footers"): the Party page draws
+        // the Gen I-IV Party footer, same model and wording (ClassicBrowseFooter): D-pad, A View /
+        // Actions on a Pokemon, Y Review (Round 6 B08), B Back, - Help (the base Help, which the Gen V
+        // browse input passes through).
+        namespace BrowseFooter=PokeBank::UIModel::ClassicBrowseFooter;
+        const auto& ws=nativeTrainer(screen).stagedPokemon();
+        const auto here=ws.viewParty(static_cast<size_t>(std::max(0,screen.selectedPartyIndex)));
+        BrowseFooter::Spec spec;
+        spec.canOpen=here && here->valid() && !here->empty();
+        spec.review=true;
+        spec.reviewGlyph=PokeBank::UIModel::ReviewEntry::footerHint(
+            PokeBank::UIModel::ReviewEntry::Screen::Party,5).glyph;
+        std::vector<ControllerHint> hints;
+        for(const auto& hint:BrowseFooter::hints(spec))hints.push_back({hint.glyph,hint.label});
+        drawNavBar(fb,hints);
+    }
     return true;
 }
 } // namespace UI::Gen5SharedReadOnlySurface

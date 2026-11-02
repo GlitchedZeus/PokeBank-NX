@@ -428,12 +428,15 @@ namespace Pokemon {
         virtual int getMaxNicknameLength() const noexcept { return 12; }
 
         /**
-         * Whether this format can represent every character of `value`. Only Gen 3 ever says no: it
-         * predates Unicode and stores names in its own single-byte table, so a name the Switch keyboard
-         * was happy to produce may be unwritable. Check before setNickname -- the Gen 3 encoder ends the
-         * name at the first character it can't map, which silently truncates rather than refusing.
+         * Whether this format can store `value` EXACTLY as the nickname: every character has a glyph
+         * and the text fits the field. Ask before setNickname. Round 14 P0-2: every name setter is
+         * all-or-nothing -- a value this answers false for leaves the record's bytes untouched (no
+         * prefix, no substitute) -- so a caller that skips the question loses the edit, not the name.
          */
         virtual bool canStoreNickname(const std::u16string& value) const noexcept { (void)value; return true; }
+
+        /** The same question for the Original Trainer name (setOTName / setHTName). */
+        virtual bool canStoreOTName(const std::u16string& value) const noexcept { (void)value; return true; }
 
         /** "Has a custom nickname" flag. Formats that don't wire it report false / ignore the set. */
         virtual bool isNicknamed() const noexcept { return false; }

@@ -224,7 +224,9 @@ int main() {
             }
             assert(lines[7].rfind("+   Review staged changes", 0) == 0);
             assert(lines[5].rfind("ZR   Top Up / Add Missing", 0) == 0);
-            assert(lines[2].find(gen <= 3 ? "category" : "pocket") != std::string::npos);
+            // Round 14 R08: one wording in every generation (the footer's "L/R: Category", "A: Edit Amount").
+            assert(lines[2].find("category") != std::string::npos);
+            assert(lines[3].rfind("A   Edit the amount", 0) == 0);
         }
         std::ifstream in("src/UI/ClassicInventoryOverlay.cpp", std::ios::binary);
         const std::string overlay((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());

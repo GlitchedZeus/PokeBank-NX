@@ -4,7 +4,8 @@
 // R12-001 / R12-002 / R12-003).
 //
 // The shared carry layer (src/UI/ClassicPackedMoveOverlay.inc) runs Move and Clone for every
-// generation: Gen I-IV through handleInput, Gen V through handleGen5BoxInput, and one draw().
+// generation: Gen I-IV through handleInput, Gen V through handleGen5BoxTouch / handleGen5BoxInput, and
+// one draw(). Touch (Round 13 owner decision 4) shares the same selection and carry (carryTap below).
 // Both key dispatch sites, the carry footer and the host tests read this pure model, so the
 // generations cannot drift apart again.
 //
@@ -68,6 +69,25 @@ struct Footer {
 constexpr Footer carryFooter(Intent intent, bool group) noexcept {
     const char* place = intent == Intent::Clone ? "Place Clone" : group ? "Place Group" : "Place";
     return {{{"A", place}, {"L/R", "Box"}, {"B", "Cancel"}}};
+}
+
+// ---- Touch (Round 13 owner decision 4: touchscreen drag multi-select with controller parity) -------
+// A finger drag across box cells selects the rectangle a Y hold + D-pad selects, and lifting the finger
+// picks the group up as releasing Y does (ClassicPackedMoveOverlay touchSelectionInput). While carrying,
+// a release-confirmed tap (TouchInput::justTapped) is one of the carry keys (owner, Nov 2: the same
+// rule in Gen I-V):
+//   * on a grid cell: the controller's "move the cursor there + A" - the cursor moves to that cell and
+//     the same place() transaction runs, with the same capacity / occupied / protected refusals (the
+//     carry stays) and the same silent success;
+//   * outside every published touch target, above the footer: B - the same silent cancel;
+//   * anything else (box arrows, header, summary panel, footer badges, any button): None, the target
+//     keeps its own meaning. A drag is never a tap, and a tap whose touch-down the carry grid did not
+//     own (it began under Help, a menu or a dialog, or closed one) is None too.
+enum class Tap : unsigned char { None, Place, Cancel };
+
+constexpr Tap carryTap(int tappedSlot, int capacity, bool outsideTargets) noexcept {
+    if (tappedSlot >= 0 && tappedSlot < capacity) return Tap::Place;
+    return outsideTargets ? Tap::Cancel : Tap::None;
 }
 
 // ---- Clone destination (H31 / H32) ----------------------------------------------------------------

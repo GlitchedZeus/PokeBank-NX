@@ -490,6 +490,17 @@ namespace Pokemon {
             (void)setNicknameChecked(value);
         }
 
+        /** All-or-nothing name check (Round 14 P0-3): 12 UTF-16 code units in a 26-byte field, so
+         *  a non-BMP character costs two and is never split. The setters refuse what this refuses. */
+        bool canStoreNickname(const std::u16string& value) const noexcept override
+        {
+            return Utils::stringFits(26, value, 12);
+        }
+        bool canStoreOTName(const std::u16string& value) const noexcept override
+        {
+            return Utils::stringFits(26, value, 12);
+        }
+
         /** Original Trainer name. Location: 0xF8 (26 bytes). */
         std::u16string otName() const override
         {

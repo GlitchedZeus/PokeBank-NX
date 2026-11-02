@@ -3,6 +3,7 @@
 #include "Conversion/Gen3PidSearch.h"
 #include "Encryption/Encryption4.h"
 #include "Pokemon/Experience.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "Pokemon/PersonalInfo4DP.h"
 #include "Pokemon/PersonalInfo4HGSS.h"
 #include "Pokemon/PersonalInfo4PT.h"
@@ -18,6 +19,7 @@
 #include "Names/DefaultSpeciesName.h"
 #include "Utils/StringHelpers.h"
 #include "Utils/Gen4TextCodec.h"
+#include "Text/TextFieldCapability.h"
 
 #include <algorithm>
 #include <array>
@@ -391,14 +393,17 @@ bool Pokemon4Mutable::writeTextPreservingTrash(
     const std::u16string& value) noexcept {
     if (!valid_ || offset + slotCount * 2 > decrypted_.size() || slotCount == 0)
         return false;
-    const std::u16string bounded =
-        value.substr(0, std::min(value.size(), maxCharacters));
+    // Round 14 P0-2: all-or-nothing. The text used to be cut to the cap BEFORE the round-trip
+    // check, so the check compared the cut text with itself and an over-long name was stored as
+    // its prefix. The shared capability now refuses over-long text, a missing glyph or a name
+    // that would not read back unchanged; on refusal no byte is touched.
+    const PokeBank::Text::Gen4NameField field(PokeBank::Text::FieldKind::Nickname, language(),
+                                              maxCharacters, slotCount);
+    if (!field.check16(value).ok()) return false;
     const auto encoded =
-        Utils::encodeGen4Field(bounded, slotCount, maxCharacters, language());
+        Utils::encodeGen4Field(value, slotCount, maxCharacters, language());
     if (encoded.size() != slotCount * 2) return false;
-    // The codec deliberately substitutes '?' for unsupported glyphs. Editing should
-    // refuse an unrepresentable keyboard result rather than silently mangling it.
-    if (Utils::decodeGen4Field(encoded) != bounded) return false;
+    if (Utils::decodeGen4Field(encoded) != value) return false;
 
     size_t copyBytes = encoded.size();
     for (size_t i = 0; i + 1 < encoded.size(); i += 2) {
@@ -424,6 +429,7 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
 
     const auto backup = decrypted_;
     const uint8_t oldLevel = level();
+    const uint8_t oldGrowth = personalFor(sourceGroup_, species(), form()).growthRate;
     const uint8_t oldNature = nature();
     const bool oldShiny = shiny();
     const uint8_t oldGender = gender();
@@ -449,9 +455,12 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
         target.ability2 != 0 && target.ability2 != target.ability1;
     const int wantedAbilityBit = targetDual ? static_cast<int>(oldAbilitySlot) : -1;
 
-    // Preserve Level across growth-rate changes, and preserve Nature/Shiny plus Gender
-    // where the target species permits it. PID search is bounded and rollback-safe.
-    write32(0x10, getExpForLevel(oldLevel, target.growthRate));
+    // Preserve Level across growth-rate changes (Round 13 owner decision 9: EXP is kept when it
+    // already lies in that level's range for the new growth rate, else it becomes the level's
+    // minimum; Pokemon/SpeciesChangeExperience.h), and preserve Nature/Shiny plus Gender where the
+    // target species permits it. PID search is bounded and rollback-safe.
+    write32(0x10, SpeciesChangeExperience::keepLevel(oldLevel, experience(), oldGrowth == target.growthRate,
+        [&](uint8_t level) { return getExpForLevel(level, target.growthRate); }).experience);
     if (!rerollPid(oldShiny ? 1 : 0, wantedGender, oldNature, wantedAbilityBit)) {
         decrypted_ = backup;
         return false;
@@ -791,12 +800,19 @@ bool Pokemon4Mutable::setMetLocation(uint16_t value) noexcept {
     // Zero is the canonical unset value used by a fresh native Create draft.
     // It is intentionally not offered as an HG/SS map location in the picker,
     // but the serializer must still be able to encode an unset draft safely.
-    if (value != 0 && !Names::isGen4NativeMetLocation(origin, value)) return false;
+    // Round 13 (owner decision 6): the native trade markers 2001 (in-game trade, PKHeX
+    // LinkTrade4NPC) and 2002 (an egg traded before hatching, LinkTrade4) are Met Location values
+    // too. PKHeX G4PKM.MetLocation: outside the Pt/HGSS-only ranges, so the D/P field holds the id
+    // and the extended field holds it only for a Platinum / HG/SS origin.
+    const bool tradeMarker = value == 2001 || value == 2002;
+    if (value != 0 && !tradeMarker && !Names::isGen4NativeMetLocation(origin, value)) return false;
 
     uint16_t dpLocation = value;
     uint16_t extendedLocation = 0;
 
-    if (exactOrigin == Enums::GameVersion::Pt) {
+    if (tradeMarker) {
+        if (exactOrigin != Enums::GameVersion::D && exactOrigin != Enums::GameVersion::P) extendedLocation = value;
+    } else if (exactOrigin == Enums::GameVersion::Pt) {
         // Platinum mirrors common D/P locations into the extended field. Locations
         // introduced after D/P use Faraway Place in the legacy field.
         extendedLocation = value;
@@ -819,6 +835,51 @@ bool Pokemon4Mutable::setMetLocation(uint16_t value) noexcept {
     Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
     if (!verify.valid() || verify.metLocationDP() != dpLocation ||
         verify.metLocationExtended() != extendedLocation) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
+bool Pokemon4Mutable::setEggLocation(uint16_t value) noexcept {
+    if (!valid_) return false;
+    const uint8_t origin = byteAt(0x5F);
+    const auto exactOrigin = static_cast<Enums::GameVersion>(origin);
+    const auto originGroup = Enums::getGameGroup(exactOrigin);
+    if (originGroup != Enums::GameVersion::DP && originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS)
+        return false;
+    if (value != 0 && value != 2000 && value != 2002) return false;
+    // PKHeX G4PKM.EggLocation: 2000 / 2002 sit outside the Pt/HGSS-only ranges, so the D/P field
+    // (0x7E) holds the id and the extended field (0x44) holds it only for a Pt / HG/SS origin.
+    const bool ptHgss = originGroup != Enums::GameVersion::DP;
+    const auto backup = decrypted_;
+    write16(0x7E, value);
+    write16(0x44, ptHgss ? value : 0);
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.eggLocationDP() != value || verify.eggLocationExtended() != (ptHgss ? value : 0)) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
+bool Pokemon4Mutable::setHatchedEggHistory() noexcept {
+    if (!valid_) return false;
+    const auto group = Enums::getGameGroup(static_cast<Enums::GameVersion>(byteAt(0x5F)));
+    const uint16_t hatchLocation = group == Enums::GameVersion::HGSS ? 182
+        : group == Enums::GameVersion::DP || group == Enums::GameVersion::PT ? 4 : 0;
+    if (hatchLocation == 0) return false;
+    const auto backup = decrypted_;
+    if (!setMetLocation(hatchLocation) || !setEggLocation(2000) || !setMetLevel(0)) {
+        decrypted_ = backup;
+        return false;
+    }
+    // Egg date 0x78..0x7A; met date 0x7B..0x7D. A hatched Pokémon records both.
+    if (byteAt(0x78) == 0 && byteAt(0x79) == 0 && byteAt(0x7A) == 0)
+        for (size_t i = 0; i < 3; ++i) write8(0x78 + i, byteAt(0x7B + i));
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid()) {
         decrypted_ = backup;
         return false;
     }

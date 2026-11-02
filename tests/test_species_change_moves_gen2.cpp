@@ -83,8 +83,12 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
         for (const uint16_t species : chain) {
             const auto before = s.working;
             require(s.setSpecies(species, sourceId), "setSpecies " + std::to_string(species));
-            require(s.working.level == PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, species),
-                    "level policy unchanged");
+            // Round 13 owner decision 9: a Create draft takes the default level; an existing
+            // Pokemon keeps its level (tests/test_species_change_level_gen2.cpp covers the EXP).
+            require(s.working.level == (mode == SessionMode::Create
+                                            ? PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, species)
+                                            : entry.level),
+                    "level policy");
             checkKeptMoves(before, s.working, game, std::string(sourceId) + " -> " + std::to_string(species));
             for (const auto move : s.working.moves)
                 require(move != 84 || species == 25 || species == 26, "Thunder Shock never survives a change away from Pikachu");
@@ -125,12 +129,25 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 create.working.pp == (std::array<uint8_t, 4>{}), "Create starts with no moves (C14 reversed)");
         require(create.setLevel(5), "Create level 5");
         std::size_t slot = 99;
-        require(!create.add(*createEditor, 2, slot, error) && error == "Choose at least one move before Add",
+        // Round 14 (owner R09, updated deliberately): Crystal also asks for its Met Location.
+        require(!create.add(*createEditor, 2, slot, error) &&
+                    error == (crystal ? "Choose a Met Location and at least one move before Add"
+                                      : "Choose at least one move before Add"),
                 "Add refuses a moveless Pokemon with the shared message: " + error);
         require(createEditor->finalizedBytes(error) == beforeBytes && !createEditor->hasPendingChanges(),
                 "a refused Add stages nothing");
         require(create.mode == SessionMode::Create, "the draft stays open");
         require(create.setMove(0, 84) && create.setMove(1, 45), "user picks Thunder Shock, Growl");
+        if (crystal) {
+            // Round 14 (owner R09): the user picks a Crystal Met Location (what the picker writes).
+            require(!create.add(*createEditor, 2, slot, error) && error == "Choose a Met Location before Add",
+                    "Crystal Create without a Met Location is refused: " + error);
+            namespace Native = PokeBank::UIModel::Gen2Native;
+            Native::CrystalCaughtData met;
+            met.present = true; met.timeOfDay = 2; met.levelCode = 5; met.location = 50;
+            create.working.caughtData = Native::encodeCrystalCaughtData(met);
+            create.noteMetLocationChosen();
+        }
         require(create.add(*createEditor, 2, slot, error), "Create add: " + error);
         const auto added = createEditor->boxedPokemon(2, slot, error);
         require(added && added->species == 25 && added->level == 5 &&
@@ -229,8 +246,8 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
     }
 
     // Round 11 follow-up (independent QA finding 1): every species 1-251 has at least one Crystal Met
-    // Location row, so no species x Crystal combination is empty. Crystal caught data stays optional
-    // (Create is not refused without it); a chosen row still round-trips through Add -> export ->
+    // Location row, so no species x Crystal combination is empty. Round 14 (owner R09): Create is
+    // refused until a row is chosen; a chosen row round-trips through Add -> export ->
     // strict reparse.
     // Round 12 (R12-004 / R12-005, owner H08 "pokemon crysal now has massive amounts for met lcoation
     // for paokmon that arnt legit"; updated deliberately): the chooser opens on the DEFAULT list --
@@ -261,6 +278,15 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 if (model.unverifiedEntrySelected()) {
                     require(text.place == Policy::kUnverifiedListRowPlace && !model.locationChoice() &&
                             !model.otherLocationChoice(), what + ": the entry row is not a location");
+                } else if (const auto* encounter = model.locationChoice();
+                           encounter && unverified &&
+                           text.detail.find(PokeVault::Integration::GiftStaticEncounters::kAccessUnverified) != std::string::npos) {
+                    // Owner decision (Nov 2, updated deliberately): Celebi (GS Ball) is the encounter in
+                    // the game, listed but never verified; its note reads Incomplete.
+                    ++templates;
+                    require(Rows::crystalUnverifiedNote(sourceId, species, static_cast<uint8_t>(encounter->location),
+                                                        static_cast<uint8_t>(encounter->minLevel), level).find("Incomplete") == 0,
+                            what + ": a prerequisite-dependent row reads Incomplete");
                 } else if (const auto* encounter = model.locationChoice()) {
                     ++templates; ++verifiedHere;
                     // (an Odd Egg template is hatched at landmark 0, Crystal's own egg record)
@@ -292,8 +318,10 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 all.index = row;
                 const auto text = Picker::locationRowTextAt(all, row);
                 const auto other = all.otherLocationChoice();
-                // (a level-blocked Odd Egg template keeps Crystal's own egg landmark 0)
-                require(!all.locationChoice() && other && !Rows::crystalMarkerLocation(*other) &&
+                // (a level-blocked Odd Egg template keeps Crystal's own egg landmark 0; Round 13, owner
+                // decision 7: a level-blocked gift / trade data row may sit at the Gift landmark 0x7E)
+                require(!all.locationChoice() && other &&
+                        (!Rows::crystalMarkerLocation(*other) || all.levelBlockedAt(row)) &&
                         (Rows::crystalNativeCaughtLocation(*other) || (*other == 0 && all.levelBlockedAt(row))),
                         what + ": an unverified row is a landmark, never a template");
                 if (const auto* blocked = all.levelBlockedAt(row)) {
@@ -326,7 +354,11 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 require(create.setSpecies(species, sourceId) && create.setMove(0, move),
                         "Crystal Create " + std::to_string(species));
                 require(create.setLevel(level), what + ": the Create level the lists were built for");
-                require(create.missingRequiredFields().empty(), "Crystal caught data stays optional");
+                // Round 14 (owner R09, updated deliberately): "met location should always be a part
+                // od the stuff before a pokemon is added ... pokemon crystal". A Crystal Create with
+                // no chosen Met Location is refused; choosing a row below makes it addable.
+                require(create.missingRequiredFields(game) == "Choose a Met Location before Add",
+                        "Crystal Create needs a chosen Met Location (owner R09)");
                 Picker::Model& list = fromUnverified ? all : model;
                 const int real = list.locationCount() - (list.unverifiedEntry ? 1 : 0);
                 list.index = species % real;
@@ -335,14 +367,15 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 caught.timeOfDay = 1;
                 caught.levelCode = static_cast<uint8_t>(std::clamp<int>(level, 2, 63));
                 if (const auto* encounter = list.locationChoice()) {
-                    caught.location = static_cast<uint8_t>(encounter->location);
-                    caught.levelCode = encounter->method == PokeVault::Integration::EncounterGuardrails::Method::Egg
-                        ? 1 : static_cast<uint8_t>(std::clamp<int>(encounter->minLevel, 2, 63));
-                    caught.timeOfDay = encounter->timeMask & 2 ? 1 : encounter->timeMask & 4 ? 2 : encounter->timeMask & 8 ? 3 : 1;
+                    // Round 13 (owner decisions 7 / 8; updated deliberately): the overlay's one rule
+                    // for a verified row's caught data (a gift / trade at the Gift landmark is written
+                    // as Crystal writes it: level 0, time 0; a timed row writes its first time).
+                    caught = Picker::caughtForTemplate(*encounter, 0, false).caught;
                 } else {
                     caught.location = *list.otherLocationChoice();
                 }
                 create.working.caughtData = Native::encodeCrystalCaughtData(caught);
+                create.noteMetLocationChosen();   // what the Met Location picker does on a choice
                 const auto note = Rows::crystalUnverifiedNote(sourceId, species, caught.location, caught.levelCode,
                                                               create.working.level);
                 // (a landmark that also has a verified row the level reaches reads verified exactly when
@@ -350,7 +383,8 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 const bool verifiedPlace = std::any_of(model.encounterChoices.begin(), model.encounterChoices.end(),
                     [&](const auto& e) { return e.location == caught.location; });
                 require(fromUnverified ? (note.find("unverified") != std::string::npos || (note.empty() && verifiedPlace))
-                                       : (list.locationChoice() ? note.empty() : note.find("marker") != std::string::npos),
+                                       : (list.locationChoice() ? (note.empty() || note.find("Incomplete") == 0)   // (Nov 2: GS Ball Celebi)
+                                                               : note.find("marker") != std::string::npos),
                         what + ": the editor / Review line matches the list chosen from: " + note);
                 std::size_t slot = 99;
                 require(create.add(*createEditor, 2, slot, error), "Crystal Create add " + std::to_string(species) + ": " + error);
@@ -462,7 +496,7 @@ void createEntryStartsBlank() {
             body.find("seedNativeMoves") == std::string::npos, "beginCreate starts with the moveless default");
     const auto stage = src.find("bool stageCreate(TrainerViewScreen& screen) {");
     const auto stageBody = src.substr(stage, src.find("\n}\n", stage) - stage);
-    require(stageBody.find("state.missingRequiredFields()") < stageBody.find("state.add("),
+    require(stageBody.find("state.missingRequiredFields(Rules::exactGameFromSourceId(screen.sourceGameId))") < stageBody.find("state.add("),   // Round 14 R09: exact game
             "stageCreate checks the required fields before Add");
 }
 

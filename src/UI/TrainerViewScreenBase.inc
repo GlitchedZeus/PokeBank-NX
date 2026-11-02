@@ -1,5 +1,6 @@
 #include "UI/ClassicHelpPresentation.h"
 #include "UI/ReviewEntry.h"
+#include "UI/BackupNameRule.h"   // Round 14 P1: refuse, never filter, a typed backup name
 #include <cstring>
 #include <ctime>     // std::time / std::localtime -> a created mon's met date = today
 #include <algorithm>
@@ -1613,14 +1614,16 @@ int reviewGeneration(const std::string& gameId) {
             bool did = false;
             // (1) You are the ORIGINAL TRAINER.
             if (pk->id32() == id32 && pk->otName() == caughtName) {
-                if (pk->otName()   != newName)   { pk->setOTName(newName);     did = true; }
+                // All-or-nothing writers: re-stamp only where this record can hold the new name
+                // exactly (a Gen 3 record's OT table is its own language's, not the save's).
+                if (pk->otName() != newName && pk->canStoreOTName(newName)) { pk->setOTName(newName); did = true; }
                 if (pk->otGender() != newGender) { pk->setOTGender(newGender); did = true; }
             }
             // (2) You are the HANDLING TRAINER of a traded-in mon. FRLG has no HT (htName() is empty),
             // so it never matches; the empty guard also stops untraded mons (empty HT) matching a
             // cleared trainer name.
             if (!caughtName.empty() && pk->htName() == caughtName) {
-                if (pk->htName()   != newName)   { pk->setHTName(newName);     did = true; }
+                if (pk->htName() != newName && pk->canStoreOTName(newName)) { pk->setHTName(newName); did = true; }
                 if (pk->htGender() != newGender) { pk->setHTGender(newGender); did = true; }
             }
             // Trainer fields don't affect stats, so refresh the checksum only (no recalculateStats).
@@ -1665,9 +1668,9 @@ int reviewGeneration(const std::string& gameId) {
                               static_cast<int>(trainer.getMaxTrainerNameLength()));
         if (!res.accepted) return;          // cancel means "leave it alone", not "clear it"
         if (res.text == current) return;
-        if (!trainer.canStoreBoxName(res.text)) {
+        if (!trainer.canStoreTrainerName(res.text)) {
             Utils::logTest("TRAINERNAME new=\"" + res.text + "\" result=REFUSED_CHARSET");
-            postStatus("This game can't store those characters (A-Z, 0-9, and ! ? . - only).", 240);
+            postStatus("This game can't store that name exactly (a character or the length). Nothing was changed.", 240);
             return;
         }
         const int maxDigits = trainer.getMaxTrainerNameDigits();
@@ -1765,16 +1768,13 @@ int reviewGeneration(const std::string& gameId) {
     // directory would produce a truncated save. "New backup" therefore means "a copy of this save,
     // plus my edits" -- which is also what the user means by it.
     std::string TrainerViewScreen::createNamedBackupDir(const std::string& name) {
-        // Never let a typed name reach the filesystem unfiltered: a '/' or ".." would escape the
-        // PKSE directory entirely. Keep it to characters that are safe on FAT32 as well.
-        std::string leaf;
-        for (const char c : name) {
-            if (std::isalnum(static_cast<unsigned char>(c)) || c == ' ' || c == '-' || c == '_')
-                leaf += c;
-        }
-        while (!leaf.empty() && leaf.back() == ' ') leaf.pop_back();     // FAT32 dislikes trailing spaces
-        while (!leaf.empty() && leaf.front() == ' ') leaf.erase(leaf.begin());
-        if (leaf.empty()) return "";
+        // Never let a typed name reach the filesystem unchecked: a '/' or ".." would escape the
+        // PKSE directory entirely. The caller has already refused anything outside the FAT32-safe
+        // set with a reason (BackupNameRule.h); this backstop refuses rather than filters, so a
+        // name is never silently changed into a different folder.
+        const auto verdict = PokeBank::UIModel::backupFolderName(name);
+        if (!verdict.ok) return "";
+        const std::string leaf = verdict.folder;
 
         const auto* identity = PokeVault::Games::findSwitchGame(titleId);
         if (!identity) {
@@ -3288,9 +3288,17 @@ int reviewGeneration(const std::string& gameId) {
                     std::string destDir = backupDir;
                     if (chosenDest == DestNewBackup) {
                         const Utils::KeyboardResult res =
-                            Utils::promptText("New Backup", "Backup name", titleName, 40);
+                            Utils::promptText("New Backup", "Backup name",
+                                              PokeBank::UIModel::backupNameSuggestion(titleName), 40);
                         if (!res.accepted) return;      // cancelled: leave the dialog up, nothing written
-                        destDir = createNamedBackupDir(res.text);
+                        // Round 14 P1: refuse a name with characters a folder cannot hold, with the
+                        // reason, instead of silently dropping them (BackupNameRule.h).
+                        const auto verdict = PokeBank::UIModel::backupFolderName(res.text);
+                        if (!verdict.ok) {
+                            postStatus(verdict.reason, 480);
+                            return;
+                        }
+                        destDir = createNamedBackupDir(verdict.folder);
                         if (destDir.empty()) {
                             postStatus("Couldn't create that backup. Use letters, numbers, spaces or -.", 480);
                             return;
@@ -5451,40 +5459,30 @@ int reviewGeneration(const std::string& gameId) {
                      sourceGameId=="platinum_nds" ||
                      sourceGameId=="heartgold_nds" || sourceGameId=="soulsilver_nds");
                 if(gen4ItemView) {
-                    // The Gen IV bag footer comes from the shared footer model and the ONE Gen IV
-                    // quantity query: A appears only for a quantity-editable item (QuantityPolicy),
-                    // never for a unique Key Item / HM.
-                    namespace Presentation = PokeBank::UIModel::SharedEditorPresentation;
-                    Presentation::Footer footer;
-                    footer.push("D-pad/Stick", "Items");
-                    footer.push("L/R", "Pocket");
+                    // Round 14 R08: the Gen IV Bag draws the ONE Gen I-V Bag footer model
+                    // (InventoryUIContract inventoryFooterHints) in the Gen I-III wording ("A: Edit
+                    // Amount", "Y: Remove Item", "L/R: Category"). A appears only for a
+                    // quantity-editable item (the ONE Gen IV quantity query, never a unique Key
+                    // Item / HM); ZR Top Up is offered like X Add Item (the surface reports when no
+                    // staged bag exists); + opens Review straight from the Bag (Round 6 B08).
                     const auto visible = visibleItemIndices();
                     const bool hasItem = selectedCategory >= 0 &&
                         selectedCategory < static_cast<int>(trainer.items.size()) &&
                         selectedItemIndex >= 0 && selectedItemIndex < static_cast<int>(visible.size());
+                    bool quantityEditable = false;
                     if (hasItem) {
                         const auto& pouch = trainer.items[static_cast<size_t>(selectedCategory)];
                         const auto raw = static_cast<size_t>(visible[static_cast<size_t>(selectedItemIndex)]);
-                        if (raw < pouch.size() &&
+                        quantityEditable = raw < pouch.size() &&
                             PokeBank::UIModel::Gen4BagQuantity::rule(
-                                sourceGameId, static_cast<size_t>(selectedCategory), pouch[raw].itemId).editable)
-                            footer.push("A", "Edit Quantity");
+                                sourceGameId, static_cast<size_t>(selectedCategory), pouch[raw].itemId).editable;
                     }
-                    footer.push("X", "Add Item");
-                    if (hasItem) footer.push("Y", "Remove");
-                    // Top Up / Add Missing (owner Oct 28, Feature B; Gen4SharedPokemonSurface.inc),
-                    // offered like X Add Item: the surface reports when no staged bag exists.
-                    footer.push("ZR", "Top Up");
-                    // Round 6 (B08): Review straight from the Bag (+; Y stays Remove).
                     static_assert(PokeBank::UIModel::ReviewEntry::footerHint(
                                       PokeBank::UIModel::ReviewEntry::Screen::Bag, 4).glyph[0] == '+');
-                    footer.push("+", "Review");
-                    footer.push("B", "Back");
-                    instructions.clear();
-                    for (const auto& hint : footer) {
-                        if (!instructions.empty()) instructions += "  |  ";
-                        instructions += std::string(hint.glyph) + ": " + hint.label;
-                    }
+                    instructions = PokeBank::UIModel::inventoryFooter(
+                        true, true, hasItem, quantityEditable,
+                        PokeBank::UIModel::ReviewEntry::footerText(PokeBank::UIModel::ReviewEntry::Screen::Bag, 4),
+                        true);
                 } else {
                     // One fixed order for every Gen I-IV browse page, as in Gen V (E05).
                     namespace BrowseFooter = PokeBank::UIModel::ClassicBrowseFooter;
@@ -5513,8 +5511,9 @@ int reviewGeneration(const std::string& gameId) {
                     }
                     // Round 7: the Gen V save hub's + opens Review (Gen5SharedReadOnlySurface browse
                     // input, Help "+ Review staged ..."); its footer now shows that key too, so no
-                    // screen has a Review key its footer does not name.
-                    if (!detailViewActive && reviewGen == 5) {
+                    // screen has a Review key its footer does not name. Round 14 R08: the Gen I-IV hub
+                    // has the same + Review (ClassicBrowseReview::open), so every hub shows it.
+                    if (!detailViewActive && reviewGen >= 1 && reviewGen <= 5) {
                         spec.review = true;
                         spec.reviewGlyph = "+";
                     }

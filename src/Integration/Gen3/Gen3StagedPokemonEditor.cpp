@@ -20,6 +20,7 @@
 #include "Names/LocationDisplayNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Pokemon/Experience.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "Utils/Gen3Text.h"
 #include "Utils/StringHelpers.h"
 
@@ -162,11 +163,15 @@ std::array<uint16_t, 6> stats(const Pokemon::Pokemon3FRLG& p) noexcept {
     return {p.statHPMax(), p.statATK(), p.statDEF(), p.statSPE(), p.statSPA(), p.statSPD()};
 }
 
+// `saveLanguage` is the charset of the save the record sits in. It decides only how an Egg's OT
+// reads (Pokemon3FRLG::otTextLanguage): the Egg's record language is the Japanese placeholder while
+// its OT bytes stay in the save's own table (Round 14 P0-1).
 std::optional<StagedPokemonRecord> parseRaw(
-    const std::array<uint8_t, 80>& raw, std::string& error) {
+    const std::array<uint8_t, 80>& raw, std::string& error, uint8_t saveLanguage = 2) {
     error.clear();
     Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+    pokemon.setSaveLanguage(saveLanguage);
     if (pokemon.speciesID() == 0) return std::nullopt;
     if (pokemon.speciesID() > 386) {
         error = "Generation III box slot contains an unsupported species";
@@ -277,9 +282,9 @@ constexpr const char* kMetEvidenceLabel = "Met evidence";
 template <typename Record>
 std::string metEvidenceNote(const Record& record) {
     namespace Picker = PokeBank::UIModel::Gen3EncounterPicker;
+    // (owner decision, Nov 2: also "single source (PKHeX)" / Incomplete -- Gen3EncounterPicker::evidenceNote)
     const auto choices = Picker::templatesForOrigin(record.originGame, record.species);
-    if (Picker::verifiedTemplate(choices, record.metLocation, record.metLevel, record.level)) return {};
-    return Picker::encounterOriginText(choices, record.species, record.metLocation, record.metLevel, record.level);
+    return Picker::evidenceNote(choices, record.species, record.metLocation, record.metLevel, record.level);
 }
 
 } // namespace
@@ -365,7 +370,7 @@ std::optional<StagedPokemonRecord> StagedPokemonEditor::boxedPokemon(
         error = "Generation III box/slot is outside the native 14 x 30 storage";
         return std::nullopt;
     }
-    return parseRaw(raw, error);
+    return parseRaw(raw, error, trainer_.language);
 }
 
 bool StagedPokemonEditor::writeBoxRaw(
@@ -406,7 +411,7 @@ std::optional<StagedPokemonRecord> StagedPokemonEditor::partyPokemon(std::size_t
     if(bytes.empty()) return {};
     std::array<uint8_t,80> raw{};
     std::copy_n(bytes.begin(),80,raw.begin());
-    return parseRaw(raw,error);
+    return parseRaw(raw,error,trainer_.language);
 }
 bool StagedPokemonEditor::stagePartyPokemonEdit(std::size_t slot,const BoxPokemonEdit& edit,std::string& error) {
     return stageRecordEdit(true,0,slot,edit,error);
@@ -423,7 +428,7 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
         error = "Generation III box/slot is outside the native 14 x 30 storage";
         return false;
     }
-    auto before = party?partyPokemon(slot,error):parseRaw(boxRaw, error);
+    auto before = party?partyPokemon(slot,error):parseRaw(boxRaw, error, trainer_.language);
     if (!before) {
         if (error.empty()) error = "Selected Generation III box slot is empty";
         return false;
@@ -431,6 +436,7 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
 
     Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(raw.data()), raw.size()));
+    pokemon.setSaveLanguage(trainer_.language);
     const uint16_t originalHP=party?static_cast<uint16_t>(raw[0x56]|raw[0x57]<<8):0;
     const uint16_t originalMax=party?static_cast<uint16_t>(raw[0x58]|raw[0x59]<<8):0;
     const uint32_t originalPid = pokemon.pid();
@@ -456,7 +462,18 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
             error = "Generation III species must be in the National Dex range 1-386";
             return false;
         }
+        const uint8_t keptLevel = pokemon.level();
+        const uint32_t keptExperience = pokemon.exp();
+        const bool changed = *edit.species != pokemon.speciesID();
+        const uint8_t previousGrowth = Pokemon::getGrowthRate(pokemon.speciesID());
         pokemon.setSpecies(*edit.species);
+        // Round 13 owner decision 9: an existing Pokemon keeps its level; its EXP is reconciled
+        // to the new growth rate (an explicit Level / EXP in this edit still wins below).
+        if (changed && !edit.level && !edit.experience) {
+            const uint8_t growth = Pokemon::getGrowthRate(*edit.species);
+            pokemon.setExp(Pokemon::SpeciesChangeExperience::keepLevel(keptLevel, keptExperience, previousGrowth == growth,
+                [&](uint8_t level) { return Pokemon::getExpForLevel(level, growth); }).experience);
+        }
     }
     // M1 D1: the nickname is stored in the table of the record's language, so a language change is
     // applied first and the name is then written in the NEW language. A language-only change keeps
@@ -483,7 +500,7 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
         };
         if (!edit.otName) {
             const std::u16string keptOt = forLanguage(shownOt);
-            if (!pokemon.canStoreNickname(keptOt)) {
+            if (!pokemon.canStoreOTName(keptOt)) {
                 error = "This OT name cannot be written in the new language; change the OT name too";
                 return false;
             }
@@ -509,7 +526,8 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
     }
     if (edit.nickname) {
         const auto value = Utils::utf8ToUtf16(*edit.nickname);
-        if (value.size() > 10 || !pokemon.canStoreNickname(value)) {
+        if (Utils::utf16ToUtf8(value) != *edit.nickname || value.size() > 10 ||
+            !pokemon.canStoreNickname(value)) {
             error = "Nickname cannot be represented in the Generation III character set";
             return false;
         }
@@ -569,12 +587,25 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
     }
     if (edit.tid) pokemon.setTID16(*edit.tid);
     if (edit.otName) {
+        // Round 14 P0-1: validate in the language the OT is actually WRITTEN in. An Egg's record
+        // language is the Japanese placeholder but its OT is stored in the save's charset
+        // (otTextLanguage); checking the record's table let "A×B" through and the encoder then kept
+        // only "A". The length rule is that text language's (7, or 5 for Japanese text), and the
+        // stored name must read back unchanged (Latin width folded), exactly as Create checks.
         const auto value = Utils::utf8ToUtf16(*edit.otName);
-        if (value.size() > 7 || !pokemon.canStoreNickname(value)) {
-            error = "OT name cannot be represented in the Generation III character set";
+        if (Utils::utf16ToUtf8(value) != *edit.otName || !pokemon.canStoreOTName(value)) {
+            error = "OT name cannot be represented in the Generation III character set; nothing was changed";
+            return false;
+        }
+        if (value.size() > maxOtLength(pokemon.otTextLanguage())) {
+            error = "OT name is too long for this Generation III game; nothing was changed";
             return false;
         }
         pokemon.setOTName(value);
+        if (Utils::gen3FoldWidth(pokemon.otName()) != Utils::gen3FoldWidth(value)) {
+            error = "OT name would not read back unchanged in this game; nothing was changed";
+            return false;
+        }
     }
     // (A language change was applied above, before the nickname.)
     if (edit.friendship) pokemon.setFriendship(*edit.friendship);
@@ -590,7 +621,7 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
         error = "Nickname is too long for this Generation III record language";
         return false;
     }
-    if ((edit.otName || edit.language) && pokemon.otName().size() > maxOtLength(pokemon.language())) {
+    if ((edit.otName || edit.language) && pokemon.otName().size() > maxOtLength(pokemon.otTextLanguage())) {
         error = "OT name is too long for this Generation III record language";
         return false;
     }
@@ -852,6 +883,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     std::array<uint8_t, 80> blank{};
     Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
         reinterpret_cast<const std::byte*>(blank.data()), blank.size()));
+    pokemon.setSaveLanguage(trainer_.language);
 
     const uint16_t tid = create.tid.value_or(trainer_.tid16);
     pokemon.setPID(deterministicCreatePid(tid, trainer_.sid16, box, slot, create.species));
@@ -868,7 +900,7 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     pokemon.setMetLocation(create.metLocation);
     pokemon.setOTGender(trainer_.gender & 1);
     const auto ot = Utils::utf8ToUtf16(create.otName.value_or(trainer_.name));
-    if (ot.size() > maxOtLength(create.language) || !pokemon.canStoreNickname(ot)) {
+    if (ot.size() > maxOtLength(pokemon.otTextLanguage()) || !pokemon.canStoreOTName(ot)) {
         error = "Create OT name cannot be represented in the Generation III character set";
         return false;
     }
@@ -1044,7 +1076,7 @@ bool StagedPokemonEditor::stageCloneBoxPokemon(
         error = "Generation III clone source is outside native storage";
         return false;
     }
-    auto sourceRecord = parseRaw(sourceRaw, error);
+    auto sourceRecord = parseRaw(sourceRaw, error, trainer_.language);
     if (!sourceRecord) {
         if (error.empty()) error = "Generation III clone source slot is empty";
         return false;

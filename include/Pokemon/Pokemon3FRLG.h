@@ -104,7 +104,14 @@ namespace Pokemon {
         int getMaxNicknameLength() const noexcept override { return 10; }  // 10 bytes @0x08, 1 byte per glyph
         bool canStoreNickname(const std::u16string& value) const noexcept override;
         std::u16string otName() const override;      // Gen3 char table @0x14 (7 bytes)
-        void setOTName(const std::u16string& value) noexcept override;   // encode into the Gen3 table @0x14
+        /// Encodes into the Gen3 table of otTextLanguage() @0x14. All-or-nothing: a name
+        /// canStoreOTName refuses leaves the bytes untouched (Round 14 P0-1 / P0-2).
+        void setOTName(const std::u16string& value) noexcept override;
+        /// Whether setOTName stores `value` exactly: every glyph in the table of the language the
+        /// OT is WRITTEN in (otTextLanguage(): the save's charset for an Egg, whose record language
+        /// is the Japanese placeholder) and at most 7 characters. The game's own per-language cap
+        /// (5 for Japanese text) is the editor's rule on top of this field limit.
+        bool canStoreOTName(const std::u16string& value) const noexcept override;
 
         // ---- moves (Attacks substructure @0x2C) ----
         uint16_t move(int slot) const noexcept override { return (slot < 0 || slot > 3) ? 0 : rd16(0x2C + slot * 2); }

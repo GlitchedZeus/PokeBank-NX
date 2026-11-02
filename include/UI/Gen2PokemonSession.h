@@ -1,5 +1,7 @@
 #pragma once
 #include <algorithm>
+#include <optional>
+#include <string_view>
 #include "UI/ClassicDefaultNickname.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
 #include "UI/Gen12DVReroll.h"
@@ -42,9 +44,16 @@ struct Session {
     Gen2::PokemonRecord baseline{}, working{};
     // The last Create species change cleared a non-zero Pokerus / the chosen caught data.
     bool pokerusCleared = false, caughtDataCleared = false;
+    // Round 14 (owner R09): the Crystal Met Location picker marks a Create draft's location as
+    // CHOSEN (a stored value alone is never a choice). Gold / Silver have no caught data.
+    bool metLocationChosen = false;
+    void noteMetLocationChosen() noexcept { if (mode == SessionMode::Create) metLocationChosen = true; }
+    std::string experienceNote;
     void begin(const Gen2::PokemonRecord& p, SessionMode next) {
         baseline = working = p; mode = next; confirmExit = false;
         pokerusCleared = caughtDataCleared = false;
+        metLocationChosen = false;
+        experienceNote.clear();
         progression = next == SessionMode::Create ? ProgressionSource::Level : ProgressionSource::Unchanged;
     }
     bool editable() const noexcept { return mode == SessionMode::Create || mode == SessionMode::Edit; }
@@ -71,8 +80,11 @@ struct Session {
     }
     bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept {
         pokerusCleared = caughtDataCleared = false;
-        if (!editable() || !Gen2::personalRecord(species)) return false;
+        const auto* personal = Gen2::personalRecord(species);
+        if (!editable() || !personal) return false;
         if (species == working.species) return true;
+        experienceNote.clear();
+        const auto* previousPersonal = Gen2::personalRecord(working.species);
         const uint8_t nextLevel =
             SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species);
         working.nickname = nicknameAfterSpeciesChange(working.nickname, working.species, species);
@@ -83,7 +95,21 @@ struct Session {
         working.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(species, dvs[0]));
         // Unown's letter comes from the same DVs (pokecrystal GetUnownLetter); any other species has form 0.
         working.form = species == 201 ? static_cast<uint8_t>(Gen12DVReroll::unownLetter(dvs)) : 0;
-        if (!setLevel(nextLevel)) return false;
+        if (mode == SessionMode::Create) {
+            if (!setLevel(nextLevel)) return false;
+        } else {
+            // Round 13 owner decision 9: an existing Pokemon keeps the level it shows (the stored
+            // level byte) and its EXP is reconciled to the new growth rate. EXP is canonical in
+            // the edit request, so Keep / Review stage exactly this level and EXP.
+            const uint32_t beforeExperience = working.experience;
+            const auto kept = ::Pokemon::SpeciesChangeExperience::keepLevel(working.level, working.experience,
+                previousPersonal && previousPersonal->experienceGrowth == personal->experienceGrowth,
+                [&](uint8_t level) { return Pokemon::getExpForLevel(level, personal->experienceGrowth); });
+            working.level = kept.level;
+            working.experience = kept.experience;
+            progression = ProgressionSource::Experience;
+            experienceNote = ::Pokemon::SpeciesChangeExperience::note(beforeExperience, kept);
+        }
         // Round 11 (owner H28): keep each current move the new species can use in this exact
         // Gold / Silver / Crystal ruleset (Gen2MoveCompatibility, the move picker's filter) with
         // its PP and PP Ups; clear the rest; never add one. An unknown game proves nothing
@@ -111,13 +137,18 @@ struct Session {
         pokerusCleared = history.resetPokerus && working.pokerus != 0;
         caughtDataCleared = history.resetMetLocation;
         if (history.resetPokerus) working.pokerus = 0;
-        if (history.resetMetLocation) working.caughtData = 0;
+        if (history.resetMetLocation) { working.caughtData = 0; metLocationChosen = false; }
         return true;
     }
-    // The status a Create species change posts: what it reset ("" when nothing was). Crystal caught
-    // data is optional, so a cleared location is reported, not demanded again.
-    std::string speciesChangeResetStatus() const {
-        return SpeciesChangeHistoryPolicy::resetStatus(pokerusCleared, caughtDataCleared, false);
+    // The status a Create species change posts: what it reset ("" when nothing was). Round 14
+    // (owner R09): a Crystal Create needs a chosen Met Location, so a cleared one asks for a new
+    // choice; Gold / Silver have no caught data and only report a clear.
+    // Round 13 owner decision 9: what the last Edit species change did to EXP ("" when unchanged).
+    std::string speciesChangeExperienceNote() const { return experienceNote; }
+    std::string speciesChangeResetStatus(std::string_view sourceGameId = {}) const {
+        return SpeciesChangeHistoryPolicy::resetStatus(
+            pokerusCleared, caughtDataCleared,
+            PokeBank::UIModel::CreateRequiredFields::metLocationRequiredForGame(2, sourceGameId));
     }
     // Round 11 (owner H25 clarification 2): an existing Crystal Pokemon whose species was changed
     // in this session keeps its caught data; a misfit is flagged (editor + Review), never cleared.
@@ -221,12 +252,21 @@ struct Session {
         if (progression == ProgressionSource::Experience) create.experience = working.experience;
         return create;
     }
-    // The shared Round 11 rule (UI/CreateRequiredFields.h): Create needs at least one move (Gen II
-    // has no required met data; Crystal caught data stays optional); an Edit is refused only when
-    // this session took the last move away. Checked before anything is staged.
-    std::string missingRequiredFields() const {
+    // The shared rule (UI/CreateRequiredFields.h): Create needs at least one move and, in Crystal
+    // (Round 14, owner R09), a chosen Met Location; Gold / Silver store no met data. An Edit is
+    // refused only when this session took the last move away (an existing traded Crystal Pokemon
+    // keeps "no caught data"). `game` is the exact save's game; unknown asks for no location.
+    // Checked before anything is staged.
+    std::string missingRequiredFields(std::optional<Gen2::SourceGame> game = std::nullopt) const {
         namespace Required = PokeBank::UIModel::CreateRequiredFields;
-        if (mode == SessionMode::Create) return Required::message(Required::forCreate(2, false, working.moves), "Add");
+        const std::string_view gameId = !game ? std::string_view{}
+            : *game == Gen2::SourceGame::Crystal ? std::string_view("crystal_gbc")
+            : *game == Gen2::SourceGame::Silver ? std::string_view("silver_gbc") : std::string_view("gold_gbc");
+        // Chosen = the picker reported a choice AND it wrote real caught data (every picker row
+        // encodes a non-zero record: level code >= 2, or the Gift landmark).
+        const bool chosen = metLocationChosen && Gen2Native::decodeCrystalCaughtData(working.caughtData).present;
+        if (mode == SessionMode::Create)
+            return Required::message(Required::forCreateInGame(2, gameId, chosen, working.moves), "Add");
         if (mode == SessionMode::Edit) return Required::message(Required::forEdit(baseline.moves, working.moves));
         return {};
     }
@@ -234,7 +274,7 @@ struct Session {
         if (mode != SessionMode::Edit || !movesAllowCommit(editor.metadata().sourceGame)) {
             error = "Keep unavailable or incompatible new move"; return false;
         }
-        if (auto missing = missingRequiredFields(); !missing.empty()) { error = std::move(missing); return false; }
+        if (auto missing = missingRequiredFields(editor.metadata().sourceGame); !missing.empty()) { error = std::move(missing); return false; }
         if (!(party?editor.stagePartyPokemonEdit(slot,editRequest(),error):
                     editor.stageBoxPokemonEdit(box,slot,editRequest(),error))) return false;
         mode = SessionMode::None; confirmExit = false; return true;
@@ -243,7 +283,7 @@ struct Session {
         if (mode != SessionMode::Create || !movesAllowCommit(editor.metadata().sourceGame)) {
             error = "Create unavailable or incompatible move"; return false;
         }
-        if (auto missing = missingRequiredFields(); !missing.empty()) { error = std::move(missing); return false; }
+        if (auto missing = missingRequiredFields(editor.metadata().sourceGame); !missing.empty()) { error = std::move(missing); return false; }
         if (!editor.stageAddBoxPokemon(box,createRequest(),slot,error)) return false;
         mode = SessionMode::None; return true;
     }

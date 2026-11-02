@@ -1,6 +1,7 @@
 #include "Integration/Gen1/Gen1StagedPokemonEditor.h"
 #include "Utils/Gen12AccentText.h"
 #include "Pokemon/Experience.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "Names/SpeciesNames.h"
 #include "Names/MoveNames.h"
 #include "Integration/Gen1/Gen12CreateReview.h"
@@ -365,8 +366,13 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,size_t b,size_t s,const Box
     const auto growth=growthRate(next.species);
     if(e.level && (*e.level<1 || *e.level>100)) {error="Level must be 1..100";return false;}
     if(e.experience) next.experience=*e.experience;
-    else if(e.level || (e.species && next.species!=p->species))
-        next.experience=Pokemon::getExpForLevel(e.level.value_or(next.level),growth);
+    else if(e.level) next.experience=Pokemon::getExpForLevel(*e.level,growth);
+    else if(e.species && next.species!=p->species)
+        // Round 13 owner decision 9: an existing Pokemon keeps the level it shows (the stored
+        // box / Party level byte) and its EXP is reconciled to the new growth rate.
+        next.experience=Pokemon::SpeciesChangeExperience::keepLevel(p->level,p->experience,
+            growthRate(p->species)==growth,
+            [&](uint8_t level){return Pokemon::getExpForLevel(level,growth);}).experience;
     if(e.level && e.experience && Pokemon::getLevelFromExp(*e.experience,growth)!=*e.level) {error="Level and EXP disagree";return false;}
     next.level=Pokemon::getLevelFromExp(next.experience,growth);
     if(e.moves) {

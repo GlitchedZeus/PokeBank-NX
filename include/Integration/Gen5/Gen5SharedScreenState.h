@@ -47,7 +47,8 @@ namespace PokeVault::Integration::Gen5 {
     else if(const auto personal=personal5(p.species(),p.form(),b2w2))
         level=levelForExperience5(personal.info->growthRate,p.experience());
     return EncounterContext45::unverifiedMetNote45(static_cast<uint8_t>(p.originVersion()),
-        static_cast<uint16_t>(p.species()),static_cast<uint16_t>(p.metLocation()),level);
+        static_cast<uint16_t>(p.species()),static_cast<uint16_t>(p.metLocation()),level,
+        static_cast<uint16_t>(p.eggLocation()),static_cast<int>(p.metLevel()));
 }
 
 // Round 11 (owner H28, UI/SpeciesChangeMoves.h): the moves a Gen V Pokemon keeps when it becomes
@@ -668,9 +669,10 @@ public:
             return "Nickname this Pokemon first: an unnicknamed Pokemon's name follows its species";
         const auto source=personal5(current->species(),0,black2White2_);
         const auto target=personal5(species,0,black2White2_);
-        if(!source || !target || source.info->growthRate>5 ||
-           source.info->growthRate!=target.info->growthRate)
-            return "That species uses a different EXP growth group; its level would change";
+        // Round 13 owner decision 9: a species of another growth rate is allowed; the Pokemon keeps
+        // its level and its EXP is reconciled (StagedPokemon5Record Field::Species).
+        if(!source || !target || source.info->growthRate>5 || target.info->growthRate>5)
+            return "That species has no exact EXP growth data in this game";
         if(!genderAllowed5(target.info->genderRatio,current->gender()))
             return "That species cannot have this Pokemon's gender";
         if(genderFromPid5(current->pid(),source.info->genderRatio)==current->gender() &&
