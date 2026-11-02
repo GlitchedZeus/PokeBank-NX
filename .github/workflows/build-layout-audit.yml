@@ -1,0 +1,20 @@
+name: Host Makefile relocation reference audit
+on:
+  push:
+    branches:
+      - maintenance/host-makefile-consolidation-20261102
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inventory legacy host fragment path references
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== OLD HOST FRAGMENT REFERENCES ==='
+          git grep -nE 'Makefile[.]host[.][A-Za-z0-9_-]+' -- ':!Makefile.host' ':!build-system/host/**' || true
+          echo '=== PARSE HOST GRAPH ==='
+          make -f Makefile.host -pn >/dev/null || true
