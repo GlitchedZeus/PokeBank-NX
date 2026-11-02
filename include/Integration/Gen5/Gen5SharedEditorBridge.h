@@ -98,7 +98,11 @@ struct SharedEditorSlot {
     const SharedEditorSlot& slot) {
     const auto listed=actions(workspace,slot);
     Shared::ActionCapabilities caps=Shared::fileCapabilities(false);
+    // The shared defaults allow Add; this shortcut must mirror the live
+    // action sheet, including the no-trainer first-boot safeguard.
+    caps.canAdd=false;
     for(size_t i=0;i<listed.count;++i) {
+        if(listed[i]==Shared::Action::Add)caps.canAdd=true;
         if(listed[i]==Shared::Action::ImportFile)caps.canImportFile=true;
         if(listed[i]==Shared::Action::ExportFile)caps.canExportFile=true;
     }
