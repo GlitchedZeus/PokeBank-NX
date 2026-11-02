@@ -134,10 +134,11 @@ names nor unsupported BW roles is claimed as proven superior legality behavior.
 Remaining gaps are full recursive event/cross-era/form/regional chronology;
 complete EV action catalogs and native Orre/gift initial histories; original
 Ranch RNG/receipt evidence; historical event custody; regional native name
-filters; and an exhaustive branch/title/region/source/test crosswalk. The Gen III
-RNG-cap aggregation still blanket-downgrades its internal Invalid findings and
-needs an actual guarded witness plus a scoped independent-contradiction repair.
-It is not silently counted as complete. Acquired specimens, independent native
+filters; and an exhaustive branch/title/region/source/test crosswalk. At the 3576a74e milestone, Gen III RNG-cap aggregation still blanket-downgraded
+its internal Invalid findings. The subsequent [scoped repair](RNG_CAP_REPAIR.md)
+now preserves native PP/EV contradictions with a retained actual guarded witness;
+other finding dependencies still require individual audit. It is not silently
+counted as complete. Acquired specimens, independent native
 review, full production UI wiring and device validation also prevent release.
 
 Raw outputs, all before/after transition ledgers, initial failures, compiler

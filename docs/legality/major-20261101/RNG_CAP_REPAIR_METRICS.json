@@ -1,0 +1,210 @@
+{
+  "before_head": "44016106bcb24feaaa816fbd88ac13f207ee94a4",
+  "policy": "All unchanged reference rows retained. Native PP/EV bounds independent of capped RNG. No new clean acceptance or raw false Invalid.",
+  "samples": {
+    "same-original": {
+      "generations": {
+        "3": {
+          "records": 40945,
+          "raw_agreement": 39999,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 946,
+          "reference_fishy_all": 4402,
+          "reference_misc_error": 0,
+          "reference_success_records": 40945,
+          "reference_success_agreement": 39999,
+          "loadfail": 0
+        },
+        "4": {
+          "records": 63219,
+          "raw_agreement": 62316,
+          "raw_false_invalid": 60,
+          "raw_false_clean": 0,
+          "incomplete": 843,
+          "reference_fishy_all": 4712,
+          "reference_misc_error": 0,
+          "reference_success_records": 63219,
+          "reference_success_agreement": 62316,
+          "loadfail": 0
+        },
+        "5": {
+          "records": 134293,
+          "raw_agreement": 133249,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 1044,
+          "reference_fishy_all": 32263,
+          "reference_misc_error": 647,
+          "reference_success_records": 133646,
+          "reference_success_agreement": 132602,
+          "loadfail": 0
+        }
+      },
+      "changes": [],
+      "metrics_sha256": "b97649417dd00f4050055fb041d71362b9c23f06b6062a92887312430abd3e88"
+    },
+    "same-prior-independent": {
+      "generations": {
+        "3": {
+          "records": 16378,
+          "raw_agreement": 16000,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 378,
+          "reference_fishy_all": 1271,
+          "reference_misc_error": 0,
+          "reference_success_records": 16378,
+          "reference_success_agreement": 16000,
+          "loadfail": 0
+        },
+        "4": {
+          "records": 25893,
+          "raw_agreement": 25623,
+          "raw_false_invalid": 12,
+          "raw_false_clean": 0,
+          "incomplete": 258,
+          "reference_fishy_all": 1160,
+          "reference_misc_error": 0,
+          "reference_success_records": 25893,
+          "reference_success_agreement": 25623,
+          "loadfail": 0
+        },
+        "5": {
+          "records": 53964,
+          "raw_agreement": 53481,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 483,
+          "reference_fishy_all": 12090,
+          "reference_misc_error": 264,
+          "reference_success_records": 53700,
+          "reference_success_agreement": 53217,
+          "loadfail": 0
+        }
+      },
+      "changes": [
+        {
+          "id": "m8635-pp",
+          "before": "INCOMPLETE",
+          "after": "INVALID",
+          "reference": "m8635-pp E B90E23DD2A0042DABECCBBC1C9C8C3CEBFFF0202CED9E7E8D9E6FF00D688000095000000602C0300032300003F00D7005D0159001805140A00000000000000000000000000A2B72707C8251400000081 INVALID EncounterShadow3XD:149 ; CurrentMove:MovePPTooHigh_01",
+          "old_production": "m8635-pp INCOMPLETE source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; W: Move is preserved but not in the audited Gen III native/transfer pool: Heal Bell | W: PID/IV correlation (CXD) does not match XD shadow Pokemon (Dragonite) | W: Move 1 PP is above its maximum | W: RNG search reached its limit; the encounter could not be decided (Invalid findings above are undecided)",
+          "new_production": "m8635-pp INVALID source:partial,internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial,transfer:partial ; Move 1 PP is above its maximum | W: Move is preserved but not in the audited Gen III native/transfer pool: Heal Bell | W: PID/IV correlation (CXD) does not match XD shadow Pokemon (Dragonite) | W: RNG search reached its limit; dependent encounter findings remain undecided"
+        }
+      ],
+      "metrics_sha256": "5fbdb60b2a135f00811644859aa130235af5118a0400797f83b78cd9a44bcdbe"
+    },
+    "fresh-independent": {
+      "generations": {
+        "3": {
+          "records": 24567,
+          "raw_agreement": 23991,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 576,
+          "reference_fishy_all": 2321,
+          "reference_misc_error": 0,
+          "reference_success_records": 24567,
+          "reference_success_agreement": 23991,
+          "loadfail": 0
+        },
+        "4": {
+          "records": 38343,
+          "raw_agreement": 37806,
+          "raw_false_invalid": 21,
+          "raw_false_clean": 0,
+          "incomplete": 516,
+          "reference_fishy_all": 2385,
+          "reference_misc_error": 0,
+          "reference_success_records": 38343,
+          "reference_success_agreement": 37806,
+          "loadfail": 0
+        },
+        "5": {
+          "records": 81024,
+          "raw_agreement": 80344,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 680,
+          "reference_fishy_all": 19084,
+          "reference_misc_error": 344,
+          "reference_success_records": 80680,
+          "reference_success_agreement": 80000,
+          "loadfail": 0
+        }
+      },
+      "changes": [],
+      "metrics_sha256": "2b8aa42257e5f59cfe5a11bdd73606b3b9da87421f91ef77084fdc68e4c82ad3"
+    }
+  },
+  "matrix": {
+    "gcc-normal": {
+      "build_exit": 0,
+      "tests": {
+        "test_legality_gen3": 0,
+        "test_legality_gen4": 0,
+        "test_legality_gen5": 0,
+        "test_gen5_joint_breeding": 0,
+        "test_gen35_release_rules": 0,
+        "test_gen35_coverage_integrity": 0,
+        "test_gen5_name_uncertainty": 0,
+        "test_gen4_ranch_ability": 0,
+        "test_gen34_ev_exp": 0
+      },
+      "seconds": 65.73694777488708
+    },
+    "clang-normal": {
+      "build_exit": 0,
+      "tests": {
+        "test_legality_gen3": 0,
+        "test_legality_gen4": 0,
+        "test_legality_gen5": 0,
+        "test_gen5_joint_breeding": 0,
+        "test_gen35_release_rules": 0,
+        "test_gen35_coverage_integrity": 0,
+        "test_gen5_name_uncertainty": 0,
+        "test_gen4_ranch_ability": 0,
+        "test_gen34_ev_exp": 0
+      },
+      "seconds": 66.88158893585205
+    },
+    "clang-sanitize": {
+      "build_exit": 0,
+      "tests": {
+        "test_legality_gen3": 0,
+        "test_legality_gen4": 0,
+        "test_legality_gen5": 0,
+        "test_gen5_joint_breeding": 0,
+        "test_gen35_release_rules": 0,
+        "test_gen35_coverage_integrity": 0,
+        "test_gen5_name_uncertainty": 0,
+        "test_gen4_ranch_ability": 0,
+        "test_gen34_ev_exp": 0
+      },
+      "seconds": 265.91324949264526
+    },
+    "gcc-sanitize": {
+      "build_exit": 0,
+      "tests": {
+        "test_legality_gen3": 0,
+        "test_legality_gen4": 0,
+        "test_legality_gen5": 0,
+        "test_gen5_joint_breeding": 0,
+        "test_gen35_release_rules": 0,
+        "test_gen35_coverage_integrity": 0,
+        "test_gen5_name_uncertainty": 0,
+        "test_gen4_ranch_ability": 0,
+        "test_gen34_ev_exp": 0
+      },
+      "seconds": 446.05920362472534
+    }
+  },
+  "native_witness_profiles": [
+    "gcc-normal",
+    "gcc-sanitize",
+    "clang-normal",
+    "clang-sanitize"
+  ],
+  "source_manifest_sha256": "3423d68857af53c6839203d3a4e9fd04b00b25e017806a92334174f29b608b0f"
+}

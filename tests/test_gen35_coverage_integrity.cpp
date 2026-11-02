@@ -128,5 +128,34 @@ int main(){
         assert(bytes==before);++transferCases;
     }
     assert(transferCases==5);
+    // Actual retained XD Dragonite inputs hit the native RNG search guard.
+    // A capped origin remains unknown, but cannot negate a PP/EV contradiction.
+    std::ifstream capped("tests/fixtures/gen15_session2/gen3_rng_cap_priority.txt");assert(capped);
+    size_t cappedCases=0;
+    while(capped>>id>>expected>>hex) {
+        const auto bytes=fromHex(hex.c_str()),before=bytes;
+        for(const char* game:{"ruby_gba","sapphire_gba","emerald_gba","firered_gba","leafgreen_gba"}) {
+            const auto report=analyzePk3(bytes,game);
+            assert(bytes==before&&hasText(report,Severity::Warning,"RNG search reached its limit"));
+            assert(report.coverage.pidRng==CoverageLevel::Partial);
+            if(expected=="INCOMPLETE") {
+                withoutWarnings(report,&CoverageSummary::pidRng);
+                auto ev=bytes;ev[56]=255;ev[57]=255;ev[58]=1;sum3(ev);
+                const auto invalid=analyzePk3(ev,game);
+                assert(invalid.verdict()==Verdict::Invalid);
+                assert(hasText(invalid,Severity::Invalid,"EV total 511 is above 510"));
+                assert(hasText(invalid,Severity::Warning,"RNG search reached its limit"));
+            } else {
+                assert(expected=="INVALID"&&report.verdict()==Verdict::Invalid);
+                assert(hasText(report,Severity::Invalid,"Move 1 PP is above its maximum"));
+                assert(!hasText(report,Severity::Invalid,"PID/IV correlation"));
+                auto withoutText=report;
+                std::erase_if(withoutText.issues,[](const Issue&i){return i.severity==Severity::Warning;});
+                assert(withoutText.verdict()==Verdict::Invalid);
+            }
+        }
+        ++cappedCases;
+    }
+    assert(cappedCases==2);
     std::cout<<"Actual GenIII-V coverage: source Berry, Ranch RNG, GenV ability,40 unsupported events,4 name-only promotion controls and2 BW paired histories remainIncomplete without warnings; 5 GenIII/IV→V transferred joint-history controls; hard contradictions outrank partial; clean controls PASS\n";
 }

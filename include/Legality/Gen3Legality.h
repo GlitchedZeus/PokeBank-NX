@@ -8,10 +8,11 @@
  * The record is only read, never modified, and nothing is written back.
  *
  * Rules and data follow PKHeX.Core at the commit pinned in Gen3LegalityData.h and
- * Gen3LegalityDataCxd.h (see docs/legality/GEN3_PKHEX_RULE_INVENTORY.md). A rule
- * PKHeX treats as a definite failure is reported as Invalid; anything this analyzer
+ * Gen3LegalityDataCxd.h (see docs/legality/GEN3_PKHEX_RULE_INVENTORY.md).
+ * A source-backed contradiction is reported as Invalid; anything this analyzer
  * cannot decide (unknown game versions, search limits) is reported as a Warning with
- * partial coverage, never as Invalid. A Colosseum/XD origin (version 15) is judged
+ * partial coverage. Search uncertainty does not negate independent native bounds.
+ * A Colosseum/XD origin (version 15) is judged
  * with PKHeX's GameCube templates, team locks and RNG (EncounterGenerator3GC); the
  * same rules serve later formats through Gen3Cxd.h.
  */

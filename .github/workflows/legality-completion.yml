@@ -104,6 +104,10 @@ jobs:
           for profile in normal sanitize; do
             flags=()
             if [ "$profile" = sanitize ]; then flags+=(--sanitize); fi
+            python3 tools/legality_completion/gen3_independent_bounds_native_witness.py \
+              --source build-completion/native-emerald --fetch \
+              --work "build-completion/native-local-bounds-$profile" --compiler "$CXX" "${flags[@]}" \
+              2>&1 | tee "build-completion/native-local-bounds-$profile.log"
             python3 tools/legality_completion/ev_exp_native_witness.py \
               --source build-completion/native-hgss --fetch \
               --work "build-completion/native-$profile" --compiler "$CXX" "${flags[@]}" \
@@ -135,6 +139,8 @@ jobs:
             build-completion/native-swarm-*.log
             build-completion/native-birth-*.log
             build-completion/native-bw2-*.log
+            build-completion/native-local-bounds-*.log
+            build-completion/native-local-bounds-*/native_local_bounds.cpp
             build-completion/bw2-reference-adjudication.log
             docs/legality/campaign-20261028/BW2_*
             build-completion/test_gen5_joint_breeding*.log
@@ -146,6 +152,8 @@ jobs:
             tests/fixtures/gen15_session2/native_recursive_breeding.txt
             tests/fixtures/gen15_session2/gen5_recursive_tangela.txt
             tests/fixtures/gen15_session2/transferred_joint_coverage.txt
+            tests/fixtures/gen15_session2/gen3_rng_cap_priority.txt
+            docs/legality/major-20261101/GEN3_RNG_INDEPENDENT_SOURCE_PINS.json
             build-completion/native-wings-witness/**
             build-completion/native-wings-witness.log
             docs/legality/major-20261031/BW2_WING_SOURCE_AUDIT.json

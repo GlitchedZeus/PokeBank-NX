@@ -493,7 +493,8 @@ namespace {
 constexpr uint32_t kNotForced = 0xFFFFFFFFu; // TeamLockResult.NOT_FORCED
 
 /// PKHeX's GameCube searches have no bound; a guard that runs out makes the analysis
-/// Unknown (every Invalid finding is reported as a Warning) instead of guessing.
+/// Unknown for dependent findings instead of guessing. Independent native bounds
+/// retain their own contradictions even when a search cannot decide the origin.
 struct CxdGuard {
     bool& capped;
     uint32_t budget;
@@ -3325,6 +3326,7 @@ struct Finding {
     uint8_t sev = SInvalid;
     CheckIdentifier id = CheckIdentifier::Misc;
     std::string text;
+    bool independentOfRng = false;
 };
 
 struct Analysis {
@@ -3343,6 +3345,9 @@ struct Analysis {
         findings.push_back(Finding{sev, id, std::move(text)});
     }
     void invalid(CheckIdentifier id, std::string text) { add(SInvalid, id, std::move(text)); }
+    void invalidIndependent(CheckIdentifier id, std::string text) {
+        findings.push_back(Finding{SInvalid, id, std::move(text), true});
+    }
     void fishy(CheckIdentifier id, std::string text) { add(SFishy, id, std::move(text)); }
     void note(CheckIdentifier id, std::string text) { add(SInfo, id, std::move(text)); }
 };
@@ -3762,7 +3767,7 @@ void verifyEvs(const Pk3& pk, Analysis& a) {
         return;
     }
     if (sum > 510) {
-        a.invalid(CheckIdentifier::Stats, "EV total " + std::to_string(sum) + " is above 510");
+        a.invalidIndependent(CheckIdentifier::Stats, "EV total " + std::to_string(sum) + " is above 510");
         return;
     }
     const Enc& e = a.enc;
@@ -4126,7 +4131,7 @@ void verifyMovePP(const Pk3& pk, Analysis& a) {
             a.invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " cannot have PP Ups");
         const uint32_t healed = static_cast<uint32_t>(movePP(move)) * (5u + ups) / 5u;
         if (pk.pp[i] > healed)
-            a.invalid(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " PP is above its maximum");
+            a.invalidIndependent(CheckIdentifier::Moves, "Move " + std::to_string(i + 1) + " PP is above its maximum");
     }
 }
 
@@ -4433,8 +4438,9 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
     bool problem = false;
     for (auto& f : a.findings) {
         if (f.sev != SInfo) problem = true;
-        // A search guard was hit: nothing below is proven, so no finding may stay Invalid.
-        const Severity sev = (a.capped && f.sev == SInvalid) ? Severity::Warning : mapSeverity(f.sev);
+        // A guarded origin search does not decide encounter-dependent findings.
+        // It cannot negate an independently proven native PP or total-EV bound.
+        const Severity sev = (a.capped && f.sev == SInvalid && !f.independentOfRng) ? Severity::Warning : mapSeverity(f.sev);
         add(sev, f.id, std::move(f.text));
     }
     if (enigma) {
@@ -4455,7 +4461,7 @@ Report analyzeDetailed(std::span<const uint8_t> decrypted, std::string_view exac
     if (a.capped) {
         problem = true;
         add(Severity::Warning, CheckIdentifier::PidRng,
-            "RNG search reached its limit; the encounter could not be decided (Invalid findings above are undecided)");
+            "RNG search reached its limit; dependent encounter findings remain undecided");
     }
     if (a.unsupported) {
         problem = true;
