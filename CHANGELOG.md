@@ -16,9 +16,11 @@ Dates are the candidate commit dates.
 ## Round 13 — `9c301c48` (2026-11-02) — alpha candidate, NOT DEVICE TESTED
 
 - NRO SHA-256 `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d`, build run 41392463888.
-- Repairs for the Round 12 owner findings (R12-001 … R12-010): Gen V box controls, Clone/Move pop-ups and the
-  extra Gen I/II carry cursor, Met Location lists, Bag Top Up. Also re-checks earlier requirements that had
-  dropped off checklists.
+- Addresses the Round 12 owner findings (R12-001 … R12-010): Gen V Boxes controls, routine Move/Clone
+  pop-ups, the second cursor in Gen I/II packed-box Clone, Met Location lists and met-level checks, the Top Up
+  item limit, TM/HM choices, Gen III language changes and PID, Japanese/Korean name display, and a stale export
+  confirmation. Also re-checks earlier requirements that had dropped off checklists. (R12-011/012, the Vault
+  features, are not in this build.)
 - Status: **awaiting owner hardware acceptance.**
 
 ## Round 12 — `066e1db9` (2026-11-01) — alpha candidate, partial
