@@ -9,7 +9,7 @@
 # Requirements: bash, git, curl, python3. gh is optional and used only when `gh auth status` succeeds
 # (for a higher GitHub API rate limit and for --with-metadata). No token is ever printed.
 #
-# Plan source: docs/maintenance/branch_audit_2026-11-02.json (Phase 1 audit, owner-approved Phase 2).
+# Plan source: docs/maintenance/branch_audit_2026-11-02_phase2.json (Phase 1 audit, owner-approved Phase 2).
 #
 # Groups (owner approval of 2026-11-02):
 #   contained           DELETE-SAFE branches whose tip is contained in a preserved ref (64 at audit).
@@ -61,7 +61,7 @@
 #     Modes: without --group, --with-metadata / --archive-nro-fallback / --tag-pr-heads run alone
 #     (no branch prune).
 #     Every mode is a dry run unless --execute is given.
-#     --audit-json PATH         default docs/maintenance/branch_audit_2026-11-02.json
+#     --audit-json PATH         default docs/maintenance/branch_audit_2026-11-02_phase2.json
 #     --remote NAME             default origin
 #     -h | --help
 #
@@ -129,7 +129,7 @@ fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || die "run inside the PokeBank-NX clone"
 cd "$REPO_ROOT"
-AUDIT_JSON="${AUDIT_JSON:-docs/maintenance/branch_audit_2026-11-02.json}"
+AUDIT_JSON="${AUDIT_JSON:-docs/maintenance/branch_audit_2026-11-02_phase2.json}"
 [[ -f "$AUDIT_JSON" ]] || die "audit JSON not found: $AUDIT_JSON"
 [[ -f tools/maintenance/branch_audit.py ]] || die "tools/maintenance/branch_audit.py not found"
 git remote get-url "$REMOTE" >/dev/null 2>&1 || die "no git remote named $REMOTE"
@@ -524,6 +524,8 @@ is_protected() {
     # claude/tender-gates-bkl5jq is covered by claude/* above.
     archive/qa-campaigns-2026-10-28|audit/gen12-independent-20261013) return 0 ;;
     feature/ds-melonds-link-emulator-20261101) return 0 ;;
+    # Sole surviving container of ~50 paused legality branches (Nov 2 dry run): never pruned by this script.
+    audit/legality-integration-hardening-20261012) return 0 ;;
     integration/main-gen15-consolidation) [[ "$g" == "consolidation" ]] || return 0 ;;
     integration/legality-gen14-major-20261012)
       [[ "$g" == "legality-base" && $ALLOW_LEGALITY_BASE == 1 ]] || return 0 ;;
@@ -778,6 +780,15 @@ process_branch() {  # batch group branch tip recorded_surv
     return 0
   fi
   [[ "$live" == "$tip" ]] || { skip "tip changed: recorded ${tip:0:12}, live ${live:0:12}"; return 0; }
+
+  # Unique work committed in the last 7 days may still be in progress: never archive/delete it here.
+  # Such branches are listed for the owner's individual decision instead.
+  if [[ "$g" == "unique-archive" || "$g" == "equivalent-archive" ]]; then
+    local ct now
+    ct="$(git log -1 --format=%ct "$tip" 2>/dev/null || echo 0)"
+    now="$(date +%s)"
+    if (( now - ct < 7*24*3600 )); then skip "unique work committed in the last 7 days: owner review required"; return 0; fi
+  fi
 
   if (( EXECUTE )); then
     # Re-read open PRs immediately before this deletion; any API failure aborts the batch.
