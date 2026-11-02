@@ -1,0 +1,20 @@
+# Round 13 owner decisions 7 / 8: source-backed gift / static / trade encounter data
+# (tools/gen_gift_static_encounters.py) wired into the Crystal, Gen III, Gen IV and Gen V Met
+# Location pickers as verified rows; Crystal time rows keep their encounter times.
+GIFT_STATIC_SOURCES := tests/test_gift_static_encounters.cpp $(GEN2_STAGED_EDITOR_COMMON) \
+	src/Integration/Gen2/Gen2MoveCompatibility.cpp src/Integration/Gen1/Gen1MoveCompatibility.cpp \
+	src/Names/LocationNames.cpp
+GIFT_STATIC_DEPS := include/Integration/Encounter/GiftStaticEncounters.h \
+	include/Integration/Encounter/GiftStaticEncountersData.inc include/Integration/Encounter/EncounterContext45.h \
+	include/Integration/Encounter/EncounterGuardrails.h include/UI/ExactGameMetLocations.h \
+	include/UI/Gen2PokemonPickerModel.h include/UI/Gen3EncounterPickerModel.h
+HOST_TESTS += $(HOST_BUILD)/test_gift_static_encounters
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gift_static_encounters_sanitize
+host-test: $(HOST_BUILD)/test_gift_static_encounters
+host-sanitize: $(HOST_BUILD)/test_gift_static_encounters_sanitize
+$(HOST_BUILD)/test_gift_static_encounters: $(GIFT_STATIC_SOURCES) $(GIFT_STATIC_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude -Itests $(GIFT_STATIC_SOURCES) -o $@
+$(HOST_BUILD)/test_gift_static_encounters_sanitize: $(GIFT_STATIC_SOURCES) $(GIFT_STATIC_DEPS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests $(GIFT_STATIC_SOURCES) -o $@

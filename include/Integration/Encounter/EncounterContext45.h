@@ -1,7 +1,7 @@
 #pragma once
 #include "Integration/Encounter/BreedingPolicy.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
-#include "Integration/Encounter/InGameTrades4.h"
+#include "Integration/Encounter/GiftStaticEncounters.h"
 #include "Integration/Encounter/MetLocationPolicy.h"
 #include "Names/SpecialMetLocationNotes.h"
 #include <array>
@@ -67,6 +67,9 @@ struct WildRow {
 // "Other location (unverified)..." row (MetLocationPolicy::kUnverifiedListRow). choices(true) is
 // the UNVERIFIED list -- the stored location (row 1) and every other native location, including
 // the wild rows above the record's level ("level is below this encounter").
+// PKHeX Locations.LinkTrade4NPC: the Met Location of a Gen IV in-game (NPC) trade.
+inline constexpr uint16_t kNpcTrade4 = 2001;
+
 class Catalogue {
 public:
     Catalogue() = default;
@@ -79,8 +82,19 @@ public:
         for (const auto id : native)
             if (std::find(all.begin(), all.end(), id) == all.end()) all.push_back(id);
         const auto parents = ancestry(generation(origin), species);
-        for (const auto& entry : kWild45) {
-            if (entry.sourceGameId != gameId(origin) || !parents[entry.species]) continue;
+        // Round 13 (owner decision 7): the game's source-backed gift / static / in-game trade /
+        // fossil / prize / roaming / event rows (Integration/Encounter/GiftStaticEncounters.h) are
+        // verified rows exactly like a wild row -- species or ancestry, level-checked -- labelled
+        // with their kind ("Gift Lv. 5", "Trade Lv. 30"). An egg gift is met where it hatched, so
+        // it is not a row here; event distributions have no data and stay unverified.
+        std::vector<EncounterGuardrails::EncounterTemplate> encounters;
+        for (const auto& entry : kWild45)
+            if (entry.sourceGameId == gameId(origin) && parents[entry.species]) encounters.push_back(entry);
+        for (const auto& gift : GiftStaticEncounters::kRows)
+            if (gift.game == gameId(origin) && GiftStaticEncounters::metLocationRow(gift) &&
+                gift.species < parents.size() && parents[gift.species])
+                encounters.push_back(GiftStaticEncounters::templateOf(gift));
+        for (const auto& entry : encounters) {
             const bool reached = Policy::levelReachesEncounter(entry.minLevel, currentLevel);
             auto row = std::find_if(wild_.begin(), wild_.end(), [&](const auto& r) {
                 return r.encounter.location == entry.location;
@@ -96,27 +110,24 @@ public:
                 row->levelReached = row->levelReached || reached;
             }
         }
+        // A verified row's place is a native met location even where the editor's name table
+        // stops short of it (the Gen IV in-game trade location 2001).
+        for (const auto& row : wild_)
+            if (std::find(all.begin(), all.end(), row.encounter.location) == all.end())
+                all.push_back(row.encounter.location);
         // Round 13 (owner decisions 5 / 6): Gen IV's Day-Care / trade markers are judged per record.
+        // 2001 (in-game trade) is verified by the encdata rows above (GiftStaticEncounters, the one
+        // source of truth for Gen IV NPC trades: PKHeX TradeGift_DPPtIngame / TradeGift_HGSS); when
+        // no such row verifies it, it is offered in the unverified list with the reason.
         const uint8_t gen = generation(origin);
         egg_ = BreedingPolicy::eggHistory(gen, species, currentLevel);
-        std::vector<uint16_t> gen4Rows;   // the record's Gen IV marker rows, verified or not
+        std::vector<uint16_t> gen4Rows;   // the record's judged Gen IV rows, verified or not
         if (gen == 4) {
-            for (uint16_t member = 1; member <= 493; ++member) {
-                const auto* trade = parents[member] ? InGameTrades4::find(origin, member) : nullptr;
-                if (!trade) continue;
-                const bool reached = Policy::levelReachesEncounter(trade->level, currentLevel);
-                // Prefer a trade the level reaches; among those, the species itself.
-                if (!trade_ || (reached && !tradeReached_) ||
-                    (reached == tradeReached_ && member == species && trade_->species != species)) {
-                    trade_ = trade;
-                    tradeReached_ = reached;
-                }
-            }
             // An unhatched egg traded by link records 2002 as its Met Location (PKHeX
             // EncounterVerifier.VerifyUnhatchedEgg); an egg is the species itself.
             eggTraded_ = history.egg && BreedingPolicy::hatchable(4, species);
             // An unhatched egg has not hatched: it gets no hatched-egg row.
-            gen4Rows = {InGameTrades4::kMetLocation, 2002};
+            gen4Rows = {kNpcTrade4, 2002};
             if (!history.egg) gen4Rows.insert(gen4Rows.begin(), Policy::kHatchedEggRow);
         }
         focused_.push_back(stored);
@@ -126,13 +137,18 @@ public:
             if (wild && wild->levelReached) { focused_.push_back(id); ++verified_; }
         }
         for (const auto id : gen4Rows)
-            if (id != stored && gen4RowVerified(id)) focused_.push_back(id);
+            if (id != stored && gen4RowVerified(id) &&
+                std::find(focused_.begin(), focused_.end(), id) == focused_.end())   // (2001: a verified trade row)
+                focused_.push_back(id);
         for (const auto id : all)
-            if (id != stored && Policy::gen45DefaultMarker(gen, id)) focused_.push_back(id);
+            if (id != stored && Policy::gen45DefaultMarker(generation(origin), id) &&
+                std::find(focused_.begin(), focused_.end(), id) == focused_.end())   // (a verified trade row)
+                focused_.push_back(id);
         focused_.push_back(Policy::kUnverifiedListRow);
         native_.push_back(stored);
         for (const auto id : gen4Rows)
-            if (id != stored && !gen4RowVerified(id)) native_.push_back(id);
+            if (id != stored && !gen4RowVerified(id) && std::find(all.begin(), all.end(), id) == all.end())
+                native_.push_back(id);   // (a place in `all` is listed below)
         for (const auto id : all)
             if (id != stored && std::find(focused_.begin(), focused_.end(), id) == focused_.end())
                 native_.push_back(id);
@@ -162,7 +178,7 @@ public:
     bool gen4RowVerified(uint16_t value) const noexcept {
         if (generation(origin_) != 4) return false;
         if (value == MetLocationPolicy::kHatchedEggRow) return egg_.verified();
-        if (value == InGameTrades4::kMetLocation) return trade_ && tradeReached_;
+        if (value == kNpcTrade4) return verifiedEncounter(value);
         if (value == 2002) return eggTraded_;
         return false;
     }
@@ -176,7 +192,7 @@ public:
     // reaches (R12-005); a marker or any other row is not one.
     bool verifiedEncounter(uint16_t location) const noexcept {
         const auto* row = wildRow(location);
-        return (row && row->levelReached) || (location == InGameTrades4::kMetLocation && gen4RowVerified(location));
+        return row && row->levelReached;
     }
     const char* scope(bool otherHistories) const noexcept {
         // Row 1 of either list is always the stored location (focused_ / native_ start with it).
@@ -197,18 +213,39 @@ public:
             return egg_.verified() ? MetLocationPolicy::kHatchedEggVerified + via(egg_.hatchedAs)
                                    : std::string(MetLocationPolicy::kHatchedEggUnverified) + "; " +
                                          BreedingPolicy::reasonText(egg_.reason);
-        if (generation(origin_) == 4 && location == InGameTrades4::kMetLocation && !(current && history_.egg)) {
-            if (gen4RowVerified(location))
-                return tagged("NPC trade Lv. " + std::to_string(trade_->level) + via(trade_->species));
-            if (trade_) return tagged("NPC trade Lv. " + std::to_string(trade_->level) + "+" + via(trade_->species) +
-                                      "; " + MetLocationPolicy::kLevelBelowEncounter);
-            return tagged("NPC trade; not this species here");
+        // 2001 without a verified trade row of the species / its ancestry at this level.
+        if (generation(origin_) == 4 && location == kNpcTrade4 && !current && !verifiedEncounter(location)) {
+            if (const auto* row = wildRow(location))
+                return "NPC trade Lv. " + std::to_string(row->encounter.minLevel) + "+" + via(row->encounter.species) +
+                       "; " + MetLocationPolicy::kLevelBelowEncounter;
+            return "NPC trade; not this species here";
         }
         if (generation(origin_) == 4 && location == 2002 && !current)
             return eggTraded_ ? "Egg traded before hatching" : "Link trade; only an unhatched egg";
+        // A verified row: its method / kind and level ("Wild Lv. 3–5", "Gift Lv. 5", an in-game
+        // trade arriving at the traded Pokémon's level "Lv. 20+"), the ancestor it was met as, and
+        // how many more slots share the place (short so rows fit 620 px).
+        const auto verifiedText = [&](const WildRow& row) {
+            const auto& encounter = row.encounter;
+            std::string text = std::string(EncounterGuardrails::methodName(encounter.method)) + " Lv. " +
+                               std::to_string(encounter.minLevel);
+            if (encounter.maxLevel == 100 && encounter.minLevel < 100) text += "+";
+            else if (encounter.maxLevel != encounter.minLevel) text += "–" + std::to_string(encounter.maxLevel);
+            if (encounter.species != species_) text += " via " + std::string(name(encounter.species));
+            if (row.variants) text += " (+" + std::to_string(row.variants) + ")";
+            return text;
+        };
         // Stored history takes priority over wild tables. No edit invents a matching history.
         if (current && history_.egg) return "Stored egg; hatch history unverified";
         if (current && history_.eggLocation) return "Stored egg/hatch history; unverified";
+        // Round 13 (owner decision 7): a verified gift / static / trade row of the species or its
+        // ancestry names its kind, even at a trade location that is also the game's marker. A stored
+        // fateful flag keeps its own label unless the game sets that flag for this encounter.
+        if (const auto* row = wildRow(location); row && row->levelReached) {
+            const auto* gift = GiftStaticEncounters::rowOf(row->encounter);
+            const bool fatefulRow = gift && (gift->flags & GiftStaticEncounters::kFateful);
+            if (!(current && history_.fateful) || fatefulRow) return tagged(verifiedText(*row));
+        }
         // Round 7 B05: transfer / trade / egg markers and event locations say what the pinned
         // tables and native names establish, and their native id (Names/SpecialMetLocationNotes.h).
         if (auto special = Names::specialMetLocation(origin_, location); !special.empty())
@@ -217,16 +254,10 @@ public:
         if (const auto* row = wildRow(location)) {
             const auto& encounter = row->encounter;
             // R12-005: above the record's level -- the reason it is in the unverified list (short,
-            // without the method, so it fits beside the place name).
-            std::string text = row->levelReached ? std::string(EncounterGuardrails::methodName(encounter.method)) + " " : "";
-            text += "Lv. " + std::to_string(encounter.minLevel);
-            // (a row above the level shows the minimum it misses: "Lv. 51+")
-            if (!row->levelReached) text += "+";
-            else if (encounter.maxLevel != encounter.minLevel) text += "–" + std::to_string(encounter.maxLevel);
+            // without the method, so it fits beside the place name; "Lv. 51+" is the minimum it misses).
+            std::string text = "Lv. " + std::to_string(encounter.minLevel) + "+";
             if (encounter.species != species_) text += " via " + std::string(name(encounter.species));
-            if (!row->levelReached) return tagged(text + "; " + MetLocationPolicy::kLevelBelowEncounter);
-            if (row->variants) text += " (+" + std::to_string(row->variants) + ")";   // more slots here; short so rows fit 620 px
-            return tagged(text);
+            return tagged(text + "; " + MetLocationPolicy::kLevelBelowEncounter);
         }
         return tagged("Gift / static / other history; unverified");
     }
@@ -238,8 +269,7 @@ private:
     size_t verified_ = 0;
     History history_{};
     BreedingPolicy::EggVerdict egg_{};
-    const InGameTrades4::Trade* trade_ = nullptr;
-    bool tradeReached_ = false, eggTraded_ = false;
+    bool eggTraded_ = false;
     std::vector<uint16_t> native_, focused_;
     std::vector<WildRow> wild_;
 };

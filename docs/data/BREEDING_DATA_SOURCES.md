@@ -56,7 +56,7 @@ Gen IV 220, Gen V 289.
 | Id | PKHeX name | Native field and meaning | Picker behaviour |
 | --- | --- | --- | --- |
 | 2000 | `Daycare4` | **Egg Location** of a Day-Care egg (`EncounterEgg4`). An unhatched egg's Met Location is 0. A hatched Pokémon's Met Location is where it hatched, with Met Level 0. | Never written as a Met Location. The row "Hatched from a Day-Care egg" writes Met Location = Day-Care hatch place (D/P/Pt 4 Solaceon Town, HG/SS 182 Route 34), Met Level 0 and Egg Location 2000. It is verified only when `BreedingPolicy::eggHistory(4, ...)` verifies the species. |
-| 2001 | `LinkTrade4NPC` | Met Location of an in-game (NPC) trade (`EncounterTrade4PID`, except HG/SS Spearow and Shuckle, which record their real places) | Verified for the exact game's trades and their evolutions at or above the trade level (`InGameTrades4.h`, from `Encounters4DPPt.cs` / `Encounters4HGSS.cs`). Otherwise unverified. |
+| 2001 | `LinkTrade4NPC` | Met Location of an in-game (NPC) trade (`EncounterTrade4PID`, except HG/SS Spearow and Shuckle, which record their real places) | Verified for the exact game's trades and their evolutions at or above the trade level (the encdata lane's `GiftStaticEncounters` trade rows, from PKHeX `Encounters4DPPt.cs` / `Encounters4HGSS.cs`; one source of truth). Otherwise unverified. |
 | 2002 | `LinkTrade4` | Met Location of an egg traded before it hatched; Egg Location of a hatched traded egg (`TradedEggLocation`) | Verified only for an egg record of a hatchable species. Otherwise unverified. |
 
 None of these is "Pokémon Ranch". Ranch gifts use other locations, such as 3000 and map ids

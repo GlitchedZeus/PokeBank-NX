@@ -264,7 +264,7 @@ void catalogue(uint8_t origin) {
         const uint8_t tradeLevel = hgss ? 1 : 35;
         const auto here = open(trade, tradeLevel);
         require(has(here.choices(), 2001) && here.verifiedEncounter(2001) &&
-                    here.detail(2001, speciesName) == "NPC trade Lv. " + std::to_string(tradeLevel),
+                    here.detail(2001, speciesName).find("Lv. " + std::to_string(tradeLevel)) != std::string::npos,
                 tag + ": in-game trade verified: " + here.detail(2001, speciesName));
         const auto evo = open(evolved, 50);
         require(has(evo.choices(), 2001), tag + ": an evolved in-game trade keeps 2001 verified");

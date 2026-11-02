@@ -4,7 +4,8 @@
 // R12-001 / R12-002 / R12-003).
 //
 // The shared carry layer (src/UI/ClassicPackedMoveOverlay.inc) runs Move and Clone for every
-// generation: Gen I-IV through handleInput, Gen V through handleGen5BoxInput, and one draw().
+// generation: Gen I-IV through handleInput, Gen V through handleGen5BoxTouch / handleGen5BoxInput, and
+// one draw(). Touch (Round 13 owner decision 4) shares the same selection and carry (carryTap below).
 // Both key dispatch sites, the carry footer and the host tests read this pure model, so the
 // generations cannot drift apart again.
 //
@@ -68,6 +69,22 @@ struct Footer {
 constexpr Footer carryFooter(Intent intent, bool group) noexcept {
     const char* place = intent == Intent::Clone ? "Place Clone" : group ? "Place Group" : "Place";
     return {{{"A", place}, {"L/R", "Box"}, {"B", "Cancel"}}};
+}
+
+// ---- Touch (Round 13 owner decision 4: touchscreen drag multi-select with controller parity) -------
+// A finger drag across box cells selects the rectangle a Y hold + D-pad selects, and lifting the finger
+// picks the group up as releasing Y does (ClassicPackedMoveOverlay touchSelectionInput). While carrying,
+// a release-confirmed tap (TouchInput::justTapped) is one of the carry keys:
+//   * on a grid cell other than the cursor: the cursor moves there (today's meaning of a tap);
+//   * on the cursor's own cell, where the carried sprite rides: A - the same place() transaction, with
+//     the same capacity / occupied / protected refusals and the same silent success;
+//   * outside every published touch target, above the footer: B - the same silent cancel;
+//   * anything else (box arrows, header, summary panel): None, the target keeps its own meaning.
+enum class Tap : unsigned char { None, Focus, Place, Cancel };
+
+constexpr Tap carryTap(int tappedSlot, int cursorSlot, int capacity, bool outsideTargets) noexcept {
+    if (tappedSlot >= 0 && tappedSlot < capacity) return tappedSlot == cursorSlot ? Tap::Place : Tap::Focus;
+    return outsideTargets ? Tap::Cancel : Tap::None;
 }
 
 // ---- Clone destination (H31 / H32) ----------------------------------------------------------------

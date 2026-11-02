@@ -16,6 +16,8 @@ Generated from the historical reconciliation of every Round 1–12 hardware reco
 | Needs Investigation | 25 |
 | **Total unique issues** | **276** |
 
+The 94 *(recheck)* rows stay marked for re-verification; the commits that changed each one since its accepted candidate and the targeted regression tests are in [`RECHECK_REGRESSIONS.md`](RECHECK_REGRESSIONS.md).
+
 ## Vault (`vault`, 2)
 
 | ID | Title | Gen | First seen (round · test ID) | Original result | Current status | Repair commit(s) | Automated test(s) | Hardware acceptance candidate | Next required action |

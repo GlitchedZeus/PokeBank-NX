@@ -60,7 +60,7 @@ constexpr bool levelReachesEncounter(uint8_t encounterMinLevel, uint8_t currentL
 //  * Gen IV 2000 (Daycare4), 2001 (LinkTrade4NPC), 2002 (LinkTrade4) are judged per record by
 //    EncounterContext45::Catalogue: 2000 is an EGG-location value (a hatched Pokémon's Met Location
 //    is the place it hatched), offered as the "Hatched from a Day-Care egg" row; 2001 is verified
-//    only for the exact game's in-game trades (InGameTrades4.h); 2002 is a Met Location only for an
+//    only for the exact game's in-game trades (the GiftStaticEncounters trade rows); 2002 is a Met Location only for an
 //    egg traded before it hatched.
 //  * Gen V 60002 (Daycare5) and 60003 (Breeder) are egg-location values, never a Met Location
 //    (PKHeX EncounterVerifier: an unhatched egg's Met Location is 0 or a trade marker, a hatched

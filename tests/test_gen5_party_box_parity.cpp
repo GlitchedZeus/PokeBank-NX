@@ -533,6 +533,71 @@ void languageFollowsDefaultName5(G::SaveFamily family, std::string_view game, ui
     assert(sav == pristine);
 }
 
+// Round 13 recheck (docs/qa/RECHECK_REGRESSIONS.md, PBX-CRT-012 / PBX-CRT-007): owner PASS R6
+// 26186464 A17 "Create starts IVs at 0 without resetting existing Pokemon" and R11 3634d1e6 H07
+// "create in an empty BW/B2W2 box slot, Keep after choosing a location". The default Create request
+// changed after both passes (R11 620ee717 / ab072252 no moves + explicit Met Location; R12 d120fa28
+// un-nicknamed default), so the accepted outcome is re-asserted on the changed route: the draft and
+// the exported record start with IVs 0 and EVs 0, and the neighbouring stored records are untouched.
+void recheckCreateStartsAtZero5(G::SaveFamily family, std::string_view game, uint8_t version) {
+    auto sav = fixture(family, version);
+    sav[0x19400 + 0x1E] = 2;  // English
+    const auto& blank = G::encryptedBlankBoxSlot5();
+    for (size_t box = 0; box < L::BoxCount; ++box)
+        for (size_t slot = 0; slot < L::BoxSlots; ++slot) {
+            if (box == 0 && slot < 2) continue;
+            std::copy(blank.begin(), blank.end(),
+                      sav.begin() + static_cast<std::ptrdiff_t>(L::BoxOffset + box * L::BoxStride + slot * C::StoredSize));
+        }
+    const auto blocks = family == G::SaveFamily::BlackWhite ? std::span<const L::SaveBlock>(L::BlackWhite)
+                                                            : std::span<const L::SaveBlock>(L::Black2White2);
+    auto copy = std::span<uint8_t>(sav).subspan(0, family == G::SaveFamily::BlackWhite ? L::BlackWhiteCopySize
+                                                                                        : L::Black2White2CopySize);
+    for (const auto& b : blocks) {
+        const uint16_t crc = Utils::crc16ccitt(copy.data() + b.offset, b.length);
+        C::write16(copy, b.checksumOffset, crc);
+        C::write16(copy, b.mirrorOffset, crc);
+    }
+    const auto pristine = sav;
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, game, &error, G::SaveCopySelection::Primary);
+    assert(parsed);
+    const auto neighbour = [](const G::Gen5ReadOnlySave& save, size_t slot) {
+        const auto p = save.boxPokemon(0, slot);
+        assert(p && p->valid() && !p->empty());
+        return std::vector<uint8_t>(p->decodedBytes().begin(), p->decodedBytes().end());
+    };
+    const auto before0 = neighbour(*parsed, 0), before1 = neighbour(*parsed, 1);
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    G::Gen5SharedScreenState ui;
+    const auto ok = [](std::string&) { return true; };
+    const auto defaults = G::Gen5SharedScreenState::sharedCreateDefaults(ws, 0x12345678u, "", {2026, 11, 2}, error);
+    assert(defaults);
+    assert(ui.openActions(ws, Slot{Region::Box, 0, 4}, error));
+    assert(ui.activate(ws, Action::Add, error));
+    assert(ui.beginCreateDraft(ws, *defaults, ok, error));
+    const auto zero = [](const auto& values) {
+        return std::all_of(values.begin(), values.end(), [](auto v) { return v == 0; });
+    };
+    {
+        const auto draft = ui.draft().current();
+        assert(draft && zero(draft->ivs()) && zero(draft->evs()));
+    }
+    assert(ui.editDraft().stage(G::StagedPokemon5Record::Field::Move, 0, 84, error));   // Thunder Shock
+    ui.noteCreateMetLocationChosen();
+    assert(ui.keepWithPresentation(ws, ok, error) && !ui.createPending());
+    assert(ws.changedRecordCount() == 1);
+    const auto out = G::buildStagedSaveCandidate(ws, &error);
+    assert(out && out->changedRecords == 1);
+    const auto reopened = G::Gen5ReadOnlySave::parse(out->bytes, game, &error, G::SaveCopySelection::Primary);
+    assert(reopened);
+    const auto made = reopened->boxPokemon(0, 4);
+    assert(made && made->valid() && !made->empty() && made->species() == 25);
+    assert(zero(made->ivs()) && zero(made->evs()));
+    assert(neighbour(*reopened, 0) == before0 && neighbour(*reopened, 1) == before1);   // existing untouched
+    assert(sav == pristine);                                                            // source untouched
+}
+
 } // namespace
 
 int main() {
@@ -554,6 +619,10 @@ int main() {
     languageFollowsDefaultName5(G::SaveFamily::BlackWhite, "black_nds", 21);
     languageFollowsDefaultName5(G::SaveFamily::Black2White2, "white2_nds", 22);
     languageFollowsDefaultName5(G::SaveFamily::Black2White2, "black2_nds", 23);
+    recheckCreateStartsAtZero5(G::SaveFamily::BlackWhite, "white_nds", 20);
+    recheckCreateStartsAtZero5(G::SaveFamily::BlackWhite, "black_nds", 21);
+    recheckCreateStartsAtZero5(G::SaveFamily::Black2White2, "white2_nds", 22);
+    recheckCreateStartsAtZero5(G::SaveFamily::Black2White2, "black2_nds", 23);
     exercise(G::SaveFamily::BlackWhite, "white_nds", 20);
     exercise(G::SaveFamily::BlackWhite, "black_nds", 21);
     exercise(G::SaveFamily::Black2White2, "white2_nds", 22);
