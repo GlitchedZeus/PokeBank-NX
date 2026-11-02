@@ -820,10 +820,10 @@ GUARDS_ROUND11: dict[str, tuple[str, G]] = {
         ('host', 'test_gen2_box_move_presentation', 'tests/test_gen2_box_move_presentation.cpp', 'assert(editor->packedMoveActive());'),
         ('cg', 'CG56-gen2-carry-refresh-without-finalize'),
     ]),
-    'H24': ('Gen III species / held item / move / IV edit: Review lists only those rows, Discard restores exactly (R11 PASS; new focused test)', [
-        ('host', 'test_gen3_edit_discard_r11', 'tests/test_gen3_edit_discard_r11.cpp', 'id + ": Discard restores the staged save byte for byte"'),
-        ('host', 'test_gen3_edit_discard_r11', 'tests/test_gen3_edit_discard_r11.cpp', 'id + ": unintended Review row "'),
-        ('host', 'test_gen3_edit_discard_r11', 'tests/test_gen3_edit_discard_r11.cpp', 'id + ": the draft is a preview: nothing staged before Keep"'),
+    'H24': ('Gen III species / held item / move / IV edit: Review lists only those rows, Discard restores exactly (R11 PASS; new focused test, tests/gen3_edit_discard_r11.h run by test_species_change_moves_gen3)', [
+        ('host', 'test_species_change_moves_gen3', 'tests/gen3_edit_discard_r11.h', 'id + ": Discard restores the staged save byte for byte"'),
+        ('host', 'test_species_change_moves_gen3', 'tests/gen3_edit_discard_r11.h', 'id + ": unintended Review row "'),
+        ('host', 'test_species_change_moves_gen3', 'tests/gen3_edit_discard_r11.h', 'id + ": the draft is a preview: nothing staged before Keep"'),
         ('host', 'test_species_change_moves_gen3', 'tests/test_species_change_moves_gen3.cpp', 'sameIdentity(staged, entry, id + " staged");'),
         ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen3.cpp', '"plain field values did not round-trip"'),
     ]),

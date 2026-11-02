@@ -3912,7 +3912,7 @@
    "item": "R11 H24 Gen III edit and discard",
    "last_pass": "R11 (3634d1e6 inferred) H24 PASS",
    "guarded": true,
-   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H24'] (Gen III species / held item / move / IV edit: Review lists only those rows, Discard restores exactly (R11 PASS; new focused test)): host:tests/test_gen3_edit_discard_r11.cpp; host:tests/test_gen3_edit_discard_r11.cpp; host:tests/test_gen3_edit_discard_r11.cpp"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H24'] (Gen III species / held item / move / IV edit: Review lists only those rows, Discard restores exactly (R11 PASS; new focused test, tests/gen3_edit_discard_r11.h run by test_species_change_moves_gen3)): host:tests/gen3_edit_discard_r11.h; host:tests/gen3_edit_discard_r11.h; host:tests/gen3_edit_discard_r11.h"
   },
   {
    "item": "R11 H26 Gen V legal move chooser list",
