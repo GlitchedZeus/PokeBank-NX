@@ -1,0 +1,77 @@
+name: One-time owner-approved branch prune
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: owner-branch-prune
+  cancel-in-progress: false
+jobs:
+  prune:
+    if: ${{ github.event.head_commit.message == 'chore(maintenance): execute audited GitHub branch cleanup once' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BACKUP_TAG: maintenance/pre-branch-prune-20261102-bbc9dd69
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Freeze audited cleanup implementation and remote inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
+          git switch --detach cf891c50ad8184d3cf95c010f1b2ad425b1c62d2
+          test -f tools/qa/maintenance/prune_branches.sh
+          bash -n tools/qa/maintenance/prune_branches.sh
+          git ls-remote --heads origin > "$RUNNER_TEMP/branches-before.tsv"
+          count="$(wc -l < "$RUNNER_TEMP/branches-before.tsv")"
+          echo "BRANCHES BEFORE: $count"
+          test "$count" -ge 300
+      - name: Publish independently verified recovery bundle before deleting anything
+        shell: bash
+        run: |
+          set -euo pipefail
+          backup="$RUNNER_TEMP/pokebank-recovery"
+          mkdir -p "$backup"
+          git clone --quiet --mirror "https://github.com/$GITHUB_REPOSITORY.git" "$backup/mirror.git"
+          git -C "$backup/mirror.git" bundle create "$backup/PokeBank-NX-PRE-PRUNE.bundle" --all
+          git bundle verify "$backup/PokeBank-NX-PRE-PRUNE.bundle"
+          git clone --quiet --mirror "$backup/PokeBank-NX-PRE-PRUNE.bundle" "$backup/verify.git"
+          git -C "$backup/mirror.git" for-each-ref --format='%(objectname) %(refname)' | sort > "$backup/refs.tsv"
+          git -C "$backup/verify.git" for-each-ref --format='%(objectname) %(refname)' | sort > "$backup/verify-refs.tsv"
+          diff -u "$backup/refs.tsv" "$backup/verify-refs.tsv"
+          while IFS=$'\t' read -r sha ref; do
+            git -C "$backup/verify.git" cat-file -e "${sha}^{commit}"
+          done < "$RUNNER_TEMP/branches-before.tsv"
+          (cd "$backup" && sha256sum PokeBank-NX-PRE-PRUNE.bundle > PokeBank-NX-PRE-PRUNE.bundle.sha256)
+          gh release create "$BACKUP_TAG" "$backup/PokeBank-NX-PRE-PRUNE.bundle" "$backup/PokeBank-NX-PRE-PRUNE.bundle.sha256" "$backup/refs.tsv" \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Complete pre-branch-cleanup backup (2026-11-02)" \
+            --notes "Recovery bundle, reflists and SHA-256 saved BEFORE remote branches were deleted. Preserve indefinitely."
+          expected="$(stat -c %s "$backup/PokeBank-NX-PRE-PRUNE.bundle")"
+          actual="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$BACKUP_TAG" --jq '.assets[] | select(.name=="PokeBank-NX-PRE-PRUNE.bundle") | .size')"
+          test "$actual" = "$expected"
+          echo "PERMANENT BACKUP VERIFIED: $BACKUP_TAG ($actual bytes)"
+      - name: Apply audited safe deletions with live PR and tip checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/qa/maintenance/prune_branches.sh --execute --yes \
+            --bundle-dir "$RUNNER_TEMP/pokebank-recovery" --batch-size 25
+      - name: Preserve deletion ledger and report remote count
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$BACKUP_TAG" >/dev/null 2>&1; then
+            for f in docs/maintenance/BRANCH_DELETION_LOG.md docs/maintenance/BRANCH_DELETION_LOG.tsv; do
+              if [[ -f "$f" ]]; then gh release upload "$BACKUP_TAG" "$f" --clobber; fi
+            done
+          fi
+          echo "BRANCHES AFTER: $(git ls-remote --heads origin | wc -l)"
