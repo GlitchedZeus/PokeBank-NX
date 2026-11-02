@@ -140,6 +140,11 @@ public:
             return false;
         }
         const std::u16string name = Utils::utf8ToUtf16(utf8);
+        // Round 14 P0-2: utf8ToUtf16 skips malformed bytes, so "A\xFFB" would be staged as "AB".
+        if (Utils::utf16ToUtf8(name) != utf8) {
+            error = "Gen III trainer name is not valid text; nothing was changed";
+            return false;
+        }
         if (name.empty() || name.size() > static_cast<std::size_t>(kNameMax)) {
             error = "Gen III trainer name must be 1-7 characters";
             return false;

@@ -1,0 +1,22 @@
+# Round 14 text safety (SHARED_UX_REQUIREMENTS.md P0-1 / P0-2 / P0-3 / P0-5 / P1): every name
+# writer is all-or-nothing, a Gen I-V string x field matrix through the real staged editors, and the
+# System keyboard's answer passes the prompt's own rules. All three link the host-UI application
+# archive (Makefile.host.host-ui), so they exist only where that harness does (GCC).
+ifneq ($(HOST_UI_COMPILER_IS_CLANG),yes)
+TEXTSAFETY_TESTS := test_name_writers_all_or_nothing test_text_safety_matrix_gen15 \
+	test_ui_system_keyboard_validation_host
+TEXTSAFETY_BINS := $(addprefix $(HOST_BUILD)/,$(TEXTSAFETY_TESTS))
+TEXTSAFETY_SANITIZE_BINS := $(addsuffix _sanitize,$(TEXTSAFETY_BINS))
+HOST_TESTS += $(TEXTSAFETY_BINS)
+HOST_SANITIZE_TESTS += $(TEXTSAFETY_SANITIZE_BINS)
+host-test: $(TEXTSAFETY_BINS)
+host-sanitize: $(TEXTSAFETY_SANITIZE_BINS)
+TEXTSAFETY_INPUTS := include/Text/TextFieldCapability.h include/UI/BackupNameRule.h tests/host-ui/HostUi.h \
+	tests/fuzz_synthetic_saves.h tests/fixtures/gsc_pokemon_fixture.h $(HOST_UI_STUBS)
+$(TEXTSAFETY_BINS): $(HOST_BUILD)/%: tests/%.cpp $(TEXTSAFETY_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST $< $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(TEXTSAFETY_SANITIZE_BINS): $(HOST_BUILD)/%_sanitize: tests/%.cpp $(TEXTSAFETY_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST $< $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+endif

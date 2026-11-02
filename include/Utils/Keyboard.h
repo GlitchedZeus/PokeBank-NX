@@ -4,6 +4,8 @@
 #include <functional>
 #include <string>
 
+namespace PokeBank::Text { class TextFieldCapability; }
+
 namespace Utils {
     /**
      * Text and number prompts.
@@ -47,6 +49,10 @@ namespace Utils {
         /// A Korean-language Gen IV name: the card opens on the Hangul page (two-set jamo keys that
         /// compose into syllables, Utils/HangulComposer.h), with Letters and Symbols one key away.
         bool koreanHangul = false;
+        /// The format's rule for this field (Text/TextFieldCapability.h), when the caller has one.
+        /// OK is refused while check() refuses the text, and the System keyboard's answer must pass
+        /// it too. Not owned; must outlive the prompt.
+        const PokeBank::Text::TextFieldCapability *field = nullptr;
         /// Runs after every edit while the keyboard is open, with the text as it now stands -- how a
         /// search re-filters under the keyboard. Empty when the caller only wants the final answer.
         std::function<void(const std::string &)> textChanged;

@@ -163,9 +163,12 @@ namespace Utils {
         }
     }
 
-    CheckedTextResult setStringChecked(uint8_t* dest, size_t data_size,
-                                       const std::u16string& value, size_t maxUnits) {
-        if (value.size() > maxUnits) {
+    CheckedTextResult checkStringFits(size_t data_size, const std::u16string& value, size_t maxUnits) {
+        // One slot is always reserved for the terminator, so the field caps the text too: a text
+        // that fit `maxUnits` but not the field used to be cut by setString (Round 14 P0-3).
+        const size_t slots = data_size / 2;
+        const size_t fieldUnits = slots > 0 ? slots - 1 : 0;
+        if (value.size() > maxUnits || value.size() > fieldUnits) {
             return CheckedTextResult::Overlength;
         }
 
@@ -188,6 +191,18 @@ namespace Utils {
             }
         }
 
+        return CheckedTextResult::Accepted;
+    }
+
+    CheckedTextResult setStringChecked(uint8_t* dest, size_t data_size,
+                                       const std::u16string& value, size_t maxUnits) {
+        if (dest == nullptr) {
+            return CheckedTextResult::Overlength;
+        }
+        const CheckedTextResult verdict = checkStringFits(data_size, value, maxUnits);
+        if (verdict != CheckedTextResult::Accepted) {
+            return verdict;
+        }
         setString(dest, data_size, value, maxUnits);
         return CheckedTextResult::Accepted;
     }

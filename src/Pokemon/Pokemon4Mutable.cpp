@@ -19,6 +19,7 @@
 #include "Names/DefaultSpeciesName.h"
 #include "Utils/StringHelpers.h"
 #include "Utils/Gen4TextCodec.h"
+#include "Text/TextFieldCapability.h"
 
 #include <algorithm>
 #include <array>
@@ -392,14 +393,17 @@ bool Pokemon4Mutable::writeTextPreservingTrash(
     const std::u16string& value) noexcept {
     if (!valid_ || offset + slotCount * 2 > decrypted_.size() || slotCount == 0)
         return false;
-    const std::u16string bounded =
-        value.substr(0, std::min(value.size(), maxCharacters));
+    // Round 14 P0-2: all-or-nothing. The text used to be cut to the cap BEFORE the round-trip
+    // check, so the check compared the cut text with itself and an over-long name was stored as
+    // its prefix. The shared capability now refuses over-long text, a missing glyph or a name
+    // that would not read back unchanged; on refusal no byte is touched.
+    const PokeBank::Text::Gen4NameField field(PokeBank::Text::FieldKind::Nickname, language(),
+                                              maxCharacters, slotCount);
+    if (!field.check16(value).ok()) return false;
     const auto encoded =
-        Utils::encodeGen4Field(bounded, slotCount, maxCharacters, language());
+        Utils::encodeGen4Field(value, slotCount, maxCharacters, language());
     if (encoded.size() != slotCount * 2) return false;
-    // The codec deliberately substitutes '?' for unsupported glyphs. Editing should
-    // refuse an unrepresentable keyboard result rather than silently mangling it.
-    if (Utils::decodeGen4Field(encoded) != bounded) return false;
+    if (Utils::decodeGen4Field(encoded) != value) return false;
 
     size_t copyBytes = encoded.size();
     for (size_t i = 0; i + 1 < encoded.size(); i += 2) {

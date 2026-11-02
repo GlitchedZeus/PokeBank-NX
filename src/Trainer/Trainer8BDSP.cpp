@@ -115,8 +115,9 @@ namespace Trainer {
             if (!isBoxNameDirty(b)) continue;   // never persist a display default
             const size_t off = BDSP_BOXNAME_OFFSET + b * BDSP_BOXNAME_LENGTH;
             if (off + BDSP_BOXNAME_LENGTH > saveData.size()) break;
-            setString(&saveData[off], BDSP_BOXNAME_LENGTH, utf8ToUtf16(boxNames[b]),
-                      BDSP_BOXNAME_LENGTH / 2 - 1);
+            if (setStringChecked(&saveData[off], BDSP_BOXNAME_LENGTH, utf8ToUtf16(boxNames[b]),
+                      BDSP_BOXNAME_LENGTH / 2 - 1) != CheckedTextResult::Accepted)
+                logErrorToFile("Box name refused by the checked writer (Round 14 P0-3); stored name kept");
         }
     }
 
@@ -396,7 +397,8 @@ namespace Trainer {
         // Raw-buffer game: write straight into saveData (like updateItemBlock); recomputeHash() runs
         // after.
         if (saveData.size() < BDSP_MYSTATUS + 0x1A) return;
-        setString(&saveData[BDSP_MYSTATUS], 0x1A, utf8ToUtf16(trainerName), 12);
+        if (setStringChecked(&saveData[BDSP_MYSTATUS], 0x1A, utf8ToUtf16(trainerName), 12) != CheckedTextResult::Accepted)
+            logErrorToFile("Trainer name refused by the checked writer (Round 14 P0-3); stored name kept");
         if (saveData.size() >= BDSP_MONEY + 4)
             writeUInt32LittleEndian(&saveData[BDSP_MONEY], money);
     }

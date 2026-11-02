@@ -1,6 +1,7 @@
 #include "UI/Dialogs/KeyboardDialog.h"
 #include "Utils/Gen12KanaText.h"
 #include "Utils/HangulComposer.h"
+#include "Text/TextFieldCapability.h"
 
 #include <algorithm>
 #include <climits>
@@ -38,6 +39,8 @@ namespace UI
 
             constexpr int PRESSED_FRAMES = 6;
             constexpr int REFUSED_FRAMES = 30;
+            // A refusal with a reason stays up long enough to read (2.5 s at 60 fps).
+            constexpr int REFUSED_REASON_FRAMES = 150;
             constexpr int CARET_BLINK_FRAMES = 30;
 
             constexpr u64 DIRECTION_BUTTONS =
@@ -313,6 +316,7 @@ namespace UI
             pendingKeyIndex = -1;
             pendingFrames = 0;
             refusedFrames = 0;
+            refusalReason.clear();
             repeatingButton = 0;
             analogNavigation.reset();
             waitingForRelease = false;
@@ -463,7 +467,7 @@ namespace UI
 
             if (buttonsDown & HidNpadButton_Plus)
             {
-                finish(true);
+                tryAccept();
                 return;
             }
             if (buttonsDown & HidNpadButton_Minus)
@@ -622,7 +626,7 @@ namespace UI
                 insertText(request.japaneseKana ? "\u3000" : " ");
                 break;
             case KeyboardKeyAction::Accept:
-                finish(true);
+                tryAccept();
                 break;
             case KeyboardKeyAction::KanaDakuten:
             case KeyboardKeyAction::KanaHandakuten:
@@ -724,6 +728,7 @@ namespace UI
             if (characterCount(text) + characterCount(characters) > request.maxChars)
             {
                 refusedFrames = REFUSED_FRAMES;
+                refusalReason.clear();
                 return false;
             }
             text.insert(caretOffset, characters);
@@ -789,6 +794,7 @@ namespace UI
                 if (characterCount(text) + 1 > request.maxChars)
                 {
                     refusedFrames = REFUSED_FRAMES;
+                    refusalReason.clear();
                     return;
                 }
                 text.insert(0, "-");
@@ -806,6 +812,16 @@ namespace UI
             waitingForRelease = true;
             if (!typed.accepted)
                 return;
+            // Round 14 P0-5: the console's keyboard is an input source, not an exemption. Its answer
+            // passes the same rules as a typed one (cap, kana font, the field's own check) before it
+            // is accepted; a refused answer keeps the previous text and says why.
+            std::string why;
+            if (!acceptable(typed.text, why))
+            {
+                refusedFrames = REFUSED_REASON_FRAMES;
+                refusalReason = why;
+                return;
+            }
             text = typed.text;
             caretOffset = text.size();
             textSelected = false;
@@ -830,6 +846,7 @@ namespace UI
             if (replacement.empty())
             {
                 refusedFrames = REFUSED_FRAMES;   // no such character in the Gen I / II font
+                refusalReason.clear();
                 return;
             }
             text.replace(characterStart, caretOffset - characterStart, replacement);
@@ -850,6 +867,7 @@ namespace UI
                     if (characterCount(text) - 1 + static_cast<int>(composed->size()) > request.maxChars)
                     {
                         refusedFrames = REFUSED_FRAMES;
+                        refusalReason.clear();
                         return;
                     }
                     const std::string replacement = H::encode(*composed);
@@ -861,6 +879,71 @@ namespace UI
             }
             if (insertText(jamo))
                 hangulComposing = true;
+        }
+
+        bool KeyboardState::acceptable(const std::string &candidate, std::string &why) const
+        {
+            namespace T = PokeBank::Text;
+            std::u16string wide;
+            if (!T::strictUtf16(candidate, wide))
+            {
+                why = T::reason(T::Refusal::MalformedText);
+                return false;
+            }
+            if (request.maxChars > 0 && characterCount(candidate) > request.maxChars)
+            {
+                why = "Too long: at most " + std::to_string(request.maxChars) + " characters.";
+                return false;
+            }
+            if (request.digitsOnly)
+            {
+                for (size_t i = 0; i < candidate.size(); ++i)
+                {
+                    const char c = candidate[i];
+                    if ((c >= '0' && c <= '9') || (c == '-' && i == 0 && request.allowNegative))
+                        continue;
+                    why = "Numbers only.";
+                    return false;
+                }
+            }
+            if (request.japaneseKana && !candidate.empty())
+            {
+                std::vector<uint8_t> encoded;
+                if (Utils::Gen12Kana::encode(candidate, static_cast<std::size_t>(std::max(request.maxChars, 0)),
+                                             encoded) != Utils::Gen12Kana::Result::Ok)
+                {
+                    why = T::reason(T::Refusal::UnsupportedGlyph);
+                    return false;
+                }
+            }
+            if (request.field)
+            {
+                const T::TextVerdict verdict = request.field->check(candidate);
+                if (!verdict.ok())
+                {
+                    why = T::reason(verdict.refusal);
+                    return false;
+                }
+            }
+            why.clear();
+            return true;
+        }
+
+        void KeyboardState::tryAccept()
+        {
+            // Text typed on these keys already obeys the cap and the page's font, so only a field
+            // rule can refuse it here; a request without one accepts exactly as before.
+            if (request.field)
+            {
+                std::string why;
+                if (!acceptable(text, why))
+                {
+                    refusedFrames = REFUSED_REASON_FRAMES;
+                    refusalReason = why;
+                    return;
+                }
+            }
+            finish(true);
         }
 
         void KeyboardState::finish(bool acceptText)
@@ -913,7 +996,9 @@ namespace UI
 
                 // Right-aligned: how full the field is -- or, for a number, the range it must fall in,
                 // since a count of digits says nothing useful there.
-                const std::string tally = keyboard.request.digitsOnly
+                const std::string tally = keyboard.refusedFrames > 0 && !keyboard.refusalReason.empty()
+                                              ? keyboard.refusalReason
+                                          : keyboard.request.digitsOnly
                                               ? keyboard.request.guide
                                               : std::to_string(characterCount(keyboard.text)) + " / " +
                                                     std::to_string(keyboard.request.maxChars);
