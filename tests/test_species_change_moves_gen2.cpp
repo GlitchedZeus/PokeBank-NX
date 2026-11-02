@@ -83,8 +83,12 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
         for (const uint16_t species : chain) {
             const auto before = s.working;
             require(s.setSpecies(species, sourceId), "setSpecies " + std::to_string(species));
-            require(s.working.level == PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, species),
-                    "level policy unchanged");
+            // Round 13 owner decision 9: a Create draft takes the default level; an existing
+            // Pokemon keeps its level (tests/test_species_change_level_gen2.cpp covers the EXP).
+            require(s.working.level == (mode == SessionMode::Create
+                                            ? PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, species)
+                                            : entry.level),
+                    "level policy");
             checkKeptMoves(before, s.working, game, std::string(sourceId) + " -> " + std::to_string(species));
             for (const auto move : s.working.moves)
                 require(move != 84 || species == 25 || species == 26, "Thunder Shock never survives a change away from Pikachu");
@@ -261,6 +265,15 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 if (model.unverifiedEntrySelected()) {
                     require(text.place == Policy::kUnverifiedListRowPlace && !model.locationChoice() &&
                             !model.otherLocationChoice(), what + ": the entry row is not a location");
+                } else if (const auto* encounter = model.locationChoice();
+                           encounter && unverified &&
+                           text.detail.find(PokeVault::Integration::GiftStaticEncounters::kAccessUnverified) != std::string::npos) {
+                    // Owner decision (Nov 2, updated deliberately): Celebi (GS Ball) is the encounter in
+                    // the game, listed but never verified; its note reads Incomplete.
+                    ++templates;
+                    require(Rows::crystalUnverifiedNote(sourceId, species, static_cast<uint8_t>(encounter->location),
+                                                        static_cast<uint8_t>(encounter->minLevel), level).find("Incomplete") == 0,
+                            what + ": a prerequisite-dependent row reads Incomplete");
                 } else if (const auto* encounter = model.locationChoice()) {
                     ++templates; ++verifiedHere;
                     // (an Odd Egg template is hatched at landmark 0, Crystal's own egg record)
@@ -352,7 +365,8 @@ void run(const L& layout, SourceGame game, std::string_view sourceId) {
                 const bool verifiedPlace = std::any_of(model.encounterChoices.begin(), model.encounterChoices.end(),
                     [&](const auto& e) { return e.location == caught.location; });
                 require(fromUnverified ? (note.find("unverified") != std::string::npos || (note.empty() && verifiedPlace))
-                                       : (list.locationChoice() ? note.empty() : note.find("marker") != std::string::npos),
+                                       : (list.locationChoice() ? (note.empty() || note.find("Incomplete") == 0)   // (Nov 2: GS Ball Celebi)
+                                                               : note.find("marker") != std::string::npos),
                         what + ": the editor / Review line matches the list chosen from: " + note);
                 std::size_t slot = 99;
                 require(create.add(*createEditor, 2, slot, error), "Crystal Create add " + std::to_string(species) + ": " + error);

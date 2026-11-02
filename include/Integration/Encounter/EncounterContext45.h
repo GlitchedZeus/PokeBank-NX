@@ -59,7 +59,16 @@ struct WildRow {
     // R12-005: some slot here has a minimum level the record's current level reaches. A row
     // without one is never a verified encounter for this record; it moves to the unverified list.
     bool levelReached = true;
+    // Owner decision (Nov 2): some reached slot here needs no access prerequisite the save cannot
+    // show (ticket / distribution, event Pokémon, Pokémon from another game). A reached row without
+    // one is listed as "encounter in the game" but is never a verified encounter (Incomplete).
+    bool accessKnown = true;
 };
+
+// The source-backed table row a Catalogue example came from (nullptr for a wild slot).
+inline const GiftStaticEncounters::Row* dataRow(const WildRow& row) noexcept {
+    return GiftStaticEncounters::rowOf(row.encounter);
+}
 
 // Round 12 (R12-004 / R12-005, Integration/Encounter/MetLocationPolicy.h): choices() is the
 // DEFAULT list -- the stored location (row 1), the wild rows of the species and its ancestry whose
@@ -96,20 +105,25 @@ public:
                 encounters.push_back(GiftStaticEncounters::templateOf(gift));
         for (const auto& entry : encounters) {
             const bool reached = Policy::levelReachesEncounter(entry.minLevel, currentLevel);
+            const auto* gift = GiftStaticEncounters::rowOf(entry);
+            const bool known = reached && (!gift || GiftStaticEncounters::fullyVerifiable(*gift));
             auto row = std::find_if(wild_.begin(), wild_.end(), [&](const auto& r) {
                 return r.encounter.location == entry.location;
             });
-            if (row == wild_.end()) wild_.push_back({entry, 0, reached});
+            if (row == wild_.end()) wild_.push_back({entry, 0, reached, known});
             else {
                 ++row->variants;
-                // The example is a slot the record's level reaches when there is one; among those,
-                // a direct encounter is preferred over ancestor data.
-                const bool better = (reached && !row->levelReached) ||
-                    (reached == row->levelReached && entry.species == species && row->encounter.species != species);
+                // The example is a slot the record's level reaches when there is one, then one whose
+                // access is known; among those, a direct encounter is preferred over ancestor data.
+                const bool better = (reached && !row->levelReached) || (known && !row->accessKnown) ||
+                    (reached == row->levelReached && known == row->accessKnown &&
+                     entry.species == species && row->encounter.species != species);
                 if (better) row->encounter = entry;
                 row->levelReached = row->levelReached || reached;
+                row->accessKnown = row->accessKnown || known;
             }
         }
+        for (auto& row : wild_) row.accessKnown = row.accessKnown && row.levelReached;
         // A verified row's place is a native met location even where the editor's name table
         // stops short of it (the Gen IV in-game trade location 2001).
         for (const auto& row : wild_)
@@ -134,7 +148,8 @@ public:
         for (const auto id : all) {
             if (id == stored) continue;
             const auto* wild = wildRow(id);
-            if (wild && wild->levelReached) { focused_.push_back(id); ++verified_; }
+            // (a reached row whose access is unknown is listed as the encounter, never counted verified)
+            if (wild && wild->levelReached) { focused_.push_back(id); if (wild->accessKnown) ++verified_; }
         }
         for (const auto id : gen4Rows)
             if (id != stored && gen4RowVerified(id) &&
@@ -192,7 +207,13 @@ public:
     // reaches (R12-005); a marker or any other row is not one.
     bool verifiedEncounter(uint16_t location) const noexcept {
         const auto* row = wildRow(location);
-        return row && row->levelReached;
+        return row && row->levelReached && row->accessKnown;
+    }
+    // Owner decision (Nov 2): the encounter is in the game and the level reaches it, but its access
+    // prerequisite (ticket, event Pokémon, other game) cannot be known from the save.
+    bool incompleteEncounter(uint16_t location) const noexcept {
+        const auto* row = wildRow(location);
+        return row && row->levelReached && !row->accessKnown;
     }
     const char* scope(bool otherHistories) const noexcept {
         // Row 1 of either list is always the stored location (focused_ / native_ start with it).
@@ -242,9 +263,11 @@ public:
         // ancestry names its kind, even at a trade location that is also the game's marker. A stored
         // fateful flag keeps its own label unless the game sets that flag for this encounter.
         if (const auto* row = wildRow(location); row && row->levelReached) {
-            const auto* gift = GiftStaticEncounters::rowOf(row->encounter);
+            const auto* gift = dataRow(*row);
             const bool fatefulRow = gift && (gift->flags & GiftStaticEncounters::kFateful);
-            if (!(current && history_.fateful) || fatefulRow) return tagged(verifiedText(*row));
+            if (!(current && history_.fateful) || fatefulRow)
+                return tagged(row->accessKnown ? verifiedText(*row)
+                                               : verifiedText(*row) + "; " + GiftStaticEncounters::kAccessUnverified);
         }
         // Round 7 B05: transfer / trade / egg markers and event locations say what the pinned
         // tables and native names establish, and their native id (Names/SpecialMetLocationNotes.h).
@@ -291,7 +314,14 @@ inline std::string unverifiedMetNote45(uint8_t origin, uint16_t species, uint16_
                                        uint16_t eggLocation = 0, int metLevel = -1) {
     if (gameId(origin).empty() || location == 0) return {};
     const Catalogue context(origin, species, location, {}, {}, level);
-    if (context.verifiedEncounter(location)) return {};
+    // Owner decision (Nov 2): a verified data row says it has a single source (PKHeX); a wild slot
+    // keeps "" as before. An encounter whose access prerequisite is unknown reads Incomplete.
+    if (context.verifiedEncounter(location)) {
+        const auto* gift = dataRow(*context.wildRow(location));
+        return gift ? GiftStaticEncounters::singleSourceNote(*gift) : std::string();
+    }
+    if (context.incompleteEncounter(location))
+        if (const auto* gift = dataRow(*context.wildRow(location))) return GiftStaticEncounters::incompleteNote(*gift);
     if (metLevel == 0 && bredEggLocation45(generation(origin), eggLocation)) {
         const auto& egg = context.eggVerdict();
         if (egg.verified()) return {};

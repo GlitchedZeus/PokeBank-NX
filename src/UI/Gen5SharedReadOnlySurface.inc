@@ -859,6 +859,15 @@ struct Gen5Editor {
             screen.postStatus("Could not reconcile Species/Shiny while preserving PID-linked traits: " + error, 360);
             return false;
         }
+        // Round 13 owner decision 9: the Pokemon kept its level; an EXP change is named.
+        if (species != p.species()) {
+            ::Pokemon::SpeciesChangeExperience::Result kept;
+            kept.level = Fields::level(*probe.current(), b2w2(screen));
+            kept.experience = probe.current()->experience();
+            kept.experienceChanged = kept.experience != p.experience();
+            if (const auto note = ::Pokemon::SpeciesChangeExperience::note(p.experience(), kept); !note.empty())
+                screen.postStatus(note, 300);
+        }
         return offer(screen, state, std::move(probe),
                      std::string("Species ") + Names::getSpeciesName(species) +
                          (state.speciesPreviewShiny ? ", Shiny" : ", not Shiny"));
@@ -1639,8 +1648,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
     // tap picks up to Move, a Y hold multi-selects, and a Move or Clone carry owns A / B / Y / X and
     // cell taps; navigation keys fall through to the box grid below, and + is Review there.
     // Round 13 owner decision 4: the finger first - a drag across cells is the Y hold rectangle (lift =
-    // pick up), and during a carry a tap on the carried cell is A and a tap outside the grid is B, through
-    // the same shared code as Gen I-IV. A plain cell tap still falls through to decodeGen5BoxTouch below.
+    // pick up), and during a carry a tap on a cell is "cursor there + A" and a tap outside the grid is B,
+    // through the same shared code as Gen I-IV. With nothing carried a plain cell tap still falls through
+    // to decodeGen5BoxTouch below.
     if(state.surface()==Surface::Browse && screen.detailViewActive &&
        screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
        ClassicPackedMove::handleGen5BoxTouch(screen,down,touch))return true;

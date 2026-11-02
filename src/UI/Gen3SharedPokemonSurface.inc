@@ -1394,6 +1394,9 @@ bool handleSpeciesPicker(TrainerViewScreen& screen, State& state, u64 down, cons
             // A Create reset is visible: the status names what was reset (Pokerus, Met Location).
             if (const auto reset = state.session.speciesChangeResetStatus(); !reset.empty())
                 screen.postStatus(reset, 300);
+            // Round 13 owner decision 9: an existing Pokemon keeps its level; an EXP change is named.
+            else if (const auto exp = state.session.speciesChangeExperienceNote(); !exp.empty())
+                screen.postStatus(exp, 300);
         }
         else
             screen.postStatus("Species is not representable in Generation III");

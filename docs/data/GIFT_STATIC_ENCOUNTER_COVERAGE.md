@@ -66,18 +66,59 @@ labelled with its kind ("Celadon City — Gift Lv. 25", "In-game trade — Trade
 "Goldenrod City — Gift · Lv. 20 · via Eevee"); above the level it moves to the unverified list
 ("Lv. 25+; level too low"). These rows replace the older hand-carried Static / Gift / Event rows for
 Crystal and Gen III. A marker (Crystal Gift / Event, Gen III 253-255, Gen IV 2000-2002, Gen V
-30002 / 30003 / 60002 / 60003) WITHOUT a data row for the species stays an unverified marker.
+30002 / 30003 / 60002 / 60003) WITHOUT a data row for the species stays an unverified marker. A row
+with an unknown access prerequisite is listed but never verified (see "Three tiers").
+
+## Three tiers (owner decision, Nov 2)
+
+"Do not label a Pokémon's complete acquisition history Verified simply because its encounter exists
+in the game's scripts." Every row carries two more fields (generator, `.inc`, JSON counts):
+
+1. **Script-backed encounter** — every row; its provenance is `confidence`:
+   `PretChecked` (PKHeX + pret cross-checked: the 33 Crystal static / gift / prize / OT-gift / trade
+   rows), `PretSpotChecked` (PKHeX + one of the Gen III pret spot checks: 17 rows across R/S/E/FR/LG),
+   `SingleSource` (PKHeX alone: every Gen IV / V row, every other Gen III row, Crystal roamers /
+   swarms / egg gifts). A single-source row is never called independently verified: a verified Gen III /
+   IV / V data row's editor / Review note reads "Encounter data: single source (PKHeX)".
+2. **Access prerequisite** — `prereq`: `TicketOrItem` (ticket / key item distribution), `EventPokemon`
+   (an event-distributed Pokémon in the party), `OtherGame` (a Pokémon only another game provides),
+   with the reason in `kPrerequisiteReasons`.
+3. **Incomplete** — a prerequisite the save cannot show. Design: the row STAYS in the default list,
+   because the encounter is in the game ("Navel Rock — Event Lv. 70; access unverified"), but it is
+   never a verified encounter: it is not counted, `verifiedEncounter` / `verifiedTemplate` reject it,
+   the Gen III row is not a "verified catch", and the editor / Review note reads "Incomplete: encounter
+   in game script; ticket / distribution not verifiable from the save" (or "event Pokémon" / "Pokémon
+   from another game"). Moving them to the unverified list would hide that the encounter exists;
+   keeping them labelled in place never shows them as fully verified.
+
+| Prerequisite | Rows |
+|---|---|
+| Crystal Celebi, Ilex Forest (GS Ball — Japanese Crystal / 3DS Virtual Console only) | TicketOrItem |
+| Emerald Lugia / Ho-Oh, Navel Rock (MysticTicket); Deoxys, Birth Island (AuroraTicket); Mew, Faraway Island (Old Sea Map); Latias / Latios Lv 50, Southern Island (Eon Ticket) | TicketOrItem |
+| Ruby Latias / Sapphire Latios, Southern Island (Eon Ticket) | TicketOrItem |
+| FireRed / LeafGreen Lugia / Ho-Oh, Navel Rock (MysticTicket); Deoxys, Birth Island (AuroraTicket) | TicketOrItem |
+| Platinum Shaymin (Oak's Letter), Darkrai (Member Card) | TicketOrItem |
+| HeartGold Latios / SoulSilver Latias, Pewter City (Enigma Stone) | TicketOrItem |
+| Black / White Victini (Liberty Pass) | TicketOrItem |
+| Black / White Zorua (event Celebi), Zoroark (event shiny beasts) | EventPokemon |
+| HeartGold / SoulSilver Dialga / Palkia / Giratina, Sinjoh Ruins (event Arceus); Spiky-eared Pichu (event Pichu) | EventPokemon |
+| HeartGold / SoulSilver Rayquaza (Kyogre + Groudon); Black / White Landorus (Tornadus + Thundurus); Diamond / Pearl / Platinum Regigigas (the three Regis); Platinum Regirock / Regice / Registeel (Regigigas) | OtherGame |
+
+Arceus (Spear Pillar / Hall of Origin, Azure Flute), the HG/SS GS Ball Celebi and other pure
+distributions have no data rows (no in-game script row in PKHeX's tables), so they stay unverified.
 
 ## Gaps (explicit; nothing invented)
 
 - **Event distributions** (Mystery Gift / Wonder Cards; Gen III 255 fateful marker, Gen IV 3000+,
   Gen V 40000+ locations): no data. They stay unverified in every generation.
-- **In-game "event" statics** (Emerald Navel Rock / Birth Island / Faraway Island / Southern Island,
-  FR/LG Navel Rock / Birth Island, Platinum Shaymin, Black / White Victini / Zorua / Zoroark, Crystal
-  Ilex Forest Celebi): the encounter is in the game's own script, so the row is verified and labelled
-  "Event"; whether the player had the distributed ticket is not knowable from a save. Their fateful
-  flag is recorded in the data but the pickers do not check the record's fateful flag (location +
-  level only). Owner may decide to show these as unverified instead.
+- **Prerequisite-dependent encounters** (owner decision, Nov 2): the encounter row is script-backed
+  and kept, but its access cannot be known from a save, so the acquisition evidence is Incomplete
+  (see "Three tiers" below). Their fateful flag is recorded but the pickers do not check the record's
+  fateful flag.
+- **Prerequisites not judged**: Black 2 / White 2 Regi keys (Key System / Unova Link) and
+  Regigigas, Heart Gold / Soul Silver Kyogre / Groudon orb conditions, and similar "post-game" rows
+  were not flagged because the generator only flags prerequisites it can name with certainty; they
+  read as ordinary verified rows and should be reviewed.
 - **Egg gifts** (Odd Egg, Togepi, Wynaut, Riolu, Happiny, Mareep / Wooper / Slugma, Larvesta): data
   rows only. An egg is met where it hatched, so they are not Met Location rows (egg / breeding
   histories are the breeding lane).
@@ -122,7 +163,12 @@ day; unverified". Gift / trade rows at LANDMARK_GIFT write level 0 and time 0 as
 6. HeartGold / SoulSilver: Chikorita / Cyndaquil / Totodile Lv 5 → "New Bark Town — Gift Lv. 5".
 7. Platinum: Rotom Lv 20 → "Old Chateau — Static Lv. 20"; Giratina Lv 47 → Turnback Cave and
    Distortion World "Static Lv. 47". Diamond: Abra Lv 1 → the in-game trade row "Trade Lv. 1+".
-8. Black / White: Zorua Lv 10 → "Castelia City — Event Lv. 10". Black 2 / White 2: Eevee Lv 10 →
+8. Black / White: Zorua Lv 10 → "Castelia City — Event Lv. 10; access unverified", and its Met evidence
+   reads "Incomplete: … event Pokémon not verifiable from the save". Black 2 / White 2: Eevee Lv 10 →
    "Castelia City — Gift Lv. 10"; Zorua Lv 25 → "Driftveil City — Static Lv. 25" (N's Pokémon).
-9. Any game: a species with no gift / trade data (e.g. FireRed Pikachu) still shows the trade /
+9. Emerald Lugia Lv 70 → "Navel Rock — Event Lv. 70; access unverified"; after choosing it the editor's
+   Encounter origin and Review read "Incomplete: encounter in game script; ticket / distribution not
+   verifiable from the save". Crystal Celebi Lv 30 → Ilex Forest row "; access unverified", Met evidence
+   Incomplete. HeartGold Chikorita gift → Met evidence "Encounter data: single source (PKHeX)".
+10. Any game: a species with no gift / trade data (e.g. FireRed Pikachu) still shows the trade /
    event markers labelled "marker; unverified".

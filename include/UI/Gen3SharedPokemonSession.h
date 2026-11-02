@@ -102,6 +102,7 @@ struct Session {
     bool metLocationChosen = false;
     bool encounterReset = false;
     bool pokerusCleared = false;   // the last Create species change cleared a non-zero Pokerus
+    std::string experienceNote;    // the last Edit species change's EXP reconciliation ("" = none)
     ProgressionSource progression = ProgressionSource::Unchanged;
     Gen3::StagedPokemonRecord baseline{};
     Gen3::StagedPokemonRecord working{};
@@ -118,6 +119,7 @@ struct Session {
         metLocationChosen = false;
         encounterReset = false;
         pokerusCleared = false;
+        experienceNote.clear();
         requestedNature.reset();
         requestedGender.reset();
         requestedShiny.reset();
@@ -150,6 +152,8 @@ struct Session {
         encounterReset = pokerusCleared = false;   // a reselect resets nothing and says nothing
         if (!editable() || species == 0 || species > 386) return false;
         if (species == working.species) return true;
+        experienceNote.clear();
+        const uint8_t previousGrowth = Pokemon::getGrowthRate(working.species);
         working.species = species;
         // A gender or second-ability request made for the previous species may be impossible for
         // this one; keeping it would make every Keep/Add fail with no editable row to clear it.
@@ -160,7 +164,21 @@ struct Session {
             requestedAbilityNumber.reset();
         if (species != 201) requestedForm.reset();
         normalizeRequests();
-        if (!setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species))) return false;
+        if (mode == Mode::Create) {
+            if (!setLevel(SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species))) return false;
+        } else {
+            // Round 13 owner decision 9: an existing Pokemon keeps its level and its EXP is
+            // reconciled to the new growth rate. EXP is canonical in the edit request, so Keep and
+            // Review stage exactly this level and EXP (the Party level byte and stats follow it).
+            const uint32_t beforeExperience = working.experience;
+            const uint8_t growth = Pokemon::getGrowthRate(species);
+            const auto kept = ::Pokemon::SpeciesChangeExperience::keepLevel(working.level, working.experience,
+                previousGrowth == growth, [&](uint8_t level) { return Pokemon::getExpForLevel(level, growth); });
+            working.level = kept.level;
+            working.experience = kept.experience;
+            progression = ProgressionSource::Experience;
+            experienceNote = ::Pokemon::SpeciesChangeExperience::note(beforeExperience, kept);
+        }
         // Round 11 (owner H28): keep each current move the new species can use in this exact game
         // (pret-generated Gen3 Learnset: native, or Transfer from another Gen III game) with its PP
         // and PP Ups, clear the rest, never add one. The editing game comes from the source id; a
@@ -188,6 +206,8 @@ struct Session {
     }
 
     // The status a Create species change posts: what it reset ("" when nothing was).
+    // Round 13 owner decision 9: what the last Edit species change did to EXP ("" when unchanged).
+    std::string speciesChangeExperienceNote() const { return experienceNote; }
     std::string speciesChangeResetStatus() const {
         return SpeciesChangeHistoryPolicy::resetStatus(pokerusCleared, encounterReset);
     }

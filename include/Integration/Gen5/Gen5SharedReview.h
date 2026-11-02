@@ -229,18 +229,32 @@ struct VerifiedSlotReview {
         return std::nullopt;
     // EXP and Level form a single native transaction. Use Level only for
     // exact growth-curve thresholds, otherwise replay raw bounded EXP.
-    if(before.experience()!=after.experience()) {
+    // Round 13 owner decision 9: the replayed Species step reconciles EXP from
+    // the original record, so the replayed value is compared too (as Keep does).
+    const auto replayed=candidate->current();
+    const bool replayDiffers=replayed.experience()!=after.experience() ||
+        (after.partyRecord() && replayed.partyLevel()!=after.partyLevel());
+    if(before.experience()!=after.experience() || replayDiffers) {
         const auto personal=personal5(after.species(),after.form(),change.black2White2);
         if(!personal)return fail("Gen V review lacks exact EXP growth data");
         const uint8_t level=after.partyRecord()?after.partyLevel():
             levelForExperience5(personal.info->growthRate,after.experience());
-        const bool exact=level>=1 && level<=100 &&
+        // The level the record showed before, read with ITS OWN species' growth rate.
+        const auto beforePersonal=personal5(before.species(),before.form(),change.black2White2);
+        const uint8_t beforeLevel=before.partyRecord()?before.partyLevel():
+            beforePersonal?levelForExperience5(beforePersonal.info->growthRate,before.experience()):0;
+        // Round 13 owner decision 9: a species change that kept the level but
+        // reconciled EXP is an Experience row (the level row would be empty).
+        const bool exact=level>=1 && level<=100 && level!=beforeLevel &&
             after.experience()==experienceForLevel5(personal.info->growthRate,level);
-        if(!apply(exact?Field::Level:Field::Experience,0,
-                  exact?(before.partyRecord()?before.partyLevel():
-                    levelForExperience5(personal.info->growthRate,before.experience()))
-                       :before.experience(),
-                  exact?level:after.experience()))
+        const uint32_t from=exact?beforeLevel:before.experience();
+        const uint32_t to=exact?level:after.experience();
+        if(from==to && replayDiffers) {
+            // The species step moved EXP away and the draft set it back: replay it,
+            // and show the step from the replayed value.
+            if(!candidate->stage(Field::Experience,0,after.experience(),error))return std::nullopt;
+            result.fields.push_back({Field::Experience,0,replayed.experience(),after.experience()});
+        } else if(!apply(exact?Field::Level:Field::Experience,0,from,to))
             return std::nullopt;
     }
     if(!apply(Field::Form,0,before.form(),after.form()))

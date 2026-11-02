@@ -20,6 +20,7 @@
 #include "Names/LocationDisplayNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Pokemon/Experience.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "Utils/Gen3Text.h"
 #include "Utils/StringHelpers.h"
 
@@ -277,14 +278,9 @@ constexpr const char* kMetEvidenceLabel = "Met evidence";
 template <typename Record>
 std::string metEvidenceNote(const Record& record) {
     namespace Picker = PokeBank::UIModel::Gen3EncounterPicker;
+    // (owner decision, Nov 2: also "single source (PKHeX)" / Incomplete -- Gen3EncounterPicker::evidenceNote)
     const auto choices = Picker::templatesForOrigin(record.originGame, record.species);
-    if (Picker::verifiedTemplate(choices, record.metLocation, record.metLevel, record.level)) return {};
-    // Round 13 (owner decision 5): a hatched egg (Met Level 0) BreedingPolicy verifies needs no note.
-    if (record.metLevel == 0 && record.metLocation != 0 &&
-        !PokeBank::UIModel::ExactGameMetLocations::gen3MarkerLocation(record.metLocation) &&
-        Picker::eggVerdict(record.species, record.level).verified())
-        return {};
-    return Picker::encounterOriginText(choices, record.species, record.metLocation, record.metLevel, record.level);
+    return Picker::evidenceNote(choices, record.species, record.metLocation, record.metLevel, record.level);
 }
 
 } // namespace
@@ -461,7 +457,18 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
             error = "Generation III species must be in the National Dex range 1-386";
             return false;
         }
+        const uint8_t keptLevel = pokemon.level();
+        const uint32_t keptExperience = pokemon.exp();
+        const bool changed = *edit.species != pokemon.speciesID();
+        const uint8_t previousGrowth = Pokemon::getGrowthRate(pokemon.speciesID());
         pokemon.setSpecies(*edit.species);
+        // Round 13 owner decision 9: an existing Pokemon keeps its level; its EXP is reconciled
+        // to the new growth rate (an explicit Level / EXP in this edit still wins below).
+        if (changed && !edit.level && !edit.experience) {
+            const uint8_t growth = Pokemon::getGrowthRate(*edit.species);
+            pokemon.setExp(Pokemon::SpeciesChangeExperience::keepLevel(keptLevel, keptExperience, previousGrowth == growth,
+                [&](uint8_t level) { return Pokemon::getExpForLevel(level, growth); }).experience);
+        }
     }
     // M1 D1: the nickname is stored in the table of the record's language, so a language change is
     // applied first and the name is then written in the NEW language. A language-only change keeps

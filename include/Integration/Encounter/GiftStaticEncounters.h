@@ -22,6 +22,7 @@
 #include "Integration/Encounter/EncounterGuardrails.h"
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -34,6 +35,20 @@ inline constexpr uint8_t kFateful = 1;               // the game sets the fatefu
 inline constexpr uint8_t kNsPokemon = 2;             // Black 2 / White 2 N's Pokémon
 inline constexpr uint8_t kCaughtLevelUnrecorded = 4; // Crystal SetGiftMonCaughtData: level 0, time 0
 
+// Owner decision (Nov 2): "Do not label a Pokémon's complete acquisition history Verified simply
+// because its encounter exists in the game's scripts." Three things are kept apart:
+//  1. the encounter itself -- script-backed (every row here; its provenance is `confidence`);
+//  2. the access prerequisite -- a ticket / key item distribution, an event-distributed Pokémon in
+//     the party, or a Pokémon only another game provides (`prereq`);
+//  3. when that prerequisite cannot be known from a save, the acquisition evidence is INCOMPLETE:
+//     the row is listed as "encounter in the game" but never as a verified encounter, and the
+//     editor / Review note says Incomplete (incompleteNote()).
+enum class Prerequisite : uint8_t { None, TicketOrItem, EventPokemon, OtherGame };
+// Source confidence of a row: matched to a pret map script (every Crystal static / gift / prize /
+// trade row), one of the Gen III pret spot checks, or PKHeX alone (every Gen IV / V row and the
+// other Gen III / Crystal rows). A single-source row is never called independently verified.
+enum class Confidence : uint8_t { PretChecked, PretSpotChecked, SingleSource };
+
 struct Row {
     std::string_view game;
     uint16_t species;
@@ -44,6 +59,15 @@ struct Row {
     uint8_t flags;
     uint8_t form;
     uint16_t eggLocation;
+    Prerequisite prereq;
+    Confidence confidence;
+};
+
+struct PrerequisiteReason {
+    std::string_view game;
+    uint16_t species;
+    uint16_t location;
+    std::string_view reason;
 };
 
 #include "Integration/Encounter/GiftStaticEncountersData.inc"
@@ -77,6 +101,50 @@ constexpr EncounterGuardrails::Method method(Kind kind) noexcept {
         case Kind::Swarm: return M::Swarm;
     }
     return M::Static;
+}
+
+constexpr const char* prerequisiteLabel(Prerequisite prereq) noexcept {
+    switch (prereq) {
+        case Prerequisite::None: return "";
+        case Prerequisite::TicketOrItem: return "ticket / distribution";
+        case Prerequisite::EventPokemon: return "event Pokémon";
+        case Prerequisite::OtherGame: return "Pokémon from another game";
+    }
+    return "prerequisite";
+}
+
+constexpr const char* confidenceLabel(Confidence confidence) noexcept {
+    switch (confidence) {
+        case Confidence::PretChecked: return "PKHeX + pret cross-checked";
+        case Confidence::PretSpotChecked: return "PKHeX + pret spot-checked";
+        case Confidence::SingleSource: return "single source (PKHeX)";
+    }
+    return "unknown source";
+}
+
+// The encounter exists in the game, and no access prerequisite stands between it and a save.
+constexpr bool fullyVerifiable(const Row& row) noexcept { return row.prereq == Prerequisite::None; }
+
+constexpr std::string_view prerequisiteReason(const Row& row) noexcept {
+    for (const auto& r : kPrerequisiteReasons)
+        if (r.game == row.game && r.species == row.species && r.location == row.location) return r.reason;
+    return {};
+}
+
+// Short row suffix (fits the 620 / 640 px pickers) for an encounter whose access is unknown.
+inline constexpr const char* kAccessUnverified = "access unverified";
+
+// The editor / Review line for an Incomplete acquisition: the encounter is in the game, the
+// prerequisite is not verifiable from the save.
+inline std::string incompleteNote(const Row& row) {
+    return std::string("Incomplete: encounter in game script; ") + prerequisiteLabel(row.prereq) +
+           " not verifiable from the save";
+}
+
+// The provenance line for a verified data row that has only one source ("" otherwise).
+inline std::string singleSourceNote(const Row& row) {
+    if (row.confidence != Confidence::SingleSource) return {};
+    return std::string("Encounter data: ") + confidenceLabel(row.confidence);
 }
 
 // A row the Met Location pickers offer (an egg gift is met where it hatched).

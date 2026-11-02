@@ -74,16 +74,19 @@ constexpr Footer carryFooter(Intent intent, bool group) noexcept {
 // ---- Touch (Round 13 owner decision 4: touchscreen drag multi-select with controller parity) -------
 // A finger drag across box cells selects the rectangle a Y hold + D-pad selects, and lifting the finger
 // picks the group up as releasing Y does (ClassicPackedMoveOverlay touchSelectionInput). While carrying,
-// a release-confirmed tap (TouchInput::justTapped) is one of the carry keys:
-//   * on a grid cell other than the cursor: the cursor moves there (today's meaning of a tap);
-//   * on the cursor's own cell, where the carried sprite rides: A - the same place() transaction, with
-//     the same capacity / occupied / protected refusals and the same silent success;
+// a release-confirmed tap (TouchInput::justTapped) is one of the carry keys (owner, Nov 2: the same
+// rule in Gen I-V):
+//   * on a grid cell: the controller's "move the cursor there + A" - the cursor moves to that cell and
+//     the same place() transaction runs, with the same capacity / occupied / protected refusals (the
+//     carry stays) and the same silent success;
 //   * outside every published touch target, above the footer: B - the same silent cancel;
-//   * anything else (box arrows, header, summary panel): None, the target keeps its own meaning.
-enum class Tap : unsigned char { None, Focus, Place, Cancel };
+//   * anything else (box arrows, header, summary panel, footer badges, any button): None, the target
+//     keeps its own meaning. A drag is never a tap, and a tap whose touch-down the carry grid did not
+//     own (it began under Help, a menu or a dialog, or closed one) is None too.
+enum class Tap : unsigned char { None, Place, Cancel };
 
-constexpr Tap carryTap(int tappedSlot, int cursorSlot, int capacity, bool outsideTargets) noexcept {
-    if (tappedSlot >= 0 && tappedSlot < capacity) return tappedSlot == cursorSlot ? Tap::Place : Tap::Focus;
+constexpr Tap carryTap(int tappedSlot, int capacity, bool outsideTargets) noexcept {
+    if (tappedSlot >= 0 && tappedSlot < capacity) return Tap::Place;
     return outsideTargets ? Tap::Cancel : Tap::None;
 }
 

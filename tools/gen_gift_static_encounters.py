@@ -125,6 +125,49 @@ FLAG_FATEFUL, FLAG_NS_POKEMON, FLAG_CAUGHT_LEVEL_UNRECORDED = 1, 2, 4
 # the DP / Pt rows carry no section comment, so the species set decides).
 FOSSIL_SPECIES = {138, 140, 142, 345, 347, 408, 410, 564, 566}
 
+# Owner decision (Nov 2): "Do not label a Pokemon's complete acquisition history Verified simply
+# because its encounter exists in the game's scripts." Encounters that need a ticket / key item
+# distribution, an event-distributed Pokemon, or a Pokemon from another game: the encounter row is
+# script-backed, but the prerequisite is not verifiable from a save, so acquisition evidence is
+# Incomplete. (games, species, met location) -> (prerequisite, reason). Rows not listed were reviewed
+# as reachable by in-game progress alone; see docs/data/GIFT_STATIC_ENCOUNTER_COVERAGE.md.
+EMERALD, RS = ("emerald_gba",), ("ruby_gba", "sapphire_gba")
+FRLG, HGSS, BW = ("firered_gba", "leafgreen_gba"), ("heartgold_nds", "soulsilver_nds"), ("black_nds", "white_nds")
+PREREQS = [
+    (("crystal_gbc",), 251, 14, "TicketOrItem", "GS Ball (event; Japanese Crystal / 3DS Virtual Console only)"),
+    (EMERALD, 249, 211, "TicketOrItem", "MysticTicket (Navel Rock)"),
+    (EMERALD, 250, 211, "TicketOrItem", "MysticTicket (Navel Rock)"),
+    (EMERALD, 386, 200, "TicketOrItem", "AuroraTicket (Birth Island)"),
+    (EMERALD, 151, 201, "TicketOrItem", "Old Sea Map (Faraway Island)"),
+    (EMERALD, 380, 73, "TicketOrItem", "Eon Ticket (Southern Island)"),
+    (EMERALD, 381, 73, "TicketOrItem", "Eon Ticket (Southern Island)"),
+    (("ruby_gba",), 380, 73, "TicketOrItem", "Eon Ticket (Southern Island)"),
+    (("sapphire_gba",), 381, 73, "TicketOrItem", "Eon Ticket (Southern Island)"),
+    (FRLG, 249, 174, "TicketOrItem", "MysticTicket (Navel Rock)"),
+    (FRLG, 250, 174, "TicketOrItem", "MysticTicket (Navel Rock)"),
+    (FRLG, 386, 187, "TicketOrItem", "AuroraTicket (Birth Island)"),
+    (("platinum_nds",), 492, 63, "TicketOrItem", "Oak's Letter (Flower Paradise)"),
+    (("platinum_nds",), 491, 79, "TicketOrItem", "Member Card (Newmoon Island)"),
+    (("heartgold_nds",), 381, 140, "TicketOrItem", "Enigma Stone (event)"),
+    (("soulsilver_nds",), 380, 140, "TicketOrItem", "Enigma Stone (event)"),
+    (BW, 494, 62, "TicketOrItem", "Liberty Pass (Liberty Garden)"),
+    (BW, 570, 8, "EventPokemon", "event Celebi in the party"),
+    (BW, 571, 72, "EventPokemon", "event shiny Raikou / Entei / Suicune in the party"),
+    (HGSS, 483, 231, "EventPokemon", "event Arceus in the party (Sinjoh Ruins)"),
+    (HGSS, 484, 231, "EventPokemon", "event Arceus in the party (Sinjoh Ruins)"),
+    (HGSS, 487, 231, "EventPokemon", "event Arceus in the party (Sinjoh Ruins)"),
+    (HGSS, 172, 214, "EventPokemon", "event Pichu in the party (Ilex Forest)"),
+    (HGSS, 384, 232, "OtherGame", "Kyogre and Groudon in the party (one from the other version)"),
+    (BW, 645, 70, "OtherGame", "Tornadus and Thundurus in the party (one from the other version)"),
+    (("diamond_nds", "pearl_nds", "platinum_nds"), 486, 64, "OtherGame",
+     "Regirock, Regice and Registeel in the party (not obtainable in this game alone)"),
+    (("platinum_nds",), 377, 125, "OtherGame", "Regigigas in the party (itself needs the Regis)"),
+    (("platinum_nds",), 378, 124, "OtherGame", "Regigigas in the party (itself needs the Regis)"),
+    (("platinum_nds",), 379, 123, "OtherGame", "Regigigas in the party (itself needs the Regis)"),
+]
+PREREQ_KINDS = ["None", "TicketOrItem", "EventPokemon", "OtherGame"]
+CONFIDENCE = ["PretChecked", "PretSpotChecked", "SingleSource"]
+
 
 # ---- PKHeX C# parsing ----------------------------------------------------------------------------
 ARRAY_RE = re.compile(r"(?:public|internal|private)\s+static\s+readonly\s+(\w+)(\[\])?\s+(\w+)\s*=")
@@ -582,6 +625,19 @@ def build():
         unique.append(r)
     rows = unique
     checks = gen3_checks(rows)
+    for r in rows:
+        r["prereq"], r["reason"] = "None", ""
+        for games, sp, loc, kind, reason in PREREQS:
+            if r["game"] in games and r["species"] == sp and r["location"] == loc and r["kind"] != "EggGift":
+                r["prereq"], r["reason"] = kind, reason
+        # Source confidence: a row matched to a pret script is cross-checked (every Crystal static /
+        # gift / prize / trade row; the Gen III spot checks); every other row is PKHeX alone.
+        r["confidence"] = ("PretChecked" if r["pret"] and r["game"] == "crystal_gbc" else
+                           "PretSpotChecked" if r["pret"] else "SingleSource")
+    for games, sp, loc, kind, reason in PREREQS:
+        for g in games:
+            if not any(r["game"] == g and r["species"] == sp and r["location"] == loc for r in rows):
+                fail(f"prerequisite row {g} {sp} @ {loc} has no data row")
     rows.sort(key=lambda r: (GAME_ORDER.index(r["game"]), r["species"], r["location"], r["minLevel"],
                              r["maxLevel"], KINDS.index(r["kind"]), r["form"]))
     return rows, checks
@@ -597,13 +653,20 @@ def render(rows) -> str:
         f"// {PRET['pokeemerald']}, pret/pokeruby {PRET['pokeruby']}.",
         "// Files and sha256: docs/data/gift-static-encounter-sources.json. Coverage and gaps:",
         "// docs/data/GIFT_STATIC_ENCOUNTER_COVERAGE.md. Event distributions are NOT here (no data).",
-        "// {game, species, met location, min level, max level, kind, flags, form, egg location}",
+        "// {game, species, met location, min level, max level, kind, flags, form, egg location,",
+        "//  access prerequisite, source confidence}",
         "inline constexpr Row kRows[] = {",
     ]
     for r in rows:
-        lines.append('    {"%s", %d, %d, %d, %d, Kind::%s, %d, %d, %d},' % (
+        lines.append('    {"%s", %d, %d, %d, %d, Kind::%s, %d, %d, %d, Prerequisite::%s, Confidence::%s},' % (
             r["game"], r["species"], r["location"], r["minLevel"], r["maxLevel"], r["kind"],
-            r["flags"], r["form"], r["egg"]))
+            r["flags"], r["form"], r["egg"], r["prereq"], r["confidence"]))
+    lines.append("};")
+    lines.append("// Why each prerequisite row's acquisition evidence is Incomplete (same order as kRows).")
+    lines.append("inline constexpr PrerequisiteReason kPrerequisiteReasons[] = {")
+    for r in rows:
+        if r["prereq"] != "None":
+            lines.append('    {"%s", %d, %d, "%s"},' % (r["game"], r["species"], r["location"], r["reason"]))
     lines.append("};")
     return "\n".join(lines) + "\n"
 
@@ -615,7 +678,14 @@ def manifest(rows, checks) -> str:
         for r in rows:
             if r["game"] == g:
                 per[r["kind"]] = per.get(r["kind"], 0) + 1
+        conf, pre = {}, {}
+        for r in rows:
+            if r["game"] == g:
+                conf[r["confidence"]] = conf.get(r["confidence"], 0) + 1
+                if r["prereq"] != "None":
+                    pre[r["prereq"]] = pre.get(r["prereq"], 0) + 1
         counts[g] = {"rows": sum(per.values()), "by_kind": dict(sorted(per.items())),
+                     "by_confidence": dict(sorted(conf.items())), "prerequisite_rows": dict(sorted(pre.items())),
                      "species": len({r["species"] for r in rows if r["game"] == g})}
     doc = {
         "generator": "tools/gen_gift_static_encounters.py",

@@ -312,7 +312,9 @@ void catalogue(uint8_t origin) {
     require(Context::unverifiedMetNote45(origin, 26, hatch, 30, 2002, 0).empty(), tag + ": traded-egg Raichu, no note");
     require(Context::unverifiedMetNote45(origin, 150, hatch, 70, 2000, 0).find("Undiscovered") != std::string::npos,
             tag + ": hatched Mewtwo is labelled");
-    require(Context::unverifiedMetNote45(origin, hgss ? 95 : 93, 2001, hgss ? 1 : 35).empty(), tag + ": trade, no note");
+    // (a verified data row carries encdata's "single source (PKHeX)" evidence note, never "unverified")
+    require(Context::unverifiedMetNote45(origin, hgss ? 95 : 93, 2001, hgss ? 1 : 35).find("unverified") == std::string::npos,
+            tag + ": trade, no unverified note");
     require(Context::unverifiedMetNote45(origin, 25, 2002, 20).find("unverified") != std::string::npos,
             tag + ": a non-egg 2002 stays unverified");
 }

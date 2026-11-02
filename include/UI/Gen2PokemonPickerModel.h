@@ -363,7 +363,13 @@ inline LocationRowText locationRowTextAt(const Model& model, int row) {
     if (model.unverifiedEntryAt(row)) return {Policy::kUnverifiedListRowPlace, Policy::kUnverifiedListRowDetail};
     if (row >= 0 && row < static_cast<int>(model.encounterChoices.size())) {
         const auto& encounter = model.encounterChoices[static_cast<std::size_t>(row)];
-        return via(encounter, locationRowText(encounter));
+        auto text = via(encounter, locationRowText(encounter));
+        // Owner decision (Nov 2): the encounter is in the game, its access (GS Ball) is not
+        // verifiable from the save -- listed, never as a verified acquisition.
+        namespace Gifts = PokeVault::Integration::GiftStaticEncounters;
+        if (const auto* gift = Gifts::rowOf(encounter); gift && !Gifts::fullyVerifiable(*gift))
+            text.detail += std::string("; ") + Gifts::kAccessUnverified;
+        return text;
     }
     if (const auto* blocked = model.levelBlockedAt(row)) {
         // R12-005: kept, never offered as verified; method and time dropped so the reason fits.

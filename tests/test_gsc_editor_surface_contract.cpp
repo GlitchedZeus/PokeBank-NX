@@ -277,8 +277,11 @@ int main() {
     assert(picker.find("Gen2Picker::locationRowTextAt(model, i)") != std::string::npos);
     // Round 12 (owner H08 "evolved"; updated pin): a catch template still draws through
     // locationRowText, plus "via <pre-evolution>" on an ancestry row.
+    // Round 13 owner decision (Nov 2, updated pin): an access-prerequisite row (GS Ball Celebi) adds
+    // "; access unverified" after the same locationRowText + via text.
     assert(readFile("include/UI/Gen2PokemonPickerModel.h").find(
-               "return via(encounter, locationRowText(encounter));") != std::string::npos);
+               "auto text = via(encounter, locationRowText(encounter));") != std::string::npos);
+    assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("Gifts::kAccessUnverified") != std::string::npos);
     // Round 13 (owner decision 8 "do not lose encounter-time distinctions"; updated pin): every
     // timed row names its times in the short form ("morn/day", "night", "any time").
     assert(readFile("include/UI/Gen2PokemonPickerModel.h").find("encounterTimeShortLabel(encounter.timeMask)") !=
