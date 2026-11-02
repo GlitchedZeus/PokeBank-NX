@@ -470,6 +470,23 @@ void testLanguageTransitions() {
     assert(!koreanDefault.isNicknamed());
     assert(!koreanDefault.nickname().empty());
     assert(koreanDefault.originalTrainerName() == u"ASH");
+
+    // Round 12 R12-008 cross-generation check: cycling an un-nicknamed Gen IV Pokemon through
+    // every Platinum language and back touches only the language byte, the nickname field and
+    // the checksum. PID, IVs, EVs, experience and every other byte are unchanged at each step.
+    auto cycle = Pokemon::Pokemon4Mutable::fromEncrypted(makeEntity(), Enums::GameVersion::PT);
+    assert(cycle);
+    const auto start = std::vector<std::byte>(cycle->decryptedBytes().begin(), cycle->decryptedBytes().end());
+    Pokemon::Pokemon4ReadOnly startView(cycle->encryptedBytes(), Enums::GameVersion::PT);
+    for (const uint8_t language : {uint8_t{1}, uint8_t{3}, uint8_t{4}, uint8_t{5}, uint8_t{7}, uint8_t{8}, startView.language()}) {
+        assert(cycle->setLanguage(language));
+        Pokemon::Pokemon4ReadOnly now(cycle->encryptedBytes(), Enums::GameVersion::PT);
+        assert(now.valid() && now.language() == language && !now.isNicknamed());
+        assert(now.pid() == startView.pid() && now.ivs() == startView.ivs() && now.evs() == startView.evs());
+        const auto bytes = cycle->decryptedBytes();
+        for (size_t i = 0; i < start.size(); ++i)
+            if (bytes[i] != start[i]) assert(i == 0x06 || i == 0x07 || i == 0x17 || (i >= 0x48 && i < 0x48 + 22));
+    }
 }
 
 void testPokerusModes() {

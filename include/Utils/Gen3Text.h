@@ -34,6 +34,7 @@
  * the half-width pair without also adding the two conversions it exists to feed.
  */
 #include <cstdint>
+#include <string>
 
 #include "Enums/LanguageID.h"
 
@@ -150,6 +151,25 @@ namespace Utils {
             return static_cast<char16_t>(character + 0xFEE0);
         }
         return character;
+    }
+
+    /// The half-width form of a full-width ASCII character (the inverse of gen3ToFullWidth).
+    inline constexpr char16_t gen3ToHalfWidth(char16_t character) noexcept {
+        if (character == u'　') return u' ';
+        if (character >= u'！' && character <= u'～') {
+            return static_cast<char16_t>(character - 0xFEE0);
+        }
+        return character;
+    }
+
+    /// A name with every full-width ASCII character folded to half width. Two names that fold
+    /// the same are the SAME name in Gen 3 terms: the Latin letters, digits and punctuation sit at
+    /// the same bytes in both tables (0xA1-0xEE), drawn half-width by an international cartridge
+    /// and full-width by a Japanese one. A language change between them keeps those bytes (Round
+    /// 12 R12-008); anything else (an accent, a kana the other table lacks) is a different name.
+    inline std::u16string gen3FoldWidth(std::u16string text) {
+        for (char16_t& character : text) character = gen3ToHalfWidth(character);
+        return text;
     }
 
     /// UTF-16 code unit -> Gen 3 byte, or GEN3_TERMINATOR when the character has no Gen 3 glyph.
