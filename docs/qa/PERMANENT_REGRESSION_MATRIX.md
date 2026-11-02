@@ -436,7 +436,7 @@ Known gate caveats: the Oct 26 table keys rows by Round 6 sheet number (its B01/
 
 ## 6. Every round's hardware checklist must include
 
-1. Every row in §1 with *recheck = yes* whose code changed since its last PASS.
+1. Every row in §1 with *recheck = yes* whose code changed since its last PASS (changed commits and targeted regressions: [`RECHECK_REGRESSIONS.md`](RECHECK_REGRESSIONS.md)).
 2. Every ledger row with status Fixed in Code — Awaiting Hardware (its acceptance candidate).
 3. Every safety function in §5 that an ordinary owner save can exercise.
 4. No row may be removed from a checklist unless it is owner-PASSed or the owner records a decision; the ledger records the reason.
