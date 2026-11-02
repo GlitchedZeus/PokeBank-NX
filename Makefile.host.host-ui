@@ -279,3 +279,21 @@ $(HOST_UI_TOUCH_MULTI_SANITIZE): $(HOST_UI_TOUCH_MULTI_INPUTS) $(HOST_UI_SANITIZ
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_touch_multiselect_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif
+
+# Round 14 (owner H01 / R02, P0): no workspace opens without an assigned save that passed validation;
+# the save-file chooser opens instead. Every Gen IV / V card x {none, sibling, junk, valid} x
+# {A, +, Items, Quick Games}, Gen I-III cards and the FireRed forwarder, through the real SaveSelectScreen.
+HOST_UI_SAVE_GATE_TEST := $(HOST_BUILD)/test_ui_save_open_gate_host
+HOST_UI_SAVE_GATE_SANITIZE := $(HOST_BUILD)/test_ui_save_open_gate_host_sanitize
+HOST_UI_SAVE_GATE_INPUTS := tests/test_ui_save_open_gate_host.cpp tests/host-ui/HostUi.h include/UI/SaveOpenGate.h \
+	tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_SAVE_GATE_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_SAVE_GATE_SANITIZE)
+host-test: $(HOST_UI_SAVE_GATE_TEST)
+host-sanitize: $(HOST_UI_SAVE_GATE_SANITIZE)
+$(HOST_UI_SAVE_GATE_TEST): $(HOST_UI_SAVE_GATE_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_save_open_gate_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_SAVE_GATE_SANITIZE): $(HOST_UI_SAVE_GATE_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_save_open_gate_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@

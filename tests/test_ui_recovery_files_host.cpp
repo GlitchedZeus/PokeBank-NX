@@ -187,10 +187,14 @@ void recoveryFiles() {
     d.frames(3);
     d.dump("home");
 
-    // + opens the Current Game menu; Backups is its seventh tile (row 4, column 1: Up from Overview).
+    // Round 14 (owner H01 / R02, updated deliberately: "it shouldnt even go to that menu it should
+    // have the file menu pop up to assign a save since there is none"): Diamond has no assigned
+    // save here, so + opens the save-file chooser, not the Current Game menu; + there opens the
+    // game's Backups (app-owned copies and recovery stay reachable without a save).
     d.press(HidNpadButton_Plus);
-    d.press(HidNpadButton_Up);
-    d.press(HidNpadButton_A);
+    check(d.drawn("ASSIGN SAVE FILE") && !d.drawn("GAME WORKSPACE"),
+          "no assigned save: + opens the save-file chooser, not the Game Workspace menu");
+    d.press(HidNpadButton_Plus);
     d.dump("backups");
     check(d.drawn("Backups"), "the game's Backups screen is open");
     check(d.drawn("Recovery files"), "the Backups footer offers X: Recovery files");

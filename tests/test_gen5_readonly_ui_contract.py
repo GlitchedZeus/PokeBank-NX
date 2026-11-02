@@ -159,7 +159,8 @@ require(manager_header, "bool handleGen5View(")
 require(
     games,
     "if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile)",
-    "openGen5Setup(selectedGameId,",
+    # Round 14 (owner H01 / R02, updated deliberately): the shared save chooser runs Gen V setup.
+    "openGen5Setup(title.gameId, notice);",
     "discoverGen5Candidates();",
     "PokeVault::Integration::Gen5::assignValidatedSource(",
     "selectedSourceKind=SelectedSourceKind::Gen5AssignedFile;",
@@ -169,8 +170,13 @@ require(
 # reach the chooser, while candidate selection revalidates before routing.
 selector = games.split("if (selected.sourceKind == SelectedSourceKind::Gen5AssignedFile) {", 1)[1]
 selector = selector.split("if (selected.sourceKind == SelectedSourceKind::Gen4AssignedFile)", 1)[0]
-assert "discoverGen5Candidates();" in selector
+# Round 14 (owner H01 / R02): A without a validated save routes to the ONE shared save chooser
+# (Save Instances first, then the save-file browser), which discovers Gen V candidates.
+assert "openSaveChooserForTitle(" in selector
 assert "titleSelected=true;" not in selector
+chooser = games.split("void SaveSelectScreen::openSaveChooserForTitle(", 1)[1]
+chooser = chooser.split("void SaveSelectScreen::openSaveFilePicker(", 1)[0]
+assert "discoverGen5Candidates();" in chooser and "gen5AssignOnly = false;" in chooser
 # The same physical Gen V SAV may contain two valid, different retail
 # copies. The user must choose Primary/Backup explicitly; selection must
 # survive discovery, source assignment and the final exact-game reopen.
@@ -220,7 +226,8 @@ require(games,
         '"Browse Saves / Open Shared Editor"',
         '"Assign Save File Manually"',
         'gen5AssignOnly=true; // Source/Game File defaults to metadata-only profile link.',
-        'gen5AssignOnly=false; // Explicit A on a game requests the shared editor.',
+        # Round 14 (owner H01 / R02, updated deliberately): the shared save chooser sets it.
+        'gen5AssignOnly = false;   // a validated choice opens the game, like A',
         'if(gen5SetupIndex==0) {',
         'gen5AssignOnly=true;',
         'if(gen5SetupIndex==1) {',
@@ -681,7 +688,9 @@ require(create_suite,
 # Gen V reuses the already-shared staged editor, not a second Create/Edit UI.
 # Game cards and the source picker must not claim the editor is unavailable.
 require(games,
-        "Choose a validated Gen V Save Instance; source stays read-only.",
+        # Round 14 (owner H01 / R02, updated deliberately): A without a validated save shows the
+        # shared gate's sentence ("No save assigned for Pokémon White. Choose a save file.").
+        "openSaveChooserForTitle(selected, saveGateForTitle(selected).message);",
         '"Choose a validated Gen V Save Instance."',
         "Open shared staged editor. Original save stays unchanged.",
         '"A",gen5AssignOnly?"Assign to Profile":"Open Editor"',
@@ -1110,7 +1119,9 @@ require(assigned_cpp, "SourceAssignmentResult assignValidatedSource(",
         "reopenValidatedSource(selected)", "binding.sourceVariant=checked.sourceVariant;",
         "binding.physicalIdentity=checked.physicalIdentity;", "copy=persisted;")
 require(games, "captureSourceFocus(", "restoreSourceFocus(",
-        "remembered.binding.sourcePath,240", "gen5Notice=assigned.diagnostic;")
+        # Round 14 (updated deliberately): the manual chooser is the save-file browser, opened in
+        # the remembered save's folder (was a typed path prefilled with it).
+        "start = parentBrowsePath(remembered.binding.sourcePath);", "gen5Notice=assigned.diagnostic;")
 require(read("tests/test_gen5_readonly_save.cpp"),
         "persistentCopyAssignmentContracts();", "sourceSelectionFocusContracts();")
 
@@ -1176,7 +1187,9 @@ require(read("src/Integration/Gen5/Gen5WorkingCopyExport.cpp"), "TRAINER_CHANGED
 items_route = games[games.index("void SaveSelectScreen::selectCurrentTitleForItems()"):]
 items_route = items_route[:items_route.index("SelectedSourceKind::Gen4AssignedFile")]
 assert "not yet supported" not in items_route
-require(items_route, "openGen5Setup(title.gameId,", "discoverGen5Candidates();", "gen5AssignOnly=false;")
+# Round 14 (owner H01 / R02, updated deliberately): through the ONE shared save chooser, which runs
+# the Gen V setup / discovery with gen5AssignOnly = false (checked on openSaveChooserForTitle above).
+require(items_route, "openSaveChooserForTitle(title, saveGateForTitle(title).message);")
 require(manager, "intent!=SaveSelectScreen::OpenIntent::Items", "trainerScreen.openItemsShortcut();")
 require(surface, "if(screen.itemsShortcutActive) {", "if(state.requestExit(ws))screen.goBack=true;")
 

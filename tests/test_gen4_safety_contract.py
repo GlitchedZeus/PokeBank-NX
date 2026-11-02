@@ -32,7 +32,12 @@ gen4_branch = current_title[current_title.index('SelectedSourceKind::Gen4Assigne
 assert 'openAssignedSource(' in gen4_branch
 assert 'OpenStatus::Ready' in gen4_branch
 assert 'opened.save' in gen4_branch
-assert 'openGen4Setup(' in gen4_branch
+# Round 14 (owner H01 / R02, updated deliberately): an unready binding fails closed into the ONE
+# shared save chooser, which runs Gen IV setup + discovery underneath (never a workspace).
+assert 'openSaveChooserForTitle(' in gen4_branch
+chooser = select[select.index('void SaveSelectScreen::openSaveChooserForTitle('):
+                 select.index('void SaveSelectScreen::openSaveFilePicker(')]
+assert 'openGen4Setup(' in chooser and 'discoverGen4Candidates();' in chooser
 assert 'discoverGen4Candidates();' not in gen4_branch
 assert 'titleSelected = true' in gen4_branch
 
