@@ -40,6 +40,14 @@ struct Fill {
     uint32_t rgba = 0;
 };
 inline std::vector<Fill> fills;
+// Round 13 (owner decision 4): every rounded OUTLINE of the frame (PKSEFramebuffer::drawRoundedRect), so
+// a selection rectangle drawn over box cells can be compared between controller and touch.
+struct Outline {
+    int x = 0, y = 0, w = 0, h = 0, radius = 0, thickness = 0;
+    uint32_t rgba = 0;
+    bool operator==(const Outline&) const = default;
+};
+inline std::vector<Outline> outlines;
 // Rounded artwork / per-corner fills (PKSEFramebuffer::drawImageRoundedCover / drawFilledRoundedRectVarying).
 struct RoundedShape {
     int x, y, w, h;
@@ -59,6 +67,7 @@ inline int clipX = 0, clipY = 0, clipW = 0, clipH = 0;
 inline void resetLayout() {
     visibleText.clear();
     fills.clear();
+    outlines.clear();
     roundedShapes.clear();
     rectImageDraws = 0;
     footerBars = 0;

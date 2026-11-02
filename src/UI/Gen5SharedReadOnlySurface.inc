@@ -1638,6 +1638,12 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
     // Round 12 R12-001: the Boxes grid has the Gen I-IV keys (shared ClassicPackedMove overlay). A Y
     // tap picks up to Move, a Y hold multi-selects, and a Move or Clone carry owns A / B / Y / X and
     // cell taps; navigation keys fall through to the box grid below, and + is Review there.
+    // Round 13 owner decision 4: the finger first - a drag across cells is the Y hold rectangle (lift =
+    // pick up), and during a carry a tap on the carried cell is A and a tap outside the grid is B, through
+    // the same shared code as Gen I-IV. A plain cell tap still falls through to decodeGen5BoxTouch below.
+    if(state.surface()==Surface::Browse && screen.detailViewActive &&
+       screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
+       ClassicPackedMove::handleGen5BoxTouch(screen,down,touch))return true;
     if(state.surface()==Surface::Browse && screen.detailViewActive &&
        screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
        ClassicPackedMove::handleGen5BoxInput(screen,down,held,stickX,stickY,tap))return true;

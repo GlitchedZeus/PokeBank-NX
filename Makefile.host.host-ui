@@ -262,4 +262,20 @@ $(HOST_UI_JP_NAMES_TEST): tests/test_ui_japanese_name_prompts_host.cpp include/U
 $(HOST_UI_JP_NAMES_SANITIZE): tests/test_ui_japanese_name_prompts_host.cpp include/UI/ClassicJapaneseNames.h $(HOST_UI_STUBS) tests/host-ui/HostUi.h $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_japanese_name_prompts_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Round 13 owner decision 4: Gen V touchscreen drag multi-select == controller multi-select (rectangle,
+# pickup, full-destination refusal, cancel, placement, single tap, modal no-op), Gen I-V, twin saves.
+HOST_UI_TOUCH_MULTI_TEST := $(HOST_BUILD)/test_ui_touch_multiselect_host
+HOST_UI_TOUCH_MULTI_SANITIZE := $(HOST_BUILD)/test_ui_touch_multiselect_host_sanitize
+HOST_UI_TOUCH_MULTI_INPUTS := tests/test_ui_touch_multiselect_host.cpp tests/host-ui/HostUi.h tests/host-ui/HostUiFixtures.h \
+	tests/fuzz_synthetic_saves.h tests/fixtures/gsc_pokemon_fixture.h include/UI/ClassicCarryRules.h $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_TOUCH_MULTI_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_TOUCH_MULTI_SANITIZE)
+host-test: $(HOST_UI_TOUCH_MULTI_TEST)
+host-sanitize: $(HOST_UI_TOUCH_MULTI_SANITIZE)
+$(HOST_UI_TOUCH_MULTI_TEST): $(HOST_UI_TOUCH_MULTI_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_touch_multiselect_host.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_TOUCH_MULTI_SANITIZE): $(HOST_UI_TOUCH_MULTI_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_touch_multiselect_host.cpp $(HOST_UI_STUBS) $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif
