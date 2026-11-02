@@ -1,3 +1,4 @@
+#include "Integration/Gen6/Gen6SaveLayout.h"
 #include "Integration/Gen7/Gen7Save.h"
 #include "Integration/Gen7/MiniGmpAllocationScope.h"
 
@@ -81,7 +82,7 @@ std::optional<Gen7Save> Gen7Save::parse(std::span<const uint8_t> bytes, std::str
 
     const size_t meta = Layout::metadataOffset(family);
     if (PK7::read32(bytes, meta + Layout::MagicWithinMetadata) != Layout::BeefMagic)
-        return fail("Gen VII save footer has no BEEF block-metadata magic");
+        return fail(Gen6::Layout::footerFailureReason(bytes, "Gen VII"));
     const auto table = Layout::blocks(family);
     const size_t valid = validBlockCount(bytes, family);
     if (valid != table.size())

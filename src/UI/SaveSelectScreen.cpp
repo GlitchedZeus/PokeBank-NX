@@ -3093,7 +3093,9 @@ namespace UI {
                 gen5Notice = "Inspected " + std::to_string(discovered.filesExamined) +
                     " save file(s); none validated for this game.";
                 if (rejected != rows.end()) {
-                    gen5Notice += " Example rejection: " + rejected->diagnostic;
+                    // G69-HW-001: name the file and provider, so a wrong candidate is told from a parser fault.
+                    gen5Notice += " Example rejection (" + rejected->providerLabel + ": " + rejected->label + "): " +
+                                  rejected->diagnostic;
                     logInfoToFile(gen + " strict read-only rejection: game=" + gen5TargetGameId +
                                   " provider=" + rejected->providerLabel + " file=" + rejected->label +
                                   " reason=" + rejected->diagnostic);

@@ -1031,7 +1031,7 @@ namespace UI {
         }
         logInfoToFile("Opening installed Gen VI-IX save snapshot read-only",file.c_str());
         runModernScreen(*trainer,"Pokemon "+std::string(identity->title),file,userUid,gameId,
-                        "Installed game (read-only snapshot)",intent);
+                        "Installed game",intent);   // SaveProviderIdentity: "Installed game (read-only copy)"
         return true;
     }
 

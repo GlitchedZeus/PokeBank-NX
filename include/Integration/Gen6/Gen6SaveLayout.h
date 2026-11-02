@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <span>
 #include <string_view>
 
@@ -73,7 +74,20 @@ inline constexpr size_t ORASSize = 0x76000;
 // The ORAS Special Demo save is a different, explicitly unsupported family.
 inline constexpr size_t ORASDemoSize = 0x5A00;
 
-inline constexpr uint32_t BeefMagic = 0x42454546;  // PKHeX "BEEF" footer magic (read as a little-endian u32)
+inline constexpr uint32_t BeefMagic = 0x42454546;
+// Owner hardware G69-HW-001: say WHAT a footer-less file is, so a never-written emulator save, a partial
+// copy and an encrypted/foreign file are told apart. Classification only; validation stays strict.
+[[nodiscard]] inline std::string footerFailureReason(std::span<const uint8_t> bytes, const char* gen) {
+    bool allZero = true, tailZero = true;
+    for (size_t i = 0; i < bytes.size(); ++i)
+        if (bytes[i] != 0) { allZero = false; if (i + 0x200 >= bytes.size()) { tailZero = false; break; } }
+    const std::string g(gen);
+    if (allZero)
+        return g + " save file is all zero bytes: the game has not written this save yet (save once in game, then retry)";
+    if (tailZero)
+        return g + " save has an empty BEEF block table at its end: not a complete decrypted 'main' (copy it again or let the game save)";
+    return g + " save footer has no BEEF block-metadata magic: not a decrypted 'main' (encrypted, another title's file, or damaged)";
+}  // PKHeX "BEEF" footer magic (read as a little-endian u32)
 inline constexpr size_t MetadataFromEnd = 0x200;
 inline constexpr size_t MagicWithinMetadata = 0x10;
 inline constexpr size_t EntriesWithinMetadata = 0x14;

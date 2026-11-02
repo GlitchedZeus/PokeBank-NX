@@ -4,7 +4,7 @@
 > This lane is isolated from the Gen I–V repair campaign, #307, #314, #327/#328. No merge into `main` or
 > into the Gen I–V repair branch, no force-push, no branch deletion, no source-save write.
 
-Last updated: 2026-11-01 UTC, by Claude (Gen VI–IX session_011W9mYgjDqGPH91UprKtQLu).
+Last updated: 2026-11-02 UTC, by Claude (Gen VI–IX session_011W9mYgjDqGPH91UprKtQLu).
 
 ## Branching decision (owner, 2026-10-31)
 
@@ -153,6 +153,20 @@ Hardware UX repair, what changed:
   Clang, matrix, 7 Python contracts, 12 Gen I–V host-UI suites, full `host-test` (63 suites) all green.
   EXPERIMENTAL, NOT DEVICE TESTED.
 
+## Owner hardware intake of 5895e6b9 (2026-11-02): NOT ACCEPTED, NO-GO
+
+Evidence (unmodified): `docs/hardware/gen6-plus-5895e6b9-owner-intake/` (intake, ISSUE_LEDGER.csv G69-HW-001..014,
+20 screenshots). Truthful per-title status and the ledger response: `docs/gen6-plus/ACCEPTANCE_STATUS.md` (host
+tested ≠ hardware opened ≠ feature parity ≠ export validated in game). `5895e6b9` is frozen as a failed hardware
+candidate. Repairs in the next candidate:
+- G69-HW-007 Z-A battle teams unreadable on a real save → `Gen8TeamIndexes.h`: TeamIndexes8 blocks read as raw
+  bytes like PKHeX (SWSH/SV/Z-A), still fail-closed, exact reason on the Trainer screen (likely cause, unconfirmed).
+- G69-HW-001/002 Gen VI: layout re-verified against pinned PKHeX (no defect found); footer rejections now
+  classified (never-written / empty footer / not a decrypted `main`) and Save Instances names provider + file.
+- G69-HW-011 installed snapshot provider "Installed game (read-only copy)" instead of "Unknown provider".
+- Open (feature parity, P1): Let's Go Bag/Dex/trainer, Z-A and Gen VIII+ species/moves/level/IV/EV, trainer and
+  Pokédex editing, Z-A origin/location names, 3DS cover art, Gen I–V Actions menu and Vault inheritance.
+
 ## PKSE 1.2.2 differential audit and port (owner request 2026-11-01)
 
 Upstream `kiasta/PKSE` v1.2.1..v1.2.2 (`fc555b1`, `65dff1d`, `c671aa4`, `474ad9e`, `f4fd79a`) read at source level;
@@ -215,8 +229,7 @@ candidates; #313 open).
 
 ## Open work (in order)
 
-1. Owner: retest the hardware UX repair with checklist group GUX on the bound experimental NRO (does not
-   affect Gen I–V acceptance).
+1. Owner: specific retest items R1–R3 in `docs/gen6-plus/ACCEPTANCE_STATUS.md` on the next candidate.
 2. PKSE 1.2.2 differential audit and feature port (owner request 2026-11-01): mass-cloning on box move,
    unknown-byte preservation, fail-closed parsing, team protections incl. Gen VII, checksum/size per edit;
    then Hyper Training, ribbons/marks, PLA/Z-A Alpha in the shared editor; favourite folders last.

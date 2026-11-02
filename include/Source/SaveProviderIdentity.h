@@ -32,6 +32,7 @@ enum class ProviderIdentity : uint8_t {
     Dekopon,
     Azahar,
     Checkpoint, // 3DS Checkpoint-layout backup folder (Gen VI/VII exports copied to the SD card)
+    InstalledGame, // Gen VI-IX installed Switch title: an app-owned read-only copy of its save (owner G69-HW-011)
 };
 
 namespace ProviderDetail {
@@ -61,6 +62,7 @@ namespace ProviderDetail {
     if (equalsIgnoreCase(raw, "Azahar")) return ProviderIdentity::Azahar;
     if (equalsIgnoreCase(raw, "Checkpoint")) return ProviderIdentity::Checkpoint;
     if (equalsIgnoreCase(raw, "Manual")) return ProviderIdentity::Manual;
+    if (equalsIgnoreCase(raw, "Installed game")) return ProviderIdentity::InstalledGame;
     // "Remembered", "Source", an empty pre-provider binding row, or anything
     // hand-edited: discovery did not identify a provider. Say so honestly.
     return ProviderIdentity::Unknown;
@@ -79,6 +81,7 @@ namespace ProviderDetail {
         case ProviderIdentity::Azahar: return "Azahar";
         case ProviderIdentity::Checkpoint: return "Checkpoint (3DS backup)";
         case ProviderIdentity::Manual: return "Manual file";
+        case ProviderIdentity::InstalledGame: return "Installed game (read-only copy)";
         case ProviderIdentity::Multiple: return "Multiple providers";
         case ProviderIdentity::Unknown: break;
     }

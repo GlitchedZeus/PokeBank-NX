@@ -55,7 +55,7 @@ std::optional<Gen6Save> Gen6Save::parse(std::span<const uint8_t> bytes,
 
     const size_t meta = Layout::metadataOffset(family);
     if (PK6::read32(bytes, meta + Layout::MagicWithinMetadata) != Layout::BeefMagic)
-        return fail("Gen VI save footer has no BEEF block-metadata magic");
+        return fail(Layout::footerFailureReason(bytes, "Gen VI"));
 
     const auto table = Layout::blocks(family);
     const size_t valid = validBlockCount(bytes, family);

@@ -286,6 +286,21 @@ void failClosed(const Title& t, const std::string& root) {
     }
     std::vector<uint8_t> zeros(n, 0);
     check(!Modern::openSession(t.id, zeros).ready(), t.id + " zero-filled save of the right size is refused");
+    if (t.id.find("_3ds") != std::string::npos) {
+        // Owner hardware G69-HW-001: a footer-less 3DS file says what it is (classification only).
+        const auto zeroWhy = Modern::openSession(t.id, zeros).diagnostic;
+        check(zeroWhy.find("all zero bytes: the game has not written this save yet") != std::string::npos,
+              t.id + " an all-zero file is reported as never written: " + zeroWhy);
+        auto tailCut = pristine;
+        std::fill(tailCut.end() - 0x200, tailCut.end(), uint8_t{0});
+        const auto tailWhy = Modern::openSession(t.id, tailCut).diagnostic;
+        check(tailWhy.find("empty BEEF block table") != std::string::npos, t.id + " an empty footer is named: " + tailWhy);
+        auto foreign = pristine;
+        for (size_t i = foreign.size() - 0x200; i < foreign.size(); ++i) foreign[i] = static_cast<uint8_t>(i * 7 + 1);
+        const auto foreignWhy = Modern::openSession(t.id, foreign).diagnostic;
+        check(foreignWhy.find("no BEEF block-metadata magic: not a decrypted 'main'") != std::string::npos,
+              t.id + " a non-empty footer without BEEF is named: " + foreignWhy);
+    }
     // Whole-file integrity formats (SwishCrypto SHA-256: SWSH/PLA/SV/Z-A; BD/SP MD5): one flipped byte anywhere
     // is refused, never parsed as data.
     const bool wholeFileHash = t.id.find("_switch") != std::string::npos && t.id.find("letsgo") == std::string::npos;
