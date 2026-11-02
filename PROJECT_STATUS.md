@@ -1,5 +1,8 @@
 # PokeBank NX Project Status
 
+> [!NOTE]
+> **Historical snapshot (October 2026).** The current project status is in [docs/STATUS.md](docs/STATUS.md); every build and its hardware result is in [docs/RELEASES.md](docs/RELEASES.md). This file is kept unchanged below for its record.
+
 ## CURRENT PRIORITY — October 17, 2026
 
 **PokeBank NX is an active alpha; no v1.0 release.** The release target remains **one safe, shared Gen I–V editor across 20 game releases**, not a five-editor fork or a separate Gen V wizard.

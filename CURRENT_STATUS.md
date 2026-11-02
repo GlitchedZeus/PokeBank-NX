@@ -1,5 +1,8 @@
 # PokeBank NX — Current Verified Engineering State
 
+> [!NOTE]
+> **Historical snapshot (October 2026).** The current project status is in [docs/STATUS.md](docs/STATUS.md); every build and its hardware result is in [docs/RELEASES.md](docs/RELEASES.md). This file is kept unchanged below for its record.
+
 ## ACTIVE OWNER GATE — OCTOBER 17, 2026
 
 **Release scope remains Gen I–V (all 20 releases).** Complete the remaining shared UI/Bag/Trainer/Gen V repair rounds, retest one exact NRO, perform reviewed Gen I–V legality integration, then validate the combined app and engine across all 20 releases. Only explicit owner acceptance unlocks active Gen VI–IX app/emulator development.
