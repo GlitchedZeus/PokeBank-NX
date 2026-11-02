@@ -83,3 +83,18 @@ $(HOST_BUILD)/test_species_change_history_policy: tests/test_species_change_hist
 $(HOST_BUILD)/test_species_change_history_policy_sanitize: tests/test_species_change_history_policy.cpp $(SPECIES_MOVES_DEPS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_species_change_history_policy.cpp -o $@
+
+# Round 11 H24 (owner PASS, permanent regression gate GUARDS_ROUND11): Gen III species / held item / move /
+# IV edit -> Review lists only those rows -> Discard restores the record byte for byte (R/S/E/FR/LG).
+R11_GEN3_EDIT_DISCARD_SOURCES := tests/test_gen3_edit_discard_r11.cpp \
+	$(filter-out tests/test_gen3_staged_pokemon_editor.cpp,$(GEN3_POKEMON_EDITOR_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen3_edit_discard_r11
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_edit_discard_r11_sanitize
+host-test: $(HOST_BUILD)/test_gen3_edit_discard_r11
+host-sanitize: $(HOST_BUILD)/test_gen3_edit_discard_r11_sanitize
+$(HOST_BUILD)/test_gen3_edit_discard_r11: $(R11_GEN3_EDIT_DISCARD_SOURCES) $(SPECIES_MOVES_DEPS) include/UI/Gen3SharedPokemonSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(R11_GEN3_EDIT_DISCARD_SOURCES) -o $@
+$(HOST_BUILD)/test_gen3_edit_discard_r11_sanitize: $(R11_GEN3_EDIT_DISCARD_SOURCES) $(SPECIES_MOVES_DEPS) include/UI/Gen3SharedPokemonSession.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST -Iinclude $(R11_GEN3_EDIT_DISCARD_SOURCES) -o $@
