@@ -60,7 +60,7 @@ def main() -> int:
         (root / "tools/qa").mkdir(parents=True)
         for name in ("cxx_with_deps.sh", "host_header_sweep.py"):
             shutil.copy2(ROOT / "tools/qa" / name, root / "tools/qa" / name)
-        shutil.copy2(ROOT / "Makefile.host.deps", root / "Makefile.host.deps")
+        shutil.copy2(ROOT / "build-system/host/Makefile.host.deps", root / "Makefile.host.deps")
         (root / "Makefile").write_text(MAKEFILE)
         (root / "include").mkdir()
         (root / "tests").mkdir()
