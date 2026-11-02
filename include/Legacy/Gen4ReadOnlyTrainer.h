@@ -35,7 +35,10 @@ public:
         return stagedPokemon_ && stagedPokemon_->hasChanges();
     }
     Enums::GameVersion getGameGroup() const noexcept override { return save_.rawFamily(); }
-    bool supportsBoxNames() const noexcept override { return true; }
+    // Round 14 P0-2: Gen IV box names are displayed from the save, but there is no Gen IV box-name
+    // writer (updateBoxNameBlock is a no-op above). Claiming support offered a rename that would be
+    // silently lost on export; report it unsupported, as Gen V does.
+    bool supportsBoxNames() const noexcept override { return false; }
     size_t getMaxBoxNameLength() const noexcept override { return 8; }
 
     [[nodiscard]] const Integration::Gen4::Gen4ReadOnlySave& sourceSave() const noexcept {

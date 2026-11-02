@@ -24,6 +24,7 @@
 #include "Utils/Logger.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/StringHelpers.h"
+#include "Text/TextFieldCapability.h"
 #include "Trainer/Inventory.h"
 #include "Integration/Common/NativePlayTime.h"
 #include "Pokemon/Pokemon.h"
@@ -468,7 +469,27 @@ namespace Trainer {
          * name can be unstorable there. The UI must ask BEFORE accepting, rather than let the write
          * path silently drop characters and hand back a mangled name.
          */
-        virtual bool canStoreBoxName(const std::string& name) const { (void)name; return true; }
+        virtual bool canStoreBoxName(const std::string& name) const {
+            // Round 14 P0-3: the UTF-16 games' box-name writers are all-or-nothing in code units
+            // (Utils::setStringChecked), while the keyboard caps in characters; a name with a
+            // non-BMP character can be within the character cap and over the unit cap. Refuse
+            // it here, before the UI accepts it, rather than lose it at save time.
+            return PokeBank::Text::Utf16NameField(PokeBank::Text::FieldKind::BoxName,
+                                                  getMaxBoxNameLength(),
+                                                  (getMaxBoxNameLength() + 1) * 2).check(name).ok();
+        }
+
+        /**
+         * Whether this game can store `name` EXACTLY as the trainer name (glyphs and length in the
+         * game's own unit). Ask before accepting a rename: the writers are all-or-nothing and keep
+         * the old name rather than store a cut or substituted one. Default: UTF-16 code units
+         * against getMaxTrainerNameLength(); Gen 3 overrides with its table.
+         */
+        virtual bool canStoreTrainerName(const std::string& name) const {
+            return PokeBank::Text::Utf16NameField(PokeBank::Text::FieldKind::TrainerName,
+                                                  getMaxTrainerNameLength(),
+                                                  (getMaxTrainerNameLength() + 1) * 2).check(name).ok();
+        }
 
         // ========================================
         // Editable Trainer Info

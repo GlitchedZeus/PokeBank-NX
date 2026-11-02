@@ -17,6 +17,7 @@
 #include "Pokemon/Gen3PartyRecord.h"
 #include "Enums/LanguageID.h"
 #include "Utils/Gen3Text.h"        // the Gen 3 character set, shared with Pokemon3FRLG + Convert
+#include "Text/TextFieldCapability.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/Logger.h"
 
@@ -39,17 +40,17 @@ namespace Trainer {
             return Utils::utf16ToUtf8(wide);
         }
 
+        // Round 14 P0-2: all-or-nothing through the shared capability. This used to stop at
+        // `maxChars` and report success (a too-long name was stored as its prefix), and wrote the
+        // bytes before an unencodable character as it went. Now the whole name is checked first and
+        // `out` is untouched on refusal; bytes past the terminator are left as they are.
         bool g3Encode(const std::string& in, uint8_t* out, size_t bytes, size_t maxChars,
                       uint8_t languageId) {
-            size_t n = 0;
-            for (const char16_t c : Utils::utf8ToUtf16(in)) {
-                if (n >= maxChars || n >= bytes) break;
-                const uint8_t b = Utils::charToGen3(c, languageId);
-                if (b == Utils::GEN3_TERMINATOR) return false;
-                out[n++] = b;
-            }
-            if (n < bytes) out[n] = Utils::GEN3_TERMINATOR;
-            return true;
+            const PokeBank::Text::Gen3NameField field(PokeBank::Text::FieldKind::BoxName, languageId,
+                                                      maxChars, bytes);
+            std::u16string wide;
+            if (!PokeBank::Text::strictUtf16(in, wide)) return false;
+            return field.encode16(wide, std::span<uint8_t>(out, bytes)).ok();
         }
 
         // Preserve an existing 100-byte party tail exactly. Derive it only for an 80-byte
@@ -234,6 +235,11 @@ namespace Trainer {
         return g3Encode(name, scratch, FRLG_BOX_NAME_BYTES, FRLG_BOX_NAME_CHARS, m_languageId);
     }
 
+    bool Trainer3FRLG::canStoreTrainerName(const std::string& name) const {
+        uint8_t scratch[8];
+        return g3Encode(name, scratch, 8, 7, m_languageId);
+    }
+
     void Trainer3FRLG::updateBoxNameBlock() {
         // Inverse of parseBoxNames: 14 names of 9 bytes at Storage+0x8344, Gen 3 text, 0xFF
         // terminated. Must run BEFORE finalizeChecksums() -- the names sit inside the checksummed
@@ -405,8 +411,10 @@ namespace Trainer {
         // g3Encode writes 7 chars + a 0xFF terminator into 8 bytes, stopping before the gender byte at
         // 0x08; the UI has already rejected any name the Gen-3 glyph table can't store.
         const size_t sm = m_sectorOfs[SMALL_ID];
-        if (sm + 0x09 <= saveData.size())
-            g3Encode(this->trainerName, &saveData[sm + 0x00], 8, 7, m_languageId);
+        // All-or-nothing: a name the table cannot hold leaves the stored name untouched.
+        if (sm + 0x09 <= saveData.size() &&
+            !g3Encode(this->trainerName, &saveData[sm + 0x00], 8, 7, m_languageId))
+            Utils::logErrorToFile("Gen 3 trainer name refused by the writer; stored name kept");
         uint8_t moneyBuf[4];
         writeUInt32LittleEndian(moneyBuf, this->money ^ m_key);
         writeBlock(LARGE_ID, 0x290, moneyBuf, 4);

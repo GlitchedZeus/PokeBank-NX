@@ -484,8 +484,19 @@ namespace Pokemon {
         /** Sets the nickname (UTF-16, max 12 chars). Location: 0x60 (26 bytes). */
         void setNickname(const std::u16string& value) noexcept override
         {
-            setString(reinterpret_cast<uint8_t*>(data.data() + 0x60), 26, value, 12);
-            refreshChecksum();
+            if (setStringChecked(reinterpret_cast<uint8_t*>(data.data() + 0x60), 26, value, 12) == CheckedTextResult::Accepted)
+                refreshChecksum();   // all-or-nothing (Round 14 P0-3)
+        }
+
+        /** All-or-nothing name check (Round 14 P0-3): 12 UTF-16 code units in a 26-byte field, so
+         *  a non-BMP character costs two and is never split. The setters refuse what this refuses. */
+        bool canStoreNickname(const std::u16string& value) const noexcept override
+        {
+            return Utils::stringFits(26, value, 12);
+        }
+        bool canStoreOTName(const std::u16string& value) const noexcept override
+        {
+            return Utils::stringFits(26, value, 12);
         }
 
         /** Original Trainer name. Location: 0x110 (26 bytes). */
@@ -495,8 +506,8 @@ namespace Pokemon {
         }
         void setOTName(const std::u16string& value) noexcept override
         {
-            setString(reinterpret_cast<uint8_t*>(data.data() + 0x110), 26, value, 12);
-            refreshChecksum();
+            if (setStringChecked(reinterpret_cast<uint8_t*>(data.data() + 0x110), 26, value, 12) == CheckedTextResult::Accepted)
+                refreshChecksum();   // all-or-nothing (Round 14 P0-3)
         }
 
         /** Handling (current) Trainer name. Location: 0xB8 (26 bytes). */
@@ -506,8 +517,8 @@ namespace Pokemon {
         }
         void setHTName(const std::u16string& value) noexcept override
         {
-            setString(reinterpret_cast<uint8_t*>(data.data() + 0xB8), 26, value, 12);
-            refreshChecksum();
+            if (setStringChecked(reinterpret_cast<uint8_t*>(data.data() + 0xB8), 26, value, 12) == CheckedTextResult::Accepted)
+                refreshChecksum();   // all-or-nothing (Round 14 P0-3)
         }
 
         /** Handling Trainer gender (0=Male, 1=Female). Location: 0xD2. */

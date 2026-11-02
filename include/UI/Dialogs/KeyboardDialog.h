@@ -149,6 +149,9 @@ namespace UI
             int pendingKeyIndex = -1; // a tapped key that closes the card, waiting for its press to show
             int pendingFrames = 0;
             int refusedFrames = 0;    // the character counter flashes after a character did not fit
+            /// Why the last answer was refused (shown in place of the counter while it flashes).
+            /// Round 14 P0-5: set when the System keyboard's text fails the prompt's own rules.
+            std::string refusalReason;
             u64 repeatingButton = 0;  // the held button that auto-repeats
             PokeBank::UIModel::HoldRepeatClock repeatClock; // shared wall-clock hold timing
             /// The left stick, read as one D-pad direction at a time so it steps the selection like the
@@ -172,6 +175,14 @@ namespace UI
             void applyKanaModifier(KeyboardKeyAction modifier);
             void typeHangul(const std::string &jamo);
             void finish(bool acceptText);
+            /// OK: accepts only text that passes the prompt's own rules (request.field when set).
+            void tryAccept();
+
+        public:
+            /// The rules every answer must pass, whichever keyboard typed it: valid UTF-8, the
+            /// character cap, digits for a number pad, the Gen I / II kana font for a kana prompt,
+            /// and request.field's check(). False sets `why` to one user-facing sentence.
+            bool acceptable(const std::string &candidate, std::string &why) const;
         };
 
         /// Draws the card. Captures the field's caret positions for the next update().

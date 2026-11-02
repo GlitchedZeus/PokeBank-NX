@@ -83,6 +83,7 @@ namespace Trainer {
         bool supportsBoxNames() const noexcept override { return true; }
         size_t getMaxBoxNameLength() const noexcept override { return FRLG_BOX_NAME_CHARS; }
         bool canStoreBoxName(const std::string& name) const override;
+        bool canStoreTrainerName(const std::string& name) const override;
         void updateItemBlock() override;
         void updateTrainerInfoBlock() override;   // money / OT name
         uint32_t getMaxMoney() const noexcept override { return 999999; }        // PKHeX SAV3.MaxMoney

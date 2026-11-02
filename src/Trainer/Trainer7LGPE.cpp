@@ -891,7 +891,8 @@ namespace Trainer {
         for (auto& block : blocks) {
             if (block.key == MY_STATUS7_LGPE) {
                 if (block.data.size() >= 0x38 + 26)
-                    setString(&block.data[0x38], 26, utf8ToUtf16(trainerName), 12);   // OT name, 12 chars
+                    if (setStringChecked(&block.data[0x38], 26, utf8ToUtf16(trainerName), 12) != CheckedTextResult::Accepted)   // OT name, 12 chars
+                        logErrorToFile("Trainer name refused by the checked writer (Round 14 P0-3); stored name kept");
             } else if (block.key == MISC7_LGPE) {
                 if (block.data.size() >= 0x04 + 4)
                     writeUInt32LittleEndian(&block.data[0x04], money);

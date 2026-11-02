@@ -40,6 +40,7 @@ include Makefile.host.pokemon-file-menus
 include Makefile.host.carry
 include Makefile.host.recheck
 include Makefile.host.encdata
+include Makefile.host.textsafety
 
 include Makefile.host.machine
 

@@ -74,6 +74,12 @@ const char* exactSourceGameId(SourceGame game) {
 bool gSampleIsEgg = false;
 // The sample's held item (13 = Ether by default).
 uint16_t gSampleHeldItem = 13;
+// The sample's record language (2 = English by default).
+uint8_t gSampleLanguage = 2;
+// When set, the fixture's trainer block carries an international trainer name ("RED" + 0xFF
+// padding), so the adapter detects an international save; by default the zeroed block reads as a
+// Japanese save (PKHeX/PKSM: bytes 6-7 of the trainer name are zero on Japanese saves).
+bool gTrainerInternational = false;
 
 std::array<uint8_t,80> samplePokemon(SourceGame game) {
     std::array<uint8_t,80> blank{};
@@ -83,7 +89,7 @@ std::array<uint8_t,80> samplePokemon(SourceGame game) {
     p.setTID16(12345);
     p.setSID16(54321);
     p.setSpecies(25);
-    p.setLanguage(2);
+    p.setLanguage(gSampleLanguage);
     p.setOTName(u"RED");
     p.setNickname(u"PIKACHU");
     p.setHeldItem(gSampleHeldItem);
@@ -128,6 +134,13 @@ LogicalSectors makeLogical(Family family, SourceGame game) {
     }
     write16(logical[0], 0x0A, 12345);
     write16(logical[0], 0x0C, 54321);
+    if (gTrainerInternational) {
+        const uint8_t english = 2;
+        logical[0][0] = Utils::charToGen3(u'R', english);
+        logical[0][1] = Utils::charToGen3(u'E', english);
+        logical[0][2] = Utils::charToGen3(u'D', english);
+        for (std::size_t i = 3; i < 8; ++i) logical[0][i] = Utils::GEN3_TERMINATOR;
+    }
 
     // Pinned PKHeX SaveBlock3LargeRS/E/FRLG badge flags (not an assumed
     // byte at the start of the event array). These straddle logical chunks.
@@ -1217,6 +1230,87 @@ void languageStabilityGame(SourceGame game, Family family) {
     assert(source == immutableSource);
 }
 
+// Round 14 P0-1 / P0-2 (text safety): an OT edit is validated in the language the bytes are
+// actually written in (an Egg's OT is written in the SAVE's charset while its record language is the
+// Japanese placeholder), and is all-or-nothing: either export -> strict reparse reads back the exact
+// requested name (Latin width folded, the same bytes in both tables) or the edit is refused with a
+// message and nothing is staged. Never a prefix (the host probe stored "A" for "A×B"), never a
+// substitute. Covers Egg / non-Egg, Japanese / international records and saves.
+namespace textsafety {
+std::u16string fold(const std::string& utf8) { return Utils::gen3FoldWidth(Utils::utf8ToUtf16(utf8)); }
+bool storable(const std::string& utf8, uint8_t textLanguage, std::size_t maxChars) {
+    const auto text = Utils::utf8ToUtf16(utf8);
+    if (text.empty() || text.size() > maxChars) return false;
+    for (const char16_t c : text)
+        if (Utils::charToGen3(c, textLanguage) == Utils::GEN3_TERMINATOR) return false;
+    return true;
+}
+const char* const kCorpus[] = {
+    "BOB", "A\xC3\x97" "B" /* A×B */, "A\xE2\x80\xA6" "B" /* A…B */, "A\xE3\x81\x84" "B" /* AいB */,
+    "A\xE3\x82\xA2" /* Aア */, "A\xC3\xA0" /* Aà */, "\xC3\x89VA" /* ÉVA */,
+    "\xEA\xB0\x80" /* 가 */, "AB\xF0\x9F\x98\x80" /* AB😀 */, "ABCDE", "ABCDEF", "ABCDEFG", "ABCDEFGH",
+    "\xE3\x82\xB5\xE3\x83\x88\xE3\x82\xB7" /* サトシ */,
+};
+} // namespace textsafety
+
+void textSafetyGame(SourceGame game, Family family) {
+    struct Case { bool egg; uint8_t recordLanguage; bool internationalSave; };
+    const Case cases[] = {
+        {true, 1, true}, {true, 1, false},                 // Egg: record language is the JP placeholder
+        {false, 2, true}, {false, 3, true}, {false, 5, true}, {false, 1, true},
+        {false, 1, false}, {false, 2, false},
+    };
+    for (const Case& c : cases) {
+        gSampleIsEgg = c.egg;
+        gSampleLanguage = c.recordLanguage;
+        gTrainerInternational = c.internationalSave;
+        const auto source = fixture(family, game);
+        gSampleIsEgg = false; gSampleLanguage = 2; gTrainerInternational = false;
+        const uint8_t saveLanguage = c.internationalSave ? 2 : 1;
+        const uint8_t textLanguage = c.egg ? saveLanguage : c.recordLanguage;
+        const std::size_t maxChars = textLanguage == 1 ? 5 : 7;
+        for (const char* name : textsafety::kCorpus) {
+            std::string error;
+            auto editor = StagedPokemonEditor::create(source, game, error);
+            assert(editor && error.empty());
+            const auto before = editor->stagedBytes();
+            BoxPokemonEdit edit;
+            edit.otName = name;
+            const bool expected = textsafety::storable(name, textLanguage, maxChars);
+            error.clear();
+            const auto preview = editor->previewEdit(0, 0, edit, error);
+            const bool previewOk = preview.has_value();
+            error.clear();
+            const bool staged = editor->stageBoxPokemonEdit(0, 0, edit, error);
+            if (staged != expected || previewOk != expected) {
+                std::cerr << "P0-1 " << exactSourceGameId(game) << (c.egg ? " Egg" : " record")
+                          << " lang " << int(c.recordLanguage) << " save " << int(saveLanguage)
+                          << " OT \"" << name << "\": staged=" << staged << " preview=" << previewOk
+                          << " expected=" << expected << " error=\"" << error << "\"\n";
+            }
+            assert(staged == expected && previewOk == expected);
+            if (!staged) {
+                // Refused: a message, and nothing staged.
+                assert(!error.empty());
+                assert(editor->stagedBytes() == before && !editor->hasPendingChanges());
+                continue;
+            }
+            assert(preview && textsafety::fold(preview->otName) == textsafety::fold(name));
+            const auto bytes = editor->finalizedBytes(error);
+            assert(!bytes.empty());
+            auto reopened = StagedPokemonEditor::create(bytes, game, error);
+            assert(reopened);
+            const auto reparsed = reopened->boxedPokemon(0, 0, error);
+            assert(reparsed);
+            if (textsafety::fold(reparsed->otName) != textsafety::fold(name))
+                std::cerr << "P0-1 " << exactSourceGameId(game) << " OT \"" << name
+                          << "\" reparsed as \"" << reparsed->otName << "\"\n";
+            assert(textsafety::fold(reparsed->otName) == textsafety::fold(name));
+            if (c.egg) assert(reparsed->nickname == "\xE3\x82\xBF\xE3\x83\x9E\xE3\x82\xB4");  // still the Egg
+        }
+    }
+}
+
 int main() {
     // A PK3 egg stores language=Japanese as a placeholder, so its OT charset comes from the
     // containing save. clone() must carry that non-byte context or a Japanese OT becomes Latin.
@@ -1335,5 +1429,10 @@ int main() {
     languageStabilityGame(SourceGame::EmeraldGBA, Family::Emerald);
     languageStabilityGame(SourceGame::FireRedGBA, Family::FRLG);
     languageStabilityGame(SourceGame::LeafGreenGBA, Family::FRLG);
+    textSafetyGame(SourceGame::RubyGBA, Family::RS);
+    textSafetyGame(SourceGame::SapphireGBA, Family::RS);
+    textSafetyGame(SourceGame::EmeraldGBA, Family::Emerald);
+    textSafetyGame(SourceGame::FireRedGBA, Family::FRLG);
+    textSafetyGame(SourceGame::LeafGreenGBA, Family::FRLG);
     std::cout << "Generation III staged boxed Pokemon editor: PASS\n";
 }
