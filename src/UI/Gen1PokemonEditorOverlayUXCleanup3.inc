@@ -7,6 +7,8 @@
 #include "UI/SharedEditorPresentation.h"
 #include "UI/ClassicFieldColor.h"
 #include "UI/SpeciesChangeLevelPolicy.h"
+#include "Pokemon/Experience.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "UI/CreateRequiredFields.h"
 #include "UI/Gen1SpeciesChangeMoves.h"
 #include "Integration/Gen1/Gen1MoveCompatibility.h"
@@ -219,9 +221,17 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
         const bool beforeShiny = ShinyDVs::isShiny(oldDVs);
         BoxPokemonEdit edit;
         edit.species = species;
+        // Round 13 owner decision 9: an existing Pokemon keeps its level; the staged editor
+        // reconciles EXP to the new growth rate (Pokemon/SpeciesChangeExperience.h), so no level is
+        // set here. The status names an EXP change.
+        std::string experienceNote;
         if (species != pokemon->species) {
-            edit.level = PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(
-                screen.sourceGameId, species);
+            namespace Exp = ::Pokemon::SpeciesChangeExperience;
+            const uint8_t growth = PokeVault::Integration::Gen1::StagedPokemonEditor::growthRate(species);
+            const bool sameGrowth =
+                PokeVault::Integration::Gen1::StagedPokemonEditor::growthRate(pokemon->species) == growth;
+            experienceNote = Exp::note(pokemon->experience, Exp::keepLevel(pokemon->level, pokemon->experience,
+                sameGrowth, [&](uint8_t level) { return ::Pokemon::getExpForLevel(level, growth); }));
             PokeBank::UIModel::SpeciesMoveDefaults::writeEdit(
                 ux3SpeciesChangeMoves(screen, species, pokemon->moves, pokemon->pp, pokemon->ppUps), edit);
             // Gen I stages an Edit at once, so this IS its Keep: refuse a change that would leave
@@ -245,7 +255,10 @@ bool ux3ApplySpeciesPicker(TrainerViewScreen& screen) {
             }
             edit.dvs = nextDVs;
         }
-        const bool ok = ux2CommitEdit(screen, edit, "Species / appearance change staged; source .srm unchanged");
+        const std::string staged = experienceNote.empty()
+            ? std::string("Species / appearance change staged; source .srm unchanged")
+            : "Species change staged. " + experienceNote;
+        const bool ok = ux2CommitEdit(screen, edit, staged.c_str());
         if (ok) state.picker = UX2Picker::None;
         return ok;
     }

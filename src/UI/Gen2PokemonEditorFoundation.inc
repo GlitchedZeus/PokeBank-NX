@@ -509,8 +509,11 @@ void editIdentityField(TrainerViewScreen& screen, State& state) {
             if (!result.accepted) return;
             state.setSpecies(static_cast<uint16_t>(result.value), screen.sourceGameId);
             // A Create reset is visible: the status names what was reset (Pokerus, caught data).
+            // Round 13 owner decision 9: an Edit keeps the level; an EXP change is named.
             if (const auto reset = state.speciesChangeResetStatus(); !reset.empty())
                 screen.postStatus(reset, 300);
+            else if (const auto exp = state.speciesChangeExperienceNote(); !exp.empty())
+                screen.postStatus(exp, 300);
             if (state.mode == Mode::Create && p.nickname == oldDefault)
                 p.nickname = PokeBank::UIModel::classicDefaultNickname(p.species);
             refreshDerived(p);

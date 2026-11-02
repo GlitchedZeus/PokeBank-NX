@@ -20,6 +20,7 @@
 #include "Names/LocationDisplayNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Pokemon/Experience.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "Utils/Gen3Text.h"
 #include "Utils/StringHelpers.h"
 
@@ -461,7 +462,18 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
             error = "Generation III species must be in the National Dex range 1-386";
             return false;
         }
+        const uint8_t keptLevel = pokemon.level();
+        const uint32_t keptExperience = pokemon.exp();
+        const bool changed = *edit.species != pokemon.speciesID();
+        const uint8_t previousGrowth = Pokemon::getGrowthRate(pokemon.speciesID());
         pokemon.setSpecies(*edit.species);
+        // Round 13 owner decision 9: an existing Pokemon keeps its level; its EXP is reconciled
+        // to the new growth rate (an explicit Level / EXP in this edit still wins below).
+        if (changed && !edit.level && !edit.experience) {
+            const uint8_t growth = Pokemon::getGrowthRate(*edit.species);
+            pokemon.setExp(Pokemon::SpeciesChangeExperience::keepLevel(keptLevel, keptExperience, previousGrowth == growth,
+                [&](uint8_t level) { return Pokemon::getExpForLevel(level, growth); }).experience);
+        }
     }
     // M1 D1: the nickname is stored in the table of the record's language, so a language change is
     // applied first and the name is then written in the NEW language. A language-only change keeps
