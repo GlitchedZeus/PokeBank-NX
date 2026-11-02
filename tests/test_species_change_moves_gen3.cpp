@@ -14,6 +14,7 @@
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Integration/Gen3/Gen3LearnsetTable.h"
 #include "UI/Gen3SharedPokemonSession.h"
+#include "gen3_edit_discard_r11.h"   // Round 11 H24 regression (owner PASS), run from main()
 
 #include <algorithm>
 #include <array>
@@ -668,6 +669,9 @@ int main() {
     base.originGame = 0;
     none.begin(base, Mode::Edit);
     require(none.setSpecies(22) && none.working.moves == (std::array<uint16_t, 4>{}), "no game: empty slots");
+
+    // Round 11 H24 (owner PASS): species / held item / move / IV edit -> Review -> Discard, byte for byte.
+    require(r11_h24::runAll() == 0, "Round 11 H24 Gen III edit and discard");
 
     std::cout << "Gen III blank Create, species change keeps usable moves, Create history reset (Ruby, "
                  "Sapphire, Emerald, FireRed, LeafGreen; keep, add, export, reparse, Discard): PASS\n";
