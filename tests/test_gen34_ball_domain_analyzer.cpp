@@ -405,6 +405,29 @@ Legality::Report analyzeGen4EggBall(uint8_t ball, bool isEgg,
 }
 
 
+// Source-free native PK4 (known retail origin, no container game) with one
+// stored move, for egg-versus-hatched move-pool controls.
+Legality::Report sourceFreeNativePk4Move(uint8_t originVersion,uint16_t species,
+                                         uint16_t move,bool isEgg) {
+    std::vector<std::byte> raw(Encryption::SIZE_STORED4,std::byte{0});
+    wr32(raw,0x00,0x12345678u);
+    wr16(raw,0x08,species);
+    wr16(raw,0x0C,12345);
+    wr16(raw,0x0E,54321);
+    wr32(raw,0x10,3375);
+    wr16(raw,0x28,move);
+    raw[0x17]=std::byte{2};
+    raw[0x5F]=static_cast<std::byte>(originVersion);
+    raw[0x83]=std::byte{4};
+    if(isEgg)wr32(raw,0x38,0x40000000u);
+    const auto encrypted=Encryption::encryptArray4(raw);
+    Pokemon::Pokemon4ReadOnly stored(encrypted,Enums::GameVersion::HGSS);
+    assert(stored.valid() && stored.checksumValid());
+    Pokemon::Pokemon4ReadOnlyView view(stored);
+    assert(view.isEgg()==isEgg && view.move(0)==move);
+    return Legality::analyze(view,Enums::GameVersion::HGSS);
+}
+
 Legality::Report sourceFreePalPark(uint8_t originVersion,uint16_t dp,
                                    uint16_t extended,uint8_t ballDPPt,
                                    uint8_t ballHGSS,bool isEgg=false,
@@ -2408,6 +2431,40 @@ int main() {
     pichuEgg.refreshChecksum();
     assert(!hasInfo(Legality::analyze(
         pichuEgg,Enums::GameVersion::FRLG),ordinaryText));
+
+    // Adult move pool evidence must not be assigned to unhatched
+    // native PK3/PK4 (ported from #230 e6ed7677/fb831f2e/95416a8f).
+    // Parent inheritance is checked by egg-specific analyzers; a general
+    // TM/tutor union cannot prove an egg acquired those moves before
+    // hatching, and an unknown parent history is never a warning.
+    auto unhatchedRuby=gen3WithBall(4);
+    unhatchedRuby.setSpecies(1);
+    unhatchedRuby.setOriginGame(2);
+    unhatchedRuby.setMove(0,33);
+    unhatchedRuby.setEgg(true);
+    unhatchedRuby.refreshChecksum();
+    assert(!hasInfo(Legality::analyze(unhatchedRuby,Enums::GameVersion::FRLG),pk3Direct));
+    auto hatchedRuby=gen3WithBall(4);
+    hatchedRuby.setSpecies(1);
+    hatchedRuby.setOriginGame(2);
+    hatchedRuby.setMove(0,33);
+    hatchedRuby.refreshChecksum();
+    assert(hasInfo(Legality::analyze(hatchedRuby,Enums::GameVersion::FRLG),pk3Direct));
+    constexpr auto pk4Direct=
+        "Source-free native PK4 move is in its stored original Gen IV game's audited pool";
+    // Strict encrypted PK4 with a stored Egg flag, Diamond origin, move #33.
+    assert(!hasInfo(sourceFreeNativePk4Move(10,1,33,true),pk4Direct));
+    assert(hasInfo(sourceFreeNativePk4Move(10,1,33,false),pk4Direct));
+    auto unhatchedRubyEvent=gen3WithBall(4);
+    unhatchedRubyEvent.setSpecies(1);
+    unhatchedRubyEvent.setOriginGame(2);
+    unhatchedRubyEvent.setMove(0,354); // outside normal Bulbasaur pool
+    unhatchedRubyEvent.setEgg(true);
+    unhatchedRubyEvent.refreshChecksum();
+    assert(!hasText(
+        Legality::analyze(unhatchedRubyEvent,Enums::GameVersion::FRLG),
+        "Move may not be learnable"));
+    assert(!hasText(sourceFreeNativePk4Move(10,1,467,true),"Move may not be learnable"));
 
     // Source-free known native PK3/PK4 formats have generation-specific
     // species/move ceilings regardless of their exact save identity.

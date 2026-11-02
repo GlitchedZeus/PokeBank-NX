@@ -61,6 +61,15 @@ Legality::Report report(uint16_t species, uint8_t level,
 }
 
 int main() {
+    // A still-unhatched source-free PK2 Egg is not credited with the adult
+    // Gold/Silver/Crystal move pools (ported from #230 e6ed7677); its
+    // possible parental inheritance is a separate verifier.
+    {
+        constexpr auto pk2Pool=
+            "Source-free native PK2 joint move bound: all stored moves share at least one audited Gold/Silver or Crystal/Time Capsule compatibility pool";
+        assert(hasInfo(report(25,20,0,false,"",85),pk2Pool)); // Pikachu Thunderbolt
+        assert(!hasInfo(report(25,20,0,true,"",85),pk2Pool));
+    }
     // Source-free PK2 still proves Gen II species/move maxima independently
     // from which exact Gold/Silver/Crystal save was used.
     assert(!hasInvalidText(report(251,30,0,false,"",251),

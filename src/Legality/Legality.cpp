@@ -976,7 +976,9 @@ namespace Legality {
                     break;
             }
         }
-            if (!sourceKnown) {
+            // An unhatched Egg's moves come from parent inheritance; the adult
+            // pools can't credit it (#230 e6ed7677).
+            if (!sourceKnown && !gen2.isEgg()) {
                 const auto bound = Gen12JointMoveEvidence::classify(
                     2, gen2.speciesID(), {gen2.move(0), gen2.move(1), gen2.move(2), gen2.move(3)});
                 using B = Gen12JointMoveEvidence::Bound;
@@ -2149,7 +2151,7 @@ namespace Legality {
                         CheckIdentifier::Moves);
                 }
             }
-        } else if (!sourceProfile &&
+        } else if (!sourceProfile && !pk.isEgg() &&
                    (pk.getGameGroup() ==
                         Pokemon::Pokemon1ReadOnly::kReadOnlyGameGroup ||
                     pk.getGameGroup() ==
@@ -2320,7 +2322,7 @@ namespace Legality {
                         " Gen IV move ID(s) require acquisition after migration; intervening GBA game and learning method are not identifiable",
                         CheckIdentifier::Moves);
             }
-        } else if (!sourceProfile &&
+        } else if (!sourceProfile && !pk.isEgg() &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 &&
                    !Gen4Origin::exactGen3GameId(pk.originGame()).empty()) {
             // Banked/native PK3 retains the original GBA game code even
@@ -2495,7 +2497,7 @@ namespace Legality {
                     std::to_string(later) +
                     " Gen IV move ID(s) require acquisition after migration; intervening GBA game and learning method are not identifiable",
                     CheckIdentifier::Moves);
-        } else if (!sourceProfile &&
+        } else if (!sourceProfile && !pk.isEgg() &&
                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4 &&
                    Gen4Origin::isNativeRetailGen4(pk.originGame())) {
             // A detached native PK4 retains retail D/P/Pt/HGSS game identity.
@@ -2537,6 +2539,15 @@ namespace Legality {
                     " distinct Gen IV game pools are needed in the audited data; event, breeding, tutor and actual trade histories unresolved",
                     CheckIdentifier::Moves);
             }
+        } else if (!sourceProfile && pk.isEgg() &&
+                   (Gen12FormatDomain::generationFromGroup(pk.getGameGroup()) == 2 ||
+                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 3 ||
+                    Gen34FormatDomain::generationFromGroup(pk.getGameGroup()) == 4)) {
+            // Unhatched source-free PK2-PK4 (from #230 e6ed7677/fb831f2e):
+            // an egg's moves come from parent inheritance, which the
+            // egg-specific analyzers check. Adult direct/TM/tutor pools can
+            // neither credit an egg nor warn about an unknown parent history;
+            // native move ceilings and egg structural rules still apply.
         } else if (Pokemon::getLearnableBits(species, pk.form(), originGroup) != nullptr) {
             for (int i = 0; i < 4; ++i) {
                 const uint16_t moveId = pk.move(i);
