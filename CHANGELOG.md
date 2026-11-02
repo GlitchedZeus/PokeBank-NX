@@ -13,7 +13,7 @@ Dates are the candidate commit dates.
 - Repository documentation reorganised: `docs/README.md` index, `docs/STATUS.md`, this changelog,
   contributor guide and security policy.
 
-## Round 13 — `9c301c48` (2026-11-02) — alpha candidate, NOT DEVICE TESTED
+## Round 13 — `9c301c48` (2026-11-02) — alpha candidate, FAILED HARDWARE RETEST
 
 - NRO SHA-256 `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d`, build run 41392463888.
 - Addresses the Round 12 owner findings (R12-001 … R12-010): Gen V Boxes controls, routine Move/Clone
@@ -21,7 +21,7 @@ Dates are the candidate commit dates.
   item limit, TM/HM choices, Gen III language changes and PID, Japanese/Korean name display, and a stale export
   confirmation. Also re-checks earlier requirements that had dropped off checklists. (R12-011/012, the Vault
   features, are not in this build.)
-- Status: **awaiting owner hardware acceptance.**
+- Status: **15 PASS / 12 FAIL / 0 NOT TESTED** on 27 owner checks; not accepted. [Exact result JSON](docs/hardware/round13/OWNER_RESULTS_9c301c48.json).
 
 ## Round 12 — `066e1db9` (2026-11-01) — alpha candidate, partial
 

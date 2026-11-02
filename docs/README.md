@@ -15,6 +15,8 @@ there, so they are never reorganised.
 
 ## User documentation
 
+- [Owner screenshot gallery](screenshots.md): 18 actual Switch captures, including accurately labeled experimental previews.
+
 - [Game support matrix](user/GAME_SUPPORT_MATRIX.md): which games and save providers are recognised.
 - [Controller map](user/CONTROLS.md) (target input contract) and the [contextual control footer](development/CONTEXTUAL_CONTROL_FOOTER.md).
 - [Save-safety contract](user/SAVE_SAFETY.md): why original saves are never written, and what a future write pipeline must prove.

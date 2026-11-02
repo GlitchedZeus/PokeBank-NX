@@ -23,12 +23,13 @@
 
 <p align="center">
   <a href="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/host-tests.yml"><img alt="Host Tests" src="https://img.shields.io/badge/Host%20Tests-active-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
-  <a href="docs/RELEASES.md"><img alt="Gen I-V Round 13 candidate: awaiting hardware test" src="https://img.shields.io/badge/Gen%20I--V%20Round%2013-awaiting%20hardware%20test-2563eb?style=flat-square&logo=githubactions&logoColor=white"></a>
+  <a href="docs/RELEASES.md"><img alt="Gen I-V Round 13 candidate: hardware retest failed" src="https://img.shields.io/badge/Gen%20I--V%20Round%2013-15%20PASS%20%2F%2012%20FAIL-d97706?style=flat-square&logo=githubactions&logoColor=white"></a>
   <a href="docs/STATUS.md"><img alt="Gen VI-IX and legality engine: paused" src="https://img.shields.io/badge/Gen%20VI--IX%20%2B%20legality-paused-6b7280?style=flat-square"></a>
 </p>
 
 <p align="center">
   <a href="#overview">Overview</a> •
+  <a href="#screenshots">Screenshots</a> •
   <a href="#project-status">Status</a> •
   <a href="#supported-games">Games</a> •
   <a href="#install-and-use">Install</a> •
@@ -41,8 +42,8 @@
 ---
 
 > [!IMPORTANT]
-> **Alpha software, no stable release.** The current build is the Round 13 hardware candidate
-> (`9c301c48`), which is **awaiting the owner's hardware test**. Your original saves are never written:
+> **Alpha software, no stable release.** The latest owner-tested build is the Round 13 hardware candidate
+> (`9c301c48`), which **failed owner hardware acceptance (15 PASS / 12 FAIL)**. Your original saves are never written:
 > edits are exported as a separate, verified copy. Keep your own backups anyway.
 > Current state: [docs/STATUS.md](docs/STATUS.md).
 
@@ -62,13 +63,35 @@ fields it never had.
 The long-term goal is a **Master Vault**: one safe library that holds Pokémon across games and generations. That
 part is not built yet.
 
+## Screenshots
+
+Actual Nintendo Switch screenshots captured by the project owner on November 2, 2026. This is an alpha UI preview, not evidence of release acceptance. Round 13: **15 PASS / 12 FAIL**.
+
+| Pokémon Blue dashboard | Pokémon Ruby dashboard |
+| --- | --- |
+| ![Pokémon Blue dashboard](docs/screenshots/home-blue.jpg) | ![Pokémon Ruby dashboard](docs/screenshots/home-ruby.jpg) |
+
+| Quick Games | Game workspace |
+| --- | --- |
+| ![Quick Games](docs/screenshots/quick-games.jpg) | ![Game workspace](docs/screenshots/game-workspace-black.jpg) |
+
+| Pokémon editor | Trainer editor |
+| --- | --- |
+| ![Pokémon editor](docs/screenshots/pokemon-editor-pikachu.jpg) | ![Trainer editor](docs/screenshots/trainer-editor-black.jpg) |
+
+| Move chooser | Add Item chooser |
+| --- | --- |
+| ![Move chooser](docs/screenshots/move-chooser.jpg) | ![Add Item chooser](docs/screenshots/add-item-chooser.jpg) |
+
+[View all 18 screenshots](docs/screenshots.md), including controller help, party, boxes, pickers and an experimental Legends Z-A dashboard preview.
+
 ## Project status
 
 | Area | Status |
 |---|---|
 | Gen I–V application | **Alpha.** Usable for browsing and staged editing; repaired round by round against owner hardware tests. Not yet accepted across all 20 games. |
-| Current candidate | **Round 13** `PokeBank-NX-Gen1-5-Candidate-9c301c48.nro`, SHA-256 `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d`. **Awaiting owner hardware acceptance, not device tested.** On `fix/round12-gen15-repairs` (draft PR #333); not on `main` yet. |
-| Last hardware result | Round 12 `066e1db9`: 20 PASS / 4 FAIL on the owner's checklist. Round 13 fixes those findings. |
+| Current candidate | **Round 13** `PokeBank-NX-Gen1-5-Candidate-9c301c48.nro`, SHA-256 `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d`. **Hardware-tested: 15 PASS / 12 FAIL; not accepted.** On `fix/round12-gen15-repairs` (draft PR #333); not on `main` yet. |
+| Last hardware result | Round 13 `9c301c48`: **15 PASS / 12 FAIL** across 27 owner checks, not accepted. Round 12 previously recorded 20 PASS / 4 FAIL. |
 | Master Vault, cross-game storage and transfer | **Not implemented.** Required for v1.0. |
 | Gen VI–IX (3DS and Switch-native games) | **Paused** on `development/gen6-plus`. Not feature complete; its first hardware candidate (`5895e6b9`) failed owner testing. |
 | Legality engine | **Paused** at [PR #314](https://github.com/GlitchedZeus/PokeBank-NX/pull/314). Not part of the app. |
@@ -106,7 +129,7 @@ Nintendo Switch Online FireRed / LeafGreen (recognised by title ID; installed-ga
 
 - Single-Pokémon import and export (`.pk1`–`.pk5`, `.ek3`–`.ek5`).
 - Met Location and origin choices: the lists are being replaced with source-backed encounter data.
-- Gen V box controls, Clone/Move pop-ups and the Gen I/II box carry cursor (Round 12 findings).
+- Round 13 open findings: missing-save editor access, Met Location filtering, Bag and TM/HM workflows, language input, contextual footers and emulator launch/return.
 - Loading an exported save in an emulator has not yet been confirmed on hardware for every game.
 
 **Not built yet:** Master Vault, Move to Vault, Vault deposit / withdraw and search, cross-generation transfer,
@@ -176,12 +199,6 @@ Tracking: [v1.0 feature gaps](https://github.com/GlitchedZeus/PokeBank-NX/blob/f
 [master hardware acceptance ledger](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/qa/MASTER_HARDWARE_ACCEPTANCE_LEDGER.md)
 (both on `fix/round12-gen15-repairs` until it merges) · [v1.0 roadmap](docs/V1_ROADMAP.md) ·
 [issue #29](https://github.com/GlitchedZeus/PokeBank-NX/issues/29).
-
-## Screenshots
-
-The images in `assets/screenshots/` come from the upstream PKSE project this app was forked from. They show
-Switch-native games and features that are not part of PokeBank NX, so they are not shown here. Screenshots of
-the Gen I–V interface will be added from an accepted hardware build.
 
 ## Building
 

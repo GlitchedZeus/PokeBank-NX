@@ -1,0 +1,200 @@
+{
+  "project": "PokeBank NX",
+  "title": "Round 13 Gen I–V Hardware QA",
+  "candidate": "PokeBank-NX-Gen1-5-Candidate-9c301c48",
+  "code_sha": "9c301c483af97acf60058546c9b35bfec45c7b0e",
+  "nro_sha256": "0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d",
+  "exported_at": "2026-11-02T08:51:25.229Z",
+  "source": "docs/hardware/RETEST_9c301c48.md",
+  "items": {
+    "H01": {
+      "title": "Install · Install, open and SHA-256",
+      "source": "Identity check",
+      "status": "fail",
+      "game": "",
+      "note": "gen 5 i dont have a save for white 2 on purpose, i shouldnt be able to open a game save or the editor thing if the save isnt selected first, like i dont have a save for pokemon white but im able to click A on the main card and it opens the editor with parrty storage and all that, it should pop up with the choose save file thing or say no save accessible "
+    },
+    "H02": {
+      "title": "Gen V Boxes · Y Move, + Review",
+      "source": "R12-001",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "H03": {
+      "title": "Quiet carry · No routine pop-ups",
+      "source": "R12-002",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "H04": {
+      "title": "Gen I/II packed clone · One cursor",
+      "source": "R12-003",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "H05": {
+      "title": "Met Location · Verified catches first",
+      "source": "R12-004",
+      "status": "fail",
+      "game": "",
+      "note": "pikachu has werid met locations"
+    },
+    "H06": {
+      "title": "Met level · No too-high verified catch",
+      "source": "R12-005",
+      "status": "fail",
+      "game": "",
+      "note": ""
+    },
+    "H07": {
+      "title": "Top Up · Native capacity shown",
+      "source": "R12-006",
+      "status": "fail",
+      "game": "",
+      "note": "again only adds some of the items see screen shots"
+    },
+    "H08": {
+      "title": "Every TM/HM · Add Missing adds HMs",
+      "source": "R12-007",
+      "status": "fail",
+      "game": "",
+      "note": ""
+    },
+    "H09": {
+      "title": "Gen III Language · PID and stats stable",
+      "source": "R12-008",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "H10": {
+      "title": "Names by Language · Gen III and V",
+      "source": "R12-009",
+      "status": "fail",
+      "game": "",
+      "note": "dont know how to test make it it very simple for next round explaing what to do"
+    },
+    "H11": {
+      "title": "Export message · Clears on new screen",
+      "source": "R12-010",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "H12": {
+      "title": "Safety · Review, Keep, Discard, Export",
+      "source": "Safety / R11 H32",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "H13": {
+      "title": "Old passes · Round 11/12 smoke check",
+      "source": "Round 11/12 accepted paths",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "R01": {
+      "title": "Controller · Disconnect and reconnect",
+      "source": "Pre-Round 1, untested",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "R02": {
+      "title": "Gen V new game · Fresh save",
+      "source": "Gen I–V Oct 15 FAIL, never retested",
+      "status": "fail",
+      "game": "white",
+      "note": "it shouldnt even go to that menu it should have the file menu pop up to assign a save since there is none"
+    },
+    "R03": {
+      "title": "Save discovery · Missing/moved/junk",
+      "source": "Pre-Round 1, untested",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "R04": {
+      "title": "Launch and return · Quick Games",
+      "source": "Round 3 AUD-04 untested",
+      "status": "fail",
+      "game": "",
+      "note": "retroacrch games so gens 1-3 crash on quit in retroarch, would be nice if we could have the return feature that we had but im not 100 hopeful, drastic wil always to to the launcher menu for drastic so no return to pokebank so not mad, dekopon we aint there yet and native games i dont care"
+    },
+    "R05": {
+      "title": "Rerolls · Preserve Shiny/Gender/Unown",
+      "source": "Round 3 E11 untested; Round 2/6 Unown fail",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "R06": {
+      "title": "Gen V event rows · Distinct labels",
+      "source": "Round 2 CHECK-011 / Round 7 C09 fail",
+      "status": "fail",
+      "game": "",
+      "note": "all pokemon seem the have the same met location : mystery zone, link trade, PKMN Breedeer, other location, im pretty sure they all done have the same met location, this is so much fucking wasted time on the locations for gen 5 holy fuck"
+    },
+    "R07": {
+      "title": "Trainer · Consistent layout, no overlap",
+      "source": "NEW-18 / 7F; Round 7 B04/C06 fail",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "R08": {
+      "title": "Inventory Help · Buttons and glyphs",
+      "source": "Round 6 B04; Round 7 B02/C01 fail",
+      "status": "fail",
+      "game": "",
+      "note": "gen 4 footer says edit quanitty not edit amout or what gen 1-3 have for the A button, \ngen 5 has almost none of the proper footers and im guessing controls"
+    },
+    "R09": {
+      "title": "Gen II Unown · Review visible",
+      "source": "P1-RETURN; Round 7 B06/B07 fail",
+      "status": "fail",
+      "game": "",
+      "note": "i didnt need to add a met location to ADD it to the box, which is wrong, met location should always be a part od the stuff before a pokemon is added, maybe this is cause its gen 2 but pokemon crystal"
+    },
+    "R10": {
+      "title": "Gen V Export · Listed in backups",
+      "source": "Round 7 C02 untested",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "R11": {
+      "title": "Editor typography · Gen I–V parity",
+      "source": "Round 7 C03 untested",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "R12": {
+      "title": "Popups · Tap outside to close",
+      "source": "Round 7 C04 untested",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "R13": {
+      "title": "Origin & Legality · Gen I/II honest wording",
+      "source": "Round 7 C07 untested",
+      "status": "pass",
+      "game": "",
+      "note": ""
+    },
+    "R14": {
+      "title": "Keyboards · Japanese/Korean & search",
+      "source": "Round 11 H27 FAIL; no new fix",
+      "status": "fail",
+      "game": "",
+      "note": "the nicknames and the name at the topm left changes but thats it , no keyboard changes or anyhitng"
+    }
+  }
+}
