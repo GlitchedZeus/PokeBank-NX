@@ -16,7 +16,7 @@ Compilers: GCC 16.2.1 (20260810), Clang 22.1.8; C++20, warnings as errors.
 | New synthetic SAV5 integration, GCC optimized / ASan+UBSan | coordinator-patched headers | PASS in both: 16 save scenarios / 8,386,744 checks |
 | New synthetic SAV5 integration, Clang optimized / ASan+UBSan | coordinator-patched headers | PASS in both: 16 / 8,386,744 |
 
-Commands are in `GEN5_NATIVE_CREATE.md` and `Makefile.host.gen5-create`.
+Commands are in `GEN5_NATIVE_CREATE.md` and `build-system/host/Makefile.host.gen5-create`.
 Sanitizers used `ASAN_OPTIONS=detect_leaks=0` and
 `UBSAN_OPTIONS=halt_on_error=1`; LeakSanitizer was not claimed or tested.
 Separate output directories prevent accidental compiler/configuration reuse.
