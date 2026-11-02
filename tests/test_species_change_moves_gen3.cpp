@@ -471,6 +471,18 @@ MetLocationCounts exhaustiveMetLocation(SourceGame game, Family family) {
                         text.detail.find("marker") != std::string::npos &&
                         chosen.working.metLocation == Rows::otherNativeRowLocation(row),
                         what + ": a default non-template row is a labelled marker: " + text.detail);
+            } else if (applied && !Picker::accessKnown(*applied)) {
+                // Owner decision (Nov 2, updated deliberately): a ticket / event / other-game encounter
+                // stays listed as the encounter in the game, but is never a verified catch, and the
+                // editor / Review line reads Incomplete.
+                ++templateRows;
+                require(!text.verifiedCatch && unverifiedText &&
+                        text.detail.find(PokeVault::Integration::GiftStaticEncounters::kAccessUnverified) != std::string::npos &&
+                        Picker::verifiedTemplate(picker.choices, chosen.working.metLocation, chosen.working.metLevel,
+                                                 chosen.working.level) == nullptr &&
+                        Picker::encounterOriginText(picker.choices, chosen.working.species, chosen.working.metLocation,
+                                                    chosen.working.metLevel, chosen.working.level).find("Incomplete") == 0,
+                        what + ": a prerequisite-dependent row is listed, never verified: " + text.detail);
             } else {
                 ++templateRows; ++verifiedHere;
                 if (applied && Rows::gen3MarkerLocation(applied->encounter.location))

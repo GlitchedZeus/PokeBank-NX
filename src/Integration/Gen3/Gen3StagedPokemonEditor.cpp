@@ -277,9 +277,9 @@ constexpr const char* kMetEvidenceLabel = "Met evidence";
 template <typename Record>
 std::string metEvidenceNote(const Record& record) {
     namespace Picker = PokeBank::UIModel::Gen3EncounterPicker;
+    // (owner decision, Nov 2: also "single source (PKHeX)" / Incomplete -- Gen3EncounterPicker::evidenceNote)
     const auto choices = Picker::templatesForOrigin(record.originGame, record.species);
-    if (Picker::verifiedTemplate(choices, record.metLocation, record.metLevel, record.level)) return {};
-    return Picker::encounterOriginText(choices, record.species, record.metLocation, record.metLevel, record.level);
+    return Picker::evidenceNote(choices, record.species, record.metLocation, record.metLevel, record.level);
 }
 
 } // namespace

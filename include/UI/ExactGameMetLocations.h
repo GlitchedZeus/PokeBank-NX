@@ -191,6 +191,7 @@ inline std::string crystalUnverifiedNote(std::string_view gameId, uint16_t speci
     namespace Policy = PokeVault::Integration::MetLocationPolicy;
     namespace Gifts = PokeVault::Integration::GiftStaticEncounters;
     bool templateHere = false, otherTime = false;
+    const Gifts::Row* incomplete = nullptr;   // owner decision (Nov 2): encounter in game, access unknown
     for (const auto& encounter : crystalTemplatesWithAncestry(gameId, species)) {
         if (encounter.location != location) continue;
         templateHere = true;
@@ -202,9 +203,11 @@ inline std::string crystalUnverifiedNote(std::string_view gameId, uint16_t speci
         const bool timeFits = unrecorded ? timeOfDay == 0
                                          : timeOfDay == 0 || Encounter::timeAllowed(encounter, timeOfDay);
         if (!levelFits || !Policy::levelReachesEncounter(encounter.minLevel, level)) continue;
-        if (timeFits) return {};
-        otherTime = true;
+        if (!timeFits) { otherTime = true; continue; }
+        if (gift && !Gifts::fullyVerifiable(*gift)) { incomplete = gift; continue; }
+        return {};
     }
+    if (incomplete) return Gifts::incompleteNote(*incomplete);
     if (crystalMarkerLocation(location)) return crystalOtherDetail(location);
     if (otherTime) return "Not a listed catch at this time of day; unverified";
     return templateHere ? "Not a listed catch at this level; unverified" : kOtherPlaceDetail;

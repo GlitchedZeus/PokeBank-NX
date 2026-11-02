@@ -113,6 +113,19 @@ inline bool levelReached(const Choice& choice, uint8_t currentLevel) noexcept {
     return Policy::levelReachesEncounter(encounterOf(choice).minLevel, currentLevel);
 }
 
+// Owner decision (Nov 2): a template whose access prerequisite (ticket / distribution, event
+// Pokémon, Pokémon from another game) cannot be known from a save is the encounter in the game, never
+// a verified acquisition (GiftStaticEncounters::Prerequisite).
+template <typename Choice>
+inline const PokeVault::Integration::GiftStaticEncounters::Row* dataRowOf(const Choice& choice) noexcept {
+    return PokeVault::Integration::GiftStaticEncounters::rowOf(encounterOf(choice));
+}
+template <typename Choice>
+inline bool accessKnown(const Choice& choice) noexcept {
+    const auto* row = dataRowOf(choice);
+    return !row || PokeVault::Integration::GiftStaticEncounters::fullyVerifiable(*row);
+}
+
 template <typename Choice>
 inline bool reachedTemplateAt(const std::vector<Choice>& choices, uint16_t location, uint8_t currentLevel) noexcept {
     for (const auto& choice : choices)
@@ -128,7 +141,8 @@ inline const Choice* verifiedTemplate(const std::vector<Choice>& choices, uint16
                                       uint8_t currentLevel) noexcept {
     for (const auto& choice : choices) {
         const auto& encounter = encounterOf(choice);
-        if (encounter.location == location && encounter.containsLevel(metLevel) && levelReached(choice, currentLevel))
+        if (encounter.location == location && encounter.containsLevel(metLevel) && levelReached(choice, currentLevel) &&
+            accessKnown(choice))
             return &choice;
     }
     return nullptr;
@@ -262,7 +276,8 @@ inline RowText rowText(const std::vector<Choice>& choices, uint16_t value, uint8
     const auto* selected = choiceAt(choices, value);
     if (!selected) return {"Unknown location", {}, false};
     const auto& encounter = encounterOf(*selected);
-    RowText out{Names::getMetLocationDisplayName(origin, encounter.location), {}, levelReached(*selected, currentLevel)};
+    const bool reached = levelReached(*selected, currentLevel);
+    RowText out{Names::getMetLocationDisplayName(origin, encounter.location), {}, reached && accessKnown(*selected)};
     // Round 5 NEW-10: short enough that every row fits the 620 px window on one line
     // (tests/test_met_location_fit.cpp).
     out.detail = std::string(Encounter::methodName(encounter.method)) + " Lv. " + std::to_string(encounter.minLevel);
@@ -279,7 +294,10 @@ inline RowText rowText(const std::vector<Choice>& choices, uint16_t value, uint8
     }
     // R12-005: a template above the Pokémon's level is listed only in the unverified list, and says why.
     // (short -- no method or evolution gate -- so the reason fits beside the place name)
-    if (!out.verifiedCatch) {
+    // Owner decision (Nov 2): listed as the encounter in the game, never as a verified catch.
+    if (reached && !out.verifiedCatch)
+        out.detail += std::string("; ") + PokeVault::Integration::GiftStaticEncounters::kAccessUnverified;
+    if (!reached) {
         out.detail = "Lv. " + std::to_string(encounter.minLevel) + "+";   // its minimum is what the level misses
         if constexpr (requires { selected->evolved; })
             if (selected->evolved) out.detail += " via " + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));
@@ -303,9 +321,28 @@ inline std::string encounterOriginText(const std::vector<Choice>& choices, uint1
         }
         return std::string(Names::getSpeciesName(species));
     }
+    for (const auto& choice : choices) {   // Owner decision (Nov 2): the encounter, access unknown
+        const auto& encounter = encounterOf(choice);
+        if (encounter.location == location && encounter.containsLevel(metLevel) && levelReached(choice, currentLevel))
+            if (const auto* row = dataRowOf(choice); row && !accessKnown(choice))
+                return PokeVault::Integration::GiftStaticEncounters::incompleteNote(*row);
+    }
     if (MetRows::gen3MarkerLocation(location)) return MetRows::gen3OtherDetail(location);
     if (storedLocationListed(choices, location)) return "Not a listed catch at this level; unverified";
     return MetRows::kOtherPlaceDetail;
+}
+
+// The Review "Met evidence" note: "" for a verified pret-checked / wild template, "Encounter data:
+// single source (PKHeX)" for a verified single-source data row (owner decision, Nov 2), otherwise
+// the honest unverified / Incomplete origin line.
+template <typename Choice>
+inline std::string evidenceNote(const std::vector<Choice>& choices, uint16_t species, uint16_t location,
+                                uint8_t metLevel, uint8_t currentLevel) {
+    if (const auto* verified = verifiedTemplate(choices, location, metLevel, currentLevel)) {
+        const auto* row = dataRowOf(*verified);
+        return row ? PokeVault::Integration::GiftStaticEncounters::singleSourceNote(*row) : std::string();
+    }
+    return encounterOriginText(choices, species, location, metLevel, currentLevel);
 }
 
 } // namespace PokeBank::UIModel::Gen3EncounterPicker

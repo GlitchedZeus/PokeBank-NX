@@ -99,6 +99,13 @@
         "Swarm": 3,
         "Trade": 7
       },
+      "by_confidence": {
+        "PretChecked": 33,
+        "SingleSource": 43
+      },
+      "prerequisite_rows": {
+        "TicketOrItem": 1
+      },
       "species": 42
     },
     "ruby_gba": {
@@ -110,6 +117,13 @@
         "Roaming": 34,
         "Static": 10,
         "Trade": 3
+      },
+      "by_confidence": {
+        "PretSpotChecked": 1,
+        "SingleSource": 54
+      },
+      "prerequisite_rows": {
+        "TicketOrItem": 1
       },
       "species": 21
     },
@@ -123,6 +137,13 @@
         "Static": 10,
         "Trade": 3
       },
+      "by_confidence": {
+        "PretSpotChecked": 1,
+        "SingleSource": 54
+      },
+      "prerequisite_rows": {
+        "TicketOrItem": 1
+      },
       "species": 21
     },
     "emerald_gba": {
@@ -135,6 +156,13 @@
         "Roaming": 68,
         "Static": 11,
         "Trade": 4
+      },
+      "by_confidence": {
+        "PretSpotChecked": 3,
+        "SingleSource": 97
+      },
+      "prerequisite_rows": {
+        "TicketOrItem": 6
       },
       "species": 31
     },
@@ -150,6 +178,13 @@
         "Static": 8,
         "Trade": 9
       },
+      "by_confidence": {
+        "PretSpotChecked": 6,
+        "SingleSource": 106
+      },
+      "prerequisite_rows": {
+        "TicketOrItem": 3
+      },
       "species": 38
     },
     "leafgreen_gba": {
@@ -164,6 +199,13 @@
         "Static": 8,
         "Trade": 9
       },
+      "by_confidence": {
+        "PretSpotChecked": 6,
+        "SingleSource": 106
+      },
+      "prerequisite_rows": {
+        "TicketOrItem": 3
+      },
       "species": 38
     },
     "diamond_nds": {
@@ -176,6 +218,12 @@
         "Static": 9,
         "Trade": 4
       },
+      "by_confidence": {
+        "SingleSource": 74
+      },
+      "prerequisite_rows": {
+        "OtherGame": 1
+      },
       "species": 28
     },
     "pearl_nds": {
@@ -187,6 +235,12 @@
         "Roaming": 48,
         "Static": 9,
         "Trade": 4
+      },
+      "by_confidence": {
+        "SingleSource": 74
+      },
+      "prerequisite_rows": {
+        "OtherGame": 1
       },
       "species": 28
     },
@@ -201,6 +255,13 @@
         "Static": 15,
         "Trade": 4
       },
+      "by_confidence": {
+        "SingleSource": 154
+      },
+      "prerequisite_rows": {
+        "OtherGame": 4,
+        "TicketOrItem": 2
+      },
       "species": 38
     },
     "heartgold_nds": {
@@ -213,6 +274,14 @@
         "Roaming": 57,
         "Static": 21,
         "Trade": 10
+      },
+      "by_confidence": {
+        "SingleSource": 123
+      },
+      "prerequisite_rows": {
+        "EventPokemon": 4,
+        "OtherGame": 1,
+        "TicketOrItem": 1
       },
       "species": 64
     },
@@ -227,6 +296,14 @@
         "Static": 21,
         "Trade": 10
       },
+      "by_confidence": {
+        "SingleSource": 123
+      },
+      "prerequisite_rows": {
+        "EventPokemon": 4,
+        "OtherGame": 1,
+        "TicketOrItem": 1
+      },
       "species": 64
     },
     "black_nds": {
@@ -239,6 +316,14 @@
         "Roaming": 16,
         "Static": 13,
         "Trade": 5
+      },
+      "by_confidence": {
+        "SingleSource": 54
+      },
+      "prerequisite_rows": {
+        "EventPokemon": 2,
+        "OtherGame": 1,
+        "TicketOrItem": 1
       },
       "species": 37
     },
@@ -253,6 +338,14 @@
         "Static": 13,
         "Trade": 5
       },
+      "by_confidence": {
+        "SingleSource": 54
+      },
+      "prerequisite_rows": {
+        "EventPokemon": 2,
+        "OtherGame": 1,
+        "TicketOrItem": 1
+      },
       "species": 37
     },
     "black2_nds": {
@@ -264,6 +357,10 @@
         "Static": 43,
         "Trade": 23
       },
+      "by_confidence": {
+        "SingleSource": 83
+      },
+      "prerequisite_rows": {},
       "species": 74
     },
     "white2_nds": {
@@ -275,6 +372,10 @@
         "Static": 43,
         "Trade": 23
       },
+      "by_confidence": {
+        "SingleSource": 83
+      },
+      "prerequisite_rows": {},
       "species": 74
     }
   },
