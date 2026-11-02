@@ -1,0 +1,282 @@
+{
+  "generator": "tools/gen_gift_static_encounters.py",
+  "sources": {
+    "kwsch/PKHeX": "6042efa241a9925ce57e645329ea7f976deabdd3",
+    "pret/pokecrystal": "3c813b0b4d82b39bf62185aceffb76fd6026c70b",
+    "pret/pokeemerald": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+    "pret/pokeruby": "5784633ce4ef7ade1a7f2d2d0c288e3d5e6cdd7f",
+    "pret/pokefirered": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982"
+  },
+  "inputs_sha256": {
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Game/Locations/Locations.cs": "08577221abba22a585e47e9227137ad6733c2a9084f2ede6ca35559ca3fd72ef",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Data/Gen2/Encounters2.cs": "f1b476360b63883a638dc89055a1e97da763659704b7425458bfc0fa8a315dfa",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Data/Gen3/Encounters3FRLG.cs": "af9fe5878e3371fd9f375c13d14b1fcc18dfde79537a30629babbc6e3e9f935c",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Data/Gen3/Encounters3RSE.cs": "27ae0e1bae59107833bc69e7a27ab09a46ae6cee2cd17f24b82f8cd16486163a",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Data/Gen4/Encounters4DPPt.cs": "ba4236342f28bc47cd3b2146ebe8af76866f20b394fdbc951dc6d83cc6ac981f",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Data/Gen4/Encounters4HGSS.cs": "039eabeec5c3243b7424f0cce67cb9e2275bb02120bc461d8abc37db6501b529",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Data/Gen5/Encounters5B2W2.cs": "15c5337f6cb886b76f4a8b5f950264b552f1d97a49479e26fba7c0e6c3ab0833",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Data/Gen5/Encounters5BW.cs": "a633c1f142376e3d72e92edc3fabf26a635f6fcb2d5305bca5ddbea4f65741aa",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Templates/Gen2/EncounterStatic2.cs": "0c06bab0636731224ed91a66a57a343a4d9ae6294ea417367067ed203a133005",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Templates/Gen2/EncounterTrade2.cs": "827f351dbff5d7c1df6f9a90344816d8055ee47678bdf5bb1a3ad4ef0e4412eb",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Templates/Gen3/EncounterStatic3.cs": "fd506b5c1ffed4cb135d0f7faf03644fbf9148a22c3d4b519b21c17b2713f57e",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Templates/Gen3/EncounterTrade3.cs": "971f81a26be8d45214d445104c7d778b2824230ef3d79d38456525df57c759d4",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Templates/Gen4/EncounterStatic4.cs": "30b35c5286b033806b7aeb232fd210e9055b9f4d0a723272f9b3c7491e5c0b45",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Templates/Gen4/EncounterTrade4PID.cs": "6d94cce8f04e9154dccfc54579053f25992625a23aed01131945ed9d4f543459",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Templates/Gen5/EncounterStatic5.cs": "d2841f9630417a530b085f2836ad3619d83358aa7e0d579c2554a8d57c5d2fd9",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Templates/Gen5/EncounterTrade5B2W2.cs": "c8e201cb6524da2975e2f9f7bc060911ebb36e3cf0f75a828c2ee9c1751b0793",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Legality/Encounters/Templates/Gen5/EncounterTrade5BW.cs": "e9cf101ea8e7f29a78ee45da0e0f6fba1c2fdc34efb514c79699e6cecc208547",
+    "kwsch/PKHeX@6042efa241a9925ce57e645329ea7f976deabdd3:PKHeX.Core/Resources/text/other/en/text_Species_en.txt": "cffb48727a4321f171abad8fd8d3e0342fccfa7a1684f371b2535feecaed6798",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:constants/landmark_constants.asm": "3e38b9460ed7279ba8b3559dc087efd5a79598e4499bdf63451513dfd3ad7415",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:constants/pokemon_constants.asm": "a6203404f6113da199fd68a94e04409e6cfd8c5b69d16a60d100615b11964440",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:data/events/npc_trades.asm": "569b3250473966dfbef4d05ffeaba2016d0500eac3224fd00a31742f2fc695f6",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:data/maps/maps.asm": "183221675217cbb0e36871b57786c80fa731c3cb0c7d24345dfe7d33ec0006cd",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:engine/events/npc_trade.asm": "2dd98bcaf0476c9b0f04a385289bdaa19571dd357fdce3ec1647745356d95f72",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:engine/events/shuckle.asm": "049f571fe5bbf345c9be343103258a93e9e7d1448c4433629ca4194d2a8880bd",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:engine/pokemon/caught_data.asm": "303dbd8ac95950d14536ea14dd8a1ba65f3b540dff9356d57107286c916e5773",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/BillsFamilysHouse.asm": "a663cbca1054e128c23efcb2f41af6f7aad6e7e29f4ed5afba15e107b4262297",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/CeladonGameCornerPrizeRoom.asm": "be7429eb2a7e06d4fedbc76a4deb2bc38fc97dd574def2b8bf021e92c88cbff4",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/DragonShrine.asm": "ab278f7969edc1797f9ab74ef365c7e74a7849205cf57aab7440ca642b196fe7",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/ElmsLab.asm": "bbbb3fa2ae9309bed8559fa07b92c1e995c73788d46f718657d588a10a62a51e",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/GoldenrodGameCorner.asm": "6a3cd30d5d4e354fc72d5454d9c29389b527e3099b41423f390611d2728ed558",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/IlexForest.asm": "c18d2e3db31a1cea2ac0780c1ef746f1eebff27e7eeb577e147a30022efd9f26",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/LakeOfRage.asm": "d21a3126b0e068d2aa43e9d3ba157d06d217efdb5eada27a58dafe9c57ded3c1",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/ManiasHouse.asm": "3d647bb44435fc3df5585526c3f3e52dc90771cc8b062ea47b262ed39d6af3a8",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/MountMortarB1F.asm": "c656ab331b5e7b52fab78c4b947879ed6023e5a4e8f79764a7dfb2766c30650a",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/Route35GoldenrodGate.asm": "3efc79d647dfb4a3f730d843173832e01469be9003487cb64617e6f4415dfb44",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/Route36.asm": "a882d128eae96b18b15d256c867c62f711dfd3d0161af6940938899d2cc68bb8",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/TeamRocketBaseB1F.asm": "fc2fed419ca14697b8ab39637bc4c4fbe8cc379d7c87a1d7b4ca0ee2a96f2459",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/TeamRocketBaseB2F.asm": "acd2ab4c1710059288b9518dd8f4ea54c3908eae10b582afef6ea0b6b74b3ce6",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/TinTower1F.asm": "232a9c243862a0e87f2f748d222065094687abed796ce354a72bccba33ca5a7d",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/TinTowerRoof.asm": "e7313befeb5c60f4d96581f8c56da10af3fbb1849af963af8cd2a7c8ca3fda6a",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/UnionCaveB2F.asm": "86f171291d1b4e80498e19ed3abfba95e0b9d1cbddf106614a0d461f97f8df52",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/VermilionCity.asm": "623acc896c71636e512b40cbbbbe0dadad92e981a9c48244f275928e88f3bf68",
+    "pret/pokecrystal@3c813b0b4d82b39bf62185aceffb76fd6026c70b:maps/WhirlIslandLugiaChamber.asm": "b94b8b4d47df830e76a1cfa66549f5460f3100b2cfcd1743a98025b6d27890cd",
+    "pret/pokeemerald@731ad5bfd6e6f265508d0efcca0ba42f9dcf5881:data/maps/LittlerootTown_ProfessorBirchsLab/map.json": "13a03483c8fac9a7a6b169ce70bcdc389d86f652529e2b2bfb9cf29e306c5984",
+    "pret/pokeemerald@731ad5bfd6e6f265508d0efcca0ba42f9dcf5881:data/maps/LittlerootTown_ProfessorBirchsLab/scripts.inc": "d30bea3cb077a960ad26e29c712295f6bd9900d4f168e8985e2d135987fa2a67",
+    "pret/pokeemerald@731ad5bfd6e6f265508d0efcca0ba42f9dcf5881:data/maps/MossdeepCity_StevensHouse/map.json": "a99b1a2f8d5c404839e9889cd717b4d12c8d846de5e42749926beeeb9abeb247",
+    "pret/pokeemerald@731ad5bfd6e6f265508d0efcca0ba42f9dcf5881:data/maps/MossdeepCity_StevensHouse/scripts.inc": "f307fa23d2b9d1972de26106dec3f7e8de87ced175ce4c1ac27f0bdfb922af00",
+    "pret/pokeemerald@731ad5bfd6e6f265508d0efcca0ba42f9dcf5881:data/maps/Route119_WeatherInstitute_2F/map.json": "74df71f200b2d2408abaafff1e33286e6fbb2301998a86a1813b66805663ad76",
+    "pret/pokeemerald@731ad5bfd6e6f265508d0efcca0ba42f9dcf5881:data/maps/Route119_WeatherInstitute_2F/scripts.inc": "309333a9c41d93da11bf4fadb405eaadeef8fba7262ad9351d55afa5501a04c5",
+    "pret/pokeemerald@731ad5bfd6e6f265508d0efcca0ba42f9dcf5881:src/data/region_map/region_map_sections.json": "3a5f8c07c85c17f05cec06d049305962e9a9a1d2bd6eae935f3887866a4ad491",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/CeladonCity_Condominiums_RoofRoom/map.json": "88b8d398fbc4f5dde8c21699f7a83792bdbcc8e7c1436ae67a6eed95b3de49c6",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/CeladonCity_Condominiums_RoofRoom/scripts.inc": "1802931ce27a575f96381a78aa81b25d5d77bfd47beb5addf35bd94c49599b19",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/PowerPlant/map.json": "2a33bb77406ca5fefc99b9adc48ef640f4143d990e9b02c4ba2e96f17be0a8cb",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/PowerPlant/scripts.inc": "7558c5214a97c767aa1840d14fa15521e7f0993657ee19a3bb088b4202f6f192",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/Route12/map.json": "86372c00db4ef7616d129e41b2ee512764a8b5b4ced4cef19e60453e8813f3a7",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/Route12/scripts.inc": "ea70631fa17e3042cf08b32c94fbc26fbb128936b61c00e61127b79af780368e",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/Route4_PokemonCenter_1F/map.json": "8353eb9102357e12aae3b5afd95c01bbd08b4af85f4f202cfbec156588c31406",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/Route4_PokemonCenter_1F/scripts.inc": "477f1daae58c6c03ecc9e0e84af190511a96748267dc1f9c0e7c9a60ea476c1c",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/SilphCo_7F/map.json": "827925311231f67dd5cafbd5fd970672c92bf5b0aa5cfd9e0875757733f65252",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:data/maps/SilphCo_7F/scripts.inc": "87760a3d9105e4f441fecd443c67e67fde075a40e4379a5bb2d944fe5b9687c9",
+    "pret/pokefirered@ce6406d8c2eaf46d543c8a2606de0c3cb1951982:src/data/region_map/region_map_sections.json": "82e456cbe86a57ebc4bd0d88d6e000e83e28340895ac038079c38d415bc6de5f",
+    "pret/pokeruby@5784633ce4ef7ade1a7f2d2d0c288e3d5e6cdd7f:data/maps/MossdeepCity_StevensHouse/scripts.inc": "40181a1a17dd20cbc461336eacd48e1221a170a314ab3ef5406bab87a10aa9d9"
+  },
+  "pret_crosschecks": {
+    "crystal": "every static / gift / prize / OT-gift / trade row (map script + landmark)",
+    "gen3": [
+      "pokefirered:SilphCo_7F:LAPRAS:25:134",
+      "pokefirered:CeladonCity_Condominiums_RoofRoom:EEVEE:25:94",
+      "pokefirered:Route4_PokemonCenter_1F:MAGIKARP:5:104",
+      "pokefirered:Route12:SNORLAX:30:112",
+      "pokefirered:PowerPlant:ZAPDOS:50:142",
+      "pokefirered:PowerPlant:ELECTRODE:34:142",
+      "pokeemerald:MossdeepCity_StevensHouse:BELDUM:5:13",
+      "pokeemerald:Route119_WeatherInstitute_2F:CASTFORM:25:34",
+      "pokeemerald:LittlerootTown_ProfessorBirchsLab:CHIKORITA:5:0",
+      "pokeruby:MossdeepCity_StevensHouse:BELDUM:5:13"
+    ]
+  },
+  "counts": {
+    "crystal_gbc": {
+      "rows": 76,
+      "by_kind": {
+        "EggGift": 8,
+        "EventStatic": 1,
+        "Gift": 8,
+        "Prize": 6,
+        "Roaming": 32,
+        "Static": 11,
+        "Swarm": 3,
+        "Trade": 7
+      },
+      "species": 42
+    },
+    "ruby_gba": {
+      "rows": 55,
+      "by_kind": {
+        "EggGift": 1,
+        "Fossil": 2,
+        "Gift": 5,
+        "Roaming": 34,
+        "Static": 10,
+        "Trade": 3
+      },
+      "species": 21
+    },
+    "sapphire_gba": {
+      "rows": 55,
+      "by_kind": {
+        "EggGift": 1,
+        "Fossil": 2,
+        "Gift": 5,
+        "Roaming": 34,
+        "Static": 10,
+        "Trade": 3
+      },
+      "species": 21
+    },
+    "emerald_gba": {
+      "rows": 100,
+      "by_kind": {
+        "EggGift": 1,
+        "EventStatic": 6,
+        "Fossil": 2,
+        "Gift": 8,
+        "Roaming": 68,
+        "Static": 11,
+        "Trade": 4
+      },
+      "species": 31
+    },
+    "firered_gba": {
+      "rows": 112,
+      "by_kind": {
+        "EggGift": 1,
+        "EventStatic": 3,
+        "Fossil": 3,
+        "Gift": 8,
+        "Prize": 5,
+        "Roaming": 75,
+        "Static": 8,
+        "Trade": 9
+      },
+      "species": 38
+    },
+    "leafgreen_gba": {
+      "rows": 112,
+      "by_kind": {
+        "EggGift": 1,
+        "EventStatic": 3,
+        "Fossil": 3,
+        "Gift": 8,
+        "Prize": 5,
+        "Roaming": 75,
+        "Static": 8,
+        "Trade": 9
+      },
+      "species": 38
+    },
+    "diamond_nds": {
+      "rows": 74,
+      "by_kind": {
+        "EggGift": 2,
+        "Fossil": 7,
+        "Gift": 4,
+        "Roaming": 48,
+        "Static": 9,
+        "Trade": 4
+      },
+      "species": 28
+    },
+    "pearl_nds": {
+      "rows": 74,
+      "by_kind": {
+        "EggGift": 2,
+        "Fossil": 7,
+        "Gift": 4,
+        "Roaming": 48,
+        "Static": 9,
+        "Trade": 4
+      },
+      "species": 28
+    },
+    "platinum_nds": {
+      "rows": 154,
+      "by_kind": {
+        "EggGift": 2,
+        "EventStatic": 1,
+        "Fossil": 7,
+        "Gift": 5,
+        "Roaming": 120,
+        "Static": 15,
+        "Trade": 4
+      },
+      "species": 38
+    },
+    "heartgold_nds": {
+      "rows": 123,
+      "by_kind": {
+        "EggGift": 4,
+        "Fossil": 7,
+        "Gift": 19,
+        "Prize": 5,
+        "Roaming": 57,
+        "Static": 21,
+        "Trade": 10
+      },
+      "species": 64
+    },
+    "soulsilver_nds": {
+      "rows": 123,
+      "by_kind": {
+        "EggGift": 4,
+        "Fossil": 7,
+        "Gift": 19,
+        "Prize": 5,
+        "Roaming": 57,
+        "Static": 21,
+        "Trade": 10
+      },
+      "species": 64
+    },
+    "black_nds": {
+      "rows": 54,
+      "by_kind": {
+        "EggGift": 1,
+        "EventStatic": 3,
+        "Fossil": 9,
+        "Gift": 7,
+        "Roaming": 16,
+        "Static": 13,
+        "Trade": 5
+      },
+      "species": 37
+    },
+    "white_nds": {
+      "rows": 54,
+      "by_kind": {
+        "EggGift": 1,
+        "EventStatic": 3,
+        "Fossil": 9,
+        "Gift": 7,
+        "Roaming": 16,
+        "Static": 13,
+        "Trade": 5
+      },
+      "species": 37
+    },
+    "black2_nds": {
+      "rows": 83,
+      "by_kind": {
+        "EggGift": 1,
+        "Fossil": 9,
+        "Gift": 7,
+        "Static": 43,
+        "Trade": 23
+      },
+      "species": 74
+    },
+    "white2_nds": {
+      "rows": 83,
+      "by_kind": {
+        "EggGift": 1,
+        "Fossil": 9,
+        "Gift": 7,
+        "Static": 43,
+        "Trade": 23
+      },
+      "species": 74
+    }
+  },
+  "total_rows": 1332
+}
