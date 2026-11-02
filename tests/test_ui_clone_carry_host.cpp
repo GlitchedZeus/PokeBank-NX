@@ -11,6 +11,13 @@
 //   Move (H23): Y picks up (Gen V: Actions -> Move), Y again is refused with the hint, B cancels back
 //     to the exact staged state, and A places on an empty slot.
 //   Occupied destinations (H32): Clone and Move onto an occupied slot never overwrite it.
+// Round 12 (owner hardware results for 066e1db9):
+//   R12-001 (H03 / H16): Gen V Boxes use the Gen I-IV keys - a Y tap picks up, a Y hold multi-selects,
+//     + opens Review (Party keeps Y), and the footer says so.
+//   R12-002 (H03 / H04): pickup, place, multi-move, a placed clone and cancel post no toast; the
+//     capacity refusal, "There is no Pokemon in this slot to move" and occupied refusals still do.
+//   R12-003 (H04): over a packed Gen I / II box the cursor IS the landing slot (no second indicator);
+//     L/R changes box, the clone lands in the viewed box, a full box is refused, B restores.
 // Every save is synthetic, built in code (QA builders, gsc fixture, HostUiFixtures): no real save, ROM
 // or Pokemon file is read.
 #include "HostUi.h"
@@ -121,6 +128,7 @@ struct Case {
     Cell emptyCell;                  // the empty cell the clone is dropped on
     Cell landing;                    // where it must land (Gen I / II: the box's next free slot)
     Cell moveFrom, moveTo, moveLanding;
+    Cell packedEnd;                  // Gen I / II: the source box's end (where the clone cursor rests)
     std::function<std::vector<uint8_t>()> snapshot;   // staged bytes + pending change count
     std::function<std::optional<uint16_t>(Cell)> speciesAt;
     std::function<std::optional<uint16_t>()> sourceSpecies;
@@ -147,6 +155,21 @@ void hover(Driver& d, const Cell& c) {
     d.frame();
 }
 bool carryingClone() { return drawn("Place Clone"); }
+// R12-002: no routine toast is showing (a refusal from earlier has expired or was retired).
+bool quiet(const Driver& d) { return d.screen.storageStatusFrames == 0 || d.screen.storageStatus.empty(); }
+bool at(const Driver& d, const Cell& c) {
+    return d.screen.selectedBoxIndex == c.box && d.screen.selectedItemIndex == c.slot;
+}
+std::string cursor(const Driver& d) { return where({d.screen.selectedBoxIndex, d.screen.selectedItemIndex}); }
+// A held Y: the press, `frames` more frames held (kMultiHoldFrames is 8), keys pressed while held.
+void holdY(Driver& d, int frames, std::initializer_list<u64> whileHeld = {}) {
+    d.frame(HidNpadButton_Y, HidNpadButton_Y);
+    for (int i = 0; i < frames; ++i) d.frame(0, HidNpadButton_Y);
+    for (const u64 key : whileHeld) {
+        d.frame(key, HidNpadButton_Y);
+        d.frame(0, HidNpadButton_Y);
+    }
+}
 
 void runClone(Case& c) {
     const std::string g = "Gen " + std::to_string(c.generation) + " " + c.game + " Clone: ";
@@ -164,40 +187,48 @@ void runClone(Case& c) {
     check(sheetRows().empty(), g + "the Actions sheet closed (" + joined(sheetRows()) + ")");
     check(carryingClone() && drawn("Box") && drawn("Cancel"), g + "the carry footer reads A Place Clone / L/R Box / B Cancel");
     check(d.screen.selectedMode == View::Boxes, g + "the carry runs on the box grid");
-    // Gen I / II boxes are packed lists: the status names the box's end, never an arbitrary empty slot.
+    // R12-002 (owner H04: clone "has a pop up menu thing on the botom about cloned pop dont need it"):
+    // the carry footer names the keys, so picking the clone up posts no toast.
     const bool packed = c.generation <= 2;
-    check(d.screen.storageStatus == Carry::clonePickupStatus(packed), g + "pickup status: " + d.screen.storageStatus);
-    if (packed)
-        check(d.screen.storageStatus.find("empty slot") == std::string::npos,
-              g + "a packed box never advertises an arbitrary empty slot");
+    check(quiet(d), g + "Actions -> Clone posts no toast (" + d.screen.storageStatus + ")");
     check(c.snapshot() == before, g + "picking the clone up stages nothing");
 
-    // A on an occupied slot: refused, nothing overwritten, the carry stays.
-    hover(d, c.occupied);
     const auto occupiedSpecies = c.speciesAt(c.occupied);
-    d.press(HidNpadButton_A);
-    check(d.screen.storageStatus == Carry::dropStatus(Carry::Drop::Occupied, packed),
-          g + "A on an occupied slot is refused (" + d.screen.storageStatus + ")");
+    if (packed) {
+        // R12-003: a packed box has no gaps, so the cursor cannot rest on an occupied cell: it is the
+        // landing slot (the box's end), where the ghost is drawn - one indicator.
+        check(at(d, c.packedEnd), g + "the cursor starts on the box end " + where(c.packedEnd) + " (" + cursor(d) + ")");
+        hover(d, c.occupied);
+        check(at(d, c.packedEnd), g + "an occupied cell snaps back to the landing slot (" + cursor(d) + ")");
+    } else {
+        // A on an occupied slot: refused, nothing overwritten, the carry stays.
+        hover(d, c.occupied);
+        d.press(HidNpadButton_A);
+        check(d.screen.storageStatus == Carry::dropStatus(Carry::Drop::Occupied, packed) && !quiet(d),
+              g + "A on an occupied slot is refused (" + d.screen.storageStatus + ")");
+    }
     check(c.snapshot() == before && c.speciesAt(c.occupied) == occupiedSpecies,
           g + "the occupied slot is not overwritten and nothing is staged");
-    check(carryingClone() && sheetRows().empty(), g + "the carry stays after the refusal");
-    // Y is refused with the hint and consumed.
+    check(carryingClone() && sheetRows().empty(), g + "the carry stays");
+    // Y is consumed and posts nothing new (R12-002: no hint toast).
+    const std::string shown = d.screen.storageStatus;
     d.press(HidNpadButton_Y);
-    check(d.screen.storageStatus == Carry::refuseHint(Carry::Intent::Clone, packed), g + "Y shows the A / B hint");
+    check(d.screen.storageStatus == shown, g + "Y posts no hint (" + d.screen.storageStatus + ")");
     check(c.snapshot() == before && carryingClone(), g + "Y changes nothing");
-    // B cancels: nothing staged, no Actions menu.
+    // B cancels: nothing staged, no Actions menu, no toast, the cursor back on the source.
     d.press(HidNpadButton_B);
-    check(d.screen.storageStatus == Carry::kCloneCancelledStatus, g + "B cancels (" + d.screen.storageStatus + ")");
+    check(d.screen.storageStatus.empty() && quiet(d), g + "B cancels without a toast (" + d.screen.storageStatus + ")");
     check(c.snapshot() == before && !carryingClone() && sheetRows().empty(),
           g + "after B: nothing staged, no carry, no Actions menu");
+    if (c.sourceView == View::Boxes) check(at(d, c.source), g + "B restores the cursor to the source");
 
     // Clone again and place it with A on an empty slot.
     openSheet(d, c.sourceView, c.source);
     check(chooseAction(d, "Clone"), g + "Clone again");
     hover(d, c.emptyCell);
     d.press(HidNpadButton_A);
-    const std::string staged = d.screen.storageStatus;
-    check(staged.rfind("Clone staged in " + where(c.landing), 0) == 0, g + "A places the clone (" + staged + ")");
+    check(d.screen.storageStatus.empty() && quiet(d), g + "A places the clone without a toast (" +
+                                                          d.screen.storageStatus + ")");
     check(c.speciesAt(c.landing) == species, g + "the copy is at " + where(c.landing));
     check(c.sourceSpecies() == species, g + "the source is unchanged");
     check(c.snapshot() != before, g + "the clone is one staged change");
@@ -216,28 +247,25 @@ void runMove(Case& c) {
     check(species.has_value(), g + "the Pokemon to move exists");
     const auto before = c.snapshot();
 
+    // R12-001: a Y tap picks up in every generation, Gen V included (it was Review there).
     const auto pickUp = [&] {
-        if (c.generation == 5) {
-            openSheet(d, View::Boxes, c.moveFrom);
-            check(chooseAction(d, "Move"), g + "Actions -> Move (" + joined(sheetRows()) + ")");
-        } else {
-            d.screen.selectedMode = View::Boxes;
-            d.screen.detailViewActive = true;
-            hover(d, c.moveFrom);
-            d.press(HidNpadButton_Y);   // a Y tap: picked up on release
-        }
+        d.screen.selectedMode = View::Boxes;
+        d.screen.detailViewActive = true;
+        hover(d, c.moveFrom);
+        d.press(HidNpadButton_Y);   // a Y tap: picked up on release
     };
     pickUp();
     check(drawn("Place") && drawn("Cancel"), g + "the carry footer reads A Place / L/R Box / B Cancel");
-    check(d.screen.storageStatus.find("A places") != std::string::npos, g + "pickup status names A (" +
-                                                                           d.screen.storageStatus + ")");
+    // R12-002 (owner H03: "when a pokemon is picked up we have a little boc pop up telling the controls
+    // we dont need that we have the footer for that").
+    check(quiet(d), g + "the pickup posts no toast (" + d.screen.storageStatus + ")");
     const auto carried = c.snapshot();
     d.press(HidNpadButton_Y);
-    check(d.screen.storageStatus == Carry::refuseHint(Carry::Intent::Move), g + "Y no longer places (" +
-                                                                            d.screen.storageStatus + ")");
+    check(quiet(d), g + "Y posts no hint (" + d.screen.storageStatus + ")");
     check(c.snapshot() == carried && drawn("Place"), g + "Y changes nothing; the carry stays");
     d.press(HidNpadButton_B);
     check(c.snapshot() == before && !drawn("Place"), g + "B cancels back to the exact staged state");
+    check(quiet(d) && at(d, c.moveFrom), g + "B cancels without a toast, cursor on the source");
 
     pickUp();
     if (c.generation == 3 || c.generation == 5) {
@@ -248,12 +276,107 @@ void runMove(Case& c) {
         d.press(HidNpadButton_A);
         check(drawn("Place") && c.speciesAt(c.source) == occupiedSpecies && c.snapshot() == carrying,
               g + "A on an occupied slot keeps the carry and the occupant (" + d.screen.storageStatus + ")");
+        check(!quiet(d), g + "the occupied refusal is still shown (R12-002 keeps refusals)");
     }
     hover(d, c.moveTo);
+    // R12-003: over a packed box the carried sprite is where it lands (an insertion point 0..count).
+    if (c.generation <= 2) check(at(d, c.moveLanding), g + "the packed cursor is the landing slot (" + cursor(d) + ")");
     d.press(HidNpadButton_A);
     check(!drawn("Place"), g + "A placed the Pokemon (" + d.screen.storageStatus + ")");
+    check(d.screen.storageStatus.empty() && quiet(d), g + "placing posts no toast (" + d.screen.storageStatus + ")");
     check(c.speciesAt(c.moveLanding) == species, g + "it is at " + where(c.moveLanding));
     check(sheetRows().empty(), g + "no Actions menu after the move");
+    std::cout << g << "checked\n";
+}
+
+// ---- R12-003 (owner H04): one focus over a packed Gen I / II box; R12-002 refusals that remain ----
+// `fullBox` holds `capacity` Pokemon (filled by the caller); `roomError` is the backend's group refusal.
+void runPackedFocus(Case& c, int fullBox, int capacity, const std::string& roomError) {
+    const std::string g = "Gen " + std::to_string(c.generation) + " " + c.game + " packed focus: ";
+    Driver d{*c.screen, {}, {}};
+    d.frame();
+    const auto count = [&](int box) {
+        int n = 0;
+        while (n < capacity && c.speciesAt({box, n})) ++n;
+        return n;
+    };
+    check(count(fullBox) == capacity, g + "Box " + std::to_string(fullBox + 1) + " is full");
+    const auto species = c.sourceSpecies();
+    const auto before = c.snapshot();
+    const int box0 = c.source.box;
+    const int end0 = count(box0);
+
+    // Clone: the cursor is the end of the viewed box; the D-pad never moves it off that slot or box.
+    openSheet(d, View::Boxes, c.source);
+    check(chooseAction(d, "Clone") && carryingClone(), g + "Actions -> Clone carries the copy");
+    check(at(d, {box0, end0}), g + "the cursor starts on the box end (" + cursor(d) + ")");
+    for (const u64 key : {HidNpadButton_Right, HidNpadButton_Right, HidNpadButton_Right, HidNpadButton_Right,
+                          HidNpadButton_Right, HidNpadButton_Right, HidNpadButton_Down, HidNpadButton_Down,
+                          HidNpadButton_Left, HidNpadButton_Up}) {
+        d.press(key);
+        check(at(d, {box0, end0}), g + "the D-pad keeps the one cursor on the landing slot, same box (" + cursor(d) + ")");
+    }
+    // L / R change the box; the cursor lands on that box's end.
+    d.press(HidNpadButton_R);
+    check(at(d, {box0 + 1, count(box0 + 1)}), g + "R shows the next box's end (" + cursor(d) + ")");
+    d.press(HidNpadButton_L);
+    check(at(d, {box0, end0}), g + "L returns to the source box's end (" + cursor(d) + ")");
+    // A full box: the cursor rests on its last cell and A is refused with the capacity message.
+    for (int b = box0; b < fullBox; ++b) d.press(HidNpadButton_R);
+    check(at(d, {fullBox, capacity - 1}), g + "the full box's cursor is its last cell (" + cursor(d) + ")");
+    d.press(HidNpadButton_A);
+    check(d.screen.storageStatus == Carry::dropStatus(Carry::Drop::BoxFull, true) && !quiet(d),
+          g + "a full box is refused (" + d.screen.storageStatus + ")");
+    check(c.snapshot() == before && carryingClone(), g + "the refusal stages nothing; the carry stays");
+    // B cancels: everything restored, cursor back on the source, no toast.
+    d.press(HidNpadButton_B);
+    check(c.snapshot() == before && !carryingClone() && at(d, c.source) && d.screen.storageStatus.empty(),
+          g + "B restores everything (" + cursor(d) + ", " + d.screen.storageStatus + ")");
+
+    // The copy lands in the box being viewed, never the box after it.
+    const int next = box0 + 1, after = box0 + 2;
+    const int nextEnd = count(next), afterCount = count(after);
+    openSheet(d, View::Boxes, c.source);
+    check(chooseAction(d, "Clone"), g + "Clone again");
+    d.press(HidNpadButton_R);
+    d.press(HidNpadButton_A);
+    check(c.speciesAt({next, nextEnd}) == species && count(after) == afterCount && at(d, {next, nextEnd}),
+          g + "the copy is at " + where({next, nextEnd}) + ", the box being viewed");
+    check(!carryingClone() && quiet(d), g + "placed without a toast (" + d.screen.storageStatus + ")");
+
+    // Move: the cursor stays on the insertion points 0..count of the viewed box.
+    const auto beforeMove = c.snapshot();
+    hover(d, {next, 0});
+    d.press(HidNpadButton_Y);
+    check(drawn("Place"), g + "a Y tap picks up");
+    for (int i = 0; i < 8; ++i) {
+        d.press(HidNpadButton_Right);
+        check(d.screen.selectedBoxIndex == next && d.screen.selectedItemIndex <= count(next),
+              g + "a packed Move's cursor stays on an insertion point of this box (" + cursor(d) + ")");
+    }
+    d.press(HidNpadButton_B);
+    check(c.snapshot() == beforeMove && quiet(d), g + "B cancels the Move silently");
+
+    // R12-002 (owner H03: "only if the allowed space doesnt allow the amount of pokemon ... that when we
+    // should havve the pop up window"): a group that does not fit is refused with the capacity message.
+    hover(d, {next, 0});
+    holdY(d, 9, {HidNpadButton_Right});
+    d.frame();   // release Y: the group is picked up
+    check(drawn("Place Group") && quiet(d), g + "a Y hold picks up the group silently (" + d.screen.storageStatus + ")");
+    for (int b = next; b < fullBox; ++b) d.press(HidNpadButton_R);
+    d.press(HidNpadButton_A);
+    check(d.screen.storageStatus == roomError && drawn("Place Group"),
+          g + "no room for the group: refused with the capacity message (" + d.screen.storageStatus + ")");
+    d.press(HidNpadButton_B);
+    check(c.snapshot() == beforeMove, g + "B restores the group");
+
+    // R12-002: the one pickup message the owner keeps.
+    int empty = 0;
+    while (empty == fullBox || count(empty) != 0) ++empty;
+    hover(d, {empty, 0});
+    d.press(HidNpadButton_Y);
+    check(d.screen.storageStatus == "There is no Pokemon in this slot to move" && !quiet(d) && !drawn("Place"),
+          g + "Y on an empty slot says so (" + d.screen.storageStatus + ")");
     std::cout << g << "checked\n";
 }
 
@@ -322,6 +445,7 @@ void gen1() {
     c.occupied = {0, 1};
     c.emptyCell = {1, 5};
     c.landing = {1, 0};                    // packed list: the box's next free slot
+    c.packedEnd = {0, 2};
     c.moveFrom = {0, 1}; c.moveTo = {2, 7}; c.moveLanding = {2, 0};
     c.snapshot = [e] { return classicSnapshot(e); };
     c.speciesAt = [e](Cell at) -> std::optional<uint16_t> {
@@ -332,6 +456,12 @@ void gen1() {
     c.sourceSpecies = [c] { return c.speciesAt(c.source); };
     runClone(c);
     runMove(c);
+
+    // R12-003: Box 6 full (20 Pokemon), for the full-box and group-capacity refusals.
+    bool filled = true;
+    for (size_t slot = 0; slot < 20; ++slot) filled = filled && e->stageAdd(5, slot, bulbasaur, error);
+    check(filled && rby->refreshBoxesFromStagedPokemon(error), "Gen 1: Box 6 full: " + error);
+    runPackedFocus(c, 5, 20, "This Generation I box does not have enough room for the selected Pokemon");
 }
 
 void gen2() {
@@ -359,6 +489,7 @@ void gen2() {
     c.occupied = {0, 1};
     c.emptyCell = {2, 4};
     c.landing = {2, 0};
+    c.packedEnd = {0, 2};
     c.moveFrom = {0, 1}; c.moveTo = {3, 6}; c.moveLanding = {3, 0};
     c.snapshot = [e] { return classicSnapshot(e); };
     c.speciesAt = [e](Cell at) -> std::optional<uint16_t> {
@@ -369,6 +500,17 @@ void gen2() {
     c.sourceSpecies = [c] { return c.speciesAt(c.source); };
     runClone(c);
     runMove(c);
+
+    // R12-003: Box 6 full, for the full-box and group-capacity refusals.
+    const int capacity = static_cast<int>(e->metadata().boxCapacity);
+    bool filled = true;
+    for (int i = 0; i < capacity && filled; ++i) {
+        std::string ignored;
+        if (e->boxedPokemon(5, static_cast<size_t>(i), ignored)) continue;
+        filled = e->stageAddBoxPokemon(5, create, added, error);
+    }
+    check(filled && gsc->refreshStagedBoxPresentation(error), "Gen 2: Box 6 full: " + error);
+    runPackedFocus(c, 5, capacity, "This Generation II box does not have enough room for the selected Pokemon");
 }
 
 void gen4() {
@@ -558,7 +700,7 @@ void gen5() {
         const auto& ws = trainer->stagedPokemon();
         std::vector<uint8_t> snap{static_cast<uint8_t>(ws.changedRecordCount()),
                                   static_cast<uint8_t>(ws.pendingReview().size())};
-        for (size_t box = 0; box < 2; ++box)
+        for (size_t box = 0; box < 4; ++box)
             for (size_t slot = 0; slot < 30; ++slot)
                 if (const auto p = ws.viewBox(box, slot); p && p->valid())
                     snap.insert(snap.end(), p->decodedBytes().begin(), p->decodedBytes().end());
@@ -585,6 +727,75 @@ void gen5() {
         return p && p->valid() && !p->empty() ? std::optional<uint16_t>(p->species()) : std::nullopt;
     };
     runClone(party);
+
+    // ---- R12-001 (owner H03: "Y is review in gen 5 and that is wrong that should be move, reivew should
+    // be what ever button gens 1-4 use"; H16: "gen 5 still needs the footer and controls for review and
+    // move changed"). Two fresh Pokemon in Box 3 for the Y-hold group.
+    check(G5::importPokemonFile5(trainer->stagedPokemon(), *decoded, 2, 0, &error) &&
+              G5::importPokemonFile5(trainer->stagedPokemon(), *decoded, 2, 1, &error) &&
+              trainer->refreshStagedPokemonPresentation(error), "Gen V: two Pokemon in Box 3: " + error);
+    using Surface = G5::Gen5SharedScreenState::Surface;
+    const std::string g = "Gen 5 black_nds keys: ";
+    Driver d{*c.screen, {}, {}};
+    d.screen.selectedMode = View::Boxes;
+    d.screen.detailViewActive = true;
+    hover(d, {2, 0});
+    check(drawn("Move / Hold Multi") && drawn("Review") && drawn("Actions") && drawn("Help"),
+          g + "the Boxes footer is the Gen I-IV one: A Actions, Y Move / Hold Multi, + Review, - Help");
+    // (The + badge is drawn as bars, not text; its key is ReviewEntry::footerHint(Boxes, 5), pinned in
+    // test_classic_carry_rules / test_review_entry. Its behaviour is driven here.)
+    // + opens Review from Boxes; B returns to the same box and slot.
+    d.press(HidNpadButton_Plus);
+    check(trainer->sharedScreen().surface() == Surface::Review, g + "+ opens Review from Boxes");
+    d.press(HidNpadButton_B);
+    check(trainer->sharedScreen().surface() == Surface::Browse && d.screen.selectedMode == View::Boxes && at(d, {2, 0}),
+          g + "B returns from Review to the same box slot (" + cursor(d) + ")");
+    // Party keeps its Y Review; + is not a second key there.
+    d.screen.selectedMode = View::Party;
+    d.screen.selectedPartyIndex = 0;
+    d.frame();
+    d.press(HidNpadButton_Plus);
+    check(trainer->sharedScreen().surface() == Surface::Browse, g + "+ does not open Review on Party");
+    d.press(HidNpadButton_Y);
+    check(trainer->sharedScreen().surface() == Surface::Review, g + "Y still opens Review on Party");
+    d.press(HidNpadButton_B);
+    check(trainer->sharedScreen().surface() == Surface::Browse && d.screen.selectedMode == View::Party,
+          g + "B returns to the Party");
+
+    // A Y hold multi-selects; releasing Y picks the group up; A places it with its shape, silently.
+    d.screen.selectedMode = View::Boxes;
+    hover(d, {2, 0});
+    const auto before = c.snapshot();
+    holdY(d, 9, {HidNpadButton_Right});
+    check(drawn("Hold / Release Pick Up") && drawn("Resize Selection"), g + "the multi-select footer is shown");
+    check(trainer->sharedScreen().surface() == Surface::Browse, g + "a held Y never opens Review");
+    d.frame();   // release Y
+    check(drawn("Place Group") && quiet(d), g + "releasing Y picks up the group silently (" + d.screen.storageStatus + ")");
+    check(c.snapshot() == before, g + "the pickup stages nothing");
+    // An occupied destination and a shape running off the box are refused; the carry stays.
+    hover(d, {0, 0});
+    d.press(HidNpadButton_A);
+    check(d.screen.storageStatus == "Multi requires empty destination slots" && drawn("Place Group") && c.snapshot() == before,
+          g + "an occupied destination is refused (" + d.screen.storageStatus + ")");
+    hover(d, {3, 5});
+    d.press(HidNpadButton_A);
+    check(d.screen.storageStatus == "Group does not fit at that exact destination" && drawn("Place Group") &&
+              c.snapshot() == before,
+          g + "a group running off the box is refused (" + d.screen.storageStatus + ")");
+    // B restores; then the real drop.
+    d.press(HidNpadButton_B);
+    check(c.snapshot() == before && !drawn("Place Group") && at(d, {2, 0}) && d.screen.storageStatus.empty(),
+          g + "B restores the group");
+    holdY(d, 9, {HidNpadButton_Right});
+    d.frame();
+    hover(d, {3, 6});
+    d.press(HidNpadButton_A);
+    check(!drawn("Place Group") && d.screen.storageStatus.empty(), g + "A places the group silently (" +
+                                                                       d.screen.storageStatus + ")");
+    check(c.speciesAt({3, 6}) == 25 && c.speciesAt({3, 7}) == 25 && !c.speciesAt({2, 0}) && !c.speciesAt({2, 1}),
+          g + "the group moved to Box 4 / Slots 7-8 with its shape");
+    check(c.snapshot() != before, g + "the group move is staged");
+    std::cout << g << "checked\n";
 }
 
 }  // namespace

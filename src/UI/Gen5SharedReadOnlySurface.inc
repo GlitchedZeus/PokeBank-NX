@@ -1628,13 +1628,12 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             HidNpadButton_Left,HidNpadButton_Right);
         return handleSharedWorkspace(screen,workspaceKeys,touch);
     }
-    // A Move or Clone carry (shared ClassicPackedMove overlay) owns A / B / Y / X
-    // and cell taps; navigation keys fall through to the box grid below.
+    // Round 12 R12-001: the Boxes grid has the Gen I-IV keys (shared ClassicPackedMove overlay). A Y
+    // tap picks up to Move, a Y hold multi-selects, and a Move or Clone carry owns A / B / Y / X and
+    // cell taps; navigation keys fall through to the box grid below, and + is Review there.
     if(state.surface()==Surface::Browse && screen.detailViewActive &&
        screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
-       ClassicPackedMove::gen5CarryActive(screen)) {
-        if(ClassicPackedMove::handleGen5CarryInput(screen,down,tap))return true;
-    }
+       ClassicPackedMove::handleGen5BoxInput(screen,down,held,stickX,stickY,tap))return true;
     if(state.surface()==Surface::Actions) {
         const auto actions=state.availableActions(staged);
         if(tap>=kGen5ActionTouchBase &&
@@ -1885,9 +1884,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         screen.controllerNavigation.reset();
         return true;
     }
-    // Round 7 (ReviewEntry.h): one Review key per screen. Party and Boxes: Y, where Y has no other
-    // job in Browse (carrying is handled above); + is not a second key there. The save hub keeps
-    // its + Review. B in Review returns here with the cursor and box intact.
+    // Round 7 (ReviewEntry.h): one Review key per screen. Party: Y, where Y has no other job; + is
+    // not a second key there. Round 12 R12-001: Boxes use +, as Gen I-IV (Y picks up, above). The
+    // save hub keeps its + Review. B in Review returns here with the cursor and box intact.
     namespace Entry=PokeBank::UIModel::ReviewEntry;
     const bool party=screen.selectedMode==TrainerViewScreen::ViewMode::Party;
     const bool boxes=screen.selectedMode==TrainerViewScreen::ViewMode::Boxes;
@@ -2363,14 +2362,29 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         }
     }
     if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
-       ClassicPackedMove::gen5CarryActive(screen))
-        ClassicPackedMove::draw(screen,fb); // carried sprite + "A Place / L/R Box / B Cancel"
+       ClassicPackedMove::gen5BoxLayerBusy(screen))
+        ClassicPackedMove::draw(screen,fb); // carried sprite + "A Place / L/R Box / B Cancel", or the Y rectangle
     else if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes) {
-        // Round 11 X-IMPEXP: X Export / Import after A, before Y, from the same decision as the key.
-        std::vector<ControllerHint> hints{{"D-pad","Navigate"},{"L/R","Box"},{"ZL/ZR","Jump 5"},{"A","Actions"}};
-        if(const char* x=boxFileLabel(screen,nativeTrainer(screen).stagedPokemon()))hints.push_back({"X",x});
-        hints.push_back({"Y","Review"});
-        hints.push_back({"B","Back"});
+        // Round 12 R12-001 (owner H16: "gen 5 still needs the footer and controls for review and move
+        // changed"): the Gen I-IV Boxes footer, same model and order (ClassicBrowseFooter): D-pad, A
+        // Actions, X Export / Import (Round 11 X-IMPEXP, the same decision as the key), Y Move / Hold
+        // Multi, L/R, ZL/ZR, + Review, B, - Help.
+        namespace BrowseFooter=PokeBank::UIModel::ClassicBrowseFooter;
+        const auto& ws=nativeTrainer(screen).stagedPokemon();
+        const auto here=ws.viewBox(static_cast<size_t>(std::max(0,screen.selectedBoxIndex)),
+                                   static_cast<size_t>(std::max(0,screen.selectedItemIndex)));
+        const bool occupied=here && here->valid() && !here->empty();
+        BrowseFooter::Spec spec;
+        spec.canOpen=true;
+        spec.openLabel="Actions";
+        spec.boxes=true;
+        if(const char* x=boxFileLabel(screen,ws))spec.actions.push_back({"X",x});
+        spec.actions.push_back({"Y",occupied?"Move / Hold Multi":"Hold Multi"});
+        spec.review=true;
+        spec.reviewGlyph=PokeBank::UIModel::ReviewEntry::footerHint(
+            PokeBank::UIModel::ReviewEntry::Screen::Boxes,5).glyph;
+        std::vector<ControllerHint> hints;
+        for(const auto& hint:BrowseFooter::hints(spec))hints.push_back({hint.glyph,hint.label});
         drawNavBar(fb,hints);
     }
     else

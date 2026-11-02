@@ -484,7 +484,8 @@ void run(Case& c) {
                                          "Export to file", "Review Pending Changes", "Cancel"};
     check(sheetRows() == order, g + ": the occupied box Actions follow the shared order (" + joined(sheetRows()) + ")");
     if (chooseAction(d, "Move")) {
-        check(d.screen.storageStatus.find("picked up") != std::string::npos && sheetRows().empty(),
+        // Round 12 R12-002 (owner H03): the pickup posts no toast; the carry footer shows it.
+        check(drawn("Place") && drawn("Cancel") && sheetRows().empty(),
               g + ": Actions -> Move picks the Pokemon up (" + d.screen.storageStatus + ")");
         d.press(HidNpadButton_B);
         check(c.snapshot() == staged2, g + ": B cancels the Move and the box is unchanged");

@@ -381,7 +381,10 @@ void sourceWiring() {
     check(surface.find("state.beginMoveCarry(staged,error)") != std::string::npos &&
               surface.find("ClassicPackedMove::beginGen5FromAction(") != std::string::npos,
           "Gen V Actions -> Move starts the shared ClassicPackedMove carry");
-    check(surface.find("ClassicPackedMove::handleGen5CarryInput(screen,down,tap)") != std::string::npos &&
+    // Round 12 R12-001 (owner H03): the Gen V grid hands Y tap / hold and the carry keys to the shared
+    // overlay (handleGen5BoxInput, which runs handleGen5CarryInput while carrying).
+    check(surface.find("ClassicPackedMove::handleGen5BoxInput(screen,down,held,stickX,stickY,tap)") != std::string::npos &&
+              carry.find("if (state.active) return handleGen5CarryInput(screen, down, tap);") != std::string::npos &&
               surface.find("ClassicPackedMove::draw(screen,fb);") != std::string::npos,
           "Gen V box grid hands the carry its keys and draws the shared carried sprite/footer");
     check(carry.find("CarryGeneration::Gen5") != std::string::npos &&

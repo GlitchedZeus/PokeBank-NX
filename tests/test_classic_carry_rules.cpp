@@ -10,9 +10,15 @@
 //    Actions menu reopened after the clone is placed.
 //  * H32: an occupied or protected destination is refused for every generation (never overwritten);
 //    Gen I / II packed boxes land at the box's next free slot; a full box is refused.
+//  * Round 12 R12-001 (owner H03 / H16): Gen V Boxes use the Gen I-IV keys - Y tap / hold Move, +
+//    Review - through the same overlay (handleGen5BoxInput), footer and Help.
+//  * Round 12 R12-002 (owner H03 / H04): routine pickup / place / multi-move / clone / cancel / swallowed
+//    keys post no toast (EditFeedback::Kind::Carry); refusals and failures still do.
+//  * Round 12 R12-003 (owner H04): a packed (Gen I / II) box has one focus - the cursor is the landing slot.
 // The end-to-end behaviour through the real TrainerViewScreen is tests/test_ui_clone_carry_host.cpp.
 #include "UI/ClassicCarryRules.h"
 #include "UI/ClassicHelpPresentation.h"
+#include "UI/EditFeedback.h"
 
 #include <algorithm>
 #include <cassert>
@@ -54,21 +60,13 @@ void testKeys() {
     check(Carry::carryKey(Carry::kButtonA) == Key::Place, "A places");
     check(Carry::carryKey(Carry::kButtonB) == Key::Cancel, "B cancels");
     check(Carry::carryKey(Carry::kButtonA | Carry::kButtonB) == Key::Cancel, "B wins over A");
-    check(Carry::carryKey(Carry::kButtonY) == Key::RefuseHint, "Y never places");
-    check(Carry::carryKey(Carry::kButtonX) == Key::RefuseHint, "X is refused");
+    check(Carry::carryKey(Carry::kButtonY) == Key::Consume, "Y never places");
+    check(Carry::carryKey(Carry::kButtonX) == Key::Consume, "X is consumed");
     check(Carry::carryKey(Carry::kButtonY | Carry::kButtonA) == Key::Place, "A with Y still places once");
     check(Carry::carryKey(Carry::kButtonPlus) == Key::Leave, "+ cancels and falls through");
     check(Carry::carryKey(1ull << 6) == Key::None && Carry::carryKey(1ull << 7) == Key::None, "L / R navigate");
     check(Carry::carryKey(1ull << 12) == Key::None, "D-pad navigates");
     for (const auto intent : {Carry::Intent::Move, Carry::Intent::Clone}) {
-        const std::string hint = Carry::refuseHint(intent);
-        check(has(hint, "A places") && has(hint, "B cancels"), "refusal hint names A and B: " + hint);
-        const std::string packedHint = Carry::refuseHint(intent, true);
-        check((has(packedHint, "A places") || has(packedHint, "A adds")) && has(packedHint, "B cancels"),
-              "packed refusal hint names A and B: " + packedHint);
-        if (intent == Carry::Intent::Clone)
-            check(!has(packedHint, "empty slot") && has(packedHint, "end of this box"),
-                  "Gen I/II Clone hint names the box end, not an arbitrary empty slot");
         const auto footer = Carry::carryFooter(intent, false);
         check(std::strcmp(footer.hints[0].glyph, "A") == 0 && std::strcmp(footer.hints[2].glyph, "B") == 0 &&
                   std::strcmp(footer.hints[2].label, "Cancel") == 0 && std::strcmp(footer.hints[1].glyph, "L/R") == 0,
@@ -77,7 +75,58 @@ void testKeys() {
     check(std::strcmp(Carry::carryFooter(Carry::Intent::Move, false).hints[0].label, "Place") == 0, "Move footer");
     check(std::strcmp(Carry::carryFooter(Carry::Intent::Move, true).hints[0].label, "Place Group") == 0, "group footer");
     check(std::strcmp(Carry::carryFooter(Carry::Intent::Clone, false).hints[0].label, "Place Clone") == 0, "Clone footer");
-    std::cout << "carry keys: A places, B cancels, Y / X refused ok\n";
+    std::cout << "carry keys: A places, B cancels, Y / X consumed ok\n";
+}
+
+// R12-002: routine carry steps are silent; refusals are not.
+void testRoutineFeedback() {
+    namespace F = PokeBank::UIModel::EditFeedback;
+    check(F::routine(F::Kind::Carry) && !F::postsStatus(F::Kind::Carry, F::Outcome::Applied),
+          "a routine carry step posts no toast");
+    check(F::postsStatus(F::Kind::Carry, F::Outcome::Refused), "a carry refusal still posts");
+    struct Fake {
+        std::string text = "That slot is occupied";
+        int frames = 200;
+        void postStatus(const std::string& t, int f) { text = t; frames = f; }
+    } screen;
+    F::applied(screen, F::Kind::Carry);
+    check(screen.frames == 200, "a pickup leaves the line alone");
+    F::settled(screen, F::Kind::Carry);
+    check(screen.text.empty() && screen.frames == 0, "a placed / cancelled carry retires the refusal it answered");
+    std::cout << "routine carry feedback: silent on success, refusals kept ok\n";
+}
+
+// R12-003: one focus over a packed box; Gen III-V groups keep their shape.
+void testPackedFocusAndGroups() {
+    using Carry::Intent;
+    for (const int capacity : {20, 30}) {
+        for (int count = 0; count <= capacity; ++count)
+            for (int slot = -1; slot <= capacity; ++slot) {
+                const int clone = Carry::packedFocusSlot(Intent::Clone, count, capacity, slot);
+                const int move = Carry::packedFocusSlot(Intent::Move, count, capacity, slot);
+                const int end = count < capacity ? count : capacity - 1;
+                check(clone == end, "packed Clone: the cursor is the box end");
+                check(move >= 0 && move <= end && (slot < 0 || slot > end || move == slot),
+                      "packed Move: the cursor stays on an insertion point");
+                // The Clone focus is exactly where decideCloneDrop lands it (or refuses a full box).
+                Carry::CloneTarget t{true, capacity, count, clone, clone < count, false};
+                const auto d = Carry::decideCloneDrop(t);
+                check(count < capacity ? (d.outcome == Carry::Drop::Accept && d.slot == clone)
+                                       : d.outcome == Carry::Drop::BoxFull,
+                      "the packed Clone focus is the landing slot, or a full box is refused");
+                check(Carry::ghostSlot(t) == clone, "the ghost is drawn on the cursor: one indicator");
+            }
+    }
+    check(Carry::packedFocusSlot(Intent::Clone, 3, 0, 0) == -1, "no box, no focus");
+    std::vector<std::pair<std::size_t, std::size_t>> out;
+    check(Carry::sparseGroupLanding({0, 1, 6, 7}, 10, out) && out.size() == 4 && out[0].second == 10 &&
+              out[1].second == 11 && out[2].second == 16 && out[3].second == 17,
+          "a 2x2 group keeps its shape at the cursor");
+    check(!Carry::sparseGroupLanding({0, 1}, 5, out), "a group running off the right edge does not fit");
+    check(!Carry::sparseGroupLanding({0, 6}, 24, out), "a group running off the bottom does not fit");
+    check(Carry::sparseGroupLanding({7, 9}, 0, out) && out[0].second == 0 && out[1].second == 2,
+          "sparse holes inside the group are kept");
+    std::cout << "packed focus is the landing slot; sparse groups keep their shape ok\n";
 }
 
 // Every generation's destination rule. Gen I 20 / Gen II 20 (30 Japanese) packed; Gen III-V 30 sparse.
@@ -128,17 +177,34 @@ void testOverlayUsesTheRules() {
     const auto overlay = read("src/UI/ClassicPackedMoveOverlay.inc");
     // Both dispatch sites share carryKey(); neither places on Y any more.
     const auto gen5 = between(overlay, "bool handleGen5CarryInput(", "bool handleInput(");
-    const auto classic = between(overlay, "    if (state.active) {", "    if (state.selecting) {");
+    const auto classic = between(overlay, "    if (state.active) {", "    if (state.selecting || state.yPending)");
     for (const auto* site : {&gen5, &classic}) {
         check(!site->empty(), "carry dispatch site found");
         check(has(*site, "switch (Carry::carryKey(down))"), "dispatch routes through ClassicCarry::carryKey");
         check(has(*site, "case Carry::Key::Place: return place(screen, state);"), "A -> place()");
         check(has(*site, "case Carry::Key::Cancel: return cancel(screen, state);"), "B -> cancel()");
-        check(has(*site, "Carry::refuseHint(state.intent, (state.generation == CarryGeneration::Gen1 || "
-                         "state.generation == CarryGeneration::Gen2))"), "Y / X -> the hint (packed-aware), consumed");
+        check(has(*site, "case Carry::Key::Consume: return true;"), "Y / X are consumed");
+        check(!has(*site, "postStatus"), "R12-002: no toast from the carry keys");
         check(!has(*site, "HidNpadButton_Y) return place("), "Y no longer places");
     }
     check(has(classic, "D-pad and L/R keep using the accepted box navigation path"), "navigation comment kept");
+    // R12-003: a packed carry settles on its landing slot and owns its navigation.
+    check(has(classic, "settlePackedFocus(screen, state);") &&
+              has(classic, "if (packedCarry(state)) return packedCarryNavigation("),
+          "a packed carry's cursor is its landing slot");
+    check(has(overlay, "Carry::packedFocusSlot(state.intent, packedCount(screen, box), classicCapacity(screen), slot)"),
+          "the packed focus comes from the shared rule");
+    // R12-002: no routine pickup / place / clone / cancel / hint toast anywhere in the carry.
+    for (const char* routine : {"picked up - A", " Pokemon moved", "moved in the staged", "Clone staged in",
+                                "Move cancelled", "Clone cancelled", "returned to", "Multi-select: hold Y",
+                                "Touch multi-select: drag", "Hold Y and use", "multi-select cancelled",
+                                "Multi-select cancelled", "Carry::refuseHint(", "clonePickupStatus("})
+        check(!has(overlay, routine), std::string("R12-002: no routine toast: ") + routine);
+    for (const char* kept : {"kNoPokemonToMove", "Carry::dropStatus(", "Carry::kCloneSourceChangedStatus",
+                             "Group does not fit at that exact destination", "Multi requires empty destination slots",
+                             "The selected rectangle contains no Pokemon"})
+        check(has(overlay, kept), std::string("R12-002: refusals still post: ") + kept);
+    check(has(overlay, "\"There is no Pokemon in this slot to move\""), "the one pickup message the owner keeps");
     // No "Y places" / "Place with Y" / "Y Drop" text remains in the carry.
     for (const char* stale : {"Y places", "Place with Y", "\"Drop\"", "\"Drop Group\"", "Y drops"})
         check(!has(overlay, stale), std::string("no stale Y-place text: ") + stale);
@@ -151,6 +217,30 @@ void testOverlayUsesTheRules() {
     // The libnx bits the model restates.
     check(has(overlay, "static_assert(Carry::kButtonA == HidNpadButton_A"), "button bits pinned");
     std::cout << "carry overlay routes through the shared rules ok\n";
+}
+
+// R12-001: the Gen V Boxes grid has the Gen I-IV keys through the same overlay.
+void testGen5BoxesKeys() {
+    const auto overlay = read("src/UI/ClassicPackedMoveOverlay.inc");
+    const auto gen5 = read("src/UI/Gen5SharedReadOnlySurface.inc");
+    check(has(gen5, "ClassicPackedMove::handleGen5BoxInput(screen,down,held,stickX,stickY,tap))return true;"),
+          "the Gen V Boxes grid routes Y / carry keys to the shared overlay");
+    const auto boxInput = between(overlay, "bool handleGen5BoxInput(", "\n}\n");
+    check(has(boxInput, "return selectionInput(screen, state, down, held, stickX, stickY);") &&
+              has(boxInput, "state.yPending = true;"),
+          "Gen V Y tap / hold use the shared selection state machine");
+    const auto selection = between(overlay, "bool selectionInput(", "\n}\n");
+    check(has(selection, "if (isGen5(screen)) return beginGen5(screen, state, box, slot);") &&
+              has(selection, "if (!(held & HidNpadButton_Y)) return beginSelectedGroup(screen, state);"),
+          "a Gen V Y tap picks up, a Y hold release picks up the group");
+    check(has(overlay, "trainer.sharedScreen().dropCarriedGroup(") &&
+              has(read("include/Integration/Gen5/Gen5SharedScreenState.h"), "bool dropCarriedGroup("),
+          "a Gen V group lands as one staged transaction");
+    check(has(gen5, "spec.actions.push_back({\"Y\",occupied?\"Move / Hold Multi\":\"Hold Multi\"});") &&
+              has(gen5, "PokeBank::UIModel::ReviewEntry::Screen::Boxes,5).glyph;"),
+          "the Gen V Boxes footer names Y Move / Hold Multi and the + Review key");
+    check(!has(gen5, "hints.push_back({\"Y\",\"Review\"});"), "the Gen V Boxes footer no longer says Y Review");
+    std::cout << "Gen V Boxes: Y Move / Hold Multi, + Review, shared carry ok\n";
 }
 
 void testCloneIsTheSharedCarry() {
@@ -237,9 +327,12 @@ void testHelp() {
         check(contains("A   While moving or cloning: place it here     B   While carrying: cancel"),
               "Gen " + std::to_string(gen) + ": Help names A as the place key");
         check(!contains("Y   While moving"), "Gen " + std::to_string(gen) + ": Help never says Y places");
-        // Gen I-IV Boxes pick up with Y; Gen V's Y is Review (Actions -> Move picks up there).
-        check(contains("Y   Tap: pick up to move     Y   Hold: multi-select") == (gen != 5),
+        // R12-001: every generation's Boxes pick up with Y and open Review with + (Gen V included).
+        check(contains("Y   Tap: pick up to move     Y   Hold: multi-select"),
               "Gen " + std::to_string(gen) + ": the Y pickup row matches the grid");
+        check(contains(Help::kPlusReview) && !contains(Help::kYReview),
+              "Gen " + std::to_string(gen) + ": Boxes Help names + Review");
+        check(lines.size() <= 10, "Gen " + std::to_string(gen) + ": the Pokemon Help fits 10 rows");
         check(std::any_of(lines.begin(), lines.end(), [](const std::string& l) { return has(l, "Clone"); }),
               "Gen " + std::to_string(gen) + ": Help names Clone");
     }
@@ -250,8 +343,11 @@ void testHelp() {
 
 int main() {
     testKeys();
+    testRoutineFeedback();
+    testPackedFocusAndGroups();
     testCloneDestinations();
     testOverlayUsesTheRules();
+    testGen5BoxesKeys();
     testCloneIsTheSharedCarry();
     testHelp();
     if (failures) {

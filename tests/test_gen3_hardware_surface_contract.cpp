@@ -354,16 +354,19 @@ int main() {
     contains(move, "if (isGen3(screen)) return beginGen3");
     contains(move, "The selected sparse rectangle contains no Pokemon");
     contains(move, "if (state.active)");
-    // Round 11 H23 (owner): A places, B cancels, Y / X are refused with a hint (ClassicCarryRules).
+    // Round 11 H23 (owner): A places, B cancels, Y / X are consumed (ClassicCarryRules). Round 12
+    // R12-002 (owner H03: "we dont need that we have the footer for that"): no hint toast for them.
     contains(move, "case Carry::Key::Cancel: return cancel(screen, state);");
     contains(move, "case Carry::Key::Place: return place(screen, state);");
-    contains(move, "screen.postStatus(Carry::refuseHint(state.intent, (state.generation == CarryGeneration::Gen1 || state.generation == CarryGeneration::Gen2)), 180);");
+    contains(move, "case Carry::Key::Consume: return true;");
+    assert(move.find("Carry::refuseHint(") == std::string::npos);
     contains(move, "D-pad and L/R keep using the accepted box navigation path");
     contains(move, "screen.currentlySelecting = true");
     contains(move, "int stickX, int stickY, const TouchInput& touch");
     contains(move, "screen.controllerNavigation.apply(");
     contains(move, "resizeSelection(screen, state, nav)");
-    contains(move, "D-pad/Stick to resize");
+    // R12-002: the resize keys are named by the multi-select footer, not a hint toast.
+    assert(move.find("D-pad/Stick to resize") == std::string::npos);
     contains(move, "{\"D-pad/Stick\", \"Resize Selection\"}");
     contains(surface, "footer.yLabel = \"Normal/Shiny\"");
     contains(move, "setLegacyHoldingPresentation(screen, true)");

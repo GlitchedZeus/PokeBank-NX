@@ -308,6 +308,59 @@ public:
         error.clear();
         return true;
     }
+    // Round 12 R12-001 (owner H03: "bring gen 5 up to date with the other gens"): a Y-hold group from
+    // one box lands as ONE transaction, the Gen IV exact-shape rule. Every picked-up PK5 must be
+    // unchanged, every destination a verified empty box slot that is not one of the group's own
+    // sources; each member is the same Move as dropCarriedPokemon (exact boxed clone + release of the
+    // source). Any refusal or a refused presentation restores the workspace exactly.
+    template<class Refresh>
+    [[nodiscard]] bool dropCarriedGroup(Workspace& workspace,size_t fromBox,
+                                        std::span<const std::pair<size_t,size_t>> moves,
+                                        std::span<const std::vector<uint8_t>> pickedUp,
+                                        size_t toBox,Refresh&& refresh,std::string& error) {
+        if(surface_!=Surface::Browse || moves.empty() || moves.size()!=pickedUp.size()) {
+            error="Gen V carried group changed; no move staged";
+            return false;
+        }
+        for(size_t i=0;i<moves.size();++i) {
+            const auto current=workspace.viewBox(fromBox,moves[i].first);
+            if(!current || !current->valid() || current->empty() ||
+               !std::equal(current->originalEncryptedBytes().begin(),
+                           current->originalEncryptedBytes().end(),
+                           pickedUp[i].begin(),pickedUp[i].end())) {
+                error="Gen V carried Pokemon changed; no move staged";
+                return false;
+            }
+        }
+        for(const auto& move:moves) {
+            const bool overlaps=toBox==fromBox && std::any_of(moves.begin(),moves.end(),
+                [&](const auto& other) { return other.first==move.second; });
+            if(overlaps || !workspace.emptyCloneDestination(toBox,move.second)) {
+                error="Box "+std::to_string(toBox+1)+" / Slot "+std::to_string(move.second+1)+
+                      " is not an empty verified Gen V box slot";
+                return false;
+            }
+        }
+        Workspace snapshot=workspace;
+        for(const auto& move:moves) {
+            const Slot from{Workspace::Region::Box,fromBox,move.first};
+            const bool staged=workspace.originalOccupied(from)
+                ? workspace.moveToEmptyBox(from,toBox,move.second,&error)
+                : workspace.moveStagedToEmptyBox(from,toBox,move.second,&error);
+            if(!staged) {
+                workspace=std::move(snapshot);
+                if(error.empty())error="Gen V group move refused; nothing staged";
+                return false;
+            }
+        }
+        if(!std::forward<Refresh>(refresh)(error)) {
+            workspace=std::move(snapshot);
+            if(error.empty())error="Gen V move presentation rejected; stage rolled back";
+            return false;
+        }
+        error.clear();
+        return true;
+    }
     // Round 11 H31 (owner): Clone uses the same shared carry as Move. Actions -> Clone closes
     // the menu and the overlay carries a ghost copy; nothing is staged until A drops it on a
     // verified empty box slot, B cancels with nothing to restore. Unlike Move, a Party source is
