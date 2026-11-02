@@ -526,11 +526,10 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
             std::string error;
             const std::string exportDir = exportStagedCopy(screen, *editor, error);
             if (exportDir.empty()) {
-                const std::string reason = error.empty() ? "Verified staged export failed" : error;
-                screen.postStatus(reason + "; source remains unchanged", 360);
+                screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error), 360);
             } else {
                 state.lastExportDirectory = exportDir;
-                screen.postStatus("Verified staged export: " + exportDir, 360);
+                screen.postStatus(PokeBank::UIModel::ExportMessages::exported(exportDir), 360);
             }
         }
         return;

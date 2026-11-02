@@ -2433,8 +2433,10 @@ def round5_contracts(sources):
     # ------------------------------------------------------------------------------------------
     # Round 6 (lane L, B08 / P1-RETURN) retarget: + now opens the shared Review on Gen I-IV Boxes,
     # Party, Bag and Trainer too (ReviewEntry.h, read by openClassicBrowseReview and the Bag's +).
-    # A '+ Review' line outside a generation==5 branch is accepted only while those handlers exist,
-    # and never on the Gen I-IV save hub (there + still points to Product Home).
+    # A '+ Review' line outside a generation==5 branch is accepted only while those handlers exist.
+    # Round 14 R08 retarget (owner Round 13: "gen 5 has almost none of the proper footers"): the Gen I-IV
+    # save hub's + opens Review too (ClassicBrowseReview::open hub branch), so the Hub row is accepted
+    # only while that hub handler exists; without it the hub row is still a violation.
     r = Result("CG63-help-names-real-controls",
                "Classic Help: '+ Review' appears only where + opens Review (Gen V, and Gen I-IV editor pages "
                "per ReviewEntry.h); every line names a real control (owner Oct 24 4D, Oct 25 B08)")
@@ -2459,7 +2461,11 @@ def round5_contracts(sources):
             if not classic_plus:
                 r.violations.append(f"include/UI/ClassicHelpPresentation.h:{line}: "
                                     "'+ Review' is shown outside Gen V but no Gen I-IV handler opens Review on +")
-        if hub:
+        browse = src("include/UI/ClassicBrowseReview.h")
+        hub_plus = bool(classic_plus and browse and re.search(
+            r"if\s*\(\s*!screen\.detailViewActive\s*\)\s*\{[^}]*kButtonPlus[^}]*openStagedReview\(false\)",
+            browse.code, re.S))
+        if hub and not hub_plus:
             for m in re.finditer(r'(if\s*\(\s*generation\s*==\s*5\s*\)\s*)?out\.push_back\(([^;]*)\);', hub.group(1)):
                 if ("kPlusReview" in m.group(2) or re.search(r'"\+\s+Review', m.group(2))) and \
                         not m.group(1) and not re.search(r"generation\s*==\s*5", m.group(2)):

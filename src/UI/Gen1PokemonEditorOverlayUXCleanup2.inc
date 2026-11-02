@@ -758,8 +758,8 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         if (down & HidNpadButton_X) {
             std::string error;
             const auto path = exportStagedCopy(screen, error);
-            if (path.empty()) screen.postStatus(error.empty() ? "Generation I export failed" : error, 360);
-            else { state.lastExportDirectory = path; screen.postStatus("Edited copy exported; original .srm unchanged", 360); }
+            if (path.empty()) screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error), 360);
+            else { state.lastExportDirectory = path; screen.postStatus(PokeBank::UIModel::ExportMessages::exported(path), 360); }
         }
     }
 }

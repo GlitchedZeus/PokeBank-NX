@@ -29,7 +29,15 @@ template <class Screen>
 template <class Screen>
 bool open(Screen& screen, std::uint64_t down, int generation, bool gridIdle) {
     namespace Entry = PokeBank::UIModel::ReviewEntry;
-    if (generation < 1 || generation > 4 || !screen.detailViewActive) return false;
+    if (generation < 1 || generation > 4) return false;
+    // Round 14 R08: the save hub's + opens the same Review in every generation (Gen V since Round 7,
+    // Gen5SharedReadOnlySurface routeHub5); its footer names + Review (ClassicBrowseFooter). B returns
+    // to the hub (openStagedReview marks the Review standalone).
+    if (!screen.detailViewActive) {
+        if (!(down & Entry::kButtonPlus) || !gridIdle || baseModalOpen(screen)) return false;
+        if (!screen.openStagedReview(false)) screen.postStatus("No staged changes to review for this save", 220);
+        return true;
+    }
     const bool party = screen.selectedMode == Screen::ViewMode::Party;
     const bool boxes = screen.selectedMode == Screen::ViewMode::Boxes;
     const bool trainer = screen.selectedMode == Screen::ViewMode::Trainer;

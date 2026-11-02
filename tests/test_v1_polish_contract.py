@@ -109,8 +109,12 @@ for stale in (
 ):
     require(stale not in classic_inventory,
             "Classic Inventory overlays must not restore old embedded controller footers")
-require('{{"Up/Down", "Navigate"}, {"A", "Add / Select"}' in classic_inventory,
-        "Classic Inventory picker must use the shared glyph bar")
+# Round 14 R08: the Add picker draws the ONE Gen I-V Add picker footer model (InventoryUIContract.h)
+# through the shared glyph bar; the picker is a grid, so it names the D-pad / Stick, not Up/Down.
+require("drawNavBar(fb, PokeBank::UIModel::serializeInventoryFooter(PokeBank::UIModel::addItemPickerFooterHints(true)));"
+        in classic_inventory, "Classic Inventory picker must use the shared glyph bar")
+require('{"D-pad/Stick", "Navigate"}, {"A", "Add / Select"}' in read("include/UI/InventoryUIContract.h"),
+        "the shared Add picker footer keeps the Gen I-III wording")
 require('{{"Up/Down", "Choose"}, {"A", "Open"}, {"B", "Close"}}' in classic_inventory,
         "Classic Inventory options must use the shared glyph bar")
 

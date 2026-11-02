@@ -25,6 +25,7 @@
 #include "UI/ScreenChrome.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/TrainerViewScreen.h"
+#include "UI/ExportMessages.h"   // Round 14 R08: the one Gen I-V export-result wording
 #include "UI/TouchInput.h"
 #include "UI/TouchScroll.h"
 #include "UI/ItemPickerArtwork.h"
@@ -982,10 +983,10 @@ bool handleInput(TrainerViewScreen& screen, uint64_t down, const TouchInput& tou
             case 1: {
                 std::string error;
                 const std::string dir = exportStagedCopy(screen, error);
-                if (dir.empty()) screen.postStatus(error.empty() ? "Classic staged export failed" : error, 360);
+                if (dir.empty()) screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error), 360);
                 else {
                     state.lastExportDirectory = dir;
-                    screen.postStatus("Exported edited copy + original backup under PokeBank NX exports", 360);
+                    screen.postStatus(PokeBank::UIModel::ExportMessages::exported(dir), 360);
                 }
                 break;
             }
@@ -1267,8 +1268,8 @@ void drawOverlay(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
             SharedScrollbar::drawAndPublish(fb, state.pickerScrollbar, track.x, track.y,
                 SharedScrollbar::kTrackWidth, track.h, AddGrid::scrollModel(g, start));
         }
-        drawNavBar(fb, {{"Up/Down", "Navigate"}, {"A", "Add / Select"},
-                        {"B", "Cancel"}, {"L/R", "Page"}, {"X", "Sort"}});
+        // Round 14 R08: the ONE Gen I-V Add picker footer (InventoryUIContract.h).
+        drawNavBar(fb, PokeBank::UIModel::serializeInventoryFooter(PokeBank::UIModel::addItemPickerFooterHints(true)));
         return;
     }
 

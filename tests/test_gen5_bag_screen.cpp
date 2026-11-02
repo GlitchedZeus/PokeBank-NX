@@ -133,7 +133,10 @@ void exercise(G::SaveFamily family, std::string_view game, uint8_t version) {
     auto can = bag.availability(ws);
     assert(can.editAmount && can.addItem && can.removeItem);
     auto footer = bag.footer(ws);
-    assert(hasGlyph(footer, "A") && hasGlyph(footer, "X") && hasGlyph(footer, "Y") && !hasGlyph(footer, "+"));
+    // Round 14 R08 (owner: "gen 5 has almost none of the proper footers"): the ONE Gen I-V Bag footer;
+    // + is always named because the Bag's + always answers (Review, or "nothing to review").
+    assert(hasGlyph(footer, "A") && hasGlyph(footer, "X") && hasGlyph(footer, "Y") && hasGlyph(footer, "+"));
+    assert(hasGlyph(footer, "-") && hasGlyph(footer, "D-pad/Stick"));
     assert(hasGlyph(footer, "ZR"));    // owner Oct 28 (Feature B): ZR Top Up / Add Missing
 
     // Pocket navigation wraps across all five native pockets (L/R and arrows).

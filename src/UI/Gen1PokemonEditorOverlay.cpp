@@ -17,6 +17,7 @@
 #include "UI/PKSEFramebuffer.h"
 #include "UI/ScreenChrome.h"
 #include "UI/TrainerViewScreen.h"
+#include "UI/ExportMessages.h"   // Round 14 R08: the one Gen I-V export-result wording
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
 #include "Utils/PokeBankPaths.h"
@@ -730,10 +731,10 @@ void handleActiveInput(TrainerViewScreen& screen, uint64_t down) {
         if (down & HidNpadButton_A) {
             std::string error;
             const auto path = exportStagedCopy(screen, error);
-            if (path.empty()) screen.postStatus(error.empty() ? "Generation I export failed" : error, 360);
+            if (path.empty()) screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error), 360);
             else {
                 state.lastExportDirectory = path;
-                screen.postStatus("Edited copy exported under PokeBank-NX; original .srm unchanged", 360);
+                screen.postStatus(PokeBank::UIModel::ExportMessages::exported(path), 360);
             }
         }
     }

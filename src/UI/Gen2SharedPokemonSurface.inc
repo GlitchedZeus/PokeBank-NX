@@ -260,10 +260,10 @@ bool handleSharedReview(TrainerViewScreen& screen, uint64_t down, uint64_t held,
         std::string error;
         const std::string directory = exportStagedCopy(screen, *editor, error);
         if (directory.empty())
-            screen.postStatus(error.empty() ? "Verified staged export failed" : error, 360);
+            screen.postStatus(PokeBank::UIModel::ExportMessages::failed(error), 360);
         else {
             legacy.lastExportDirectory = directory;
-            screen.postStatus("Verified staged copy exported: " + directory, 360);
+            screen.postStatus(PokeBank::UIModel::ExportMessages::exported(directory), 360);
         }
         return true;
     }
