@@ -1,0 +1,106 @@
+{
+  "schema": 4,
+  "status": "active; no completion claim",
+  "pr": 314,
+  "branch": "claude/gen1-5-legality-campaign-w9mkom",
+  "remote_head": "0f1f34cc9dacb10b2f2fac4d5f36484edeea8c05",
+  "official_release": {
+    "tag": "26.10.18",
+    "sha": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea"
+  },
+  "newer_master_separate": "8e3eb3d47bb496746c3eaa9d160329d295a5e2e5",
+  "working_changes": "Final local HGSS contest-only bank and native/shared Ranch ability repairs, source-pinned regeneration, final32 suite executions, new independent III-V samples and full retained replays complete. Source commit/push and fresh-head sealed CI evidence acceptance pending. No PR307 edit or merge.",
+  "validation": {
+    "local": "REPAIR_VALIDATION.json:32 final compiler/profile suite executions;8 contest fixtures;5 Ranch payloads on5 titles through direct/encrypted/shared paths;table regeneration byte-identical;105 public fixtures replayed with all differences retained.",
+    "ci": "0f1f34cc:10 workflows passed;gen34 failed h60141-ability. New code keeps that unverified Ranch history Incomplete and needs fresh-head CI.",
+    "evidence_transport": "CI_0F1F_GEN5_INTEGRITY_AUDIT.json:one production diagnostic character conflicts; Pokemon payloads/verdicts agree. All originals kept. New sealed capture is verified before upload and anchored by CI-log hash."
+  },
+  "metrics": {
+    "primary": "REPAIR_PRIMARY_METRICS.json",
+    "independent": "REPAIR_INDEPENDENT_METRICS.json",
+    "all_retained": "JOINT_RETAINED_METRICS.json",
+    "measurement_notes": "REPAIR_CHECKPOINT_20261029.md",
+    "original_raw_queue": "RAW_FALSE_CLEAN_QUEUE.json",
+    "new_independent_queue": "JOINT_INDEPENDENT_QUEUE.json",
+    "role_primary": "ROLE_PRIMARY_METRICS.json",
+    "role_independent": "ROLE_INDEPENDENT_METRICS.json",
+    "native_order_pair": "BW2_NATIVE_PAIR_METRICS.json",
+    "native_order_explanation": "BW2_NATIVE_PAIR_DISAGREEMENTS.json",
+    "final_source": "BW2_ENGINE_FINAL_MANIFEST.json",
+    "final_holdout_declaration": "BW2_FINAL_HOLDOUT_PLAN.json",
+    "previous_same_input": "REPAIR_PREVIOUS_SAMPLE_METRICS.json",
+    "source": "REPAIR_ENGINE_MANIFEST.json",
+    "holdout_declaration": "REPAIR_HOLDOUT_PLAN.json",
+    "public": "REPAIR_PUBLIC_FIXTURES.json"
+  },
+  "fixture_hashes": "REPAIR_FIXTURE_REFERENCE.json; BW2_BREEDING_FIXTURES.json",
+  "queue": [
+    {
+      "priority": 0,
+      "kind": "validation",
+      "task": "Commit/push forward;verify every new-head workflow and downloaded sealed evidence archive against the digest in its successful verification log. Do not accept inconsistent loose captures or waive new cases.",
+      "source": "REPAIR_ENGINE_MANIFEST.json;REPAIR_VALIDATION.json;package_reference_evidence.py"
+    },
+    {
+      "priority": 0,
+      "kind": "implementation/evidence gap",
+      "task": "Extend the newly replayed English B2W2 mechanism to independently verified BW/regional binaries and complete ancestry certificates. Seven originals remain Incomplete.",
+      "cases": [
+        "b7875",
+        "m7876-tid",
+        "b9545",
+        "m9546-otname",
+        "m9547-otname",
+        "b21270",
+        "m21273-iv"
+      ],
+      "source": "Gen35BreedingAncestry.cpp; Gen5Legality.cpp; JOINT_BREEDING_GAPS.md"
+    },
+    {
+      "priority": 1,
+      "kind": "source/reference disagreement",
+      "task": "Complete historical family/event closure for Kangaskhan WorkUp,Happiny MudBomb/Hail and all retained egg differences. Full report omits TMHM from ancestry gathering; no definitive impossible/clean conclusion from that discrepancy alone.",
+      "source": "BREEDING_REFERENCE_ANOMALIES.json; JOINT_FIXTURE_REFERENCE_TRACE.json; JOINT_INDEPENDENT_QUEUE.json"
+    },
+    {
+      "priority": 1,
+      "kind": "implementation gap",
+      "task": "Wire full finite ancestry and constructive certificates into native PK3/PK4 and hatched PK5; preserve existing Gen III source/PID and encounter alternatives"
+    },
+    {
+      "priority": 2,
+      "kind": "evidence gap",
+      "task": "Native Gen V applicability of53 primary+3correlated modern word-filter complaints; all additional independent filter cases remain raw"
+    },
+    {
+      "priority": 2,
+      "kind": "source/reference disagreement",
+      "task": "GB regional OT/GSBall and alternative-origin differences; preserve all generations and all original streams"
+    },
+    {
+      "priority": 3,
+      "kind": "implementation gap",
+      "task": "General joint III/IV EV/EXP solver; preserve native one-battle counterexample and zero-EXP negative"
+    },
+    {
+      "priority": 4,
+      "kind": "inventory/evidence gaps",
+      "task": "Every applicable branch across20 titles, remaining RNG/event/move histories, acquired custody and separately authorized app/device integration"
+    }
+  ],
+  "scope": "engine only; no PR307 modifications, merge, app/NRO or combined app build",
+  "next_command": "python3 tests/test_bw2_shared_order.py && python3 tests/test_reference_artifact_integrity.py",
+  "artifacts": "outputs/legality-campaign-20261028; immutable baseline outputs/legality-hardening-20261027",
+  "next_breeding_reference": {
+    "repo": "fuddlesworth/pokebw2",
+    "sha": "35d735b52bb77338f3a138d321e562975ade556e",
+    "status": "complete src and pokemon subtrees fetched; top-level recursive tree truncated; data/egg tutor research only",
+    "warning": "The native Gen V repository is research-only; some species JSON egg entries differ from pinned released raw resources. Earlier Reflect Type/Wring Out variants are NOT the primary seven cases. Establish raw-ROM derivation and mechanics before any closed-world native proof."
+  },
+  "engine_code_head": "commit containing this continuation; parent8f0301a3 and exact JOINT_ENGINE_MANIFEST.json source hashes",
+  "coordination": [
+    "Preserved Claude ded4c2f2/f5f50e13 via forward checkout; no merge commit",
+    "PR314 comments6469504356 and6469535480 report the native proof and unsafe exemption counterexamples; PR307 untouched"
+  ],
+  "checkpoint_readme": "REPAIR_CHECKPOINT_20261029.md"
+}

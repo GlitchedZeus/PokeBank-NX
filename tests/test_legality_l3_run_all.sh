@@ -27,6 +27,12 @@ printf 'L3 source HEAD: %s\n' "$(git rev-parse HEAD 2>/dev/null || printf 'unava
 BUILD="$(mktemp -d "${TMPDIR:-/tmp}/pokebank-l3-XXXXXXXX")"
 trap 'rm -rf "$BUILD"' EXIT
 SUITES=(
+    test_legality_l3_gen4_native_core
+    test_legality_l3_gen4_native_origins
+    test_legality_l3_palpark_multicartridge_core
+    test_legality_l3_palpark_multicartridge_original
+    test_legality_l3_gen3_exceptional_core
+    test_legality_l3_gen3_exceptional_native
     test_legality_l3_gen3_joint_core
     test_legality_l3_gen3_joint_native
     test_legality_l3_gen12_native_snapshots
@@ -50,6 +56,11 @@ SUITES=(
     test_legality_l3_machine_methods
     test_legality_l3_gba_relearner
     test_legality_l3_palpark_joint_stage
+    test_legality_l3_authenticated_crosslane
+    test_legality_l3_authenticated_multigen
+    test_legality_l3_gen56_pkhex_machines
+    test_legality_l3_gen56_joint_transfer
+    test_legality_l3_gen56_native_joint_methods
     test_legality_l3_gen1_rby_original_joint
     test_legality_l3_gen1_retail_catalog
     test_legality_l3_gen1_all_species_joint
@@ -71,4 +82,4 @@ for suite in "${SUITES[@]}"; do
         UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1}" \
         "$BUILD/${suite}_sanitize"
 done
-echo 'L3 PASS: all twenty-nine native C++20 suites and twenty-nine ASan/UBSan executions (full accepted Emerald source)'
+echo 'L3 PASS: all forty native C++20 suites and forty ASan/UBSan executions (full accepted Emerald source)'

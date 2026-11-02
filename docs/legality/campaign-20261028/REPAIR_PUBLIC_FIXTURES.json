@@ -1,0 +1,5229 @@
+{
+  "policy": "No selected file excluded after enumeration; errors remain in denominator. Not an authenticated real-world sample or independent oracle. Native source save identity unavailable.",
+  "selected": 105,
+  "processed": 105,
+  "errors": 0,
+  "by_generation": {
+    "1": {
+      "VALID/NOPROBLEMS": 6,
+      "VALID/INVALID": 3
+    },
+    "2": {
+      "INVALID/INVALID": 3,
+      "INVALID/INCOMPLETE": 2,
+      "VALID/NOPROBLEMS": 15,
+      "VALID/INCOMPLETE": 1
+    },
+    "3": {
+      "INVALID/INVALID": 7,
+      "VALID/NOPROBLEMS": 15,
+      "VALID/INCOMPLETE": 3
+    },
+    "4": {
+      "INVALID/INVALID": 2,
+      "VALID/INCOMPLETE": 10,
+      "VALID/NOPROBLEMS": 20,
+      "VALID/INVALID": 1
+    },
+    "5": {
+      "INVALID/INVALID": 1,
+      "VALID/INCOMPLETE": 6,
+      "VALID/NOPROBLEMS": 10
+    }
+  },
+  "records": [
+    {
+      "id": "public-000",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Evolution/196 \u2605 - ESPEON - 20386C1C9080.pk4",
+      "source_blob": "4dd32cebb3810b8d5c62ed72e429b9382dd19c8c",
+      "original_sha256": "61526f1e50a31fd5fb0bc6fd9c984abff1dda06b44131bbcbc66398f3420a975",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "LG",
+      "species": 196,
+      "hex": "80901C6C00003820C400EA001F3082CC7D000000FF1C000200000000000000000000000000000000270021000E011C001E38201800030303FFFFFF3F00000000003F0000000000002F013D013A012F0139013801FFFFFFFF000000000000000500000000000000003E01490157015801FFFFFFFF0000000000000012080400003700000405000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:Evolution:EvoInvalid"
+      ],
+      "findings": [
+        "Invalid:Evolution:EvoInvalid"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "InheritLevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "LG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-000 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; Evolution from the encounter species is not possible | W: Unknown held item id 234 | W: Met location/level does not match the audited encounter table for leafgreen_gba"
+    },
+    {
+      "id": "public-001",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Gen2/043 - ODDISH - 2DCE noChain.pk2",
+      "source_blob": "0317031f73a964628d9835833758c06093071623",
+      "original_sha256": "837f4b375959ad88800a97d5e5d282eedb018ed5691dace50cc5f22da30dfe6b",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 43,
+      "hex": "2B004BEB0EAF888500008700000000000000000000086119051E0F4700000005000000130013000A000B0008000C000B",
+      "ot": "8A91889250000000000000",
+      "nickname": "8E83838892875050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:Egg:EggMoveCombination"
+      ],
+      "findings": [
+        "Invalid:Egg:EggMoveCombination"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "EggMove"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "EggMove"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "EggMove"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "EggMove"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INVALID",
+      "production_line": "public-001 INVALID egg Oddish in Gold/Silver (hatched at level 5) ; | No single compatible father ancestry supplies the inherited move combination"
+    },
+    {
+      "id": "public-002",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Gen2/107 - HITMONCHAN - 26B0.pk2",
+      "source_blob": "d53ff4922f192b3f7456043fdda53292313b3c6d",
+      "original_sha256": "d9165768f7e9dce63e441b64a9fe4ca8f4f91a19d8fd7dc606830e69103857f6",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 107,
+      "hex": "6B0021000000FFFF001F4000000000FFFF00000000FFFFF8000000FF008A231400000038003800350037002900190037",
+      "ot": "868E8B8350B4AC50505050",
+      "nickname": "8788938C8E8D8287808D50",
+      "language": 0,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold",
+        "Invalid:EVs:EffortShouldBeZero"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold",
+        "Invalid:EVs:EffortShouldBeZero"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INCOMPLETE",
+      "production_line": "public-002 UNCERTAIN gift/static Tyrogue in Gold/Silver/Crystal (level 10) ; | Stat experience from battles with one stat still at zero needs every one of those battles to add nothing to that stat (gains are divided among recipients)"
+    },
+    {
+      "id": "public-003",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Gen3/0032 - NIDORAN\u2642 - 92A9F5C939C9 - edited issue4356.pk3",
+      "source_blob": "b53a66708f0625f4a51d95db31607582e177c278",
+      "original_sha256": "94bc74610d8a3be2b7ffe7fc637b51d224f0b0768f567f7b1f59c973181864ca",
+      "original_bytes": 100,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "E",
+      "species": 32,
+      "hex": "C939C9F55084FEED606F8BFFF44B2825724E0106C7BBD3FFFFFFFF00A99200002000000087000000000D00004000180028000E01231E2314000000000000000000000000002080A10439AA5600000000",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": true,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:EC:PIDGenderMismatch"
+      ],
+      "findings": [
+        "Invalid:EC:PIDGenderMismatch"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "InheritLevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "InheritLevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "InheritLevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-003 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; PID bit 15 does not match the bred species gender"
+    },
+    {
+      "id": "public-004",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/038 - \u30bf\u30de\u30b4 - D8E92C842F48 Evo Egg.pk3",
+      "source_blob": "dcb3957c01dca4d857db881b6ed195df7288a074",
+      "original_sha256": "22abd04ed50f9f4bd5bbeb887f197626847a0feccd54eb1d387a3e788cd18512",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "E",
+      "species": 38,
+      "hex": "482F842C0A000000606F8BFFC3D2FFC0BFFF0106EFEFEFEFEFEFEF00E9D80000260000007D000000000100003400270000000000191E0000000000000000000000000000002080A1E1AF714700000000",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": true,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:Encounter:EncInvalid",
+        "Fishy:Trainer:OT_SID0",
+        "Invalid:Level:EggFMetLevel_0"
+      ],
+      "findings": [
+        "Invalid:Encounter:EncInvalid",
+        "Fishy:Trainer:OT_SID0",
+        "Invalid:Level:EggFMetLevel_0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": false,
+          "method": "UnobtainableExpect"
+        },
+        {
+          "slot": 1,
+          "valid": false,
+          "method": "UnobtainableExpect"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-004 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; Unable to match an encounter from the origin game | Egg level must be 0 | Move 1 (Ember) cannot be learned by this Pokemon | Move 2 (Tail Whip) cannot be learned by this Pokemon | W: SID is zero"
+    },
+    {
+      "id": "public-005",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/0382 - KYOGRE - 7D62F8447ED2 untrained 85EVs.pk4",
+      "source_blob": "d2fcf15a8f1f7ac5414f094c4bf62cf0dd2877e7",
+      "original_sha256": "4ae2fa717512c86ea2605699a732dbef394eac81b28d02f51b155e429ad50021",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 382,
+      "hex": "D27E44F80000627D7E010000C0F5B4DF5A6202004B0200055555555555550000000000000000000039003A0038009C000F0A050A0000000077C4511200000000040000000000E80035014301390131013C012F01FFFF0000000000000000000700000000000000003D014D01510153015201FFFF000000000000000A031E0000BA0B000232050100",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:EVs:EffortUntrainedCap_0",
+        "Fishy:EVs:EffortAllEqual",
+        "Invalid:Ball:BallG4Johto"
+      ],
+      "findings": [
+        "Invalid:EVs:EffortUntrainedCap_0",
+        "Fishy:EVs:EffortAllEqual",
+        "Invalid:Ball:BallG4Johto"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "TMHM"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-005 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; EVs above vitamin limits need battles, but the Pokemon has gained no EXP | HG/SS ball value does not match the D/P/Pt ball value | W: All EVs are equal"
+    },
+    {
+      "id": "public-006",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/121 \u2605 - EGG - 1B87 Evo Egg.pk2",
+      "source_blob": "91d6f2221781e05ecbbf9b67a6f09d321a7c0b4d",
+      "original_sha256": "1249a76f2485dc5e37973831f0bd966a7b94799c422a666753212c2cb51e2448",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 121,
+      "hex": "7900216A0000000A00009C00000000000000000000FAAA231E00000100000005000000150015000E000E00110010000E",
+      "ot": "5050505050505050505050",
+      "nickname": "848686508C888450505050",
+      "language": 0,
+      "egg": true,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:Encounter:EncInvalid",
+        "Invalid:Level:EggFMetLevel_0",
+        "Invalid:Trainer:OTShort"
+      ],
+      "findings": [
+        "Invalid:Encounter:EncInvalid",
+        "Invalid:Level:EggFMetLevel_0",
+        "Invalid:Trainer:OTShort"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": false,
+          "method": "UnobtainableExpect"
+        },
+        {
+          "slot": 1,
+          "valid": false,
+          "method": "UnobtainableExpect"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INVALID",
+      "production_line": "public-006 INVALID no known origin ; | No Gold/Silver/Crystal encounter can produce Starmie at level 5"
+    },
+    {
+      "id": "public-007",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/199 \u2605 - EGG - EDB6 Evo Egg.pk2",
+      "source_blob": "04c65e35b9c21022413c4b4257822f13c1baa5d4",
+      "original_sha256": "ea92577c5628f9c000cb703d5763358b0cfd116ddfbfc14fb477c24be0279fa3",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 199,
+      "hex": "C700AE210000000A00007D00000000000000000000FAAA0A2300000100000005000000190019000E000E000900100011",
+      "ot": "5050505050505050505050",
+      "nickname": "848686508A888D86505050",
+      "language": 0,
+      "egg": true,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:Encounter:EncInvalid",
+        "Invalid:Level:EggFMetLevel_0",
+        "Invalid:Trainer:OTShort"
+      ],
+      "findings": [
+        "Invalid:Encounter:EncInvalid",
+        "Invalid:Level:EggFMetLevel_0",
+        "Invalid:Trainer:OTShort"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": false,
+          "method": "UnobtainableExpect"
+        },
+        {
+          "slot": 1,
+          "valid": false,
+          "method": "UnobtainableExpect"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INVALID",
+      "production_line": "public-007 INVALID no known origin ; | No Gold/Silver/Crystal encounter can produce Slowking at level 5"
+    },
+    {
+      "id": "public-008",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/208 - \u30bf\u30de\u30b4 - E4466BAA9428 Evo Egg.pk3",
+      "source_blob": "2299a900a870f3bc2c9aa21bdfd2e78885c4dfc6",
+      "original_sha256": "3a12ed8e6144977cea8d82c2757d59a3d6f25e589dc06c4b2054d26d83dda19b",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "E",
+      "species": 208,
+      "hex": "2894AA6B0A000000606F8BFFC6C3D2FFBFFF0106EFEFEFEFEFEFEF0046E40000D00000007D00000000010000210067000000000023280000000000000000000000000000002080218927455000000000",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": true,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:Encounter:EncInvalid",
+        "Fishy:Trainer:OT_SID0",
+        "Invalid:Level:EggFMetLevel_0"
+      ],
+      "findings": [
+        "Invalid:Encounter:EncInvalid",
+        "Fishy:Trainer:OT_SID0",
+        "Invalid:Level:EggFMetLevel_0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": false,
+          "method": "UnobtainableExpect"
+        },
+        {
+          "slot": 1,
+          "valid": false,
+          "method": "UnobtainableExpect"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-008 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; Unable to match an encounter from the origin game | Egg level must be 0 | Move 1 (Tackle) cannot be learned by this Pokemon | Move 2 (Screech) cannot be learned by this Pokemon | W: SID is zero"
+    },
+    {
+      "id": "public-009",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/251 - CELEBI - E96B nomet notradeback.pk2",
+      "source_blob": "160d5efead57b515ef4f72262ec76b0f79cccb51",
+      "original_sha256": "43ada51af3032ece6d92782d411a26ffcd7e587baa75449e6e1e6e58eb4c589b",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 251,
+      "hex": "FB00DBF6F8D784B700550000000000000000000000387C19050F05460080001E0000006A006A00420045004500480048",
+      "ot": "8EB1AE5050505050505050",
+      "nickname": "82848B8481885050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:Encounter:EncInvalid"
+      ],
+      "findings": [
+        "Invalid:Encounter:EncInvalid"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INCOMPLETE",
+      "production_line": "public-009 UNCERTAIN no known origin ; | Celebi was only distributed at events; no recorded distribution matches this one, and the event list is not known to be complete"
+    },
+    {
+      "id": "public-010",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/UltraBallTeddiursa.xk3",
+      "source_blob": "ee09969fb758d0b8c04f5f4b73ce50eb85487279",
+      "original_sha256": "494ac70a4970338bb3d1caa6032c32dec4a9ff578fc2d045e331ac6546c979af",
+      "original_bytes": 196,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "XK3",
+      "version": "CXD",
+      "species": 216,
+      "hex": "5039BA5592361166CEBFBEBEC3CFCCCDBBFF0202C7DDD7DCD5D9E0006B290000D800BA00EF0C0000FFFF0000D8001F01ED00E8001F201837A0FC00620000000000000000008F8B17FEFBBF3D00000081",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:Encounter:EncInvalid",
+        "Invalid:Ball:BallEncMismatch"
+      ],
+      "findings": [
+        "Invalid:Encounter:EncInvalid",
+        "Invalid:Ball:BallEncMismatch"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "GameCube-to-PK3 derivative",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-010 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; Encounter XD shadow Pokemon (Teddiursa) is only a partial match | Ball 2 is not possible for XD shadow Pokemon (Teddiursa) | W: Move is preserved but not in the audited Gen III native/transfer pool: Refresh"
+    },
+    {
+      "id": "public-011",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/XD Shuckle Gift no Fateful.ck3",
+      "source_blob": "c6656d8165d6a681360f30dd64d3b221ee9ca0cd",
+      "original_sha256": "2baf52ee891c6bb5cf69ac85cd2cb13bc06789caf488739da2f883abe85cac09",
+      "original_bytes": 312,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "CK3",
+      "version": "CXD",
+      "species": 213,
+      "hex": "A30311411D91598FCDC2CFBDC5C6BFFF00000202BECFC5C3C8C1FF00ED7B0000D500000054150000000000005C00A400BC00E3000A0A0A05000000000000000000000000007494274795362300000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Invalid:Fateful:FatefulMissing"
+      ],
+      "findings": [
+        "Invalid:Fateful:FatefulMissing"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "GameCube-to-PK3 derivative",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-011 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; XD Pokemon are missing the fateful encounter flag | W: Move is not native to this exact Gen III game or to this record's origin game (transfer required): Substitute"
+    },
+    {
+      "id": "public-012",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Moves/292 - SHEDINJA - 4E10A0E852EE (two Ninjask Moves).pk3",
+      "source_blob": "4a8136ac617b6b20df7f3d95fafb34dccd3fa0e4",
+      "original_sha256": "59694354a1540b650d0f7e0b1f3d121d9a95a751d34c85a6433792b882492a8d",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "R",
+      "species": 292,
+      "hex": "EE52E8A0D204D204CDC2BFBEC3C8C4BBFF000202CAC5C2D9D2FFFF00104E00002F0100008D5B0000004600000A006A000E00A300231E1E14000000000000000000000000001F0709E026072900000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Fishy:Trainer:OTSuspicious",
+        "Fishy:Trainer:OT_IDEqual",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Trainer:OTSuspicious",
+        "Fishy:Trainer:OT_IDEqual",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "ShedinjaEvo"
+        },
+        {
+          "slot": 3,
+          "valid": false,
+          "method": "Unobtainable"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-012 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; Move 4 (Slash) cannot be learned by this Pokemon | W: Move is preserved but not in the audited Gen III native/transfer pool: Swords Dance | W: Move is preserved but not in the audited Gen III native/transfer pool: Slash | W: OT name is suspicious | W: TID and SID are equal"
+    },
+    {
+      "id": "public-013",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Ribbons/Illegal (has Winning Ribbon).ck3",
+      "source_blob": "8cbc2d5ddbbeb0de079b270cce28e8ea5ebd423b",
+      "original_sha256": "0505c63dca44509f91c9d882896fed60ade34f616cf0fa272f1c898aba1fd286",
+      "original_bytes": 312,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "CK3",
+      "version": "CXD",
+      "species": 248,
+      "hex": "3B126F9F393031D4CED3CCBBC8C3CEBBCCFF0202D1BFCDFF00000000B2AA0000F8000000B01E040000FF0000F20057009D003B000F0A0A050000000000000000000000000076B72791EF512124C90F03",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Fishy:Trainer:OTSuspicious",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold",
+        "Invalid:Ribbon:RibbonsInvalid_0",
+        "Invalid:Trainer:TrashBytesShouldBeEmpty"
+      ],
+      "findings": [
+        "Fishy:Trainer:OTSuspicious",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold",
+        "Invalid:Ribbon:RibbonsInvalid_0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "GameCube-to-PK3 derivative",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-013 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; Unobtainable ribbons: Winning | W: TID/SID pair is suspicious"
+    },
+    {
+      "id": "public-014",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Wild/646-01 \u2605 - \u30ad\u30e5\u30ec\u30e0 - 0D420000000A.pk5",
+      "source_blob": "d6763ae9653d1539e2897bcdeb5c8b6bda7852ad",
+      "original_sha256": "71002355642366616accc148d0c542a95a3529cc53240964361877f99a513657",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "W2",
+      "species": 646,
+      "hex": "0A0000000000420D860200000A000000CE8A0600FFA30001000000000000000000000000000000002502B8002E022A021010080803030303FFFFFF3F000000000C0A000000000000AD30E530EC30E030FFFF6D00FFFF6F007300FFFFFFFF00160000000000000000EF30A430FFFF6E006E006500FFFF000000000012041700003D000004C6000000",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": false,
+      "referenceValid": false,
+      "originalReferenceValid": false,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": false,
+          "method": "UnobtainableExpect"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INVALID",
+      "production_line": "public-014 INVALID ; Scary Face is replaced by the fusion move on a fused Kyurem"
+    },
+    {
+      "id": "public-015",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/004 - CHARMANDER - D5EF.pk1",
+      "source_blob": "37196fb7963fe08e8a1ee8d703f224e6924cf69c",
+      "original_sha256": "58a435ba7e53d49f99bee0e803d084f3b380978180827d91b679bde8ab59722f",
+      "original_bytes": 69,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 1,
+      "sourceType": "PK1",
+      "version": "RBY",
+      "species": 4,
+      "hex": "B00013000014142D0A2D000026BC00008700000000000000000000F64F23280000050013000B0009000B000B",
+      "ot": "8DB8B1AEAD500000000000",
+      "nickname": "828780918C808D83849150",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-015 VALID gift/static Charmander in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "public-016",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/124 - ZYNX - 70DF498A2E1D.pk3",
+      "source_blob": "c5e8493a8fe6ad6cf037a1338e4aee467a490bf3",
+      "original_sha256": "b495b2815bfb11a17a77cdf8c3e452e63c5c8e7d7022c1eebbcb62c0c58a0680",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "LG",
+      "species": 124,
+      "hex": "1D2E8A49788F0000D4D3C8D2FF00000000000402BEC9C8CEBBBFFF00DF7000007C008300093D0000004600008E00B500030008000A190A0F000000000000051E0505050A00FE9922324A9B2B00000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "LG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-016 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-017",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/172 - Egg - 7D3CF55CFC10.pk4",
+      "source_blob": "7dcfe4cb08cda7f35e2c6a8f161dda6828aa9974",
+      "original_sha256": "ed04f4bd660827ed037275a23561b6f62d74be93b1fac1fd55236b24d2617790",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "SS",
+      "species": 172,
+      "hex": "10FC5CF500003C7DAC0000000A0000000000000001090002000000000000000000000000000000005400CC00000000001E1400000000000029DF7F4D0000000002000000D00700002F014B014B01FFFF3F01FFFFFFFFFFFF3C01FFFFFFFF0008000000000000000043015A015301520152014901FFFF3F01120412000000D0070000000480000400",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "SS",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-017 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Secret ID is zero"
+    },
+    {
+      "id": "public-018",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/183 - \uc54c - AA4E3344817C.pk5",
+      "source_blob": "4634f0f6021cec19aa46fd816500f71db4478ab4",
+      "original_sha256": "089bc752f33c15439801dbd9ec82f4e4d9446314101781d90e87ed58ef697a4e",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B2",
+      "species": 183,
+      "hex": "7C81443300004EAAB70000000A00000000000000012F0008000000000000000000000000000000002100910000000000231E000000000000FFFFFFFF00000000020A0000000000004CC5FFFFFFFF69006C006C00FFFF7200FFFFFFFFFFFF00170000000000000000590076006F006E006E006500FFFF000012041700010162EA3375000481000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INCOMPLETE",
+      "production_line": "public-018 INCOMPLETE ;"
+    },
+    {
+      "id": "public-019",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/235 - \uc54c - 10DB.pk2",
+      "source_blob": "7a4e161c58a452980efaaa2da38ec5d211f32331",
+      "original_sha256": "4263a149d301596cb3923b5c98f46eb94f5864d9c98dca75c117f4b450cd86ef",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 235,
+      "hex": "EB00A600000080F700006400000000000000000000121C01000000010000000500000015001500070008000C0008000A",
+      "ot": "0B000B010B020B030B0450",
+      "nickname": "06CB503E05E15050505050",
+      "language": 8,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-019 VALID egg Smeargle in Gold/Silver (hatched at level 5) ;"
+    },
+    {
+      "id": "public-020",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/236 - Oeuf - 5E05C020CB44.pk4",
+      "source_blob": "bcb0144e5a1f723a6e8bf2796dc8b8e52a50e47d",
+      "original_sha256": "a64ef1078b906ebbb4fdc6b0c2e86d5d434d6b546753302315072d6d61bcd3b9",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 236,
+      "hex": "44CB20C00000055EEC0000000A00000000000000013E00030000000000000000000000000000000021000E01FC00C10023140A28000000000E07DD600000000000000000D007D2073901490159014A01FFFF2B0138013E01FFFF3C01FFFF000C000000000000000043015A015301520152014901FFFF3F0112041214081AD007D207000480000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-020 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Secret ID is zero"
+    },
+    {
+      "id": "public-021",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/236 - \uc54c - F55CC3F29788.pk5",
+      "source_blob": "10de96ff6f567bdf12953535b4350c153840adbc",
+      "original_sha256": "cafc6d50689364af3438cdcd04a56826085b5625439c45bc719923d1285e5b24",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B2",
+      "species": 236,
+      "hex": "8897F2C300005CF5EC0000000A00000000000000013E00080000000000000000000000000000000021000E01FC00C10023140A28000000003F5054FA00000000000A0000000000004CC5FFFFA4D0FFFF670061006E007400FFFF6500FFFF00170000000000000000590076006F006E006E006500FFFF000012041700010162EA3375000481000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INCOMPLETE",
+      "production_line": "public-021 INCOMPLETE ;"
+    },
+    {
+      "id": "public-022",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/292 - SHEDINJA - 4889A0E852EE.pk3",
+      "source_blob": "4716418d6ba1b1ce5e8aff1c45a3263f92cb02b4",
+      "original_sha256": "344271b7e02182cdedcab65037f50ab3eddc1b9373ffb5f97245160d2d600fdf",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "R",
+      "species": 292,
+      "hex": "EE52E8A0D204D204CDC2BFBEC3C8C4BBFF000202CAC5C2D9D2FFFF00894800002F0100008D5B0000004600000A006A000E001C00231E1E0F000000000000000000000000001F0709E026072900000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OTSuspicious",
+        "Fishy:Trainer:OT_IDEqual",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Trainer:OTSuspicious",
+        "Fishy:Trainer:OT_IDEqual",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "ShedinjaEvo"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-022 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Move is preserved but not in the audited Gen III native/transfer pool: Swords Dance | W: OT name is suspicious | W: TID and SID are equal"
+    },
+    {
+      "id": "public-023",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/300 - Egg - 0673311A3560.pk5",
+      "source_blob": "01e16cb083f63f00b41746d52acf9aa675c64920",
+      "original_sha256": "8354fab48f3f4e1383845e625e82e88cd98faf0425ce96deda8ceb00ac4e9888",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B",
+      "species": 300,
+      "hex": "60351A31000073062C0100000A000000000000000138000200000000000000000000000000000000FC002D00270021000A281E23000000001CF7CDFA00000000020A000000000000450067006700FFFF74007900FFFFFFFFFFFFFFFFFFFF00150000000000000000590076006F006E006E006500FFFF000012041700010162EA3375000481000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-023 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-024",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/300 - Uovo - 0C910B68370A.pk4",
+      "source_blob": "51048b5b074c003e844aa889df0e6e2e4108519c",
+      "original_sha256": "a2bef578c3087f0a3738fbd25686f8bf6ab6990b422757767e08bd900b93cbf9",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 300,
+      "hex": "0A37680B0000910C2C0100000A000000000000000138000400000000000000000000000000000000FC002D00270021000A281E2300000000DEBE227E0000000002000000D007D2073F0153015A015301FFFF4301FFFFFFFFFFFF3E01FFFF000C000000000000000043015A015301520152014901FFFF3F01120412000101D007D207000480000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-024 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Secret ID is zero"
+    },
+    {
+      "id": "public-025",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/343 - \uc54c - 5871F88A9BCE.pk5",
+      "source_blob": "08f6c0294edae39ba795a65238a412d7e8617b7d",
+      "original_sha256": "b221ddd619c35115869cfbe6242a800a42304fb4356ebdde5cac735ed356f286",
+      "original_bytes": 220,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B2",
+      "species": 343,
+      "hex": "CE9B8AF800007158570100000A00000000000000011A0008000000000000000000000000000000006A005D00000000001E19000000000000FFFFFFFF00000000040A0000000000004CC5FFFF70ADFFFF750074006F00FFFF6400FFFFFFFF00170000000000000000590076006F006E006E006500FFFF000012060B15040462EA3375000481000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INCOMPLETE",
+      "production_line": "public-025 INCOMPLETE ;"
+    },
+    {
+      "id": "public-026",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/479 - Ei - B7178C463B60.pk4",
+      "source_blob": "cd4444e0e8bdcb7292c7642c4f5354d5706a46a2",
+      "original_sha256": "51a3eaed4e9653f815a1d56d30dc16e9fa624d309499f63ea65848d4c027d27e",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 479,
+      "hex": "603B468C000017B7DF0100000A00000000000000011A0005000000000000000000000000000000003601560054006D000F141E0A0000000046C9506D0000000004000000D007D2072F014D01FFFF39013701FFFF2B01FFFFFFFFFFFFFFFF0007000000000000000043015A015301520152014901FFFF3F01120412000101D007D207000480000400",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-026 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Secret ID is zero"
+    },
+    {
+      "id": "public-027",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/479 \u2605 - \uc54c - BE0D0000000A.pk5",
+      "source_blob": "871750532826c81d578582930adae70b42428d14",
+      "original_sha256": "7a85f1b208ad108c465dc912e7d0eecf6d038a8390ed963e7f2919622aab11ae",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B2",
+      "species": 479,
+      "hex": "0A00000000000DBEDF0100000A00000000000000011A0008000000000000000000000000000000003601560054006D000F141E0A000000005F74CDF600000000040A0000000000004CC5FFFF34BBFFFF73006D006100FFFFFFFFFFFFFFFF00170000000000000000590076006F006E006E006500FFFF000012041700010162EA3375000481000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_SID0"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INCOMPLETE",
+      "production_line": "public-027 INCOMPLETE ;"
+    },
+    {
+      "id": "public-028",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/610 - \u30ad\u30d0\u30b4 - 6F91B110EED1.pk5",
+      "source_blob": "1dd396a81e7105617d17a587590b242af73337c3",
+      "original_sha256": "c79eda9c02f7e28ddb3577c818708fb8784af443f01fe212d7554254627e30d4",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B",
+      "species": 610,
+      "hex": "D1EE10B10000916F620200001C9BA4F776910000234F000100000000000000000000000000000000B800A300CE0051010A14280F00000000B6D4433100000000000C000000000000AD30D030B430FFFF000000000000000000000000FFFF0015000000000000000032FF4FFF23FFFFFF000000000000FFFF0000000A0B0F0000360000021F000000",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-028 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-029",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/General/Ribbons/Legal (Missing Winning Ribbon).ck3",
+      "source_blob": "be2c241940ddbe84b1b11394568bb68119860027",
+      "original_sha256": "05cdea0ec5aa3d2e70639f996e0960c0bcd2f6093d96d772e641de4d2f82db57",
+      "original_bytes": 312,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "CK3",
+      "version": "CXD",
+      "species": 248,
+      "hex": "3B126F9F393031D4CED3CCBBC8C3CEBBCCFF0202D1BFCDFF00000000B1AA0000F8000000B01E040000FF0000F20057009D003B000F0A0A050000000000000000000000000076B72791EF512124C90E03",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OTSuspicious",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Trainer:OTSuspicious",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "GameCube-to-PK3 derivative",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-029 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: TID/SID pair is suspicious"
+    },
+    {
+      "id": "public-030",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/025 - PIKACHU - E9D3.pk1",
+      "source_blob": "c26bbbbe8c9f83ec77b0c95e14ac20e8d9f046e9",
+      "original_sha256": "51efe892068afd2ebbe3900627e7af0a9686bcba8487d8d63bfee330bf74cd2e",
+      "original_bytes": 69,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 1,
+      "sourceType": "PK1",
+      "version": "RBY",
+      "species": 25,
+      "hex": "54001305001717BE542D0000590C00007D00000000000000000000B00A1E2800000000000000000000000000",
+      "ot": "8685500000000000000000",
+      "nickname": "8F888A8082879450505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INVALID",
+      "production_line": "public-030 INVALID no known origin ; | Level is outside 1-100 | Level 0 is below the level the EXP gives (5); only a Pokemon still in the Day Care carries a stale level"
+    },
+    {
+      "id": "public-031",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/026 - RAZOR - 9BD7.pk1",
+      "source_blob": "4abfdd582010b41cb4ca337c56ec194fff404549",
+      "original_sha256": "2f708da6f5f5204ee3b5d92aca20ce11d669888968c33af75e173543b6379d0a",
+      "original_bytes": 69,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 1,
+      "sourceType": "PK1",
+      "version": "RBY",
+      "species": 26,
+      "hex": "5500A93D001717BE57221955F536039F0E19441A74182D1B0018EAD6750A0D050F3D00A9008E005B00940085",
+      "ot": "8A8495888D500000000000",
+      "nickname": "9180998E91505050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "TMHM"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-031 VALID wild Pikachu in Red (level 3+) ;"
+    },
+    {
+      "id": "public-032",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/133 - EEVEE - D278.pk1",
+      "source_blob": "6a8a35302c9676d86926b1df1db8d8b0ea3bc363",
+      "original_sha256": "270e5f1affa0b4819be0961396acc6d8a016bdfd2e9eb41552c60473530a47e4",
+      "original_bytes": 69,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 1,
+      "sourceType": "PK1",
+      "version": "RBY",
+      "species": 133,
+      "hex": "660042190000002D211C000045C8003D0900000000000000000000BACA230F00000000000000000000000000",
+      "ot": "8DB8B1AEAD500000000000",
+      "nickname": "8484958484505050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INVALID",
+      "production_line": "public-032 INVALID no known origin ; | Level is outside 1-100 | Level 0 is below the level the EXP gives (25); only a Pokemon still in the Day Care carries a stale level"
+    },
+    {
+      "id": "public-033",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/134 - VAPOREON - F896.pk1",
+      "source_blob": "1134d1958a65f3de3d6a5cf351282567644da5d3",
+      "original_sha256": "ce62ec5ab6402f854541e773f538c1b8e5d14a8d51c1b6dbc20ee7f5c6eacc4e",
+      "original_bytes": 69,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 1,
+      "sourceType": "PK1",
+      "version": "RBY",
+      "species": 134,
+      "hex": "69006B190015152D211C000045C8003D0900000000000000000000F5BC230F000019006B002D0025002B0042",
+      "ot": "8DB8B1AEAD500000000000",
+      "nickname": "95808F8E91848E8D505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-033 VALID gift/static Eevee in Red/Blue (level 25) ;"
+    },
+    {
+      "id": "public-034",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/135 - JOLTEON - 7E45.pk1",
+      "source_blob": "a1b71f6e60a82e55532a0a25dbfbf2555d5e4db0",
+      "original_sha256": "b8d67cb28b9341842eb51408ebdfa77c121538406eeb542cb928acc83e7e2668",
+      "original_bytes": 69,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 1,
+      "sourceType": "PK1",
+      "version": "RBY",
+      "species": 135,
+      "hex": "680045190017172D271C2D62376D003D090000000000000000000063461E0F281E190045002800240048003F",
+      "ot": "8050000000000000000000",
+      "nickname": "898E8B93848E8D50505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-034 VALID gift/static Eevee in Yellow (level 25) ;"
+    },
+    {
+      "id": "public-035",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/135 - JOLTEON - 7F90.pk1",
+      "source_blob": "8841a73b1f44c0f02c885a570e2a3914f35c069d",
+      "original_sha256": "1528addd2c2017d4bf4732c70cde321df180012f7cdc6ff93d8e6b2655d69076",
+      "original_bytes": 69,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 1,
+      "sourceType": "PK1",
+      "version": "RBY",
+      "species": 135,
+      "hex": "68004A190017172D211C000045C8003D09000000000000000000003721230F000019004A002700260047003C",
+      "ot": "8DB8B1AEAD500000000000",
+      "nickname": "898E8B93848E8D50505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-035 VALID gift/static Eevee in Red/Blue (level 25) ;"
+    },
+    {
+      "id": "public-036",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/136 - FLAREON - 50CF.pk1",
+      "source_blob": "53be39b531dccc118fcfa868f8a87e4a42566423",
+      "original_sha256": "26661ca49dde7d6b31c8d67e225f194223975ae8f34c6b8edf9d061cc0d5e1cc",
+      "original_bytes": 69,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 1,
+      "sourceType": "PK1",
+      "version": "RBY",
+      "species": 136,
+      "hex": "670048190014142D211C000045C8003D0900000000000000000000DA6F230F0000190048004C002800280043",
+      "ot": "8DB8B1AEAD500000000000",
+      "nickname": "858B8091848E8D50505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-036 VALID gift/static Eevee in Red/Blue (level 25) ;"
+    },
+    {
+      "id": "public-037",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Tradeback/107 \u2605 - \u30a8\u30d3\u30ef\u30e9\u30fc - 68EC Gen2 Future-Gen Evo Egg.pk1",
+      "source_blob": "1d30b8d3ac2d53a04c8471ac89a8f2e5beec16f4",
+      "original_sha256": "1a2878fb3e9c296684dd168f26f6709036a4b2d5b9a80ffaa10b9e47fae4fee7",
+      "original_bytes": 59,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 1,
+      "sourceType": "PK1",
+      "version": "RBY",
+      "species": 107,
+      "hex": "2C0000140001010088000000000A001F40FFFFFFFFFFFFFFFFFFFFFAAAD40000000000000000000000000000",
+      "ot": "A9815050ADA4",
+      "nickname": "831AA9A5E350",
+      "language": 1,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "EggMove"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INVALID",
+      "production_line": "public-037 INVALID no known origin ; | Level is outside 1-100 | Level 0 is below the level the EXP gives (20); only a Pokemon still in the Day Care carries a stale level"
+    },
+    {
+      "id": "public-038",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/0106 - HITMONLEE - EC97.pk2",
+      "source_blob": "d3cd2701245b894bf5741ba7dd8bc87040490c81",
+      "original_sha256": "d111ac5fe1bc0d24cbbac08ce1695285b10dc9752c27011260f7e4ee12229d14",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 106,
+      "hex": "6A0021000000FFFF001F4000006400000000000000FFFFF8000000FF008A231400000038003800430020002D00190037",
+      "ot": "868E8B8350B4AC50505050",
+      "nickname": "8788938C8E8D8B84845050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-038 VALID gift/static Tyrogue in Gold/Silver/Crystal (level 10) ;"
+    },
+    {
+      "id": "public-039",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/0107 - HITMONCHAN - C054.pk2",
+      "source_blob": "7aea7144dd41f2cf7a06f113be2a3e62fac57796",
+      "original_sha256": "7e76a704187d1f010453b6eda835c20362ea0ae0f1e8c8bf919ffcbce0c6c7ae",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 107,
+      "hex": "6B0021000000FFFF001F4000000000640000000000FFFFF8000000FF008A231400000038003800350032002900190037",
+      "ot": "868E8B8350B4AC50505050",
+      "nickname": "8788938C8E8D8287808D50",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-039 VALID gift/static Tyrogue in Gold/Silver/Crystal (level 10) ;"
+    },
+    {
+      "id": "public-040",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/0138 - AMONITAS - 071B.pk2",
+      "source_blob": "1022080f6823ca00281c71b52fd0b84ca6d0171f",
+      "original_sha256": "8857cadaa06eb48455eba6c8cc964908973b9cfd5b4313aec790a2c9d947d179",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 138,
+      "hex": "8A006E37F62B982100007D000000000000000000005F0F2819051E7810C11005000000130013000900100008000F000C",
+      "ot": "92A7A0A38CA0B150000000",
+      "nickname": "808C8E8D88938092505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "InheritLevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "InheritLevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "InheritLevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-040 VALID egg Omanyte in Gold/Silver (hatched at level 5) ;"
+    },
+    {
+      "id": "public-041",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/025 - PIKACHU - 2129.pk2",
+      "source_blob": "7085b2bc78d4bdaa3e09a11fd01a8aa5e981b322",
+      "original_sha256": "e2df6775e45890474477bc426f80440bb02b2d649666bd2fb9747eb7bc6f3807",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 25,
+      "hex": "1900566268158885003D0900000000000000000000C61C141E0F14460059C71900000000000000000000000000000000",
+      "ot": "8A91889250000000000000",
+      "nickname": "8F888A8082879450505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-041 VALID gift/static Pikachu in Crystal (level 25) ;"
+    },
+    {
+      "id": "public-042",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/031 - NIDOQUEEN - A016.pk2",
+      "source_blob": "a385fd0dbe5aaaea43bfb9eb16083fbab3d6d080",
+      "original_sha256": "065bb3c66c82cf4823f3eea510f0e2ccc3f0496d1ce8d57df83f5e48242a8406",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 31,
+      "hex": "1F00220A1828303900227900000000000000000000905C0F231E234800574D170000004F004F002E002D002A002D0031",
+      "ot": "93A4B2B350505050000000",
+      "nickname": "8D88838E909484848D5050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-042 VALID wild Nidorina in Crystal (level 23+) ;"
+    },
+    {
+      "id": "public-043",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/035 - CLEFAIRY - 8A0C.pk2",
+      "source_blob": "0ec9814fdc4134c402a8961dc6574c837c1c9423",
+      "original_sha256": "14d8c4bd3939f26bd55ceb9ccdeae5a7ba226ccb4685813bb8f63cda5b31308f",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 35,
+      "hex": "2300012DE32F3039000199000000000000000000003FF72328050F46000000080000001F001F000C000F000D000F0010",
+      "ot": "8F8A87A497505050505050",
+      "nickname": "828B848580889198505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Evolution"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-043 VALID egg Cleffa in Gold/Silver (hatched at level 5) ;"
+    },
+    {
+      "id": "public-044",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/082 - TATO - 2D6E.pk2",
+      "source_blob": "7ca3d0b94b485a0063c1b90892401db74da76b7b",
+      "original_sha256": "737177332528dc4148cd1741166c5df6ebac0eced10a9375e5517fcade40cdf2",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 82,
+      "hex": "528F21543031C3A200007D000000000000000000009666231E14144600007E05000000140014000B000F000C0011000C",
+      "ot": "8691848F8F885050505050",
+      "nickname": "9380938E50505050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-044 VALID in-game trade Magneton in Gold/Silver/Crystal (level 5+) ;"
+    },
+    {
+      "id": "public-045",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/085 - DORIS - 5C9F.pk2",
+      "source_blob": "efc15ab69e79aa4fbc98df04ad49de37a9ce5112",
+      "original_sha256": "4675611a8a77143246be4acf6773fec70787478f837ba3a49ead78e47f3ec607",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 85,
+      "hex": "556A402DE41F011B0003E800000000000000000000776623281414460000FE0A00000000000000000000000000000000",
+      "ot": "848C985050505050505050",
+      "nickname": "838E918892505050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-045 VALID in-game trade Dodrio in Gold/Silver/Crystal (level 10+) ;"
+    },
+    {
+      "id": "public-046",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/112 - DON - 4DD6.pk2",
+      "source_blob": "8b9dfde8ea93f446fc611019c620cdf54ceee28e",
+      "original_sha256": "d65fae9cfed5b8fcc1d7ab140dc678d698ca176559767d7782b9dc957fa527aa",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 112,
+      "hex": "70531E27171F011B0004E2000000000000000000007766191E1414460000000A0000002B002B0020001E000E000F000F",
+      "ot": "848C985050505050505050",
+      "nickname": "838E8D5050505050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-046 VALID in-game trade Rhydon in Gold/Silver/Crystal (level 10+) ;"
+    },
+    {
+      "id": "public-047",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/142 - AEROY - 56BA.pk2",
+      "source_blob": "67d85c8c5e4e571dcd5dbd24d4e55cb4efcf563a",
+      "original_sha256": "df644875e38a9457a02c08fbb4fc7bd0c80e360cd3ee7883daf2e932dbf6a8fe",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 142,
+      "hex": "8EAE11000000677B00009C00000000000000000000966623000000460000FE0500000000000000000000000000000000",
+      "ot": "8A888C5050505050505050",
+      "nickname": "8084918E98505050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-047 VALID in-game trade Aerodactyl in Gold/Silver/Crystal (level 5+) ;"
+    },
+    {
+      "id": "public-048",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/211 - Pvffs - 92DC vc.pk2",
+      "source_blob": "4df8e99158033ba5bc7b62c0473ea9103b87a58b",
+      "original_sha256": "aa2ea785a66381e22a7fc6d6f416014dda074cf837cbcf710fc475f699b9563e",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 211,
+      "hex": "D300BF2128006D5600007D00000000000000000000395A142323004600C58805000000160016000E000D000E000B000B",
+      "ot": "8191889393505050000000",
+      "nickname": "8FB5A5A5B2505050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-048 VALID gift/static Qwilfish in Gold/Silver/Crystal (level 5) ;"
+    },
+    {
+      "id": "public-049",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/213 - SHUCKI - 3572.pk2",
+      "source_blob": "0984e2d556870191092dd9f9a3cc366b703f1418",
+      "original_sha256": "16bd325f77553daa0b31f0d33c59895c00129fe5a0185c1db3317aed86daf300",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 213,
+      "hex": "D5AD846E23E302060007F30000000000000000000011A4232814054600007E0F00000000000000000000000000000000",
+      "ot": "8C80939388805050505050",
+      "nickname": "928794828A885050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-049 VALID in-game trade Shuckle in Gold/Silver/Crystal (level 15+) ;"
+    },
+    {
+      "id": "public-050",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/217 - \u30ea\u30f3\u30b0\u30de - 1241 (Gold).pk2",
+      "source_blob": "dd54563de926941c0fd715a6aa2e24968901ecc1",
+      "original_sha256": "0c8148879b7606a8bd50f34b7a9be3ab97e8adc6e1b0c6de6748ca1729b831e1",
+      "original_bytes": 63,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 217,
+      "hex": "D96B08B9E846017501EB442A7335E931D2328F2E36156E0F14230FFD00000032000000AF00AF009600630050006B006B",
+      "ot": "D0C5D0505050",
+      "nickname": "D8AB079D5050",
+      "language": 1,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "EggMove"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "TMHM"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-050 VALID egg Teddiursa in Crystal (hatched at level 5) ;"
+    },
+    {
+      "id": "public-051",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/230 - KINGDRA - 3712.pk2",
+      "source_blob": "21b5800b2124a9a0c039c2a0f19bbd23f55e6c23",
+      "original_sha256": "21c41413d4ce24d89dbb2d86ed770e688f3eda878aedcc68f03d248620c8adae",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 230,
+      "hex": "E600EF38E13DA6160F4240FFFFFFFFFFFFFFFFFFFFA9DF140514144B0000006400000151015101160114010801200120",
+      "ot": "849387808D505050000000",
+      "nickname": "8A888D8683918050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "TMHM"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-051 VALID egg Horsea in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "public-052",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/251_-_CELEBI_-_1EE8.pk2",
+      "source_blob": "193563ce675c14503ac2b21295026f6956aedb67",
+      "original_sha256": "098258e970767971ae95684eb0bbc99c1d35b463af62d5cd683ed2aa4e0b49d0",
+      "original_bytes": 73,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 2,
+      "sourceType": "PK2",
+      "version": "GSC",
+      "species": 251,
+      "hex": "FB00D7DBF6F8FB98005500000000000000000000000D800519050F46009E0E1E00000000000000000000000000000000",
+      "ot": "91AE825000000000000000",
+      "nickname": "82848B8481885050505050",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INCOMPLETE",
+      "production_line": "public-052 UNCERTAIN no known origin ; | Celebi was only distributed at events; no recorded distribution matches this one, and the event list is not known to be complete"
+    },
+    {
+      "id": "public-053",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/144 - 3008 - BDFCED1D5D5B.pk3",
+      "source_blob": "49189c9b848c3029b0851a9fb8192ca8f4345a93",
+      "original_sha256": "b387036042a3efc31bd9e28f6b8537c9ce8d384ded22de6a1f3e74760a51d86f",
+      "original_bytes": 100,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "CXD",
+      "species": 144,
+      "hex": "5B5D1DED0700689AA4A1A1A9FFE9E7FF00000202CEBFCDCEFF000000FCBD00009000C800D0121300FF550000A4009C003A005C0010101010FC0000E20020000000000000004AB2271FFCFF3F00000081",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Tutor"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "TMHM"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-053 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-054",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/297 - MAKIT - C47400009C40 evolve ability mismatch.pk3",
+      "source_blob": "923e0a3e5046b81b8e9ffb1c7ef70da2cb7a6983",
+      "original_sha256": "1021ffc8d1bb3b2438ea168e8b67792bc74b8c66cd28ecfc85e113e791f62d91",
+      "original_bytes": 100,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "S",
+      "species": 297,
+      "hex": "409C00009AC10000C7BBC5C3CEFF000000000702BFD0BFC6C3C9FF0074C400005001B7007F9F000000FF0000FC00E9001A0109010A0A140A1716101F0D0B050505051E0A00FE8520A510428800000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "S",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-054 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-055",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Eggs/0032 - NIDORAN\u2642 - 92A9F5C9B9C9 - NidoranF parent issue4356.pk3",
+      "source_blob": "c49e267a2802c1ebd68b7aed428a069f0210b32e",
+      "original_sha256": "75d976a6e8c5240338fff4f48a5d08a452e84c6a4e63b04ee16efb6be3d10f87",
+      "original_bytes": 100,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "E",
+      "species": 32,
+      "hex": "C9B9C9F55084FEED606F8BFFF44B2825724E0106C7BBD3FFFFFFFF00A99200002000000087000000000D00004000180028000E01231E2314000000000000000000000000002080A10439AA5600000000",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "InheritLevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "InheritLevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "InheritLevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-055 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-056",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Eggs/0032 - NIDORAN\u2642 - F436F4EF3BFC - Ditto parent issue4356.pk3",
+      "source_blob": "e61e2949c8f5e56bda3aed2f3e884c2a8012721d",
+      "original_sha256": "a9aeb698d33966209f7c8b5fe66be829a42aa2137de1c2c0ded34f30198be817",
+      "original_bytes": 100,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "E",
+      "species": 32,
+      "hex": "FC3BEFF45084FEED606F8BFFF44B2825724E0106C7BBD3FFFFFFFF0036F4000020000000870000000007000060015C00ED00F100140A0F05000000000000000000000000002080A1AEB1A46600000000",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "TMHM"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-056 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-057",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/LevelUp learn move then Evolve/195 - QUAGSIRE - E2AD60FEC722.pk3",
+      "source_blob": "133dd9d6e6b4e7e921e21eeb51ca94ad350926dc",
+      "original_sha256": "7a1fe2de0212013cddf6d6bd19f39a8aec29e8423416a696e7c406b28b49194c",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "E",
+      "species": 195,
+      "hex": "22C7FE60642B9149CBCFBBC1CDC3CCBFFF000202C1BFC9CCC1BFFF00ADE20000C30000005F740000004B000019011500550185000A140F1400000000000000000000000000399E29DE7DEE1600000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-057 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-058",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/LevelUp learn move then Evolve/229 - HOUNDOOM - 4311EC0CD621.pk3",
+      "source_blob": "1c0b7c8f2ea26505eec0b13ba9c344b92394660f",
+      "original_sha256": "9d182377d338a50751c9ab8e998f9966c7d48e983ad6cd1aa8c95a29a831a4f2",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "E",
+      "species": 229,
+      "hex": "21D60CEC642B9149C2C9CFC8BEC9C9C7FF000202C1BFC9CCC1BFFF0011430000E500000054F70000002900007B002E00B9003C01141414280200000200000000000000000039A42970E6FC9700000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-058 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-059",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/LevelUp learn move then Evolve/284 - MASQUERAIN - 8C49324DA947.pk3",
+      "source_blob": "2ad3f6b6245fa921a4604aea66df4052959d72ee",
+      "original_sha256": "1fea703afab6836a8982ac30e9f024eb757bae598f910163549efedbb659b7e8",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "S",
+      "species": 284,
+      "hex": "47A94D32F377547EC7BBCDCBCFBFCCBBC3C80202CDBBCCBBFFCEDC00498C000038010000EE400000005000003D00620094005A01141E140F020200020000000000000000001D98A080ED541B00000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "S",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-059 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-060",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/0283 \u2605 - TEST - 5143F610D91A swarm lead matching.pk3",
+      "source_blob": "e0833b05fdf2f854bd21b2bbb08e54b2b9809a56",
+      "original_sha256": "5b80fa80e2012121b4cc85012e1e4ae243986011e274ce2fd973e8fc21d3bbb0",
+      "original_bytes": 100,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "S",
+      "species": 283,
+      "hex": "1AD910F635F43BDBCEBFCDCEFFFFFFFFFFFF0202C7BFC7BFCDFFFF0043510000370100001B0000000046000091006200000000001E1E0000000000000000000000000000001183205E79FF3F00000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:PID:EncConditionBadRNGFrame"
+      ],
+      "findings": [
+        "Fishy:PID:EncConditionBadRNGFrame"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "S",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-060 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: No RNG frame produces this wild slot for wild slot (Surskit)"
+    },
+    {
+      "id": "public-061",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/054 - PSYDUCK - 1FE1F661FBE0.pk3",
+      "source_blob": "4e16b6e9527c7ce284823c5b499367d68fb398d5",
+      "original_sha256": "33f269407233c4cbc3a2687bfcb2e1bb44809978b26cb1d8210dcdedbed3730b",
+      "original_bytes": 100,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "R",
+      "species": 54,
+      "hex": "E0FB61F6195F874FCACDD3BECFBDC5FF110C0202CEBFCCCCBBFFC500E11F0000360000007D000000007800002C010000000000000F000000000000000000000000000000005500A16A90891F00000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-061 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-062",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/134 - VAPOREON - B2D7984A102F XD split evo starter.pk3",
+      "source_blob": "90c8c816d233181ae7ddc9aec34b5f1db4e0bdce",
+      "original_sha256": "f4fd53e1200a1395d0e080e44b17b3c4e679d3a25513037479dc683b5973399b",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "CXD",
+      "species": 134,
+      "hex": "2F104A98D4ED598FD0BBCAC9CCBFC9C8FF000202C7BBCECEFF000000D7B200008600000000B205000000000037002C0062003E0019191E14375D3A6B784D00000000000000008A272DF8721A00000082",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-062 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-063",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/228 - \u30bf\u30de\u30b4 - 10F596FA62A6 longOTedge.pk3",
+      "source_blob": "e9b8106b51472b2cc54805031489b8f9496451c1",
+      "original_sha256": "a4ea6b4b715a664d90400fa9701ff56d59166144930be742304a385fdb0eba1f",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "E",
+      "species": 228,
+      "hex": "A662FA96E3ABABD0606F8BFFF44B2825724E0106BCE6DDE8E8EDFF00F5100000E40000009C000000001400002B003400000000001E190000000000000000000000000000002080A1D3DCA54300000000",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-063 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-064",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/250 - HO-OH - 2241C625EB05 Italian longOT.ck3",
+      "source_blob": "0c4e6cfb091434ac50d157ab859251fb0a1a1dd4",
+      "original_sha256": "5e9601e9de1a10eac501b6d9521c5a821ddef457fa6f6a9f2c46c096be899a6a",
+      "original_bytes": 312,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "CK3",
+      "version": "S",
+      "species": 250,
+      "hex": "05EB25C640270000C2C9AEC9C2FF000000000402C7C9C8CEBF00C600AB660000FA000000CE8A06000046000069007E00F10081001405051400000000000000000000000000FFC620691E3C3B00000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "GameCube-to-PK3 derivative",
+      "host_cart_context": "S",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-064 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-065",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/327 - Spinda - 88283DD1BB49 Method 3.pk3",
+      "source_blob": "77abf11ab6f8dd5c81450d542b5cd692b8af7d83",
+      "original_sha256": "d8b0ae65a8c1ce467b38bc6aab25879b040bd14337e97a6de61108f97be16fdb",
+      "original_bytes": 80,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "PK3",
+      "version": "E",
+      "species": 327,
+      "hex": "49BBD13D4BC26BC49BA061AE79FF0000E84301024DAEFFFFFFFF000028880000340100008C0A0000004700002100FD00B9000000230A1400000000000000000000000000001C8F0997FD340600000000",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-065 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-066",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/XD Fateful Gifts/213 - SHUCKLE - 1904411103A3 NoFateful.xk3",
+      "source_blob": "6c6debb84670d4c50d846b92f361dfc66fc49613",
+      "original_sha256": "a0bc62370f3db9fc1fae297fa3c0573816d0715797fd3ca0e105478c83c4de47",
+      "original_bytes": 196,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "XK3",
+      "version": "CXD",
+      "species": 213,
+      "hex": "A30311411D91598FCDC2CFBDC5C6BFFF00000202BECFC5C3C8C1FF00ED420000D500000054150000004700005C00A400BC00E3000A0A0A05000000000000000000000000007494274795362300000080",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "GameCube-to-PK3 derivative",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-066 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-067",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/XD Fateful Gifts/213 - SHUCKLE - 475E411103A3 Fateful.xk3",
+      "source_blob": "40342c229725d33f76df470451870983a856a4aa",
+      "original_sha256": "839241fd66afc38f391c68cf89e2bf01977dbf43373009ddb206173c13cf95ec",
+      "original_bytes": 196,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 3,
+      "sourceType": "XK3",
+      "version": "CXD",
+      "species": 213,
+      "hex": "A30311411D91598FCDC2CFBDC5C6BFFF00000202BECFC5C3C8C1FF00ED420000D500000054150000004700005C00A400BC00E3000A0A0A05000000000000000000000000007494274795362300000080",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "GameCube-to-PK3 derivative",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-067 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-068",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0081 - MAGNETI - B2F0B116BC4C safari 4iv fail.pk4",
+      "source_blob": "6e5492b531f57d8dd365758a1cb98285d71f41bb",
+      "original_sha256": "92798eebe5d116f28a9b2cad0df6e829fa29dfb4644db17b5bf90dc2a8d9f0e9",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 81,
+      "hex": "4CBC16B10000F0B251000000B2C3724800100000462A0003000000000000000000000000000000002100540030003100231E14140000000027DD410A00000000040000000000CA0037012B01310138012F013E013301FFFF00000000000000070000000000000000310133013D012F0136012F01FFFF00000000001A050A0000BA0B000590020500",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-068 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-069",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0095 - Egg - 3C46CD462454 pt egg.pk4",
+      "source_blob": "9b457b992155ab18028f75d3337f303adeb9ae84",
+      "original_sha256": "1be9ea2703a3600897c1fb6d0b49dad1f3cd9e4cf5e6dc56798a897e45c5cdc9",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 95,
+      "hex": "542446CD0000463C5F000000BA563A790000000019450002000000000000000000000000000000006A001400CD0058001E14140F0000000082460A4C0000000002000000D007D2072F014B014B01FFFFFFFF000000000000000000000000000C00000000000000003801FFFF0000000000000000000000001A07181A0718D007D207000400000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "EggMove"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "InheritLevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-069 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-070",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0095 - ONIX - D1BE00E5AE9E pt2hg hatch.pk4",
+      "source_blob": "30a6d6e76250d9dd8da7c432f48c4e10f3d7a922",
+      "original_sha256": "1ee1844dac87214bcaaa8f1ac2b42791b18a01c7c09ac22b713bee8628f7386b",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 95,
+      "hex": "9EAEE5000000BED15F00000002006CF20000000078450002000000000000000000000000000000006A001400CD0058001E14140F00000000129455170000000000000000D2078B003901380133014201FFFF000060191102020000000840000C00000000000000003801FFFF0000000000000000000000001A07181A0718D207BA0B000480000400",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Tutor"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "InheritLevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-070 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-071",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0113 - CHANSEY - 806A14061105 swarm1 pressure.pk4",
+      "source_blob": "bede57f6ee039f67f309886c63949ec47d23e526",
+      "original_sha256": "883f85a5b565962335184775e83567f279704facbf4f0441b2de0ef9137b95ad",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "SS",
+      "species": 113,
+      "hex": "0511061400006A8071000000D4A55A2BD43000008C20000200000000000000000000000000000000870003006B002F000A0A140F00000000C9F73B0000000000020000000000A1002D0132012B0138013D012F014301FFFF000000000000000800000000000000003501590156015801FFFF00000000000000000018030C0000BA0B000119020100",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "SS",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-071 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-072",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0113 - CHANSEY - D4E98650DFCD swarm1 pressure.pk4",
+      "source_blob": "beb152cc74e0ee2a19c56880d300490beb2cf9ef",
+      "original_sha256": "f97df75c60b296ee0995cf3ad5dba322ad708a3318e8ca49f21b93b1ee8000be",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "SS",
+      "species": 113,
+      "hex": "CDDF50860000E9D471000000D4A55A2BD43000008C20000200000000000000000000000000000000870003006B002F000A0A140F0000000056122D3A00000000020000000000A1002D0132012B0138013D012F014301FFFF000000000000000800000000000000003501590156015801FFFF00000000000000000018030C0000BA0B000119020100",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "SS",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-072 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-073",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0218 - Egg - 30859D41D013 hg egg.pk4",
+      "source_blob": "171d7c916dc1b76cf2a9faa92ff8c186ee9face0",
+      "original_sha256": "0f569b38c8d38c60da9a1074b24bd637567a787d1aa34440497186ebb0fe70f3",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 218,
+      "hex": "13D0419D00008530DA00000002006CF200000000143100020000000000000000000000000000000019017B00000000000A140000000000003B3EF54F0000000002000000D007D2072F014B014B01FFFF37012B01FFFF0000000000000000000700000000000000003801FFFF0000000000000000000000001A02141A0718D007D207000480000400",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-073 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-074",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0218 - SLUGMA - 4F02838CED63 hg2pt hatch.pk4",
+      "source_blob": "e5d344c4a5252643850a7d5b16afa698df3bb034",
+      "original_sha256": "f3e5cd135a0a58cbdd60d26c892ef5d9b5399e8cc437cf03db5b5f279e27ddbd",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 218,
+      "hex": "63ED8C830000024FDA000000BA563A7900000000783100020000000000000000000000000000000019017B00000000000A14000000000000D5FE7A2D0000000002000000D20704003D0136013F01310137012B01FFFF19C018B30C023037000700000000000000003801FFFF0000000000000000000000001A07181A0718D2070400000400000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-074 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-075",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0407 - ROSERADE - E24358625928.pk4",
+      "source_blob": "7af5f3f12c9ae95cdd77cfd43224c7a2a0ad7782",
+      "original_sha256": "67070ceacaf217216953bfb8f1c1abd670b480cd312f43c0f0966cd07a51473f",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 407,
+      "hex": "28596258000043E297010000672B672B00000000FF1E0005000000000000000000000000FFFF1300F100CA00AD0059010810182003030303058A6D0800000001023F0000D20704003C0139013D012F013C012B012E012F01FFFFFFFFFFFF000CFFFF0F00000000003E012F013D013E01FFFF4901FFFF3F01120412120412D2070400000480000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_IDEqual"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_IDEqual"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Tutor"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-075 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Trainer ID equals Secret ID"
+    },
+    {
+      "id": "public-076",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/184 - AZUMARILL - 70F46DFFFF94 static genderchange.pk4",
+      "source_blob": "1976de1d4486f59446e304e52ced4b0755442f6d",
+      "original_sha256": "cbfb6aaa1921e9b92329e54f28a2afe928cbee6f827b2f4c41d335076e66c361",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 184,
+      "hex": "94FFFF6D0000F470B8000000E3AD083C0D220000F82F0002000A060A00020060000000450000000027003900150037001E0F141900000000E8EEB32400000000000000000000E9002B0144013F0137012B013C01330136013601FFFF0000000700000000000000003D0147014D0154014D015301FFFF00000000000A04060000BA0B600414000400",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-076 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-077",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/194 - Egg - B7B3E1614DCB Primo Wooper.pk4",
+      "source_blob": "d03f74ed47a79dacf1b3721831a3abaa4d3b62a1",
+      "original_sha256": "919a14b38550b2f515eda533c7e7bc2bf55ec0dec7fd15249c42e3df8ea069b7",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "SS",
+      "species": 194,
+      "hex": "CB4D61E10000B3B7C20000006303BD1400000000140B0002000000000000000000000000000000003700270000000000191E00000000000040C3F87F0000000000000000DE0700002F014B014B01FFFF2F013C01FFFF00000000000000000008000000000000000038014D0147014F01FFFF000000000000150515000000BA0B0000000400000400",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "SS",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-077 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-078",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/242 - HEITEIRA - E83AB36E7C5C.pk4",
+      "source_blob": "b562ce17c8124e77876a9ba4944a71eee13203e8",
+      "original_sha256": "1c70e67d594b1fb60133733ac5082dc683b7a47adc4cfb47f6cf8e62b10f17f2",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 242,
+      "hex": "5C7C6EB300003AE8F2000000672B672B06000000FF1E0005000000000000000000000000FFFF13001D01ED00A001BD011018082003030303B2519C3D00000001023F0000D207040032012F0133013E012F0133013C012B01FFFFFFFFFFFF000CFFFF0F000000000035013501FFFF520152014901FFFF3F01120412120412D2070400000480000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_IDEqual",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_IDEqual",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "TMHM"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-078 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Trainer ID equals Secret ID"
+    },
+    {
+      "id": "public-079",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/440 - \u30d4\u30f3\u30d7\u30af - 17961FFFFFFE.pk4",
+      "source_blob": "b3167ef762fed294b4062d480d0812624be18bdb",
+      "original_sha256": "c883334ed4bc6f82dc9b9debf1f307a1ee76f6f9458099124f874d7adfa68342",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "SS",
+      "species": 440,
+      "hex": "FEFFFF1F00009617B801A9001BDF9800640000008C1E0001000000000000000000000000000000000100CC007F01D7002314140500000000908B623A00000000020000000000E9008500A10088006000FFFF00000000000000000000000000080000000000000000B900D400D800D200D400FFFF000000000000001301010000BA0B000485000400",
+      "ot": "",
+      "nickname": "",
+      "language": 1,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "SS",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-079 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-080",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/470  - LEAFEON - 65B05FEF8D69.pk4",
+      "source_blob": "77db1dfa41b3b0413fe0a51d9e6d64c7620a2a74",
+      "original_sha256": "8b0039ddae045149036831aee26cd775b70048624c1860f6c839ef4c2e767011",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 470,
+      "hex": "698DEF5F0000B065D6013E01D81359C12B0602004B66000200000000000000000000000000000004E7006200AF0078010F1E0F05000000007C908E0900000000010000000000F40B36012F012B0130012F0139013801FFFFFFFFFFFFFFFF00070000000000000000400131012D0122012101FFFFFFFFFFFF00000012060B0000F40B001032000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Initial"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-080 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-081",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Rock Smash/074 - GEODUDE - B16E2318D744.pk4",
+      "source_blob": "c0c985792b5c40180dc781c59029d30f2a5b23bd",
+      "original_sha256": "3fb71cf3d911bf1c43030585386de037f91fed692afac57f0025f04992f38d97",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 74,
+      "hex": "44D7182300006EB14A000000A8A3F7893A010000464500020000000000000000000000000000000021006F002C018D0123280F14000000006277743000000000020000000000D10031012F0139012E013F012E012F01FFFF000000000000000700000000000000003C0153012D01FFFF000000000000000000000013011C0000BA0B000108040100",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-081 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-082",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Rock Smash/098 - KRABBY - 86943584D01B.pk4",
+      "source_blob": "f67775f47d4414c7236ed1dde4e6d1c065ba2b1e",
+      "original_sha256": "a9c993922db8ea86c889bcc1213fc2c3d7f4f9f3178d5df3dd14b58dc1faf226",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 98,
+      "hex": "1BD084350000948662000000A9AB33542D240000464B0002000000000000000000000000000000006A003D005501E8001E140F23000000008A6ED61C00000000020000000000820035013C012B012C012C014301FFFF00000000000000000007000000000000000037012B013E013E01FFFF000000000000000000110B150000BA0B000115090100",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-082 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-083",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Rock Smash/098 - KRABBY - C589B4EFB45F.pk4",
+      "source_blob": "15d70d61d587645e29c98555f6651b6d45e0d41e",
+      "original_sha256": "c633ae1c24b8a1c2a498e49ccfa603e6bf14b53ace82dfc774a3ef8437839faf",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 98,
+      "hex": "5FB4EFB4000089C562000000A9AB33542D240000464B0002000000000000000000000000000000006A003D005501E8001E140F2300000000229E333400000000020000000000820035013C012B012C012C014301FFFF00000000000000000007000000000000000037012B013E013E01FFFF000000000000000000110B150000BA0B000115010100",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-083 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-084",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/104 \u2605 - CUBONE - ABE400000004.pk4",
+      "source_blob": "19f688999149d069e154c33a980b1b536f437095",
+      "original_sha256": "a0c7bf5f05cf0764457ba30c696d72e175295888bd13b479436c741acc60f6e8",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 104,
+      "hex": "040000000000E4AB68000000B223B3234000000051450002000000000000000000000000000000002D00270000000000281E000000000000DD8360380000000002000000000012002D013F012C01390138012F01FFFF0000000000000000000C00000000000000003A013A01530156014B01FFFF0000000000000012050700001200000D04020000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-084 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-085",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/201 - UNOWN - E8FFA68025F9.pk4",
+      "source_blob": "30e14d90ca7bce71ece8efae5a71b9598e4d5799",
+      "original_sha256": "c5d4995595f5897f89870d617f92cd0f983767cd983f5bbcd8cae6056f054be0",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 201,
+      "hex": "F92580A60000FFE8C9000000A9AB33547D000000461A000200000000000000000000000000000000ED000000000000000F00000000000000744A852A00000000040000000000D1003F013801390141013801FFFF000000000000000000000007000000000000000037012B013E013E01FFFF00000000000000000011071F0000BA0B000205050200",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-085 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-086",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/215 - SNEASEL - 72E6A36A07BD.pk4",
+      "source_blob": "49440ad543288aaa025e0ec7c06e163f5decd5fa",
+      "original_sha256": "a26f0549a05504d49e523641893c154f0ddba3b85956c88706f36b1d2ac38618",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 215,
+      "hex": "BD076AA30000E672D7000000A9AB3354874501002533000200000000000000000000000000000000C400A300FB00E8000F140A2300000000BB45463600000000000000000000DB003D0138012F012B013D012F013601FFFF0000000000000007000000000000000037012B013E013E01FFFF0000000000000000001108020000BA0B000B2D020B00",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-086 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-087",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/231 - PHANPY - 579744E8F948.pk4",
+      "source_blob": "43a4a47e5e6f5a9045d1ea362bcf34716fc1ebd3",
+      "original_sha256": "d50ace2a8f91438cf92eb7f6f4042ab89266f871387bb21009b923853e95ef56",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "HG",
+      "species": 231,
+      "hex": "48F9E84400009757E7000000A9AB335400B001004635000200000000000000000000000000000000CB00CC00830126000A14050F00000000C9D27D2200000000020000000000DB003A0132012B0138013A014301FFFF00000000000000000007000000000000000037012B013E013E01FFFF00000000000000000011071F0000BA0B000230020200",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "HG",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-087 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-088",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/246 - LARVITAR - 2AC20000000E.pk4",
+      "source_blob": "1e1e1a082611168954f7b707da092b74d9d3590a",
+      "original_sha256": "293e60ae7bae1f0abbdfde62a82556f3b81f97cc7620ea0146e2e71745d52f79",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 246,
+      "hex": "0E0000000000C22AF60000002A332A3300140000233E0002000000000000000000000000000000002B00C90067009D001E0A280A000000002B0C900C00000000020000000000150036012B013C01400133013E012B013C01FFFF00000000000C00000000000000003A013A01530156014B01FFFF0000000000000012050800001500000810020000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_IDEqual"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_IDEqual"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-088 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Trainer ID equals Secret ID"
+    },
+    {
+      "id": "public-089",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/246 \u2605 - LARVITAR - E4CF00000002.pk4",
+      "source_blob": "2d27ffe9da8617444415c2bc00e4dd97dae86d50",
+      "original_sha256": "a05c9ecae6a60d1de57b7e25b234f36114fe26fbe2988a3186c217a3028bef16",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 246,
+      "hex": "020000000000CFE4F60000002A332A3300140000233E0002000000000000000000000000000000002B00C90067009D001E0A280A000000007EC84A0900000000020000000000150036012B013C01400133013E012B013C01FFFF00000000000C00000000000000003A013A01530156014B01FFFF0000000000000012050800001500000910020000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_IDEqual"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_IDEqual"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-089 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Trainer ID equals Secret ID"
+    },
+    {
+      "id": "public-090",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/308 - MEDICHAM - 25F8A56FA3F2.pk4",
+      "source_blob": "e56d3219559a060295e95605c53ba75668b32889",
+      "original_sha256": "59a3a5644cbcd125bcd1d103182a84380e56de985195d876e72a6a6efd648f00",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "D",
+      "species": 308,
+      "hex": "F2A36FA50000F82534010000823702B100FA0000464A0002000000000000000000000000000000005B018B018800F400140A140A000000001171983D00000000000000000000000037012F012E0133012D0132012B013701FFFF00000000000A000000000000000037012B013E013E01FFFF00000000000000000010090200003200000228020000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "D",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-090 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-091",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/477 - DUSKNOIR - 12DF9E28828D.pk4",
+      "source_blob": "8c246e62f1f2980a33281fa2134da038a7a478f6",
+      "original_sha256": "6f856f93e4b60fc348add0e5c380b837084de8ea270f49d6486f2f255234bac5",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "Pt",
+      "species": 477,
+      "hex": "8D82289E0000DF12DD010000C8CD265A4A9E0000462E000200000000000000000000000000000000E400050145016D00140F140A000000004592990E0000000000000000000018002E013F013D0135013801390133013C01FFFF00000000000C000000000000000037012B013E013E01FFFF00000000000000000011071B00001800000D11090000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "Pt",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-091 NOPROBLEMS - ;"
+    },
+    {
+      "id": "public-092",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 Transfer/230 - SEASOR - 4E170000007F.pk4",
+      "source_blob": "b6918ad80f01dc9eabe4e3b45026892383dc8c6d",
+      "original_sha256": "f9aa0f93f2b121eb56628a6d8126572eb79c70aa6ddd3891c8d649b4d86e9b72",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "E",
+      "species": 230,
+      "hex": "7F0000000000174EE600DD00CDB40000A8AA010046210002181D06081801050505051E0A0000000061006C00EF003B001E14140500000000851052880000000000000000000000003D012F012B013D0139013C01FFFF000048A10C02E0FF000300000000000000003D013501430136012B013C01FFFF00000000001207100000370000042F000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "TMHM"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "E",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-092 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Met location/level does not match the audited encounter table for emerald_gba"
+    },
+    {
+      "id": "public-093",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 Transfer/323 - CAMERUPT - 1EAB066E02B3.pk4",
+      "source_blob": "db10d19f0ccaf2389c0248e877132ec35346dc93",
+      "original_sha256": "f9ed0163f4f736cd0b55a3440bc6dff1ad1977b61ab611ec236a7981833ecb8f",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "R",
+      "species": 323,
+      "hex": "B3026E060000AB1E43010000D9D51CD6E4B0000051280002182A1409021000000000000000000000DE0024007E009D001E14050A00000000A90F45000000100000000000000000002D012B0137012F013C013F013A013E01FFFF0C02E0FF000200000000000000003701450156014F01FFFF3F013A013E0100000007050100003700000423000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "R",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INCOMPLETE",
+      "production_line": "public-093 INCOMPLETE internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; W: Met location/level does not match the audited encounter table for ruby_gba"
+    },
+    {
+      "id": "public-094",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 Transfer/479-04 - Fan - 68FCC25F9AB6 dp formchange egg.pk4",
+      "source_blob": "eff442211e162d28c251af426bd5ceb3161e7d50",
+      "original_sha256": "ce4e808e510e769bbc9d364d00e6cff051af097f0b94c35ecc4f60cf336eeb8a",
+      "original_bytes": 236,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 4,
+      "sourceType": "PK4",
+      "version": "D",
+      "species": 479,
+      "hex": "B69A5FC20000FC68DF0100003905393048E80100461A0002F800FC000A000000000000000100020093010501DC0000001818200003030300FFFFFFBF000000012400000000000000300145015201FFFF0000000000000000000000000000000A00000000000000003E01490157015801FFFF000000000000140414140414D0075000000400000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Tutor"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Tutor"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "host_cart_context": "D",
+      "host_cart_custody": "assumed from origin; source save not supplied",
+      "nx": "INVALID",
+      "production_line": "public-094 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; Form 4 is not available in this exact Generation IV game | Form 4 is out of range | W: Move 1 PP is below its maximum for a Pokemon stored in the PC"
+    },
+    {
+      "id": "public-095",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/015 - Beedrill - 2F3A638FD1B9 gen3 transfer highlevel.pk5",
+      "source_blob": "0ccec5c3f887d0c994bc0e980aca3ee2c347802c",
+      "original_sha256": "40ec7f7f5c782829a796e008076a1076b4634df54812fda58b02f2a4608caf40",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "FR",
+      "species": 15,
+      "hex": "B9D18F6300003A2F0F000000B1E52E27D83B05004644100206FC00FC0000000000000000000000001102000294018E010A0F0F140000000085AF72200000000000150000000000004200650065006400720069006C006C00FFFF00000000FF04000000000000000041004D004D0041004B004F00FFFF00000000000B030A000031750004C6000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Tutor"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "TMHM"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-095 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-096",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/0242 - Heiteira - C862311C7FE4.pk5",
+      "source_blob": "1c4e6f70677fc458a4159dc6e6cb6175ac1ddbf9",
+      "original_sha256": "384a9560c223460373f94fd12fa1e04fa77db2dc49982c4272a70520c626131a",
+      "original_bytes": 220,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "W2",
+      "species": 242,
+      "hex": "E47F1C31000062C8F2000000672B672B06000000FF1E00050000000000000000000000000000000001000E01AD00CF003820181803030303FFFFFF3F00000000020A00000000000048006500690074006500690072006100FFFFFFFFFFFF001600000000000000005400450053005400FFFF6500FFFF000012041712041733751000000481000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_IDEqual",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_IDEqual",
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Tutor"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Tutor"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "TMHM"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-096 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-097",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/0407 - Roserade - 83F5F7E60F78.pk5",
+      "source_blob": "54d03a5e2bb96d953b20a7ccb564d86415db1521",
+      "original_sha256": "53083666b9c26a639519ae764916ddcacf42d0396f28f44a92fe4bf360e9f6d9",
+      "original_bytes": 220,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "W2",
+      "species": 407,
+      "hex": "780FE6F70000F58397010000672B672B00000000FF1E00050000000000000000000000000000000048005901E60047001820202803030303BDB7003300000000020A00000000000052006F00730065007200610064006500FFFFFFFFFFFF001600000000000000005400450053005400FFFF6500FFFF000012041712041733751000000481000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:Trainer:OT_IDEqual"
+      ],
+      "findings": [
+        "Fishy:Trainer:OT_IDEqual"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-097 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-098",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/0550-01 - Basculin - C46358B4FA76 wrongAbility.pk5",
+      "source_blob": "019b75d918d95eb1b3055b5aeb26c70873e3ba03",
+      "original_sha256": "2123f29aefc205d59f000bdef45cdfe7e392fcc9f4d5fc4c6df010dc52c63e0f",
+      "original_bytes": 220,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B",
+      "species": 550,
+      "hex": "76FAB458000063C42602000008000E525F7400004678000200000000000000000000000000000000F2012400F200910114140F0A0000000033D3B13B000000000A05000000000000420061007300630075006C0069006E00FFFF0000FFFF00150000000000000000480069006C0064006100FFFF0000FFFF00000012031C0000270000029F000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-098 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-099",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/143 - Trip\u00f3n - D4336200001F Evolved.pk5",
+      "source_blob": "73454e95c0e14623765f7a42bf837f8e43cc4456",
+      "original_sha256": "006f3f3d04ab9c76c14da7968049fd34fbf86ea65dfa2ce4e594efa1028ed488",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B",
+      "species": 143,
+      "hex": "1F000062000033D48F00EA00199D00004E540400FF11000700000000000000000000000000000000CD006B0121018301140F0A05000000009F524AA900000000000C0000000000005400720069007000F3006E00FFFF7800FFFF0000FFFF001500000000000000004E00690063006F00FFFF0000000000000000000F02050000327500043C000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "findings": [
+        "Fishy:EVs:EffortEXPIncreased",
+        "Fishy:Level:LevelEXPThreshold"
+      ],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Tutor"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-099 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-100",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/440 - Egg - 5B70552258BA Breeder Happiny.pk5",
+      "source_blob": "3963ce8554c7ed26f184c69a9bef0805d81bdbe1",
+      "original_sha256": "9e6115ff197e7aa1990f060ee0835487f9359898ea9a49ae1c41ec58280e1e2c",
+      "original_bytes": 220,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B2",
+      "species": 440,
+      "hex": "BA5822550000705BB8010000E321350100000000281E0002000000000000000000000000000000000100CC0000000000231400000000000047FE74E3000000000210000000000000450067006700FFFF69006E007900FFFF00000000FFFF00170000000000000000540065007300740069006E006700FFFF15051500000063EA0000000401000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INCOMPLETE",
+      "production_line": "public-100 INCOMPLETE ;"
+    },
+    {
+      "id": "public-101",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/446 - Trip\u00f3n - BDC46200001F Trade Ability Mismatch.pk5",
+      "source_blob": "99ee8660d8a33bbc0429a2434ee2b29c4d40cac1",
+      "original_sha256": "071a30dda8f76adaea0b9bda34d5753501a9d8b6bcdc36a76bd85675eb2c4fd3",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "B",
+      "species": 446,
+      "hex": "1F0000620000C4BDBE01EA00199D0000B01E0400FF2F000700000000000000000000000000000000CD006B0121018301140F0A05000000009F524AA900000000000C0000000000005400720069007000F3006E00FFFF7800FFFF0000FFFF001500000000000000004E00690063006F00FFFF0000000000000000000F02050000327500043C000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-101 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-102",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/546 - Jersey - C31DDBEA71D8 french accented OT name.pk5",
+      "source_blob": "ceffc84d3c4c67659ed39946389a85effd923464",
+      "original_sha256": "b7dd5962c4eb6a77035fb553ffb7dd340a7715c640099da0a1afc951d1c93e71",
+      "original_bytes": 136,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "W2",
+      "species": 546,
+      "hex": "D871EADB00001DC32202260158160100401F0000469E0003000000000000000000000000000000004E004800B2004B001E0F2819000000009452FAA900000000000F0000000000004A0065007200730065007900FFFF65007400FFFFFFFF001600000000000000004A00F400730075006B006500FFFF00000000000F0C0F00003275000414000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-102 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-103",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/612 \u2605 - Haxorus - A1AC5BB800F7.pk5",
+      "source_blob": "db5c45424d25ca15b0e7f70f1c377959b778147c",
+      "original_sha256": "317590754e68d19830c143d221e8684e0209dbdeb7f9c5d8995c5b0371a595b1",
+      "original_bytes": 220,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "W2",
+      "species": 612,
+      "hex": "F700B85B0000ACA1640200003905775EB01E0400234F0002000000000000000000000000000000000D0196010E000C00140A1D0400000000006F0D0100000000000E0000000000004800610078006F00720075007300FFFF00000000FFFF001600000000000000004C00650067006F00FFFF00000000FFFF000000140A0C000093000001BC000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": false,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "LevelUp"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "LevelUp"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "NOPROBLEMS",
+      "production_line": "public-103 NOPROBLEMS ;"
+    },
+    {
+      "id": "public-104",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/636 - Egg - F2C5552258BA Breeder Larvesta.pk5",
+      "source_blob": "ed8810ad9bd995490bd57bdb8cc906d90dfd86ac",
+      "original_sha256": "a7cf03670b41e027d92dd5900dd03415fe7b71db4da38ff215b41f78ac480d4a",
+      "original_bytes": 220,
+      "custody": "published PKHeX test file; original-game acquisition not authenticated",
+      "format": 5,
+      "sourceType": "PK5",
+      "version": "W",
+      "species": 636,
+      "hex": "BA5822550000C5F27C020000E321350100000000283100020000000000000000000000000000000034005100000000001928000000000000F7784CEB000000000000000000000000450067006700FFFF6500730074006100FFFF0000FFFF00140000000000000000540065007300740069006E006700FFFF15051500000063EA0000000401000000",
+      "ot": "",
+      "nickname": "",
+      "language": 0,
+      "egg": true,
+      "referenceValid": true,
+      "originalReferenceValid": true,
+      "originalFindings": [],
+      "findings": [],
+      "moves": [
+        {
+          "slot": 0,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 1,
+          "valid": true,
+          "method": "Initial"
+        },
+        {
+          "slot": 2,
+          "valid": true,
+          "method": "Empty"
+        },
+        {
+          "slot": 3,
+          "valid": true,
+          "method": "Empty"
+        }
+      ],
+      "conversion": "decoded native record",
+      "nx": "INCOMPLETE",
+      "production_line": "public-104 INCOMPLETE ;"
+    }
+  ]
+}

@@ -205,6 +205,7 @@ struct PretSlot {
 #include "Legality/Gen1PretWildYellow2.inc"
 #include "Legality/Gen1PretWildYellow3.inc"
 #include "Legality/Gen1PretFishing.inc"
+#include "Legality/Gen1PretFishingRB.inc"
 inline constexpr std::size_t kPretSlotCount =
     kPretRB0.size()+
     kPretRB1.size()+
@@ -214,7 +215,8 @@ inline constexpr std::size_t kPretSlotCount =
     kPretYellow1.size()+
     kPretYellow2.size()+
     kPretYellow3.size()+
-    kPretFishing.size();
+    kPretFishing.size()+
+    kPretFishingRB.size();
 constexpr const PretSlot* pretSlot(std::size_t index) noexcept {
     if(index<kPretRB0.size())return &kPretRB0[index];
     index-=kPretRB0.size();
@@ -234,9 +236,12 @@ constexpr const PretSlot* pretSlot(std::size_t index) noexcept {
     index-=kPretYellow3.size();
     if(index<kPretFishing.size())return &kPretFishing[index];
     index-=kPretFishing.size();
+    if(index<kPretFishingRB.size())return &kPretFishingRB[index];
+    index-=kPretFishingRB.size();
     return nullptr;
 }
-static_assert(kPretSlotCount==1512);
+// 1,512 original rows (indices unchanged) + 109 Red/Blue Super Rod rows appended.
+static_assert(kPretSlotCount==1621);
 // Original wild grass/surf slots are probability-weighted at 8-bit
 // resolution; each map/method table sums to 256. Rod sources instead
 // use their own scripts and must NOT inherit these wild-slot odds.
@@ -361,7 +366,7 @@ constexpr Result evaluatePretFishingInit(const Candidate& c,
     return {Status::SourceSlotCompatibleRateAndHistoryUnverified,source.sourceSpecies};
 }
 // Optional, independently witnessed original R/B/Y RNG-physical-slot join.
-// The 1,512 pret source rows retain their historical physical slot ordinals;
+// The 1,621 pret source rows retain their historical physical slot ordinals;
 // roll/half-block tile context is never fabricated from a detached PK1.
 // A source-row contradiction and a wild-roll contradiction are two distinct
 // candidate-local stages; neither one authorizes whole-Pokemon Invalid.
@@ -393,9 +398,11 @@ constexpr PretWildRollJoined evaluatePretWildRoll(
 }
 // Combine the independently selected original physical rod source with
 // original FishingInit outcome and the correct per-version RNG algorithm.
-// Existing Red/Blue Super Rod rows live in the UNCHANGED kVerifiedSlots
-// index namespace; Yellow Super Rod/Old/Good are in the 1512-row pret
-// namespace. No connection is inferred between these index namespaces.
+// Red/Blue Super Rod rows live in the UNCHANGED kVerifiedSlots index
+// namespace (used when legacyRedBlueSuper is set) and, generated from the
+// same pinned pokered source, at the end of the pret namespace; Yellow
+// Super Rod/Old/Good are in the pret namespace. No connection is inferred
+// between these index namespaces.
 struct PretFishingRollJoined {
     Status sourceStatus=Status::UnknownOriginalSourceRow;
     Gen1PretFishingRollStage::Result roll{};

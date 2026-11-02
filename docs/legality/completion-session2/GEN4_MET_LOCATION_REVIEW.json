@@ -1,0 +1,352 @@
+{
+  "records": 45,
+  "source_pins": {
+    "platinum": {
+      "commit": "637bb186e11b5ce1ee578981311c057498e57126",
+      "files": {
+        "src/pokemon.c": "84838b196abe0d851f76e2f1ea75e04473b158ede6d517a4229f2c337b4dda8b",
+        "src/unk_02017038.c": "78515bffdbfa9a9c5bd95c51e8141ea8c15f6550dcefb990ed3790617727fb27"
+      }
+    },
+    "heartgold": {
+      "commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+      "files": {
+        "src/pokemon.c": "6924639b76ff3c05fc6100c76d1af167c4e043e3867965fec5f7605d412fb1eb",
+        "include/constants/map_sections.h": "1102c63c2637718fa28aeb57038c78c5d614f6c8cca0018ca1d199a07613431a"
+      }
+    }
+  },
+  "policy": "All raw stricter cases independently recomputed from pinned native ranges and coupled setters; no ID controls the predicate.",
+  "native_compatibility_ranges": [
+    [
+      1,
+      111
+    ],
+    [
+      2000,
+      2010
+    ],
+    [
+      3000,
+      3076
+    ]
+  ],
+  "faraway_value": 3002,
+  "rows": [
+    {
+      "id": "m6657-metlocext",
+      "version": 10,
+      "dp_met_field": 19,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m6701-metlocext",
+      "version": 10,
+      "dp_met_field": 27,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m7011-metlocext",
+      "version": 12,
+      "dp_met_field": 25,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m16925-metlocext",
+      "version": 10,
+      "dp_met_field": 29,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m17037-metlocext",
+      "version": 11,
+      "dp_met_field": 77,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m17099-metlocext",
+      "version": 12,
+      "dp_met_field": 23,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m17154-metlocext",
+      "version": 12,
+      "dp_met_field": 78,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m17911-metlocext",
+      "version": 11,
+      "dp_met_field": 27,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m17945-metlocext",
+      "version": 11,
+      "dp_met_field": 77,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m18022-metlocext",
+      "version": 12,
+      "dp_met_field": 29,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m19307-metlocext",
+      "version": 10,
+      "dp_met_field": 9,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m19318-metlocext",
+      "version": 10,
+      "dp_met_field": 9,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m19609-metlocext",
+      "version": 10,
+      "dp_met_field": 35,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m19687-metlocext",
+      "version": 10,
+      "dp_met_field": 39,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m19851-metlocext",
+      "version": 10,
+      "dp_met_field": 49,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20158-metlocext",
+      "version": 11,
+      "dp_met_field": 9,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20194-metlocext",
+      "version": 11,
+      "dp_met_field": 13,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20198-metlocext",
+      "version": 11,
+      "dp_met_field": 13,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20482-metlocext",
+      "version": 11,
+      "dp_met_field": 36,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20486-metlocext",
+      "version": 11,
+      "dp_met_field": 36,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20530-metlocext",
+      "version": 11,
+      "dp_met_field": 39,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20626-metlocext",
+      "version": 11,
+      "dp_met_field": 43,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20650-metlocext",
+      "version": 11,
+      "dp_met_field": 45,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20657-metlocext",
+      "version": 11,
+      "dp_met_field": 45,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20709-metlocext",
+      "version": 11,
+      "dp_met_field": 50,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20781-metlocext",
+      "version": 11,
+      "dp_met_field": 57,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20821-metlocext",
+      "version": 11,
+      "dp_met_field": 61,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20871-metlocext",
+      "version": 11,
+      "dp_met_field": 77,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m20873-metlocext",
+      "version": 11,
+      "dp_met_field": 77,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m21005-metlocext",
+      "version": 12,
+      "dp_met_field": 9,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m21205-metlocext",
+      "version": 12,
+      "dp_met_field": 27,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m21227-metlocext",
+      "version": 12,
+      "dp_met_field": 28,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m21269-metlocext",
+      "version": 12,
+      "dp_met_field": 33,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m21678-metlocext",
+      "version": 12,
+      "dp_met_field": 69,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m21679-metlocext",
+      "version": 12,
+      "dp_met_field": 69,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m21759-metlocext",
+      "version": 12,
+      "dp_met_field": 83,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m23505-metlocext",
+      "version": 10,
+      "dp_met_field": 27,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m23518-metlocext",
+      "version": 10,
+      "dp_met_field": 29,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m23650-metlocext",
+      "version": 10,
+      "dp_met_field": 59,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m23691-metlocext",
+      "version": 10,
+      "dp_met_field": 83,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m23909-metlocext",
+      "version": 11,
+      "dp_met_field": 54,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m24089-metlocext",
+      "version": 12,
+      "dp_met_field": 33,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m24109-metlocext",
+      "version": 12,
+      "dp_met_field": 36,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m24143-metlocext",
+      "version": 12,
+      "dp_met_field": 41,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    },
+    {
+      "id": "m24191-metlocext",
+      "version": 12,
+      "dp_met_field": 50,
+      "extended_met_field": 1,
+      "native_setter_requires_dp_field": 1
+    }
+  ]
+}

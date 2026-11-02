@@ -1,0 +1,2681 @@
+{
+  "reference": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "records": 50999,
+  "raw_false_invalid": 128,
+  "native_level_absence": 91,
+  "other_raw_false_invalid": 37,
+  "rows": [
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b1108",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b1108 HG CF5BDD0900004EBE130000004DAD39ED401F0000463E0002000000000000000000000000000000002C00E4009E00850119140F0500000000B121322500000000000000000000CA003C012B013E013E012B013E012B01FFFF000000000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000514020500 VALID EncounterSlot4:19 ; ",
+      "production_line": "b1108 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-safari-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 19,
+        "possible_origin_species": [
+          19
+        ],
+        "version": 7,
+        "location": 202,
+        "stored_met_level": 20,
+        "transferred": false,
+        "native_possible_levels": [
+          15,
+          16,
+          17
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b1328",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b1328 SS 34515B070000830213000000B066CC59401F000046320002000000000000000000000000000000002C00E4009E00850119140F0500000000D3614D0E00000000020000000000CA003C012B013E013E012B013E012B01FFFF000000000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000514020500 VALID EncounterSlot4:19 ; ",
+      "production_line": "b1328 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-safari-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 19,
+        "possible_origin_species": [
+          19
+        ],
+        "version": 8,
+        "location": 202,
+        "stored_met_level": 20,
+        "transferred": false,
+        "native_possible_levels": [
+          15,
+          16,
+          17
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b17320",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b17320 HG D895857B0000F97F76000000C6F1C1CC330500004621000200000000000000000000000000000000400027005A013000231E0F1400000000B2D1D92C00000000000000000000CA003101390136012E012F012F013801FFFF000000000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B00050B070500 VALID EncounterSlot4:118 ; ",
+      "production_line": "b17320 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-safari-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 118,
+        "possible_origin_species": [
+          118
+        ],
+        "version": 7,
+        "location": 202,
+        "stored_met_level": 11,
+        "transferred": false,
+        "native_possible_levels": [
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          22,
+          23,
+          24,
+          35,
+          36,
+          37,
+          38,
+          42,
+          43
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m17339-metlevel",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": true,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m17339-metlevel HG A1B2FBA20000D85676000000C6F1C1CC95080000462900020000000000000000000000000000000027005A0130001E001E0F1419000000007CB0AE2300000000000000000000CA003101390136012E012F012F013801FFFF000000000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B00050B070500 VALID EncounterSlot4:118 ; ~EVs:EffortEXPIncreased ~Level:LevelEXPThreshold",
+      "production_line": "m17339-metlevel INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-safari-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 118,
+        "possible_origin_species": [
+          118
+        ],
+        "version": 7,
+        "location": 202,
+        "stored_met_level": 11,
+        "transferred": false,
+        "native_possible_levels": [
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          22,
+          23,
+          24,
+          35,
+          36,
+          37,
+          38,
+          42,
+          43
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b21824",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b21824 HG A3795B800000597C810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000032242937000000000000000000007E0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b21824 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 126,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21825-metdate",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21825-metdate HG A3795B80000052B1810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000032242937000000000000000000007E0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF000000000061030A0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21825-metdate INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 126,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21827-ball",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21827-ball HG A3795B8000005F82810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000032242937000000000000000000007E0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000A28070A00 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21827-ball INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 126,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b21836",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b21836 HG 956246510000AAEE810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000030957B38000000000000000000007F0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b21836 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 127,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21837-egglocation",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21837-egglocation HG 956246510000AAEE810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000030957B38000000000000000000007F0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21837-egglocation INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 127,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21839-ball",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21839-ball HG 956246510000ACF0810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000030957B38000000000000000000007F0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000628070600 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21839-ball INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 127,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b21860",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b21860 HG FE4B7A8C0000213A810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F00000000005614C90400000000000000000000820037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b21860 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 130,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21861-ball",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21861-ball HG FE4B7A8C00002039810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F00000000005614C90400000000000000000000820037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000328070300 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21861-ball INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 130,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b21872",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b21872 HG 2B8A0DA600000C05810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000F6B2103100000000020000000000840037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b21872 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 132,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21873-ball",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21873-ball HG 2B8A0DA600001F05810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000F6B2103100000000020000000000840037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428071700 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21873-ball INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 132,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21875-shinyleaf",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21875-shinyleaf HG 2B8A0DA600000C0F810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000F6B2103100000000020A00000000840037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21875-shinyleaf INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 132,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b21952",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b21952 HG 6C70CC8500005492810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000A43DA433000000000200000000008A0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b21952 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 138,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21953-language",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21953-language HG 6C70CC8500005497810000004027FC1280380100462100070000000000000000000000000000000096002100AF00000028230F0000000000A43DA433000000000200000000008A0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21953-language INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 138,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21954-ribbon",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21954-ribbon HG 6C70CC8500006492810000004027FC1280380100462100020000000000000000000000001000000096002100AF00000028230F0000000000A43DA433000000000200000000008A0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21954-ribbon INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 138,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b21988",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b21988 HG FF0BDEBB0000247B810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F00000000004D33C826000000000000000000008F0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b21988 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 143,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m21989-item",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m21989-item HG FF0BDEBB00003D7C810019014027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F00000000004D33C826000000000000000000008F0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m21989-item INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 143,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22024",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22024 HG 3D9DA2FE000088A8810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000035503F3700000000020000000000920037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22024 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 146,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22108",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22108 HG 0ADC9F420000441C810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000026EAF51000000000020000000000A70037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22108 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 167,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22120",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22120 HG 6450889A00008AA6810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000146B4C1A00000000020000000000A80037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22120 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 168,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22123-metdate",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22123-metdate HG 6450889A00008479810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000146B4C1A00000000020000000000A80037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000000304060000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22123-metdate INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 168,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22132",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22132 HG EB2163490000CA74810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000ED3CB41600000000000000000000A90037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22132 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 169,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22180",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22180 HG ED561EB800001C06810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000088CD661700000000000000000000AE0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22180 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 174,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22192",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22192 HG DD1EAEC000006CAC810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F00000000001E631F2800000000000000000000AF0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22192 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 175,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22193-pp",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22193-pp HG DD1EAEC0000060AC810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000019230F00030000001E631F2800000000000000000000AF0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22193-pp INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter | W: Move 1 PP is below its maximum for a Pokemon stored in the PC",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 175,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22194-ball",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22194-ball HG DD1EAEC0000074B4810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F00000000001E631F2800000000000000000000AF0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000C28070C00 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22194-ball INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 175,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22195-tid",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22195-tid HG DD1EAEC00000D25C81000000A6D7FC1280380100462100020000000000000000000000000000000096002100AF00000028230F00000000001E631F2800000000000000000000AF0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22195-tid INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 175,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22252",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22252 HG 84E3126E000070E6810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000ADBF8D0500000000000000000000B60037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22252 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 182,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22255-metdate",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22255-metdate HG 84E3126E00006BE9810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000ADBF8D0500000000000000000000B60037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000003505040000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22255-metdate INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 182,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22265-metlocation",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22265-metlocation HG 42F916EE0000F1E2810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F00000000000685B33C00000000020000000000B60037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22265-metlocation INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 182,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22276",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22276 HG 0A59B0B20000FEBC810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000053806D1B00000000020000000000BC0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22276 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 188,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22277-version",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22277-version HG 0A59B0B20000FEBD810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000053806D1B00000000020000000000BC0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22277-version INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 188,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22288",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22288 HG 8BBAE1EF0000C02C810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000E7D89C3200000000000000000000BD0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22288 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 189,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22364",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22364 HG 4511DBA20000292F810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000049079B0600000000020000000000C30037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22364 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 195,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22365-metdate",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22365-metdate HG 4511DBA200002931810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000049079B0600000000020000000000C30037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000002A0A0E0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22365-metdate INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 195,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22366-tid",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22366-tid HG 4511DBA20000A33781000000BA2FFC1280380100462100020000000000000000000000000000000096002100AF00000028230F000000000049079B0600000000020000000000C30037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22366-tid INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 195,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22396",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22396 HG DE8EEC46000084A1810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000C2537B2C00000000000000000000C70037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22396 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 199,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22398-ribbon",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22398-ribbon HG DE8EEC46000086A1810000004027FC1280380100462100020000000000000000000000000000020096002100AF00000028230F0000000000C2537B2C00000000000000000000C70037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22398-ribbon INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 199,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22452",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22452 HG 85BBC8CE00007D88810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000D3285F3E00000000000000000000CB0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22452 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 203,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22454-shinyleaf",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22454-shinyleaf HG 85BBC8CE00007DA7810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000D3285F3E00000000001F00000000CB0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22454-shinyleaf INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 203,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22455-item",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22455-item HG 85BBC8CE0000008A810083014027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000D3285F3E00000000000000000000CB0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22455-item INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 203,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22524",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b22524 HG 426475C000002DE9810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F00000000005E92733500000000020000000000DA0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22524 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 218,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22605-metlocation",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "m22605-metlocation HG CD1FABB40000F5BC810000004027FC1280380100462100020000000000000000000000000000000096002100AF00000028230F0000000000D05E273D000000000000000000007E0037012B013101330135012B013C013A01FFFF00000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22605-metlocation INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 7,
+        "location": 126,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22632",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22632 SS 58C599A900009B95810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000005E82FF25000000000200000000007E0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22632 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 126,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22633-ribbon",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22633-ribbon SS 58C599A900009B99810000005D491DBC80380100462100020000000000000000000000000004000096002100AF00000028230F00000000005E82FF25000000000200000000007E0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22633-ribbon INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 126,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22644",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22644 SS 656161D600001FA3810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F000000000020A4C011000000000200000000007F0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22644 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 127,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22668",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22668 SS 8E575E4000000667810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000EA47DC3100000000000000000000820037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22668 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 130,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22670-metdate",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22670-metdate SS 8E575E4000000357810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000EA47DC3100000000000000000000820037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001407120000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22670-metdate INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 130,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22680",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22680 SS CB53E252000091C6810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000B9C2961600000000000000000000840037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22680 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 132,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22760",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22760 SS F500CFDA00006E6F810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000FA462C3B000000000000000000008A0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22760 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 138,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22762-pp",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22762-pp SS F500CFDA0000796F810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000030230F0003000000FA462C3B000000000000000000008A0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22762-pp INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter | W: Move 1 PP is below its maximum for a Pokemon stored in the PC",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 138,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22763-pp",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22763-pp SS F500CFDA00006D6F810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000024230F0003000000FA462C3B000000000000000000008A0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22763-pp INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter | W: Move 1 PP is below its maximum for a Pokemon stored in the PC",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 138,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22796",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22796 SS 6037940200007AD0810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000D2DC5906000000000200000000008F0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22796 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 143,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22799-shinyleaf",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22799-shinyleaf SS 6037940200007AD8810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000D2DC5906000000000208000000008F0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22799-shinyleaf INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 143,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22832",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22832 SS CAAAA9F10000E9DE810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000BBD5DE1B00000000000000000000920037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22832 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 146,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22833-metdate",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22833-metdate SS CAAAA9F10000E1D6810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000BBD5DE1B00000000000000000000920037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001D02110000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22833-metdate INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 146,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22834-shinyleaf",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22834-shinyleaf SS CAAAA9F10000E9FB810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000BBD5DE1B00000000001D00000000920037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22834-shinyleaf INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 146,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22916",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22916 SS 66424E13000048C6810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000002ED7B30100000000020000000000A70037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22916 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 167,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22917-egglocation",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22917-egglocation SS 66424E13000048C6810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000002ED7B30100000000020000000000A70037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22917-egglocation INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 167,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22918-tid",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22918-tid SS 66424E1300000E7F8100000023021DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000002ED7B30100000000020000000000A70037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22918-tid INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 167,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22919-ball",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22919-ball SS 66424E1300004FCD810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000002ED7B30100000000020000000000A70037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000B28070B00 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22919-ball INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 167,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22928",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22928 SS 395B53A30000878A810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000007496AB0600000000020000000000A80037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22928 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 168,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22929-iv",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22929-iv SS 395B53A30000878A810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000007496AB0600000000020000000000A80037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22929-iv INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 168,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22940",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22940 SS BA85D3810000A8B5810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000005891E93600000000000000000000A90037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22940 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 169,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m22943-tid",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m22943-tid SS BA85D3810000A5F2810000005A861DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000005891E93600000000000000000000A90037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m22943-tid INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 169,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b22988",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b22988 SS 600DA34B00001321810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000F823AD0F00000000020000000000AE0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b22988 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 174,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b23000",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b23000 SS C4AE1DF80000EBC4810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000001AA5643200000000000000000000AF0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b23000 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 175,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m23002-tid",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m23002-tid SS C4AE1DF80000E7808100000059051DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000001AA5643200000000000000000000AF0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m23002-tid INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 175,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b23060",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b23060 SS 5A945BAB00003AC0810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000A2B9221900000000020000000000B60037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b23060 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 182,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m23061-pp",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m23061-pp SS 5A945BAB000012C0810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000000230F0000000000A2B9221900000000020000000000B60037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m23061-pp INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter | W: Move 1 PP is below its maximum for a Pokemon stored in the PC",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 182,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b23084",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b23084 SS 1210C74D0000B4C6810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000E9994F3F00000000020000000000BC0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b23084 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 188,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m23085-exp",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m23085-exp SS 1210C74D0000FBCD810000005D491DBCC73F0100462100020000000000000000000000000000000096002100AF00000028230F0000000000E9994F3F00000000020000000000BC0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m23085-exp INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 188,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b23096",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b23096 SS F03160FF000062C3810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000006ACF7D0600000000000000000000BD0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b23096 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 189,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m23098-ribbon",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m23098-ribbon SS F03160FF000062D3810000005D491DBC80380100462100020000000000000000000000000000001096002100AF00000028230F00000000006ACF7D0600000000000000000000BD0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m23098-ribbon INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 189,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b23172",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b23172 SS ED1B8ADC0000CB78810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000D566752400000000000000000000C30037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b23172 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 195,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b23204",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b23204 SS 53C0432B0000CDAE810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F000000000011A6351B00000000020000000000C70037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b23204 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 199,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m23205-pp",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m23205-pp SS 53C0432B0000C0AE810000005D491DBC80380100462100020000000000000000000000000000000096002100AF0000001B230F000000000011A6351B00000000020000000000C70037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m23205-pp INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter | W: Move 1 PP is below its maximum for a Pokemon stored in the PC",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 199,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m23206-shinyleaf",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m23206-shinyleaf SS 53C0432B0000CDC3810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F000000000011A6351B00000000021500000000C70037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m23206-shinyleaf INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 199,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b23208",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b23208 SS 1B42C70A00008BC3810000005D491DBC10270000462100020000000000000000000000000000000096000000000000002800000000000000FB07690200000000020000000000CA0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000514070500 VALID EncounterSlot4:129 ; ",
+      "production_line": "b23208 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-safari-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 202,
+        "stored_met_level": 20,
+        "transferred": false,
+        "native_possible_levels": [
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          22,
+          23,
+          24
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b23260",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b23260 SS 679DD7C200006FF5810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000A1EE431900000000020000000000CB0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b23260 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 203,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m23261-shinyleaf",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m23261-shinyleaf SS 679DD7C200006F07810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F0000000000A1EE431900000000021200000000CB0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m23261-shinyleaf INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 203,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m23323-metlocation",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m23323-metlocation SS 5F5CC2E40000C351810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000009755B60E00000000020000000000B60037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m23323-metlocation INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 182,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b23332",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b23332 SS D4B8A1680000CF54810000005D491DBC80380100462100020000000000000000000000000000000096002100AF00000028230F00000000004C50EB1600000000000000000000DA0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "b23332 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 218,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "m23335-pp",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "m23335-pp SS D4B8A1680000C254810000005D491DBC80380100462100020000000000000000000000000000000096002100AF0000001B230F00000000004C50EB1600000000000000000000DA0037012B013101330135012B013C013A01FFFF00000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000428070400 VALID EncounterSlot4:129 ; ",
+      "production_line": "m23335-pp INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter | W: Move 1 PP is below its maximum for a Pokemon stored in the PC",
+      "proof": {
+        "basis": "native-magikarp-family-wild-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 129,
+        "possible_origin_species": [
+          129
+        ],
+        "version": 8,
+        "location": 218,
+        "stored_met_level": 40,
+        "transferred": false,
+        "native_possible_levels": [
+          10,
+          20
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b34619",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b34619 HG 5BA550030000E5B707010000B3B7894C401F0000465200020000000000000000000000000000000027001D001C003C011E0F0F2800000000C7A01E0200000000020000000000CA0044013301310144012B013101390139013801FFFF0000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000514020500 VALID EncounterSlot4:263 ; ",
+      "production_line": "b34619 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-safari-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 263,
+        "possible_origin_species": [
+          263
+        ],
+        "version": 7,
+        "location": 202,
+        "stored_met_level": 20,
+        "transferred": false,
+        "native_possible_levels": [
+          38,
+          44
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b34663",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b34663 SS ED9BF7120000AB4007010000384B0F28401F0000465200020000000000000000000000000000000027001D001C003C011E0F0F280000000018868A3500000000000000000000CA0044013301310144012B013101390139013801FFFF0000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000514020500 VALID EncounterSlot4:263 ; ",
+      "production_line": "b34663 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-safari-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 263,
+        "possible_origin_species": [
+          263
+        ],
+        "version": 8,
+        "location": 202,
+        "stored_met_level": 20,
+        "transferred": false,
+        "native_possible_levels": [
+          38,
+          44
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b44799",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "HG",
+      "reference_line": "b44799 HG 13CBD8590000ACBA8F010000D605F14B401F0000466D0002000000000000000000000000000000002D006F00CD001D002828140F00000000DE35850A00000000020000000000CA002C0133012E01390139013001FFFF0000000000000000000700000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000514020500 VALID EncounterSlot4:399 ; ",
+      "production_line": "b44799 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-safari-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 399,
+        "possible_origin_species": [
+          399
+        ],
+        "version": 7,
+        "location": 202,
+        "stored_met_level": 20,
+        "transferred": false,
+        "native_possible_levels": [
+          40
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    },
+    {
+      "group": "gen34",
+      "generation": 4,
+      "id": "b44915",
+      "reference": "VALID",
+      "nx": "INVALID",
+      "fishy": false,
+      "misc_error": false,
+      "game": "SS",
+      "reference_line": "b44915 SS C39CB1E90000B4628F0100009D9F89CC401F0000466D0002000000000000000000000000000000002D006F00CD001D002828140F0000000036C5D80700000000000000000000CA002C0133012E01390139013001FFFF0000000000000000000800000000000000003E0149015701580149015601FFFF00000000001A0A1C0000BA0B000514020500 VALID EncounterSlot4:399 ; ",
+      "production_line": "b44915 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; No matching Gen IV encounter for this species, level, location, ball and PID/IV | Encounter ground tile type does not match the encounter",
+      "proof": {
+        "basis": "native-safari-level-absence",
+        "native_commit": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+        "species": 399,
+        "possible_origin_species": [
+          399
+        ],
+        "version": 8,
+        "location": 202,
+        "stored_met_level": 20,
+        "transferred": false,
+        "native_possible_levels": [
+          40
+        ],
+        "scope": "Necessary native wild-level absence. No RNG sufficiency or acquisition custody claim."
+      }
+    }
+  ]
+}

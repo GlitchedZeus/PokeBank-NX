@@ -1,0 +1,508 @@
+[
+  {
+    "generation": 1,
+    "corpus": "2901 defect-jp-ot-charset 1 9e009132001515e11f277f20f7e901e84828005a00280032003c00e5c900000000320091006f004b0055005e 8ae750505050 4388a1ab5050",
+    "oracle": "2901 INVALID EncounterSlot1:118:RD:10 ; Trainer:G1CharOT",
+    "before": "2901 VALID egg Goldeen in Gold/Silver (hatched at level 5) [time capsule] ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7451 gsball2-caught 1 fb00d7dbf6f8d15300550000000000000000000000114a0519c80f4600de0e1e0000006b006b00410041004300470047 b1b6c8505050 09ab50505050 0",
+    "oracle": "7451 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7451 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7452 gsball2-caught 1 fb00d7dbf6f80f4c0055000000000000000000000047950502400846009e8e1e00000068006800430045004600440044 8f888b505050 4388a1ab5050 0",
+    "oracle": "7452 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7452 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7453 gsball2-caught 1 fb00d7dbf6f87c4b005500000000000000000000009cdc4519840f46005e8e1e0000006a006a00460048004800480048 8f888b505050 b1b23eb35050 0",
+    "oracle": "7453 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7453 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7454 gsball2-caught 1 fb00d7dbf6f8fec900550000000000000000000000f3c3051702014600de8e1e0000006b006b004a0042004800420042 8f888b505050 418550505050 0",
+    "oracle": "7454 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7454 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7455 gsball2-caught 1 fb00d7dbf6f83f030055000000000000000000000009cf02a3800146009e0e1e000000670067004100460048004a004a 8f888b505050 4388a1ab5050 0",
+    "oracle": "7455 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7455 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7456 gsball2-caught 1 fb00d7dbf6f8649400550000000000000000000000d81d05e8050746009e8e1e0000006a006a00480045004100480048 09e3a6135050 09ab50505050 0",
+    "oracle": "7456 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7456 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7457 gsball2-grown 1 fb00d7dbcff8e8870103c9000000000000000000001d838002520646009e0e2a00000092009200590063005f005b005b 8f888b505050 09ab50505050 0",
+    "oracle": "7457 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7457 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7458 gsball2-grown 1 fb00dacaf6f8b5810145873200460050000a00640011b10905469546009e0e2d0000009e009e005f005f0068005f005f b1b6c8505050 418550505050 0",
+    "oracle": "7458 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7458 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7459 gsball2-grown 1 fb00d7dbf6f89a5100698d00000000000000000000b404c31500004600de0e200000006f006f004c0047004500470047 09e3a6135050 09ab50505050 0",
+    "oracle": "7459 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7459 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7460 gsball2-grown 1 fb00e2dbf6f869bf00dd540000000000000000000046b0b000000f46009e8e2800000083008300580059005d00550055 8f888b505050 09ab50505050 0",
+    "oracle": "7460 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7460 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7461 gsball2-grown 1 fb00d7dbaef8ec0600cb9f00000000000000000000d6c204d107cf4600de0e27000000850085005d0057005c00540054 858c9e505050 4388a1ab5050 0",
+    "oracle": "7461 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7461 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "7462 gsball2-grown 1 fb00d7dbe29c081e00dd540a003c005a0046003c0067ad054f084846009e8e280000008600860059005a005d005f005f 8a938b505050 418550505050 0",
+    "oracle": "7462 INVALID EncounterInvalid:251:GSC:30 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+    "before": "7462 VALID GS Ball Celebi in Japanese Crystal (level 30) ;",
+    "root_cause": "GS Ball Celebi",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Pokemon official historical Mobile Adapter availability statement, 2017-12-14",
+      "Japanese Crystal IlexForest native script: loadwildmon CELEBI,30"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8737 jp-ot-mark-ok 1 14002762e4a279d902fa280000000000000000000012cfc4c3020a460000003a0000008e008e0064004c008300500067 8ae650505050 418550505050 0",
+    "oracle": "8737 INVALID EncounterSlot1:20:BU:52 ; Trainer:G1CharOT",
+    "before": "8737 VALID egg Rattata in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8745 jp-ot-mark-ok 1 1fe421adae289ed60103c90000000000000000000022a0f80f8823468100002a0000007f007f004b004f004d0044004c 09e750505050 b1b23eb35050 0",
+    "oracle": "8745 INVALID EncounterStatic1:30:RB:17 ; Trainer:G1CharOT",
+    "before": "8745 VALID egg Nidoran\u2640 in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8753 jp-ot-mark-ok 1 31003c4f103085b60121685a000a0064005a005000d36f580f6a00460000002a000000790079004600390055005d0050 09e750505050 418550505050 0",
+    "oracle": "8753 INVALID EncounterSlot1:49:BU:32 ; Trainer:G1CharOT",
+    "before": "8753 VALID egg Venonat in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8761 jp-ot-mark-ok 1 820096ed52e1abf500af796eb3af06013d0891983d342d2895d08146000000210000006f006f0059003b003b0035004f 9e94e6505050 418550505050 0",
+    "oracle": "8761 INVALID EncounterStatic1:129:RBY:5 ; Trainer:G1CharOT",
+    "before": "8761 VALID egg Magikarp in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8769 jp-ot-mark-ok 1 3c00915ff0edb50300064c00000000000000000000ec5f1e140501460000000e00000024002400160013001f00140014 09e750505050 418550505050 0",
+    "oracle": "8769 INVALID EncounterSlot1:60:RD:10 ; Trainer:G1CharOT",
+    "before": "8769 VALID egg Poliwag in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8777 jp-ot-mark-ok 1 8200d821ef383c69019ff00000000000000000000086f10708e005460000002c0000008c008c007a004f0059003a005d 09e750505050 418550505050 0",
+    "oracle": "8777 INVALID EncounterStatic1:129:RBY:5 ; Trainer:G1CharOT",
+    "before": "8777 VALID egg Magikarp in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8785 jp-ot-mark-ok 1 ba59915ff0031c3400698d526ebbb1aca3b161774e76d5df10050746000000200000006a006a00390038003a00410048 9e94e6505050 4388a1ab5050 0",
+    "oracle": "8785 INVALID EncounterSlot1:60:RD:10 ; Trainer:G1CharOT",
+    "before": "8785 VALID egg Poliwag in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8793 jp-ot-mark-ok 1 8200963852f00659023e75000000000000000000001b25fdc402434600000031000000a400a40080005d00560044006b 8ae650505050 09ab50505050 0",
+    "oracle": "8793 INVALID EncounterStatic1:129:RBY:5 ; Trainer:G1CharOT",
+    "before": "8793 VALID egg Magikarp in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8809 jp-ot-mark-ok 1 795f816de569b63b0287b51e006400140028005000c9a1140ab61246000000330000007f007f005d00640084006c005c 9e94e6505050 b1b23eb35050 0",
+    "oracle": "8809 INVALID EncounterSlot1:120:BU:32 ; Trainer:G1CharOT",
+    "before": "8809 VALID egg Staryu in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8817 jp-ot-mark-ok 1 140021e4629e7e5502458d00000000000000000000cd2b0d060e4a46000000350000007e007e00670052006d0045005a 8ae650505050 418550505050 0",
+    "oracle": "8817 INVALID EncounterSlot1:20:BU:52 ; Trainer:G1CharOT",
+    "before": "8817 VALID egg Rattata in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8825 jp-ot-mark-ok 1 2a27302c6d11b31f0069780000000000000000000051eb005c0a23460000001e0000005c005c0038002f004300320038 8ae650505050 09ab50505050 0",
+    "oracle": "8825 INVALID EncounterSlot1:41:BU:16 ; Trainer:G1CharOT",
+    "before": "8825 VALID egg Zubat in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8841 jp-ot-mark-ok 1 0c8bf1db104f89ec01cb910b2fa62b739a30e66931f4be8701b10f46000000310000007f007f003f0039005400610061 8ae650505050 09ab50505050 0",
+    "oracle": "8841 INVALID EncounterSlot1:10:BU:7 ; Trainer:G1CharOT",
+    "before": "8841 VALID egg Caterpie in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8857 jp-ot-mark-ok 1 820096215268269e00601b4600320046001e005000949fb0e00900460000001b0000005e005e004d00310035002d0043 9e94e6505050 b1b23eb35050 0",
+    "oracle": "8857 INVALID EncounterStatic1:129:RBY:5 ; Trainer:G1CharOT",
+    "before": "8857 VALID egg Magikarp in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8865 jp-ot-mark-ok 1 63006a170c98187e01cb91000000000000000000009c000a90054c4600000031000000780078008d0081004e00360036 09e750505050 b1b23eb35050 0",
+    "oracle": "8865 INVALID EncounterSlot1:98:BU:30 ; Trainer:G1CharOT",
+    "before": "8865 VALID egg Krabby in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8873 jp-ot-mark-ok 1 a9c0302cd41175500430c10000000000000000000063e09c1902b14600000041000000be00be0081007000c00060006d 8ae650505050 09ab50505050 0",
+    "oracle": "8873 INVALID EncounterSlot1:41:BU:16 ; Trainer:G1CharOT",
+    "before": "8873 VALID egg Zubat in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8881 jp-ot-mark-ok 1 41009432f869f5ef008e53000000000000000000006d494114900f4662000023000000570057002c002d005b00690046 09e750505050 09ab50505050 0",
+    "oracle": "8881 INVALID EncounterStatic1:63:RB:6 ; Trainer:G1CharOT",
+    "before": "8881 VALID egg Abra in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8889 jp-ot-mark-ok 1 2bed47e6000001000003cd0a0000002800640000009562e0140000460000000c00000023002300130013000d00170015 09e750505050 4388a1ab5050 0",
+    "oracle": "8889 INVALID EncounterSlot1:43:BU:12 ; Trainer:G1CharOT",
+    "before": "8889 VALID egg Oddish in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8905 jp-ot-mark-ok 1 82089621daae199d08b52a000000000000000000002d534f6a0204460000004d000000f400f400c800920089006600a3 8ae650505050 418550505050 0",
+    "oracle": "8905 INVALID EncounterStatic1:129:RBY:5 ; Trainer:G1CharOT",
+    "before": "8905 VALID egg Magikarp in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8921 jp-ot-mark-ok 1 a9008dda11aef48a00745f0a00640014005000320042270f142301460000001f0000005e005e003f003700560034003a 09e750505050 b1b23eb35050 0",
+    "oracle": "8921 INVALID EncounterSlot1:41:BU:16 ; Trainer:G1CharOT",
+    "before": "8921 VALID egg Zubat in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8929 jp-ot-mark-ok 1 a9668d302cd68d9a00745f000000000000000000001c870e9c1900460000001f000000630063003d003e005a0034003a 09e750505050 418550505050 0",
+    "oracle": "8929 INVALID EncounterSlot1:41:BU:16 ; Trainer:G1CharOT",
+    "before": "8929 VALID egg Zubat in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8937 jp-ot-mark-ok 1 1400629eb8a2adca014cc000000000000000000000a0fb950fd00a463100002c000000690069005500390067003a004c 09e750505050 09ab50505050 0",
+    "oracle": "8937 INVALID EncounterSlot1:19:RD:3 ; Trainer:G1CharOT",
+    "before": "8937 VALID egg Rattata in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8945 jp-ot-mark-ok 1 a9228d112cd4198301369328864e87462d33c29d12f47685230705460000002b000000860086005f004d007a0046004e 09e750505050 418550505050 0",
+    "oracle": "8945 INVALID EncounterSlot1:41:BU:16 ; Trainer:G1CharOT",
+    "before": "8945 VALID egg Zubat in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8953 jp-ot-mark-ok 1 4c00217858cde12700dd541a87a64363772acd4be0f822f8020614460000002800000078007800690073002a0032003a 9e94e6505050 418550505050 0",
+    "oracle": "8953 INVALID EncounterSlot1:74:BU:17 ; Trainer:G1CharOT",
+    "before": "8953 VALID egg Geodude in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8961 jp-ot-mark-ok 1 0c0021db128110d1010d3900000000000000000000c80eb1928714462100002900000064006400330034003e00520052 8ae650505050 4388a1ab5050 0",
+    "oracle": "8961 INVALID EncounterSlot1:10:BU:7 ; Trainer:G1CharOT",
+    "before": "8961 VALID egg Caterpie in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  },
+  {
+    "generation": 2,
+    "corpus": "8969 jp-ot-mark-ok 1 0f006ae42963f4fa0069780000000000000000000019a91e9c0b58460000001e0000005600560035002200380025003a 09e750505050 09ab50505050 0",
+    "oracle": "8969 INVALID EncounterSlot1:14:BU:7 ; Trainer:G1CharOT",
+    "before": "8969 VALID egg Weedle in Gold/Silver (hatched at level 5) ;",
+    "root_cause": "Japanese punctuation and alternate Gen II ancestry",
+    "after": "NoProblemsFound (production analyzer regression fixture)",
+    "adjudication": "Source-backed alternate origin; preserved, no defect in these bytes found",
+    "source_evidence": [
+      "Nintendo Crystal manual page8, Japanese naming screen; native Time Capsule copies OT"
+    ],
+    "synthetic": true
+  }
+]

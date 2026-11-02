@@ -1,0 +1,81 @@
+Lane A -> Lane C (Gen V) handoff: route a Poke Transfer Colosseum/XD origin through Gen3Cxd::judge.
+
+Reference patch against lane A's branch (lane-a-gen3-cxd). It compiles (g++ -fsyntax-only)
+against that tree; lane C owns src/Legality/Gen5Legality.cpp and should adapt the hunk to its
+own branch. Build lists: GEN5_LEGALITY_SOURCES (Makefile.host.gen5-legality) and the title
+matrix (Makefile.host.title-matrix) must add src/Legality/Gen3Legality.cpp,
+src/Legality/Gen3LegalityData.cpp and src/Legality/Gen3LegalityDataCxd.cpp (plus
+src/Names/ItemNames.cpp, src/Names/SpeciesNames.cpp, src/Names/MoveNames.cpp if not already
+linked) once Gen5Legality.cpp includes Legality/Gen3Cxd.h. The judge keeps the existing
+"Colosseum / XD Pokemon have a male Original Trainer" rule (CXDVerifier) too; drop the local
+copy at Gen5Legality.cpp:1549 or keep it deduplicated by text. Title-matrix rows affected:
+Black / White 2 "XD Shadow Butterfree, transferred" and "Colosseum Shadow Bayleef, transferred".
+
+What the judge does and does not cover is in include/Legality/Gen3Cxd.h (contract) and
+docs/legality/GEN3_PKHEX_RULE_INVENTORY.md section 7.
+
+--- a/src/Legality/Gen5Legality.cpp
++++ b/src/Legality/Gen5Legality.cpp
+@@ -29,6 +29,7 @@
+ 
+ #include "Encryption/Encryption5.h"
+ #include "Gen4LegalityInternal.h"
++#include "Legality/Gen3Cxd.h"
+ #include "Legality/Gen5LegalityData.h"
+ #include "Legality/Gen5Text.h"
+ #include "Names/MoveNames.h"
+@@ -1573,10 +1574,50 @@
+     if (!origin_.analyzed && isGen3Version(p_.version) && p_.metLevel < 5 && p_.eggLocation == 0)
+         a_.warn(CheckIdentifier::Transfer, "Transferred Gen III Pokemon below level 5");
+     if (p_.metLevel == 0) a_.invalid(CheckIdentifier::Transfer, "Transferred Pokemon must have its transfer level as met level");
+-    if (!origin_.analyzed)
+-        a_.warn(CheckIdentifier::Transfer, p_.version == kVersionCXD
+-            ? "Colosseum / XD origin: the original encounter and moves are not checked"
+-            : "Gen III/IV origin: the original encounter and moves are not checked by the Gen V analyzer");
++    if (!origin_.analyzed && p_.version == kVersionCXD) {
++        // Colosseum/XD origin: PKHeX's GameCube rules on the fields Poke Transfer keeps
++        // (Legality/Gen3Cxd.h): species, PID, IVs, TID/SID, OT gender and name, language, ball,
++        // fateful flag, National and Earth Ribbons. The met level is the transfer level and the
++        // met location is the Poke Transfer Lab, so hasOriginalMet is false (PKHeX Format != 3
++        // rules). The moves are Gen V moves and are not handed over: check them from
++        // j.encounterSpecies / j.encounterLevel / j.encounterMoves as for a Gen III/IV origin.
++        Legality::Gen3Cxd::Input in;
++        in.species = p_.species;
++        in.currentLevel = level_;
++        in.hasOriginalMet = false;
++        in.metLevel = p_.metLevel;
++        in.ball = p_.ball;
++        in.fateful = p_.fateful;
++        in.isEgg = p_.isEgg;
++        in.pid = p_.pid;
++        in.ivs = p_.ivs;
++        in.tid = p_.tid;
++        in.sid = p_.sid;
++        in.otGender = p_.otGender ? 1 : 0;
++        in.language = p_.language;
++        in.namesKnown = true;
++        in.ot = T::load5(p_.ot);
++        in.nickname = T::load5(p_.nickname);
++        in.isNicknamed = p_.isNicknamed;
++        in.ribbonsKnown = true;
++        in.ribbonNational = ((p_.ribbons[7] >> 5) & 1u) != 0; // 0x3F bit 5 (PK4/PK5 layout)
++        in.ribbonEarth = ((p_.ribbons[7] >> 6) & 1u) != 0;    // 0x3F bit 6
++        in.abilityKnown = true;
++        in.abilityBit = (cur_.rec != nullptr && cur_.ability(0) != cur_.ability(1) && p_.ability == cur_.ability(1)) ? 1 : 0;
++        const Legality::Gen3Cxd::Result j = Legality::Gen3Cxd::judge(in);
++        for (const auto& text : j.invalid) {
++            if (j.verdict == Legality::Gen3Cxd::Verdict::Invalid) a_.invalid(CheckIdentifier::Transfer, "Colosseum / XD origin: " + text);
++            else a_.warn(CheckIdentifier::Transfer, "Colosseum / XD origin: " + text); // Undecided: a search guard was hit
++        }
++        for (const auto& text : j.warnings) a_.warn(CheckIdentifier::Transfer, "Colosseum / XD origin: " + text);
++        if (j.verdict != Legality::Gen3Cxd::Verdict::Matched)
++            a_.warn(CheckIdentifier::Transfer, "Colosseum / XD origin: the original encounter could not be verified");
++        // TODO (lane C): on Matched, verify the moves against j.encounterSpecies / j.encounterLevel /
++        // j.encounterMoves (CXD learns as Emerald) and let origin_ count as analyzed.
++        else a_.warn(CheckIdentifier::Transfer, "Colosseum / XD origin matched " + j.encounter + "; the moves are not yet checked against it");
++    } else if (!origin_.analyzed) {
++        a_.warn(CheckIdentifier::Transfer, "Gen III/IV origin: the original encounter and moves are not checked by the Gen V analyzer");
++    }
+ }
+ 
+ // PKHeX Breeding.GetCanInheritMoves: level-up moves pass to an egg only through a

@@ -156,7 +156,13 @@ int main(){
             assert(std::equal(untouched.begin(),untouched.end(),
                               native.originalEncryptedBytes().begin()));
             auto bad=c;bad.originalSpecies=0;
-            assert(S::evaluate(bad).status==St::CandidateRowContradicted);
+            assert(S::evaluate(bad).status==St::UnknownMalformedOriginalIdentity);
+            bad=c;bad.originalSpecies=65535;
+            assert(S::evaluate(bad).status==St::UnknownMalformedOriginalIdentity);
+            bad=c;bad.originalLevel=0;
+            assert(S::evaluate(bad).status==St::UnknownMalformedOriginalIdentity);
+            bad=c;bad.originalLevel=101;
+            assert(S::evaluate(bad).status==St::UnknownMalformedOriginalIdentity);
             bad=c;bad.originalIVs[0]=static_cast<uint8_t>((bad.originalIVs[0]+1u)%32u);
             assert(S::evaluate(bad).status==St::CandidatePidIvContradicted);
             bad=c;bad.pid^=1u;

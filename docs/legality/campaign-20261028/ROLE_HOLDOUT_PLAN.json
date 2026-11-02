@@ -1,0 +1,14 @@
+{
+  "declared_utc": "2026-10-28T19:19:57.451213+00:00",
+  "before_generation": true,
+  "group": "gen5",
+  "seed": 2026102855,
+  "mutations": 4,
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "policy": "Every emitted row retained. Grown derived subsets and pre-emission exceptions remain limits; no post-emission filtering or validity patch. Earlier samples remain separately replayed. I-IV unchanged from last independent sample.",
+  "production_sha256": {
+    "src/Legality/Gen5Legality.cpp": "95743a455200a837b5b0528396579ab36b63781e945f79e557c4f4aeb00d4783",
+    "src/Legality/Gen35BreedingAncestry.cpp": "f32a8f1e832dde656d4d75662a464567de71a0bad0d1c643e0e9e5a15b63d5a2",
+    "include/Legality/Gen35BreedingAncestry.h": "cdc1c1b12f06185a2ba030170b0432badc1408f469aa3aedc1ef4824e53f533b"
+  }
+}

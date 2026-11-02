@@ -1,0 +1,161 @@
+# Gen V (Black/White/Black 2/White 2) PK5 legality: PKHeX-backed fixtures, malformed
+# records and a deterministic fuzz pass. tools/pkhex_gen5_diff/run.sh reproduces the
+# fixture verdicts at scale against PKHeX.Core. A Gen III/IV-origin (Poke Transfer) record's
+# original encounter is checked by the Gen IV analyzer (Gen4::analyzeOrigin5), so the Gen IV
+# legality sources are part of the Gen V analyzer. A Colosseum/XD origin is judged by the Gen III
+# GameCube judge (Gen3Cxd), so the Gen III analyzer sources are as well.
+GEN5_GEN4_ORIGIN_SOURCES := src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityData.cpp \
+	src/Legality/Gen4LegalityEncounters.cpp src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityPalPark.cpp \
+	src/Legality/Gen4LegalityRng.cpp src/Legality/Gen4LegalityText.cpp \
+	src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp src/Legality/Gen3LegalityDataCxd.cpp
+# Gen3Legality.cpp includes Pokemon/Pokemon.h, whose default virtuals leave parameters unused.
+GEN5_LEGALITY_FLAGS := -Wno-unused-parameter
+GEN5_LEGALITY_SOURCES := tests/test_legality_gen5.cpp src/Legality/Gen5Legality.cpp \
+	src/Legality/Gen35BreedingAncestry.cpp \
+	src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp \
+	src/Pokemon/Experience.cpp $(GEN5_GEN4_ORIGIN_SOURCES)
+HOST_TESTS += $(HOST_BUILD)/test_legality_gen5
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen5_sanitize
+host-test: $(HOST_BUILD)/test_legality_gen5
+host-sanitize: $(HOST_BUILD)/test_legality_gen5_sanitize
+
+GEN5_FULL_CARD_HEADERS := include/Legality/Gen5FullWonderCard.h include/Legality/Gen5FullCardCatalog.h include/Legality/Gen5GlobalLinkCatalog.h
+GEN5_ORIGIN_HEADERS := src/Legality/Gen4LegalityInternal.h include/Legality/Gen4Legality.h include/Legality/Gen4LegalityData.h include/Legality/Gen4RanchIV.h \
+	include/Legality/Gen35BreedingAncestry.h include/Legality/FiniteBreedingChain.h include/Legality/BreedingBirthMoves.h include/Legality/CoverageMerge.h
+
+GEN5_JOINT_BREEDING_SOURCES := tests/test_gen5_joint_breeding.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen5_joint_breeding
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_joint_breeding_sanitize
+host-test: $(HOST_BUILD)/test_gen5_joint_breeding
+host-sanitize: $(HOST_BUILD)/test_gen5_joint_breeding_sanitize
+$(HOST_BUILD)/test_gen5_joint_breeding: tests/fixtures/gen15_session2/gen5_bw_paired_family.txt tests/fixtures/gen15_session2/gen5_recursive_tangela.txt $(GEN5_JOINT_BREEDING_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_JOINT_BREEDING_SOURCES) -o $@
+$(HOST_BUILD)/test_gen5_joint_breeding_sanitize: tests/fixtures/gen15_session2/gen5_bw_paired_family.txt tests/fixtures/gen15_session2/gen5_recursive_tangela.txt $(GEN5_JOINT_BREEDING_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_JOINT_BREEDING_SOURCES) -o $@
+
+# Shared Gen IV terrain verification also applies to origins retained in a PK5.
+GEN4_GROUND_TILE_SOURCES := tests/test_gen4_ground_tile.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
+GEN4_GROUND_TILE_HEADERS := $(GEN5_ORIGIN_HEADERS) $(GEN5_FULL_CARD_HEADERS)
+HOST_TESTS += $(HOST_BUILD)/test_gen4_ground_tile
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen4_ground_tile_sanitize
+host-test: $(HOST_BUILD)/test_gen4_ground_tile
+host-sanitize: $(HOST_BUILD)/test_gen4_ground_tile_sanitize
+$(HOST_BUILD)/test_gen4_ground_tile: $(GEN4_GROUND_TILE_SOURCES) $(GEN4_GROUND_TILE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN4_GROUND_TILE_SOURCES) -o $@
+$(HOST_BUILD)/test_gen4_ground_tile_sanitize: $(GEN4_GROUND_TILE_SOURCES) $(GEN4_GROUND_TILE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN4_GROUND_TILE_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legality_gen5: $(GEN5_LEGALITY_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_LEGALITY_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legality_gen5_sanitize: $(GEN5_LEGALITY_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_LEGALITY_SOURCES) -o $@
+
+# App adapter (include/Legality/Gen5AppAdapter.h): raw PK5 bytes + the app's source game id.
+GEN5_ADAPTER_SOURCES := tests/test_legality_gen5_adapter.cpp src/Legality/Gen5AppAdapter.cpp \
+	src/Legality/Gen35BreedingAncestry.cpp \
+	src/Legality/Gen5Legality.cpp src/Legality/Gen5LegalityData.cpp src/Legality/Gen5Text.cpp \
+	src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Pokemon/Experience.cpp $(GEN5_GEN4_ORIGIN_SOURCES)
+HOST_TESTS += $(HOST_BUILD)/test_legality_gen5_adapter
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_gen5_adapter_sanitize
+host-test: $(HOST_BUILD)/test_legality_gen5_adapter
+host-sanitize: $(HOST_BUILD)/test_legality_gen5_adapter_sanitize
+
+$(HOST_BUILD)/test_legality_gen5_adapter: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@
+
+$(HOST_BUILD)/test_legality_gen5_adapter_sanitize: $(GEN5_ADAPTER_SOURCES) include/Legality/Gen5AppAdapter.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_ADAPTER_SOURCES) -o $@
+
+GEN5_APP_CONTEXT_SOURCES := tests/test_gen5_app_context.cpp $(filter-out tests/test_legality_gen5_adapter.cpp,$(GEN5_ADAPTER_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen5_app_context
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_app_context_sanitize
+host-test: $(HOST_BUILD)/test_gen5_app_context
+host-sanitize: $(HOST_BUILD)/test_gen5_app_context_sanitize
+$(HOST_BUILD)/test_gen5_app_context: $(GEN5_APP_CONTEXT_SOURCES) include/Legality/Gen5AppAdapter.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_APP_CONTEXT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen5_app_context_sanitize: $(GEN5_APP_CONTEXT_SOURCES) include/Legality/Gen5AppAdapter.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_APP_CONTEXT_SOURCES) -o $@
+
+GEN5_GIFT_RECEIPT_SOURCES := tests/test_gen5_gift_receivability.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen5_gift_receivability
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_gift_receivability_sanitize
+host-test: $(HOST_BUILD)/test_gen5_gift_receivability
+host-sanitize: $(HOST_BUILD)/test_gen5_gift_receivability_sanitize
+$(HOST_BUILD)/test_gen5_gift_receivability: $(GEN5_GIFT_RECEIPT_SOURCES) include/Legality/Gen5GiftReceivability.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_GIFT_RECEIPT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen5_gift_receivability_sanitize: $(GEN5_GIFT_RECEIPT_SOURCES) include/Legality/Gen5GiftReceivability.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_GIFT_RECEIPT_SOURCES) -o $@
+
+# Read-only WC5FULL evidence format parser; synthetic test records make no historical claims.
+HOST_TESTS += $(HOST_BUILD)/test_gen5_full_wonder_card
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_full_wonder_card_sanitize
+host-test: $(HOST_BUILD)/test_gen5_full_wonder_card
+host-sanitize: $(HOST_BUILD)/test_gen5_full_wonder_card_sanitize
+$(HOST_BUILD)/test_gen5_full_wonder_card: tests/test_gen5_full_wonder_card.cpp include/Legality/Gen5FullWonderCard.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_gen5_full_wonder_card_sanitize: tests/test_gen5_full_wonder_card.cpp include/Legality/Gen5FullWonderCard.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+GEN5_FULL_CARD_TEST_SOURCES := tests/test_gen5_full_card_evidence.cpp src/Legality/Gen5LegalityData.cpp
+HOST_TESTS += $(HOST_BUILD)/test_gen5_full_card_evidence
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_full_card_evidence_sanitize
+host-test: $(HOST_BUILD)/test_gen5_full_card_evidence
+host-sanitize: $(HOST_BUILD)/test_gen5_full_card_evidence_sanitize
+$(HOST_BUILD)/test_gen5_full_card_evidence: $(GEN5_FULL_CARD_TEST_SOURCES) $(GEN5_FULL_CARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(GEN5_FULL_CARD_TEST_SOURCES) -o $@
+$(HOST_BUILD)/test_gen5_full_card_evidence_sanitize: $(GEN5_FULL_CARD_TEST_SOURCES) $(GEN5_FULL_CARD_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_FULL_CARD_TEST_SOURCES) -o $@
+
+GEN35_RELEASE_SOURCES := tests/test_gen35_release_rules.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen35_release_rules
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen35_release_rules_sanitize
+host-test: $(HOST_BUILD)/test_gen35_release_rules
+host-sanitize: $(HOST_BUILD)/test_gen35_release_rules_sanitize
+$(HOST_BUILD)/test_gen35_release_rules: tests/fixtures/gen15_session2/native_recursive_breeding.txt $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN35_RELEASE_SOURCES) -o $@
+$(HOST_BUILD)/test_gen35_release_rules_sanitize: tests/fixtures/gen15_session2/native_recursive_breeding.txt $(GEN35_RELEASE_SOURCES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN35_RELEASE_SOURCES) -o $@
+
+GEN5_NAME_UNCERTAINTY_SOURCES := tests/test_gen5_name_uncertainty.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen5_name_uncertainty
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen5_name_uncertainty_sanitize
+host-test: $(HOST_BUILD)/test_gen5_name_uncertainty
+host-sanitize: $(HOST_BUILD)/test_gen5_name_uncertainty_sanitize
+$(HOST_BUILD)/test_gen5_name_uncertainty: $(GEN5_NAME_UNCERTAINTY_SOURCES) include/Legality/Gen5UnverifiedNameFilters.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN5_NAME_UNCERTAINTY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen5_name_uncertainty_sanitize: $(GEN5_NAME_UNCERTAINTY_SOURCES) include/Legality/Gen5UnverifiedNameFilters.h $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN5_NAME_UNCERTAINTY_SOURCES) -o $@
+
+GEN35_COVERAGE_INTEGRITY_SOURCES := tests/test_gen35_coverage_integrity.cpp $(filter-out tests/test_legality_gen5.cpp,$(GEN5_LEGALITY_SOURCES))
+GEN35_COVERAGE_INTEGRITY_FIXTURES := tests/fixtures/gen15_session2/global_link.txt tests/fixtures/gen15_session2/ranch_ability.txt tests/fixtures/gen15_session2/gen5_bw_paired_family.txt tests/fixtures/gen15_session2/transferred_joint_coverage.txt tests/fixtures/gen15_session2/gen3_rng_cap_priority.txt
+HOST_TESTS += $(HOST_BUILD)/test_gen35_coverage_integrity
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen35_coverage_integrity_sanitize
+host-test: $(HOST_BUILD)/test_gen35_coverage_integrity
+host-sanitize: $(HOST_BUILD)/test_gen35_coverage_integrity_sanitize
+$(HOST_BUILD)/test_gen35_coverage_integrity: $(GEN35_COVERAGE_INTEGRITY_SOURCES) $(GEN35_COVERAGE_INTEGRITY_FIXTURES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) -Iinclude $(GEN35_COVERAGE_INTEGRITY_SOURCES) -o $@
+$(HOST_BUILD)/test_gen35_coverage_integrity_sanitize: $(GEN35_COVERAGE_INTEGRITY_SOURCES) $(GEN35_COVERAGE_INTEGRITY_FIXTURES) $(GEN5_FULL_CARD_HEADERS) $(GEN5_ORIGIN_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(GEN5_LEGALITY_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN35_COVERAGE_INTEGRITY_SOURCES) -o $@

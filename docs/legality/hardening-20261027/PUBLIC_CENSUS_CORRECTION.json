@@ -1,0 +1,490 @@
+{
+  "correction": "The earlier directory-name filter selected75 files and omitted30 native files in Illegal/Gen2, Illegal/Misc, Legal/General and other folders. Native extensions now define scope. All105 replayed; all75 prior records retain identical original hashes and verdicts. IDs are local to each dataset.",
+  "old_selected": 75,
+  "new_selected": 105,
+  "errors": 0,
+  "prior_record_map": [
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/025 - PIKACHU - E9D3.pk1",
+      "sha256": "51efe892068afd2ebbe3900627e7af0a9686bcba8487d8d63bfee330bf74cd2e",
+      "old_id": "public-000",
+      "new_id": "public-030"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/026 - RAZOR - 9BD7.pk1",
+      "sha256": "2f708da6f5f5204ee3b5d92aca20ce11d669888968c33af75e173543b6379d0a",
+      "old_id": "public-001",
+      "new_id": "public-031"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/133 - EEVEE - D278.pk1",
+      "sha256": "270e5f1affa0b4819be0961396acc6d8a016bdfd2e9eb41552c60473530a47e4",
+      "old_id": "public-002",
+      "new_id": "public-032"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/134 - VAPOREON - F896.pk1",
+      "sha256": "ce62ec5ab6402f854541e773f538c1b8e5d14a8d51c1b6dbc20ee7f5c6eacc4e",
+      "old_id": "public-003",
+      "new_id": "public-033"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/135 - JOLTEON - 7E45.pk1",
+      "sha256": "b8d67cb28b9341842eb51408ebdfa77c121538406eeb542cb928acc83e7e2668",
+      "old_id": "public-004",
+      "new_id": "public-034"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/135 - JOLTEON - 7F90.pk1",
+      "sha256": "1528addd2c2017d4bf4732c70cde321df180012f7cdc6ff93d8e6b2655d69076",
+      "old_id": "public-005",
+      "new_id": "public-035"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Only/136 - FLAREON - 50CF.pk1",
+      "sha256": "26661ca49dde7d6b31c8d67e225f194223975ae8f34c6b8edf9d061cc0d5e1cc",
+      "old_id": "public-006",
+      "new_id": "public-036"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 1 Tradeback/107 \u2605 - \u30a8\u30d3\u30ef\u30e9\u30fc - 68EC Gen2 Future-Gen Evo Egg.pk1",
+      "sha256": "1a2878fb3e9c296684dd168f26f6709036a4b2d5b9a80ffaa10b9e47fae4fee7",
+      "old_id": "public-007",
+      "new_id": "public-037"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/0106 - HITMONLEE - EC97.pk2",
+      "sha256": "d111ac5fe1bc0d24cbbac08ce1695285b10dc9752c27011260f7e4ee12229d14",
+      "old_id": "public-008",
+      "new_id": "public-038"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/0107 - HITMONCHAN - C054.pk2",
+      "sha256": "7e76a704187d1f010453b6eda835c20362ea0ae0f1e8c8bf919ffcbce0c6c7ae",
+      "old_id": "public-009",
+      "new_id": "public-039"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/0138 - AMONITAS - 071B.pk2",
+      "sha256": "8857cadaa06eb48455eba6c8cc964908973b9cfd5b4313aec790a2c9d947d179",
+      "old_id": "public-010",
+      "new_id": "public-040"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/025 - PIKACHU - 2129.pk2",
+      "sha256": "e2df6775e45890474477bc426f80440bb02b2d649666bd2fb9747eb7bc6f3807",
+      "old_id": "public-011",
+      "new_id": "public-041"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/031 - NIDOQUEEN - A016.pk2",
+      "sha256": "065bb3c66c82cf4823f3eea510f0e2ccc3f0496d1ce8d57df83f5e48242a8406",
+      "old_id": "public-012",
+      "new_id": "public-042"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/035 - CLEFAIRY - 8A0C.pk2",
+      "sha256": "14d8c4bd3939f26bd55ceb9ccdeae5a7ba226ccb4685813bb8f63cda5b31308f",
+      "old_id": "public-013",
+      "new_id": "public-043"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/082 - TATO - 2D6E.pk2",
+      "sha256": "737177332528dc4148cd1741166c5df6ebac0eced10a9375e5517fcade40cdf2",
+      "old_id": "public-014",
+      "new_id": "public-044"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/085 - DORIS - 5C9F.pk2",
+      "sha256": "4675611a8a77143246be4acf6773fec70787478f837ba3a49ead78e47f3ec607",
+      "old_id": "public-015",
+      "new_id": "public-045"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/112 - DON - 4DD6.pk2",
+      "sha256": "d65fae9cfed5b8fcc1d7ab140dc678d698ca176559767d7782b9dc957fa527aa",
+      "old_id": "public-016",
+      "new_id": "public-046"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/142 - AEROY - 56BA.pk2",
+      "sha256": "df644875e38a9457a02c08fbb4fc7bd0c80e360cd3ee7883daf2e932dbf6a8fe",
+      "old_id": "public-017",
+      "new_id": "public-047"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/211 - Pvffs - 92DC vc.pk2",
+      "sha256": "aa2ea785a66381e22a7fc6d6f416014dda074cf837cbcf710fc475f699b9563e",
+      "old_id": "public-018",
+      "new_id": "public-048"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/213 - SHUCKI - 3572.pk2",
+      "sha256": "16bd325f77553daa0b31f0d33c59895c00129fe5a0185c1db3317aed86daf300",
+      "old_id": "public-019",
+      "new_id": "public-049"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/217 - \u30ea\u30f3\u30b0\u30de - 1241 (Gold).pk2",
+      "sha256": "0c8148879b7606a8bd50f34b7a9be3ab97e8adc6e1b0c6de6748ca1729b831e1",
+      "old_id": "public-020",
+      "new_id": "public-050"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/230 - KINGDRA - 3712.pk2",
+      "sha256": "21c41413d4ce24d89dbb2d86ed770e688f3eda878aedcc68f03d248620c8adae",
+      "old_id": "public-021",
+      "new_id": "public-051"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 2/251_-_CELEBI_-_1EE8.pk2",
+      "sha256": "098258e970767971ae95684eb0bbc99c1d35b463af62d5cd683ed2aa4e0b49d0",
+      "old_id": "public-022",
+      "new_id": "public-052"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/144 - 3008 - BDFCED1D5D5B.pk3",
+      "sha256": "b387036042a3efc31bd9e28f6b8537c9ce8d384ded22de6a1f3e74760a51d86f",
+      "old_id": "public-023",
+      "new_id": "public-053"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/297 - MAKIT - C47400009C40 evolve ability mismatch.pk3",
+      "sha256": "1021ffc8d1bb3b2438ea168e8b67792bc74b8c66cd28ecfc85e113e791f62d91",
+      "old_id": "public-024",
+      "new_id": "public-054"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Eggs/0032 - NIDORAN\u2642 - 92A9F5C9B9C9 - NidoranF parent issue4356.pk3",
+      "sha256": "75d976a6e8c5240338fff4f48a5d08a452e84c6a4e63b04ee16efb6be3d10f87",
+      "old_id": "public-025",
+      "new_id": "public-055"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Eggs/0032 - NIDORAN\u2642 - F436F4EF3BFC - Ditto parent issue4356.pk3",
+      "sha256": "a9aeb698d33966209f7c8b5fe66be829a42aa2137de1c2c0ded34f30198be817",
+      "old_id": "public-026",
+      "new_id": "public-056"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/LevelUp learn move then Evolve/195 - QUAGSIRE - E2AD60FEC722.pk3",
+      "sha256": "7a1fe2de0212013cddf6d6bd19f39a8aec29e8423416a696e7c406b28b49194c",
+      "old_id": "public-027",
+      "new_id": "public-057"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/LevelUp learn move then Evolve/229 - HOUNDOOM - 4311EC0CD621.pk3",
+      "sha256": "9d182377d338a50751c9ab8e998f9966c7d48e983ad6cd1aa8c95a29a831a4f2",
+      "old_id": "public-028",
+      "new_id": "public-058"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/LevelUp learn move then Evolve/284 - MASQUERAIN - 8C49324DA947.pk3",
+      "sha256": "1fea703afab6836a8982ac30e9f024eb757bae598f910163549efedbb659b7e8",
+      "old_id": "public-029",
+      "new_id": "public-059"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/0283 \u2605 - TEST - 5143F610D91A swarm lead matching.pk3",
+      "sha256": "5b80fa80e2012121b4cc85012e1e4ae243986011e274ce2fd973e8fc21d3bbb0",
+      "old_id": "public-030",
+      "new_id": "public-060"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/054 - PSYDUCK - 1FE1F661FBE0.pk3",
+      "sha256": "33f269407233c4cbc3a2687bfcb2e1bb44809978b26cb1d8210dcdedbed3730b",
+      "old_id": "public-031",
+      "new_id": "public-061"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/134 - VAPOREON - B2D7984A102F XD split evo starter.pk3",
+      "sha256": "f4fd53e1200a1395d0e080e44b17b3c4e679d3a25513037479dc683b5973399b",
+      "old_id": "public-032",
+      "new_id": "public-062"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/228 - \u30bf\u30de\u30b4 - 10F596FA62A6 longOTedge.pk3",
+      "sha256": "a4ea6b4b715a664d90400fa9701ff56d59166144930be742304a385fdb0eba1f",
+      "old_id": "public-033",
+      "new_id": "public-063"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/250 - HO-OH - 2241C625EB05 Italian longOT.ck3",
+      "sha256": "5e9601e9de1a10eac501b6d9521c5a821ddef457fa6f6a9f2c46c096be899a6a",
+      "old_id": "public-034",
+      "new_id": "public-064"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/Misc/327 - Spinda - 88283DD1BB49 Method 3.pk3",
+      "sha256": "d8b0ae65a8c1ce467b38bc6aab25879b040bd14337e97a6de61108f97be16fdb",
+      "old_id": "public-035",
+      "new_id": "public-065"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/XD Fateful Gifts/213 - SHUCKLE - 1904411103A3 NoFateful.xk3",
+      "sha256": "a0bc62370f3db9fc1fae297fa3c0573816d0715797fd3ca0e105478c83c4de47",
+      "old_id": "public-036",
+      "new_id": "public-066"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 3/XD Fateful Gifts/213 - SHUCKLE - 475E411103A3 Fateful.xk3",
+      "sha256": "839241fd66afc38f391c68cf89e2bf01977dbf43373009ddb206173c13cf95ec",
+      "old_id": "public-037",
+      "new_id": "public-067"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0081 - MAGNETI - B2F0B116BC4C safari 4iv fail.pk4",
+      "sha256": "92798eebe5d116f28a9b2cad0df6e829fa29dfb4644db17b5bf90dc2a8d9f0e9",
+      "old_id": "public-038",
+      "new_id": "public-068"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0095 - Egg - 3C46CD462454 pt egg.pk4",
+      "sha256": "1be9ea2703a3600897c1fb6d0b49dad1f3cd9e4cf5e6dc56798a897e45c5cdc9",
+      "old_id": "public-039",
+      "new_id": "public-069"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0095 - ONIX - D1BE00E5AE9E pt2hg hatch.pk4",
+      "sha256": "1ee1844dac87214bcaaa8f1ac2b42791b18a01c7c09ac22b713bee8628f7386b",
+      "old_id": "public-040",
+      "new_id": "public-070"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0113 - CHANSEY - 806A14061105 swarm1 pressure.pk4",
+      "sha256": "883f85a5b565962335184775e83567f279704facbf4f0441b2de0ef9137b95ad",
+      "old_id": "public-041",
+      "new_id": "public-071"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0113 - CHANSEY - D4E98650DFCD swarm1 pressure.pk4",
+      "sha256": "f97df75c60b296ee0995cf3ad5dba322ad708a3318e8ca49f21b93b1ee8000be",
+      "old_id": "public-042",
+      "new_id": "public-072"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0218 - Egg - 30859D41D013 hg egg.pk4",
+      "sha256": "0f569b38c8d38c60da9a1074b24bd637567a787d1aa34440497186ebb0fe70f3",
+      "old_id": "public-043",
+      "new_id": "public-073"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0218 - SLUGMA - 4F02838CED63 hg2pt hatch.pk4",
+      "sha256": "f3e5cd135a0a58cbdd60d26c892ef5d9b5399e8cc437cf03db5b5f279e27ddbd",
+      "old_id": "public-044",
+      "new_id": "public-074"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/0407 - ROSERADE - E24358625928.pk4",
+      "sha256": "67070ceacaf217216953bfb8f1c1abd670b480cd312f43c0f0966cd07a51473f",
+      "old_id": "public-045",
+      "new_id": "public-075"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/184 - AZUMARILL - 70F46DFFFF94 static genderchange.pk4",
+      "sha256": "cbfb6aaa1921e9b92329e54f28a2afe928cbee6f827b2f4c41d335076e66c361",
+      "old_id": "public-046",
+      "new_id": "public-076"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/194 - Egg - B7B3E1614DCB Primo Wooper.pk4",
+      "sha256": "919a14b38550b2f515eda533c7e7bc2bf55ec0dec7fd15249c42e3df8ea069b7",
+      "old_id": "public-047",
+      "new_id": "public-077"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/242 - HEITEIRA - E83AB36E7C5C.pk4",
+      "sha256": "1c70e67d594b1fb60133733ac5082dc683b7a47adc4cfb47f6cf8e62b10f17f2",
+      "old_id": "public-048",
+      "new_id": "public-078"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/440 - \u30d4\u30f3\u30d7\u30af - 17961FFFFFFE.pk4",
+      "sha256": "c883334ed4bc6f82dc9b9debf1f307a1ee76f6f9458099124f874d7adfa68342",
+      "old_id": "public-049",
+      "new_id": "public-079"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4/470  - LEAFEON - 65B05FEF8D69.pk4",
+      "sha256": "8b0039ddae045149036831aee26cd775b70048624c1860f6c839ef4c2e767011",
+      "old_id": "public-050",
+      "new_id": "public-080"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Rock Smash/074 - GEODUDE - B16E2318D744.pk4",
+      "sha256": "3fb71cf3d911bf1c43030585386de037f91fed692afac57f0025f04992f38d97",
+      "old_id": "public-051",
+      "new_id": "public-081"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Rock Smash/098 - KRABBY - 86943584D01B.pk4",
+      "sha256": "a9c993922db8ea86c889bcc1213fc2c3d7f4f9f3178d5df3dd14b58dc1faf226",
+      "old_id": "public-052",
+      "new_id": "public-082"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Rock Smash/098 - KRABBY - C589B4EFB45F.pk4",
+      "sha256": "c633ae1c24b8a1c2a498e49ccfa603e6bf14b53ace82dfc774a3ef8437839faf",
+      "old_id": "public-053",
+      "new_id": "public-083"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/104 \u2605 - CUBONE - ABE400000004.pk4",
+      "sha256": "a0c7bf5f05cf0764457ba30c696d72e175295888bd13b479436c741acc60f6e8",
+      "old_id": "public-054",
+      "new_id": "public-084"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/201 - UNOWN - E8FFA68025F9.pk4",
+      "sha256": "c5d4995595f5897f89870d617f92cd0f983767cd983f5bbcd8cae6056f054be0",
+      "old_id": "public-055",
+      "new_id": "public-085"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/215 - SNEASEL - 72E6A36A07BD.pk4",
+      "sha256": "a26f0549a05504d49e523641893c154f0ddba3b85956c88706f36b1d2ac38618",
+      "old_id": "public-056",
+      "new_id": "public-086"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/231 - PHANPY - 579744E8F948.pk4",
+      "sha256": "d50ace2a8f91438cf92eb7f6f4042ab89266f871387bb21009b923853e95ef56",
+      "old_id": "public-057",
+      "new_id": "public-087"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/246 - LARVITAR - 2AC20000000E.pk4",
+      "sha256": "293e60ae7bae1f0abbdfde62a82556f3b81f97cc7620ea0146e2e71745d52f79",
+      "old_id": "public-058",
+      "new_id": "public-088"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/246 \u2605 - LARVITAR - E4CF00000002.pk4",
+      "sha256": "a05c9ecae6a60d1de57b7e25b234f36114fe26fbe2988a3186c217a3028bef16",
+      "old_id": "public-059",
+      "new_id": "public-089"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/308 - MEDICHAM - 25F8A56FA3F2.pk4",
+      "sha256": "59a3a5644cbcd125bcd1d103182a84380e56de985195d876e72a6a6efd648f00",
+      "old_id": "public-060",
+      "new_id": "public-090"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 GroundTile/Special Handling/477 - DUSKNOIR - 12DF9E28828D.pk4",
+      "sha256": "6f856f93e4b60fc348add0e5c380b837084de8ea270f49d6486f2f255234bac5",
+      "old_id": "public-061",
+      "new_id": "public-091"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 Transfer/230 - SEASOR - 4E170000007F.pk4",
+      "sha256": "f9aa0f93f2b121eb56628a6d8126572eb79c70aa6ddd3891c8d649b4d86e9b72",
+      "old_id": "public-062",
+      "new_id": "public-092"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 Transfer/323 - CAMERUPT - 1EAB066E02B3.pk4",
+      "sha256": "f9ed0163f4f736cd0b55a3440bc6dff1ad1977b61ab611ec236a7981833ecb8f",
+      "old_id": "public-063",
+      "new_id": "public-093"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 4 Transfer/479-04 - Fan - 68FCC25F9AB6 dp formchange egg.pk4",
+      "sha256": "ce4e808e510e769bbc9d364d00e6cff051af097f0b94c35ecc4f60cf336eeb8a",
+      "old_id": "public-064",
+      "new_id": "public-094"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/015 - Beedrill - 2F3A638FD1B9 gen3 transfer highlevel.pk5",
+      "sha256": "40ec7f7f5c782829a796e008076a1076b4634df54812fda58b02f2a4608caf40",
+      "old_id": "public-065",
+      "new_id": "public-095"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/0242 - Heiteira - C862311C7FE4.pk5",
+      "sha256": "384a9560c223460373f94fd12fa1e04fa77db2dc49982c4272a70520c626131a",
+      "old_id": "public-066",
+      "new_id": "public-096"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/0407 - Roserade - 83F5F7E60F78.pk5",
+      "sha256": "53083666b9c26a639519ae764916ddcacf42d0396f28f44a92fe4bf360e9f6d9",
+      "old_id": "public-067",
+      "new_id": "public-097"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/0550-01 - Basculin - C46358B4FA76 wrongAbility.pk5",
+      "sha256": "2123f29aefc205d59f000bdef45cdfe7e392fcc9f4d5fc4c6df010dc52c63e0f",
+      "old_id": "public-068",
+      "new_id": "public-098"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/143 - Trip\u00f3n - D4336200001F Evolved.pk5",
+      "sha256": "006f3f3d04ab9c76c14da7968049fd34fbf86ea65dfa2ce4e594efa1028ed488",
+      "old_id": "public-069",
+      "new_id": "public-099"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/440 - Egg - 5B70552258BA Breeder Happiny.pk5",
+      "sha256": "9e6115ff197e7aa1990f060ee0835487f9359898ea9a49ae1c41ec58280e1e2c",
+      "old_id": "public-070",
+      "new_id": "public-100"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/446 - Trip\u00f3n - BDC46200001F Trade Ability Mismatch.pk5",
+      "sha256": "071a30dda8f76adaea0b9bda34d5753501a9d8b6bcdc36a76bd85675eb2c4fd3",
+      "old_id": "public-071",
+      "new_id": "public-101"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/546 - Jersey - C31DDBEA71D8 french accented OT name.pk5",
+      "sha256": "b7dd5962c4eb6a77035fb553ffb7dd340a7715c640099da0a1afc951d1c93e71",
+      "old_id": "public-072",
+      "new_id": "public-102"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/612 \u2605 - Haxorus - A1AC5BB800F7.pk5",
+      "sha256": "317590754e68d19830c143d221e8684e0209dbdeb7f9c5d8995c5b0371a595b1",
+      "old_id": "public-073",
+      "new_id": "public-103"
+    },
+    {
+      "source": "Tests/PKHeX.Core.Tests/Legality/Legal/Generation 5/636 - Egg - F2C5552258BA Breeder Larvesta.pk5",
+      "sha256": "a7cf03670b41e027d92dd5900dd03415fe7b71db4da38ff215b41f78ac480d4a",
+      "old_id": "public-074",
+      "new_id": "public-104"
+    }
+  ],
+  "added_paths": [
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Evolution/196 \u2605 - ESPEON - 20386C1C9080.pk4",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Gen2/043 - ODDISH - 2DCE noChain.pk2",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Gen2/107 - HITMONCHAN - 26B0.pk2",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Gen3/0032 - NIDORAN\u2642 - 92A9F5C939C9 - edited issue4356.pk3",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/038 - \u30bf\u30de\u30b4 - D8E92C842F48 Evo Egg.pk3",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/0382 - KYOGRE - 7D62F8447ED2 untrained 85EVs.pk4",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/121 \u2605 - EGG - 1B87 Evo Egg.pk2",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/199 \u2605 - EGG - EDB6 Evo Egg.pk2",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/208 - \u30bf\u30de\u30b4 - E4466BAA9428 Evo Egg.pk3",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/251 - CELEBI - E96B nomet notradeback.pk2",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/UltraBallTeddiursa.xk3",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Misc/XD Shuckle Gift no Fateful.ck3",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Moves/292 - SHEDINJA - 4E10A0E852EE (two Ninjask Moves).pk3",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Ribbons/Illegal (has Winning Ribbon).ck3",
+    "Tests/PKHeX.Core.Tests/Legality/Illegal/Wild/646-01 \u2605 - \u30ad\u30e5\u30ec\u30e0 - 0D420000000A.pk5",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/004 - CHARMANDER - D5EF.pk1",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/124 - ZYNX - 70DF498A2E1D.pk3",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/172 - Egg - 7D3CF55CFC10.pk4",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/183 - \uc54c - AA4E3344817C.pk5",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/235 - \uc54c - 10DB.pk2",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/236 - Oeuf - 5E05C020CB44.pk4",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/236 - \uc54c - F55CC3F29788.pk5",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/292 - SHEDINJA - 4889A0E852EE.pk3",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/300 - Egg - 0673311A3560.pk5",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/300 - Uovo - 0C910B68370A.pk4",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/343 - \uc54c - 5871F88A9BCE.pk5",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/479 - Ei - B7178C463B60.pk4",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/479 \u2605 - \uc54c - BE0D0000000A.pk5",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/610 - \u30ad\u30d0\u30b4 - 6F91B110EED1.pk5",
+    "Tests/PKHeX.Core.Tests/Legality/Legal/General/Ribbons/Legal (Missing Winning Ribbon).ck3"
+  ]
+}

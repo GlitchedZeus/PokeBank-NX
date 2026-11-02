@@ -45,7 +45,8 @@ constexpr Game originalGameForRow(std::size_t index) noexcept {
 }
 inline Result evaluate(const Candidate& c) noexcept {
     if(!c.originalGameIndependentlyAttested ||
-       c.originalGame==Game::Unknown)return {};
+       (c.originalGame!=Game::Colosseum && c.originalGame!=Game::XD))
+        return {};
     if(!c.originalPhysicalRowIndependentlyAttested ||
        c.originalRowIndex>=F::kTemplateCount)
         return {Status::UnknownOriginalRow};

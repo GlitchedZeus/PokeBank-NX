@@ -1,0 +1,10 @@
+{
+  "engine_source_commit": "b517dc6192d6d73253edace07ffe7fe213f1fc13",
+  "local_affected_matrix": "GCC/Clang normal and ASan/UBSan, leaks enabled; all28 runs PASS",
+  "current_app_boundary": "All4 compiler/profile runs84 cases PASS at clean appd6cc878a",
+  "public_census": "All105 original files/Git blobs;0 errors; exactly one false clean repaired; before/after retained",
+  "native_ev_proof": "Unchanged source-pinned proof; four compiler/profiles passed earlier, current144 suite preserves candidate/negative",
+  "device_and_independent_review": "Not performed;13 integration conflicts remain",
+  "source_manifest_sha256": "925cd872a0556c7d86b9cc4d14a2b168e382b890841d1f4e584fbf74fd54945b",
+  "ci": "Exact final published head must pass live checks; separate verified artifacts bind head and compilers."
+}

@@ -87,6 +87,8 @@ int main(){
         assert(result.fixedKind==F::kEntries[i].kind);
         assert(result.family==F::kEntries[i].policy);
         assert(result.recipientIsGba==(i>=11u));
+        auto invalidGame=c;invalidGame.originalGame=static_cast<G>(255);
+        assert(H::evaluate(invalidGame).status==S::UnknownOriginalGame);
         auto missing=c;missing.originalGameIndependentlyAttested=false;
         assert(H::evaluate(missing).status==S::UnknownOriginalGame);
         missing=c;missing.originalPhysicalRowIndependentlyAttested=false;

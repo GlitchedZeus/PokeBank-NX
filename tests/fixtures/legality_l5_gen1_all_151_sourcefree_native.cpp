@@ -64,11 +64,20 @@ int main(){
                        pk.statExpDEF()==1 && pk.statExpSPE()==32768 &&
                        pk.statExpSpecial()==65534);
                 const auto report=Legality::analyze(pk,pk.getGameGroup(),source);
-                // A known current R/B/Y save still cannot attest Time
-                // Capsule or Gen II tradeback origins of a detached PK1.
-                // Source-free/mismatched PK1 must stay equally incomplete.
-                assert(report.coverage.transfer==Legality::CoverageLevel::Partial);
+                // Stat experience 65535/0/1/32768/65534 needs battle gains with
+                // one stat still at zero. Pinned PKHeX 6501f0ab calls that
+                // EVs:EffortShouldBeZero, but original pret/pokered
+                // engine/battle/experience.asm (DivideExpDataByNumMonsGainingExp,
+                // and the Exp. All halving in engine/battle/core.asm) floors each
+                // enemy base stat by the recipient count before it is added, so a
+                // stat can receive 0 while the others grow. The engine therefore
+                // keeps this as a non-definitive warning: never "No problems
+                // found", never a false Invalid from this rule alone.
                 assert(report.verdict()!=Legality::Verdict::NoProblemsFound);
+                assert(!has(report,Legality::Severity::Invalid,
+                            "Stat experience from battles"));
+                assert(has(report,Legality::Severity::Warning,
+                           "Stat experience from battles"));
                 assert(!has(report,Legality::Severity::Invalid,
                             "Ability not legal for this species"));
                 assert(!has(report,Legality::Severity::Invalid,

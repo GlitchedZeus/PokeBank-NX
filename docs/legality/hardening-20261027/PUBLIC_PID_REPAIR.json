@@ -1,0 +1,15 @@
+{
+  "policy": "All105 original files/decoded bytes/reference outcomes retained. Exactly one native result changed after the source-provenance repair. No record removed.",
+  "before_engine": "0a9ad2073b2ab678e5213b63b6fab60925e23172",
+  "after_engine": "b517dc6192d6d73253edace07ffe7fe213f1fc13",
+  "changes": [
+    {
+      "id": "public-003",
+      "source_path": "Tests/PKHeX.Core.Tests/Legality/Illegal/Gen3/0032 - NIDORAN\u2642 - 92A9F5C939C9 - edited issue4356.pk3",
+      "original_sha256": "94bc74610d8a3be2b7ffe7fc637b51d224f0b0768f567f7b1f59c973181864ca",
+      "reference": false,
+      "before": "public-003 NOPROBLEMS - ;",
+      "after": "public-003 INVALID internal:partial,moves:partial,encounter:partial,event:none,pidrng:partial,egg:partial ; PID bit 15 does not match the bred species gender"
+    }
+  ]
+}

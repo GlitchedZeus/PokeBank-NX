@@ -14,6 +14,11 @@ include Makefile.host.legality-gen3-safari
 include Makefile.host.legality-gen3-safari-origin
 include Makefile.host.legality-gen3-safari-methodh
 include Makefile.host.gsc
+include Makefile.host.gb-legality
+include Makefile.host.gen5-legality
+include Makefile.host.gen4-legality
+include Makefile.host.title-matrix
+include Makefile.host.gen3-legality
 include Makefile.host.editor
 include Makefile.host.cleanup3
 include Makefile.host.standalone
@@ -24,3 +29,4 @@ include Makefile.host.source-instances
 include Makefile.host.product-ui
 
 include Makefile.host.machine
+include Makefile.host.ev-exp

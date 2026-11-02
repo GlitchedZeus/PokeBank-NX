@@ -10,6 +10,7 @@
 #include "Pokemon/Pokemon4ReadOnly.h"
 #include "Pokemon/Pokemon4ReadOnlyView.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -94,8 +95,10 @@ Legality::Report analyzeNativeHgss(
 int main() {
     using namespace Legality;
     // The SAME encrypted original PK4 can sit in D/P, Platinum or HGSS.
-    // Each native format reads its own stored Ball byte, NOT max(DP,HGSS).
-    // L4's provenance helper must agree with the live Pokemon view.
+    // The raw per-format bytes stay individually readable, but the Pokemon's
+    // capture Ball is max(DP,HGSS) in every container (PKHeX G4PKM.Ball and
+    // Pokemon4Mutable::ball()): HG/SS stores the real Ball at 0x86 and a
+    // D/P-displayable stand-in at 0x83, and other origins leave 0x86 at 0.
     for (const auto pair : {std::array<uint8_t,2>{4,24},
                             std::array<uint8_t,2>{24,4},
                             std::array<uint8_t,2>{4,0},
@@ -122,7 +125,8 @@ int main() {
                     : Gen4RangerStorageBallEvidence::Storage::Unknown;
             const auto evidence=Gen4RangerStorageBallEvidence::select(
                 storage,pair[0],pair[1]);
-            assert(view.ball()==(evidence.storageKnown?evidence.ball:0));
+            assert(evidence.storageKnown==(storage!=Gen4RangerStorageBallEvidence::Storage::Unknown));
+            assert(view.ball()==std::max(pair[0],pair[1]));
             assert(view.gen4BallDPPt()==pair[0]);
             assert(view.gen4BallHGSS()==pair[1]);
             assert(encrypted==immutable);

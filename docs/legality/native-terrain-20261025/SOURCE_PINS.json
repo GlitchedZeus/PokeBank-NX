@@ -1,0 +1,125 @@
+{
+  "native_game_source": {
+    "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "tree": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+    "files": [
+      {
+        "path": "src/battle/battle_setup.c",
+        "git_blob_sha1": "1ba72f18a6b95dc378a0a81311b2296ffc043ee8",
+        "sha256": "94a49e13ff1252c6781c21f752b8f2149644dd6ebafb4287e967f9a40cf18021",
+        "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/battle/battle_setup.c"
+      },
+      {
+        "path": "src/encounter.c",
+        "git_blob_sha1": "ffa234b27badd655d75a1c633064c730d8a7243b",
+        "sha256": "b913fa12f5e77ea01f5c2410f3b74649a4f102d30863d54519ebe514a4bb5505",
+        "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/encounter.c"
+      },
+      {
+        "path": "src/field/encounter_check.c",
+        "git_blob_sha1": "9585cfd83940a05f9145a73628e9872458c36ab2",
+        "sha256": "a91dad88736b55698c9d06485c98167b48b732f81469c75234327cb5d9dc1c18",
+        "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/field/encounter_check.c"
+      },
+      {
+        "path": "src/pokemon.c",
+        "git_blob_sha1": "6127956d12e380033c08b1fce1e707d16b601c1a",
+        "sha256": "6924639b76ff3c05fc6100c76d1af167c4e043e3867965fec5f7605d412fb1eb",
+        "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/pokemon.c"
+      },
+      {
+        "path": "src/terrain_attributes.c",
+        "git_blob_sha1": "b388bacd768294367afc9cdc73c91949cd033536",
+        "sha256": "1201161ae43ab76c88e80f5e4850ce4441b0dd17c96facf11cd036fdcf6d726e",
+        "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/terrain_attributes.c"
+      },
+      {
+        "path": "include/constants/pokemon.h",
+        "git_blob_sha1": "d5b52d86448fa7e9c2d5e1a913ea00927c743a11",
+        "sha256": "64d5d0cee8001830298ec7175c1863165ffccdf037685a51ea27037273187c74",
+        "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/include/constants/pokemon.h"
+      },
+      {
+        "path": "include/terrain_attributes.h",
+        "git_blob_sha1": "8c0568199ceb8925b0712add3241a5652bb3a833",
+        "sha256": "8c448c5413c45596d2efee81dcbce33d6300566c7563dd639ad9dcd8bd5e2c8a",
+        "url": "https://raw.githubusercontent.com/pret/pokeheartgold/9d8b7591f09b65804da2fb2dfd56f320633e0d36/include/terrain_attributes.h"
+      },
+      {
+        "path": "src/battle/battle_system.c",
+        "git_blob_sha1": "0a3ebfc760f73534917406a5b4730d660edea462",
+        "sha256": "ebce8dd466e09922b24de021d1b6a22a01bcf68b53b118448db3220df1eb21fd",
+        "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/battle/battle_system.c"
+      },
+      {
+        "path": "src/battle/overlay_12_0224E4FC.c",
+        "git_blob_sha1": "eed745b30827c5f4840aecfcd1f892109b87cae4",
+        "sha256": "1a4c69e95e03ba28965d5e2fa924bd0c7b970d235d9869627f1d5893df4d3180",
+        "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/battle/overlay_12_0224E4FC.c"
+      },
+      {
+        "path": "include/constants/battle.h",
+        "git_blob_sha1": "a95d5f3505194d4a4ab5016e43e4e8e411e06c82",
+        "sha256": "5614494e7997a0dd47e3887d41e17ef4712ecf8630a27aaccf69da19a001eff6",
+        "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/include/constants/battle.h"
+      },
+      {
+        "path": "src/script_pokemon_util.c",
+        "git_blob_sha1": "59d75c2780da56e8704499a933a36579c0b78387",
+        "sha256": "96eac8702a223ee35a5341bc5228972e0651323a3422f539664e4c1697978aae",
+        "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/script_pokemon_util.c"
+      },
+      {
+        "path": "src/field/scrcmd_pokemon_misc.c",
+        "git_blob_sha1": "6138623b3e9d334ca6b351bafbcda76944b98be7",
+        "sha256": "daa96a99436821c7b7330374423e7a34d7772cfb98dd421319af1cd3a15e3cd3",
+        "url": "https://github.com/pret/pokeheartgold/blob/9d8b7591f09b65804da2fb2dfd56f320633e0d36/src/field/scrcmd_pokemon_misc.c"
+      }
+    ]
+  },
+  "references": [
+    {
+      "revision": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "files": [
+        {
+          "path": "PKHeX.Core/PKM/Enums/GroundTileType.cs",
+          "sha256": "5bbd5be694a6593534863475a4dfc7c51597ed2de0a7ac7e3db0e18fb0c84b87",
+          "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/PKM/Enums/GroundTileType.cs"
+        },
+        {
+          "path": "PKHeX.Core/Legality/Encounters/Templates/Gen4/GroundTileAllowed.cs",
+          "sha256": "6789199f19bab46eb86176390fdbcc1f3066ee71d896c49bbf009a3db5e63174",
+          "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Encounters/Templates/Gen4/GroundTileAllowed.cs"
+        },
+        {
+          "path": "PKHeX.Core/Legality/Verifiers/GroundTileVerifier.cs",
+          "sha256": "608fc88cd9570dc615023581dbdd83919c479cffbee0add9f2e671df099986b2",
+          "url": "https://github.com/kwsch/PKHeX/blob/6501f0ab46e8f8ca048539dbaf8cae8cb104e722/PKHeX.Core/Legality/Verifiers/GroundTileVerifier.cs"
+        }
+      ]
+    },
+    {
+      "revision": "6042efa241a9925ce57e645329ea7f976deabdd3",
+      "files": [
+        {
+          "path": "PKHeX.Core/PKM/Enums/GroundTileType.cs",
+          "sha256": "5bbd5be694a6593534863475a4dfc7c51597ed2de0a7ac7e3db0e18fb0c84b87",
+          "url": "https://github.com/kwsch/PKHeX/blob/6042efa241a9925ce57e645329ea7f976deabdd3/PKHeX.Core/PKM/Enums/GroundTileType.cs"
+        },
+        {
+          "path": "PKHeX.Core/Legality/Encounters/Templates/Gen4/GroundTileAllowed.cs",
+          "sha256": "6789199f19bab46eb86176390fdbcc1f3066ee71d896c49bbf009a3db5e63174",
+          "url": "https://github.com/kwsch/PKHeX/blob/6042efa241a9925ce57e645329ea7f976deabdd3/PKHeX.Core/Legality/Encounters/Templates/Gen4/GroundTileAllowed.cs"
+        },
+        {
+          "path": "PKHeX.Core/Legality/Verifiers/GroundTileVerifier.cs",
+          "sha256": "608fc88cd9570dc615023581dbdd83919c479cffbee0add9f2e671df099986b2",
+          "url": "https://github.com/kwsch/PKHeX/blob/6042efa241a9925ce57e645329ea7f976deabdd3/PKHeX.Core/Legality/Verifiers/GroundTileVerifier.cs"
+        }
+      ]
+    }
+  ],
+  "prior_passing_code": "45448775e3dba93a9410c2d7cab1e7a62c0f63d7",
+  "starting_wip": "865688c365db7d35b3ef367223ee77983117a4ed",
+  "evidence_class": "Pinned source reconstruction and synthetic regression records; no authenticated historical receipts"
+}

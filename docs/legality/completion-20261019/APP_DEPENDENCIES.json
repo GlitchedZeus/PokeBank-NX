@@ -1,0 +1,27 @@
+{
+  "original_head": "678627f5deabaa7120b40f1b9cfb80d6b65d66de",
+  "final_head": "9d4b8b71befea78c76802c15f1911a0ca24e775c",
+  "bridge_app_headers_identical": {
+    "include/Integration/Gen5/Gen5StagedPokemonWorkspace.h": "bf5262e9c864a651ccf241587dc0e24decbe3fb70b5281c4f8160ca68b14b4a1",
+    "include/Integration/Gen5/Gen5ReadOnlySave.h": "302ad23108f5b9f3e3ede3d952834082f24adfd37554b4a3daf7ec7f038539db",
+    "include/Integration/Gen5/Gen5SaveBlockLayout.h": "ae8947767fedacd66522d5fa298ec17f85cfa589e1b47783f91f141c5f7f63cc",
+    "include/Pokemon/Pokemon5ReadOnly.h": "e4c48734dc9d2aa43969de0f1f8413f36c7f307bd13c07dd276b4fcaa9b8fcaf",
+    "include/Encryption/Encryption5.h": "0d827bcf3e22fe566026fb3c2ecc5a3363a2d08cee9515b89eab4daab063803d",
+    "include/Utils/CRC16.h": "178aac64deaf0f4fb0e1abbc06e8f06c256a63ba6d99398441c9c646c3d700be",
+    "include/Integration/Gen5/Gen5StagedPokemonRecord.h": "a7f0fd53f52a6460a0263d0c7828ee5d9da2a40ede4c31528d692e8fd44f7ae2",
+    "include/Integration/Gen5/Gen5MovePP.h": "ff873d0878d0bb1c8ff9464caabd53fc068bf65ee7a6615db1d5b56d09c6b337",
+    "include/Integration/Gen5/Gen5EncounterLocations.h": "a329805bf7478dd3d0e47101303f2c4e6ddcddb0ff473d75838614b0573e56f7",
+    "include/Integration/Gen5/Gen5PersonalData.h": "3b288389ff30023cdf9f6d03acd363b5076a7dd860fafca5f9f06a7d90ce783e",
+    "include/Integration/Gen5/Gen5Progression.h": "13ca46f1c0be34de37a7ee8b9a13a7baf639f294d576239ba1f4df5a7d6a422b",
+    "include/Integration/Gen5/Gen5NativeText.h": "285fe060592eda7b4b1bc0e31b67bb72d03035c9f13e935250b25100b5dea8bf",
+    "include/Integration/Gen5/Gen5PidCoordination.h": "cf34b1847bb5ad93bad5f57570134389da426e97c213df34d9f89d24f687ab98",
+    "include/Integration/Gen5/Gen5NativeCreate.h": "8d23b3db153c472a021854ef50caca83eaf4f53173855eb98bc2e51d27470a07",
+    "include/Integration/Gen5/Gen5CreateValidation.h": "b916a192fbe514ff4770c408456e143c1fa7b4530f63c9c5a68933e69abc6844",
+    "include/Integration/Gen5/Gen5CreateInputRules.h": "43ed80482f56ce7e6105406b827160873aa5de1f4d280ddc3d0bc862d5a7ada3",
+    "include/Integration/Gen5/Gen5Bag.h": "847615ed22b80683309960917473c677fcfa6a660c61416f027b10ddcbd867a1",
+    "include/Trainer/Inventory.h": "577aa4099baf91255e62ff46165b150d06e109fc4eea67d297f0facdfa9849fe",
+    "include/Integration/Gen5/Gen5BlankSlot.h": "796e624dd7838d24f3fc3fd7053df2e01d04dfaafde244ad9b5663bbcf6e213e",
+    "include/Integration/Gen5/Gen5Trainer.h": "ce037eb55549059b0ef8249d9e1e744c483bf679e47af03e3358ece2e08e01d9",
+    "include/Enums/GameVersion.h": "346ee80696cb60b2690cc0b00e8f388b43944311ebb478a840c3534a48edb9dc"
+  }
+}

@@ -1,0 +1,66 @@
+name: L2 Stage 5 Original Same-Route Legality
+on:
+  push:
+    branches:
+      - feature/legality-l2-breeding-20261012
+  workflow_dispatch:
+
+concurrency:
+  group: l2-stage5-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  joint-sources:
+    name: Original same route ${{ matrix.compiler }} normal and ASan UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            cxx: g++
+          - compiler: clang
+            cxx: clang++
+    steps:
+      - name: Exact-source checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Run source-exact and production-linked five-program matrix
+        shell: bash
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -f include/Legality/Gen34EggMoveData.inc
+          "$CXX" --version
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          files=(
+            tests/fixtures/legality_l2_same_original_route_matrix.cpp
+            tests/fixtures/legality_l2_joint_route_alternatives.cpp
+            tests/test_legality_l2_stage5_gen3_joint_routes.cpp
+            tests/test_legality_l2_stage5_dp_joint_routes.cpp
+            tests/test_legality_l2_stage5_pt_hgss_joint_routes.cpp
+          )
+          for mode in normal sanitizer; do
+            flags=(-std=c++20 -Wall -Wextra -Wpedantic -Werror
+                   -Wno-unused-parameter -Iinclude)
+            if [[ "$mode" == sanitizer ]]; then
+              flags+=(-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer)
+            else
+              flags+=(-O2)
+            fi
+            for file in "${files[@]}"; do
+              name="$(basename "$file" .cpp)"
+              "$CXX" "${flags[@]}" "$file" -o "$tmp/$name"
+              ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 \
+                UBSAN_OPTIONS=halt_on_error=1 "$tmp/$name"
+            done
+          done

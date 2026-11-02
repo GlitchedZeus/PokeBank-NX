@@ -1,0 +1,180 @@
+name: Gen V legality vs PKHeX
+
+# Gen V (Black, White, Black 2, White 2) PK5 legality:
+#  - the generated tables match the pinned PKHeX.Core sources,
+#  - the PKHeX-backed fixture, malformed-record and fuzz tests pass with GCC and
+#    Clang, normal and ASan/UBSan,
+#  - a libFuzzer run finds no crash, sanitizer report or input write,
+#  - every Gen V encounter, in-game trade (all languages) and PGF card PKHeX can build,
+#    Gen III/IV encounters converted the way Pal Park / Poke Transfer do, grown copies
+#    and single-field mutations of each get no false Invalid and no false Valid
+#    ("No problems found" where PKHeX rejects) from PokeBank NX against PKHeX.Core's
+#    own verdict, and the text helpers and the Gen III/IV trade-name table agree with
+#    .NET / PKHeX.
+
+on:
+  pull_request:
+    paths:
+      - 'src/Legality/Gen5*'
+      - 'include/Legality/Gen5*'
+      - 'src/Legality/Gen35BreedingAncestry.cpp'
+      - 'include/Legality/Gen35BreedingAncestry.h'
+      - 'include/Legality/FiniteBreedingChain.h'
+      - 'include/Legality/BreedingBirthMoves.h'
+      # Gen III/IV-origin transfers are checked by the Gen IV analyzer (Gen4::analyzeOrigin5).
+      - 'src/Legality/Gen4Legality*'
+      - 'include/Legality/Gen4Legality*'
+      - 'include/Legality/Legality.h'
+      - 'include/Encryption/Encryption5.h'
+      - 'src/Names/SpeciesNames.cpp'
+      - 'tests/test_legality_gen5.cpp'
+      - 'tests/test_legality_gen5_adapter.cpp'
+      - 'tests/test_gen5_joint_breeding.cpp'
+      - 'tests/fixtures/gen15_session2/gen5_joint_breeding.txt'
+      - 'tests/fixtures/gen15_session2/gen5_bw_paired_family.txt'
+      - 'tests/fixtures/gen15_session2/gen5_recursive_tangela.txt'
+      - 'tests/test_reference_artifact_integrity.py'
+      - 'tests/test_reference_evidence_package.py'
+      - 'tests/test_bw2_shared_order.py'
+      - 'tests/legality_gen5_test_helpers.h'
+      - 'tests/fuzz/fuzz_legality_gen5.cpp'
+      - 'tools/gen_legality_gen5_data.py'
+      - 'tools/pkhex_gen5_diff/**'
+      - 'tools/legality_completion/**'
+      - 'docs/legality/campaign-20261028/**'
+      - 'tests/test_hgss_reference_adjudication.py'
+      # HG/SS placeholder allowance for transfers (tools/pkhex_gen5_diff/run.sh).
+      - 'tools/pkhex_gen34_diff/hgss_placeholders.py'
+      - 'docs/legality/campaign-20261028/HGSS_SWARM_REMOVED_ROWS.json'
+      - 'Makefile.host.gen5-legality'
+      - '.github/workflows/legality-gen5-pkhex-diff.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: legality-gen5-pkhex-diff-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PKHEX_SHA: 6501f0ab46e8f8ca048539dbaf8cae8cb104e722
+  PKHEX_RELEASE_ROOT: ${{ github.workspace }}/_ref/PKHeX-release
+
+jobs:
+  gen5:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: ${{ env.PKHEX_SHA }}
+          path: _ref/PKHeX
+          persist-credentials: false
+      - name: Exact heads
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git -C _ref/PKHeX rev-parse HEAD)" = "$PKHEX_SHA"
+      - uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: bfe89c74a3f5265805e364b79bc04ad38ebbc5ea
+          path: _ref/PKHeX-release
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Generated Gen V tables are up to date
+        run: python3 -I tools/gen_legality_gen5_data.py --pkhex _ref/PKHeX --check
+
+      - name: Reproduce independent B2W2 shared-order evidence
+        run: |
+          set -euo pipefail
+          python3 tools/legality_completion/bw2_breeding_native_witness.py \
+            --native build/native-bw2 --fetch --work build/native-bw2-body
+          python3 tools/legality_completion/bw2_birth_index.py \
+            --source _ref/PKHeX-release --native build/native-bw2 \
+            --work build/bw2-order-index --check
+          python3 tests/test_bw2_shared_order.py
+
+      - name: Gen V tests (GCC and Clang, normal and ASan/UBSan)
+        run: |
+          set -euo pipefail
+          for cxx in g++ clang++; do
+            make -f Makefile.host CXX=$cxx HOST_BUILD=build/host-$cxx \
+              build/host-$cxx/test_legality_gen5 build/host-$cxx/test_legality_gen5_sanitize \
+              build/host-$cxx/test_legality_gen5_adapter build/host-$cxx/test_legality_gen5_adapter_sanitize
+            GEN5_FUZZ_ROUNDS=200000 build/host-$cxx/test_legality_gen5
+            GEN5_FUZZ_ROUNDS=50000 build/host-$cxx/test_legality_gen5_adapter
+            ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              build/host-$cxx/test_legality_gen5_sanitize
+            ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+              build/host-$cxx/test_legality_gen5_adapter_sanitize
+          done
+
+      - name: libFuzzer (Clang, ASan/UBSan, 10 minutes)
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y libclang-rt-18-dev
+          clang++ -std=c++20 -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined -Iinclude \
+            tests/fuzz/fuzz_legality_gen5.cpp src/Legality/Gen5Legality.cpp src/Legality/Gen35BreedingAncestry.cpp src/Legality/Gen5LegalityData.cpp \
+            src/Legality/Gen5Text.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Pokemon/Experience.cpp \
+            src/Legality/Gen4Legality.cpp src/Legality/Gen4LegalityData.cpp src/Legality/Gen4LegalityEncounters.cpp \
+            src/Legality/Gen4LegalityMoves.cpp src/Legality/Gen4LegalityPalPark.cpp src/Legality/Gen4LegalityRng.cpp \
+            src/Legality/Gen4LegalityText.cpp src/Legality/Gen3Legality.cpp src/Legality/Gen3LegalityData.cpp \
+            src/Legality/Gen3LegalityDataCxd.cpp -o build/fuzz_gen5
+          mkdir -p build/fuzz_corpus
+          python3 -I -c "import re,sys; [open(f'build/fuzz_corpus/s{i}','wb').write(b'\0'+bytes.fromhex(h)) for i,h in enumerate(re.findall(r'\"([0-9A-F]{272})\"', open('tests/test_legality_gen5.cpp').read()))]"
+          build/fuzz_gen5 -max_total_time=600 -max_len=221 build/fuzz_corpus
+
+      - name: PK5 verdicts against PKHeX (native, trades, events, transfers; 4 seeds)
+        run: |
+          set -euo pipefail
+          for seed in 1 2 7 11; do
+            WORK="$PWD/build/diff-base-$seed" tools/pkhex_gen5_diff/run.sh _ref/PKHeX "$seed" 4
+          done
+
+      - name: Verify every retained raw stream and secondary-reference row
+        run: |
+          python3 tests/test_reference_artifact_integrity.py
+          python3 tools/legality_completion/verify_reference_artifacts.py gen5 \
+            build/diff-base-1 build/diff-base-2 build/diff-base-7 build/diff-base-11
+
+      - name: Record exact reference and engine heads
+        if: always()
+        run: |
+          mkdir -p build
+          git rev-parse HEAD > build/reference-heads.txt
+          git -C _ref/PKHeX rev-parse HEAD >> build/reference-heads.txt
+          git -C _ref/PKHeX-release rev-parse HEAD >> build/reference-heads.txt
+          python3 tools/legality_completion/package_reference_evidence.py \
+            --build build --archive build/reference-evidence.tar.gz
+
+      - name: Verify the sealed reference capture before upload
+        run: |
+          python3 tests/test_reference_evidence_package.py
+          python3 tools/legality_completion/package_reference_evidence.py --verify \
+            --archive build/reference-evidence.tar.gz --group gen5 \
+            --head "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --runs diff-base-1 diff-base-2 diff-base-7 diff-base-11
+
+      - name: Preserve both reference results and unchanged raw comparison bytes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legality-gen5-reference-adjudication
+          path: |
+            build/reference-heads.txt
+            docs/legality/campaign-20261028/BW2_*
+            build/native-bw2-body/native_bw2_birth.cpp
+            build/reference-files.json
+            build/reference-evidence.tar.gz
+          if-no-files-found: warn
+          retention-days: 30

@@ -134,6 +134,54 @@ int main(){
             const auto yes=J::evaluate(one);
             assert(yes.status==J::Status::OneConditionallyConsistentFullHistory);
             assert(yes.matched==1 && !yes.contradicted && !yes.unknown);
+            // An opt-in original parent archive is an independent source
+            // identity join, not merely identical event/opaque pair tokens.
+            // The IV, PID, and 4-move stage must all use the same deposited
+            // source snapshots, including original creation/collection data.
+            auto attested=one;
+            auto& route=attested.original.alternatives[0];
+            auto& archive=route.pid.originalParentWitness;
+            archive.supplied=true;
+            archive.originalDaycareEventIndependentlyVerified=true;
+            archive.physicalDepositOrderIndependentlyVerified=true;
+            archive.originalPairIdentityIndependentlyVerified=true;
+            archive.originalParentSnapshotsIndependentlyVerified=true;
+            archive.creationItemsIndependentlyVerified=true;
+            archive.collectionLanguagesIndependentlyVerified=true;
+            archive.originalEggEventIdentity=one.original.originalEggEventIdentity;
+            archive.originalPhysicalPairIdentity=route.ivPhysicalParentPairIdentity;
+            archive.physicalSlots[0]={101,25,1,7,229,2};
+            archive.physicalSlots[1]={202,25,0,11,0,2};
+            assert(J::evaluate(attested).status==
+                   J::Status::OneConditionallyConsistentFullHistory);
+            auto wrongArchive=attested;
+            wrongArchive.original.alternatives[0].pid.originalParentWitness
+                .originalPhysicalPairIdentity++;
+            assert(J::evaluate(wrongArchive).status==
+                   J::Status::UnverifiedOriginalParentSources);
+            wrongArchive=attested;
+            wrongArchive.moveHistories[0].physicalSlots[0].snapshotIdentity++;
+            assert(J::evaluate(wrongArchive).status==
+                   J::Status::UnverifiedOriginalParentSources);
+            wrongArchive=attested;
+            wrongArchive.moveHistories[0].physicalSlots[1].snapshotIdentity++;
+            assert(J::evaluate(wrongArchive).status==
+                   J::Status::UnverifiedOriginalParentSources);
+            wrongArchive=attested;
+            wrongArchive.original.alternatives[0].pid.originalParentWitness
+                .physicalSlots[0].heldItemAtCreation=0;
+            assert(J::evaluate(wrongArchive).status==
+                   J::Status::UnresolvedLocalHistory);
+            // A separate independently attested matching route survives
+            // this conflicting candidate. Never mix half-routes or declare
+            // all possible breeding histories impossible from one conflict.
+            wrongArchive.original.count=2;
+            wrongArchive.original.alternatives[1]=attested.original.alternatives[0];
+            wrongArchive.original.alternatives[1].routeIdentity=2;
+            wrongArchive.moveHistories[1]=attested.moveHistories[0];
+            assert(J::evaluate(wrongArchive).status==
+                   J::Status::OneConditionallyConsistentFullHistory);
+            ++cases;
             // Independent original pair-eligibility attestations cannot
             // disagree between PID creation and four-move inheritance.  The
             // contradiction is in the supplied source records, not proof

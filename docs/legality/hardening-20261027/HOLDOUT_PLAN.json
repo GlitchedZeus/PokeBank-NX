@@ -1,0 +1,52 @@
+{
+  "declared_before_generation": true,
+  "reference_release": "26.10.18",
+  "reference_commit": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "seeds": {
+    "gen1": 2026102701,
+    "gen2": 2026102702,
+    "gen34": 2026102703,
+    "gen5": 2026102704,
+    "correlated_context": 2026102705
+  },
+  "gb_records_per_generation": 30000,
+  "gen34_mutations": 4,
+  "gen5_mutations": 4,
+  "purpose": "Independent holdout after the production milestone is frozen; never used for tuning. Any finding requires reporting this entire raw run and a separately declared new holdout.",
+  "development_inputs": [
+    "existing CURRENT_GEN5_FALSE_CLEAN.json",
+    "existing retained regression corpora",
+    "development seeds explicitly separate from these seeds"
+  ],
+  "claims": "synthetic validation, not authenticated historical specimens",
+  "post_repair_holdout": {
+    "declared_before_generation": true,
+    "seeds": {
+      "gen1": 2026102711,
+      "gen2": 2026102712,
+      "gen34": 2026102713,
+      "gen5": 2026102714,
+      "correlated": 2026102715
+    },
+    "gb_records_per_generation": 30000,
+    "mutations_per_base": 4,
+    "reason": "Berry Fix bound was found by source audit after the first holdout was generated, before its aggregate metrics were inspected. Preserve and report that entire run, then generate this additional independent set after the repair is committed. Neither set may be dropped or used for tuning."
+  },
+  "post_public_fixture_repairs": {
+    "declared_before_generation": true,
+    "seeds": {
+      "gen34": 2026102723,
+      "gen5": 2026102724,
+      "correlated": 2026102725
+    },
+    "mutations_per_base": 4,
+    "reason": "Public (not holdout) fixtures identified two false Invalid defects: GenIV traded hatch-game ball writer and GenV evolved fixed-slot ability. All prior raw results remain reported. Generate an additional independent affected-generation comparison only after the fixes are committed. GB code unchanged; its post-repair holdout remains the exact implementation measured."
+  },
+  "post_public_gen3_pid_repair": {
+    "declared_before_generation": true,
+    "gen3_seed": 2026102733,
+    "mutations": 4,
+    "scope": "Native GenIII unhatched eggs only. Preserve earlier raw runs; replay all previous bytes under the new native source. GenIV/V paths cannot use an unhatched nativeGenIII DayCare record; their retained streams must remain byte-identical. No new primary GenIV/V sample count claimed.",
+    "finding_origin": "Complete105-file public census, not the reserved holdout. Existing PID rule missed level-up provenance discarded by the bool-only birth validator."
+  }
+}

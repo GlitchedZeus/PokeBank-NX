@@ -7,6 +7,8 @@
 // stage models are composed, not duplicated or edited here.
 #include "Legality/Gen3JointEggCandidateEvidence.h"
 #include "Legality/Gen3EggPIDCreationHistory.h"
+#include "Legality/Gen34OriginalSameRouteProof.h"
+#include "Legality/Gen34OriginalParentLineage.h"
 #include <array>
 #include <cstdint>
 
@@ -35,11 +37,23 @@ struct Input {
     bool originalUnhatchedEggMovesIndependentlyVerified=false;
     bool moveAndPIDSameParentSnapshotsIndependentlyVerified=false;
     bool moveAndPIDSamePhysicalPairIndependentlyVerified=false;
+    // Opt-in original four-stage source archive, never inferred from PK3.
+    Gen34OriginalSameRouteProof::Input sameRouteProof{};
+    uint64_t originalEggSnapshotId=0,originalPhysicalPairIdentity=0;
+    bool originalEggSnapshotIndependentlyAttested=false;
+    bool originalPairIdentityIndependentlyAttested=false;
+    bool creationHeldItemsIndependentlyAttested=false;
+    std::array<uint16_t,2> originalCreationHeldItems{};
+    Gen34OriginalParentLineage::Input originalParentLineage{};
 };
 struct Result {
     Status status=Status::UnknownOriginalEggEvidence;
     MoveIV::Result moveAndIV{};
     PID::Result pid{};
+    Gen34OriginalSameRouteProof::Status sameRouteCheck=
+        Gen34OriginalSameRouteProof::Status::NotSupplied;
+    Gen34OriginalParentLineage::Status lineageStatus=
+        Gen34OriginalParentLineage::Status::NotSupplied;
 };
 constexpr Result evaluate(const Input& in) noexcept {
     Result out{};
@@ -132,6 +146,46 @@ constexpr Result evaluate(const Input& in) noexcept {
     if(!in.originalUnhatchedEggMovesIndependentlyVerified) {
         out.status=Status::UnknownOriginalMoveEvidence;return out;
     }
+    // Stage 5 opt-in original source attestation: PID, IV, moves and the
+    // creation/collection transcript must refer to the SAME ordered pair,
+    // game, original egg snapshot, held items and daycare event. A missing
+    // or crossed archive remains Unknown, never whole-Pokemon Invalid.
+    namespace Route=Gen34OriginalSameRouteProof;
+    if(in.sameRouteProof.supplied){
+        if(!in.originalEggSnapshotIndependentlyAttested ||
+           !in.originalPairIdentityIndependentlyAttested ||
+           !in.creationHeldItemsIndependentlyAttested ||
+           !slot0.originalHeldItemIndependentlyVerified ||
+           !slot1.originalHeldItemIndependentlyVerified ||
+           (in.originalCreationHeldItems[0]==229u)!=
+               slot0.heldEverstoneAtCreation ||
+           (in.originalCreationHeldItems[1]==229u)!=
+               slot1.heldEverstoneAtCreation){
+            out.status=Status::UnknownOriginalPairEvidence;return out;
+        }
+        out.sameRouteCheck=Route::evaluate(in.sameRouteProof,{
+            Route::gameFor(game),in.originalEggEventIdentity,
+            in.originalEggSnapshotId,in.originalPhysicalPairIdentity,
+            slot0.snapshotIdentity,slot1.snapshotIdentity,true,
+            in.originalCreationHeldItems[0],in.originalCreationHeldItems[1]});
+        if(out.sameRouteCheck!=Route::Status::ConditionallySameRoute){
+            out.status=Status::UnknownOriginalPairEvidence;return out;
+        }
+    }
+    // Stage 6: independently preserved traded/evolved/migrated histories
+    // must terminate at these exact ORIGINAL deposited biological parents.
+    // Custody/descendant metadata cannot be deduced from modern child PK3.
+    if(in.originalParentLineage.supplied) {
+        namespace Lineage=Gen34OriginalParentLineage;
+        const auto source=Lineage::evaluate(in.originalParentLineage,{
+            Gen34OriginalSameRouteProof::gameFor(game),
+            {slot0.snapshotIdentity,slot1.snapshotIdentity},
+            {slot0.species,slot1.species}});
+        out.lineageStatus=source.status;
+        if(source.status!=Lineage::Status::ConditionallyReplayed){
+            out.status=Status::UnknownOriginalPairEvidence;return out;
+        }
+    }
     // The accepted same-parent move/IV evaluator uses ONE father moveset,
     // the same physical slot mapping and source game's retail IV replay.
     out.moveAndIV=MoveIV::evaluate(joint);
@@ -162,7 +216,11 @@ constexpr Result evaluate(const Input& in) noexcept {
     // PID history must be separately original-source attested. This does
     // not assume the IV stage RNG state equals PID collection-time RNG.
     out.pid=PID::evaluate(in.pid);
-    if(out.pid.status==PID::Status::OriginalEggPIDContradicted) {
+    if(out.pid.status==PID::Status::OriginalEggPIDContradicted ||
+       out.pid.status==PID::Status::OriginalPendingPayloadContradicted ||
+       out.pid.status==PID::Status::OriginalCollectionPayloadContradicted) {
+        // An attested original-acquisition contradiction excludes this
+        // proposed source route only; other parent histories may survive.
         out.status=Status::OriginalPIDCandidateContradicted;return out;
     }
     if(out.pid.status!=PID::Status::ConditionallyMatchedOriginalEggPID) {

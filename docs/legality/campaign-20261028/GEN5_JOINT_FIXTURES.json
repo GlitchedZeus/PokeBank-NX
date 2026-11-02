@@ -1,0 +1,370 @@
+{
+  "policy": "Synthetic exact retained records and constructed paired variants; no historical acquisition claim. Raw reference disagreements are retained. Expected native verdicts are independent of reference validity.",
+  "source_primary": "outputs/legality-hardening-20261027/after-egg-pid/gen5-reference.txt",
+  "records": [
+    {
+      "id": "b7875",
+      "expected": "INCOMPLETE",
+      "sha256": "16f54a5fda977354de6dc5db43bb7bd13d0fd3ef717dabf335ba3af7ba18e499",
+      "moves": [
+        426,
+        516,
+        1,
+        45
+      ]
+    },
+    {
+      "id": "m7876-tid",
+      "expected": "INCOMPLETE",
+      "sha256": "f8967e0dbe4fb600c3aad339cd2d7bb1513c198f50310bbbd159d5adb65454aa",
+      "moves": [
+        426,
+        516,
+        1,
+        45
+      ]
+    },
+    {
+      "id": "b9545",
+      "expected": "INCOMPLETE",
+      "sha256": "fbc1486303a13d65fb9e72e1df069ec914e7f846c36f36167351cb362d3439f8",
+      "moves": [
+        1,
+        357,
+        122,
+        263
+      ]
+    },
+    {
+      "id": "m9546-otname",
+      "expected": "INCOMPLETE",
+      "sha256": "203c54f3f707804c98d79658d248c609d39646e662b1ff8b74531f1d7a84be07",
+      "moves": [
+        1,
+        357,
+        122,
+        263
+      ]
+    },
+    {
+      "id": "m9547-otname",
+      "expected": "INCOMPLETE",
+      "sha256": "4b94b26ea4217f280bf588c3b572cb386a4eac4258938931d1ce097ad013ccc0",
+      "moves": [
+        1,
+        357,
+        122,
+        263
+      ]
+    },
+    {
+      "id": "b21270",
+      "expected": "INCOMPLETE",
+      "sha256": "d1a3db4c408c1391346fb8c62849381671b9ac3d6cf0209506650b6edda180f0",
+      "moves": [
+        33,
+        74,
+        343,
+        0
+      ]
+    },
+    {
+      "id": "m21273-iv",
+      "expected": "INCOMPLETE",
+      "sha256": "f972197ed6d773ae1433689a5fcc1d1e27915ed610f055b20fa021ff87fa5dfc",
+      "moves": [
+        33,
+        74,
+        343,
+        0
+      ]
+    },
+    {
+      "id": "positive-b7875",
+      "expected": "INCOMPLETE",
+      "sha256": "59c49d8ab9421b259d648d748c891ddcaca8f9e67eb0c9bb17b2bdcd94fc0559",
+      "moves": [
+        118,
+        516,
+        1,
+        45
+      ]
+    },
+    {
+      "id": "positive-b9545",
+      "expected": "NOPROBLEMS",
+      "sha256": "c03bb34acb9f28477d0d7653e0108d5ee95d6f00ab634ffd5e2bc4ff9f908e8e",
+      "moves": [
+        1,
+        357,
+        113,
+        263
+      ]
+    },
+    {
+      "id": "positive-b21270",
+      "expected": "NOPROBLEMS",
+      "sha256": "08b19f14a80bcd0de1b5335550d227593bdd6972a8ff68a2cab397959fb6b365",
+      "moves": [
+        33,
+        227,
+        343,
+        0
+      ]
+    },
+    {
+      "id": "chansey-ordered-positive",
+      "expected": "NOPROBLEMS",
+      "sha256": "be72cd0710fe521da1c99fde4faa17caf930476af85335c8aa0187a22f8c3987",
+      "moves": [
+        1,
+        45,
+        118,
+        516
+      ]
+    },
+    {
+      "id": "chansey-ordered-negative",
+      "expected": "INCOMPLETE",
+      "sha256": "ff79dbfc5853091ea5498a92c0596b41be1a387a73cea462652d8000a5921793",
+      "moves": [
+        1,
+        45,
+        426,
+        516
+      ]
+    },
+    {
+      "id": "egg-b58750",
+      "expected": "NOPROBLEMS",
+      "sha256": "710fc662a25ad8c05fa08a8b8bc96a18ca93959129a46fb83a7c4e9e89345be9",
+      "moves": [
+        28,
+        226,
+        404,
+        86
+      ]
+    },
+    {
+      "id": "b0",
+      "expected": "NOPROBLEMS",
+      "sha256": "d5f24f8a699767b2c387130b25128c84c83637d9a981de1228f3c206d04296b9",
+      "moves": [
+        33,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "b1535",
+      "expected": "INCOMPLETE",
+      "sha256": "601a6a51b7ae8b183d92019ac63feeefb2e240459e0d357c28d298741e75d1ec",
+      "moves": [
+        64,
+        36,
+        31,
+        156
+      ]
+    },
+    {
+      "id": "m1538-pokerus",
+      "expected": "INCOMPLETE",
+      "sha256": "fba76c2a1a10527e0ef45df27bea7d1300a8949aa3c548fbc2ca959a92836862",
+      "moves": [
+        64,
+        36,
+        31,
+        156
+      ]
+    },
+    {
+      "id": "b1585",
+      "expected": "INCOMPLETE",
+      "sha256": "ed5642166b4d08196d684ca494c0f7af743689be2c1c76244feabbc253e6657d",
+      "moves": [
+        43,
+        64,
+        498,
+        32
+      ]
+    },
+    {
+      "id": "b7220",
+      "expected": "NOPROBLEMS",
+      "sha256": "e74f01b4536bb083a26ea84de6c01a16d27a892befc27fcb2dec001b67cc4dc4",
+      "moves": [
+        270,
+        252,
+        193,
+        418
+      ]
+    },
+    {
+      "id": "m7223-iv",
+      "expected": "NOPROBLEMS",
+      "sha256": "3b0f68c14a240770cad458219d870f0c179eaa323956d4b42993a94343a57259",
+      "moves": [
+        270,
+        252,
+        193,
+        418
+      ]
+    },
+    {
+      "id": "b7250",
+      "expected": "NOPROBLEMS",
+      "sha256": "d99a3d5adb4b8faf7b8a8c064b12bdefae1231a50ea715a54ed56b99c1b3d059",
+      "moves": [
+        270,
+        252,
+        193,
+        203
+      ]
+    },
+    {
+      "id": "m7251-tid",
+      "expected": "NOPROBLEMS",
+      "sha256": "b8415b8ace3c36f4a1f1c73e987d3beb6f3f926fc7aa13ac21c29b940b72b300",
+      "moves": [
+        270,
+        252,
+        193,
+        203
+      ]
+    },
+    {
+      "id": "m7252-otname",
+      "expected": "NOPROBLEMS",
+      "sha256": "0ab70ac7a8a8d4ddd0c67db5d0192bf7a9a688c3ead4ddc8296c6260fd169ec5",
+      "moves": [
+        270,
+        252,
+        193,
+        203
+      ]
+    },
+    {
+      "id": "b7275",
+      "expected": "NOPROBLEMS",
+      "sha256": "cd6b8ee9e72be7249b17baccd4c403bb5c2e90b71b5dbbdbb42fe817b87bd8f1",
+      "moves": [
+        252,
+        193,
+        203,
+        92
+      ]
+    },
+    {
+      "id": "b7280",
+      "expected": "INCOMPLETE",
+      "sha256": "a9ebac5a17796a7c8795869bc1c0d35390dd89c50f9078989c1a7e3e019a6e51",
+      "moves": [
+        252,
+        193,
+        68,
+        270
+      ]
+    },
+    {
+      "id": "b7295",
+      "expected": "NOPROBLEMS",
+      "sha256": "d5a7a5c8226e44b3b840eabc368b1d3a9acc2e82acc6689982da9660ab4ec512",
+      "moves": [
+        270,
+        252,
+        193,
+        228
+      ]
+    },
+    {
+      "id": "m7296-pid",
+      "expected": "NOPROBLEMS",
+      "sha256": "21c95dc9d10bf320addb1dd56fcb736a19c193d24b9db1d4f1f2678703e522b0",
+      "moves": [
+        270,
+        252,
+        193,
+        228
+      ]
+    },
+    {
+      "id": "b7800",
+      "expected": "INVALID",
+      "sha256": "9995e39260567a2a0e677ee214ff38b528fe4e1cc14b775523e90a872befc1fb",
+      "moves": [
+        1,
+        204,
+        426,
+        258
+      ]
+    },
+    {
+      "id": "m7803-pid",
+      "expected": "INVALID",
+      "sha256": "b4d6e15483b399601d180a9afbcce5a08188aa293450e31441e6b192495d62be",
+      "moves": [
+        1,
+        204,
+        426,
+        258
+      ]
+    },
+    {
+      "id": "m7804-pid",
+      "expected": "INVALID",
+      "sha256": "8f078bd90cc65d5086edcaa3fa12d093ed418479cd47dc6b73a2200e3ccff60a",
+      "moves": [
+        1,
+        204,
+        426,
+        258
+      ]
+    },
+    {
+      "id": "b7750",
+      "expected": "INCOMPLETE",
+      "sha256": "1a7a08f7ca164b92ec6eaf11b05740490b91834e5413daa6280dced17a80df5b",
+      "moves": [
+        1,
+        45,
+        203,
+        505
+      ]
+    },
+    {
+      "id": "m7754-version",
+      "expected": "INCOMPLETE",
+      "sha256": "365919b7b1e0eb7248809090af2e74c7a7900adb5cb3166dbbf61b5945fb65bd",
+      "moves": [
+        1,
+        45,
+        203,
+        505
+      ]
+    },
+    {
+      "id": "b21320",
+      "expected": "INCOMPLETE",
+      "sha256": "a7a0117214826bdd9e3d4c3d7cc2209ac9c9903493ca6fbe228c400f5bf7f09c",
+      "moves": [
+        33,
+        227,
+        273,
+        76
+      ]
+    },
+    {
+      "id": "smoochum-two-exclusive-egg-moves",
+      "expected": "INVALID",
+      "sha256": "ac7fce6c44a40864b0eaf0d6da74e4f82c007ccc7208cb0c0293e18fa5e1a36d",
+      "moves": [
+        1,
+        357,
+        252,
+        263
+      ]
+    }
+  ],
+  "warning": "The seven original joint shared-level negatives are Incomplete, not repaired rule families. No prior committed expectation was weakened. Three Happiny rows are full-report VALID but standalone ChainBreedLegality false under the same unmodified release; their exclusive-paternal rejection remains raw false Invalid and is not a verified-superiority claim."
+}

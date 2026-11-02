@@ -1,0 +1,30 @@
+{
+  "repository": "pret/pokeemerald",
+  "commit": "5eff78649e7170a877b961ef0b3da13b81a16038",
+  "files": [
+    {
+      "path": "src/pokemon.c",
+      "git_blob": "df5ab2fb441b0682038e0600eab0f992efbe072c",
+      "sha256": "6f474bb05a55e421504f442910ea2faf4e328cce0d0b451879c907e24bdbd797",
+      "bytes": 249311
+    },
+    {
+      "path": "src/data/battle_moves.h",
+      "git_blob": "82892120fa908a5c6ba2121b341d24b0033f7a7b",
+      "sha256": "8b3d4d143b807807af97ce7288e0cc0ccdd55b6b64ac45824e35a549836b3a0c",
+      "bytes": 121455
+    },
+    {
+      "path": "include/constants/pokemon.h",
+      "git_blob": "0d6a20e2b9e39dbc23ed0869c6eba78f9d16ed70",
+      "sha256": "e0153a94a2fc0f84e6de372494dfb01e88be4d9cf1cbbeca5e56b8a0b645f7e5",
+      "bytes": 9556
+    },
+    {
+      "path": "include/constants/moves.h",
+      "git_blob": "324bfb89962858ca21e58293d85c45f3bf3a6869",
+      "sha256": "d32746c9ad3ed1bbfbb93712f13e01ab1c43f48a78f3605ef9db5095e8d19d27",
+      "bytes": 9636
+    }
+  ]
+}

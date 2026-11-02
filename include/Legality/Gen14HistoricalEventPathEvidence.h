@@ -88,8 +88,29 @@ constexpr uint32_t intrinsicallyReencoded(Action a) noexcept {
     default: return 0;
     }
 }
+// Source manifests and serialized witness tags are not trusted enum values.
+// Accept only explicitly defined generation/action labels. Reject future or
+// corrupt tags as Unknown rather than inventing a historical transition.
+constexpr bool validGeneration(Generation g) noexcept {
+    return g==Generation::I || g==Generation::II ||
+           g==Generation::III || g==Generation::IV;
+}
+constexpr bool validAction(Action a) noexcept {
+    switch(a) {
+    case Action::Trade: case Action::Evolution: case Action::Hatch:
+    case Action::PalPark: case Action::TimeCapsule: case Action::MoveChange:
+    case Action::Renaming: case Action::Contest: case Action::ItemChange:
+    case Action::ClockChange: return true;
+    }
+    return false;
+}
 constexpr bool routePermitted(Generation from,Generation to,Action a) noexcept {
-    if(from==Generation::Unknown || to==Generation::Unknown)return false;
+    if(!validGeneration(from) || !validGeneration(to) || !validAction(a))return false;
+    // Gen I has no breeding/eggs or held-item inventory. These operations
+    // cannot occur there even when a source manifest claims same-generation
+    // witness snapshots. Gen II introduced both systems.
+    if((a==Action::Hatch || a==Action::ItemChange) &&
+       from==Generation::I)return false;
     if(a==Action::PalPark) return from==Generation::III && to==Generation::IV;
     if(a==Action::TimeCapsule)
         return (from==Generation::I && to==Generation::II) ||
@@ -105,10 +126,13 @@ constexpr Result evaluate(bool nativeAvailable,Generation nativeGeneration,
     if(!nativeAvailable)return out;
     if(!source.exactOriginalSourceIndependentlyAttested ||
        !source.originalFieldsIndependentlyExtracted ||
-       source.originalGeneration==Generation::Unknown) {
+       !validGeneration(source.originalGeneration)) {
         out.status=Status::UnknownOriginalSource;return out;
     }
     out.destination=source.originalGeneration;
+    if(!validGeneration(nativeGeneration)) {
+        out.status=Status::UnknownRoute;return out;
+    }
     if(!source.exhaustiveHistoricalChainVerified || steps.size()>kMaxSteps) {
         out.status=Status::UnknownHistoricalTransformation;
         out.unknown=final.known&kAllFields;return out;
@@ -117,7 +141,8 @@ constexpr Result evaluate(bool nativeAvailable,Generation nativeGeneration,
     state.known &= kAllFields;
     for(const Step& step:steps) {
         if(!step.independentlyVerified || step.from!=out.destination ||
-           step.from==Generation::Unknown || step.to==Generation::Unknown) {
+           !validGeneration(step.from) || !validGeneration(step.to) ||
+           !validAction(step.action)) {
             out.status=Status::UnknownHistoricalTransformation;
             out.unknown=final.known&kAllFields;return out;
         }
@@ -159,6 +184,13 @@ constexpr Result evaluate(bool nativeAvailable,Generation nativeGeneration,
         Status::ConditionalCandidate;
     return out;
 }
+static_assert(!routePermitted(Generation::I,Generation::I,Action::Hatch));
+static_assert(!routePermitted(Generation::I,Generation::I,Action::ItemChange));
+static_assert(routePermitted(Generation::II,Generation::II,Action::Hatch));
+static_assert(routePermitted(Generation::II,Generation::II,Action::ItemChange));
+static_assert(!validAction(static_cast<Action>(255)));
+static_assert(!validGeneration(static_cast<Generation>(255)));
+static_assert(!routePermitted(Generation::IV,Generation::IV,static_cast<Action>(255)));
 static_assert(routePermitted(Generation::III,Generation::IV,Action::PalPark));
 static_assert(!routePermitted(Generation::II,Generation::IV,Action::PalPark));
 static_assert(!(maskFor(Action::Trade)&TrainerIDs));

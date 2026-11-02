@@ -1,0 +1,26 @@
+{
+  "reference_source": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "seed_gen34": 2026110101,
+  "seed_gen5": 2026110102,
+  "variants": 2,
+  "declared_before_generation_utc": "2026-11-01T04:20:48.355934+00:00",
+  "policy": "Retain every emitted row, all reference errors, Fishy results and raw differences. Synthetic encounter-derived validation; not acquisition authenticity or completeness. Separate output-format generation accounting, transfer histories remain in their output stream. Same inputs will also be evaluated by frozen green 3f production for before/after comparison.",
+  "assemblies": {
+    ".cache/legality-hardening-20261027/oracle261018-gen34/PKHeX.Core.dll": {
+      "sha256": "4beed41ac640653986cb3e2d5ec29ed3a5b4e81284011a147480c4d23bddc613",
+      "bytes": 18987008
+    },
+    ".cache/legality-hardening-20261027/oracle261018-gen34/PKHeXGen34Oracle.dll": {
+      "sha256": "020d1f0c9c4c426aa11856df06269b58bf4f03b34406c7d923d16c3cb9fba9a4",
+      "bytes": 31232
+    },
+    ".cache/legality-hardening-20261027/oracle261018-gen5/PKHeX.Core.dll": {
+      "sha256": "1383a364dca66636f6d199645f7de9c80ae0a75e3c91f7b2a0957f14f4eceae4",
+      "bytes": 18987008
+    },
+    ".cache/legality-hardening-20261027/oracle261018-gen5/PKHeXGen5Oracle.dll": {
+      "sha256": "a5bc45326f632eda5d5ea5d0f109ed5c6fa5e94498ff41e44d6ad73843fa9f25",
+      "bytes": 39936
+    }
+  }
+}

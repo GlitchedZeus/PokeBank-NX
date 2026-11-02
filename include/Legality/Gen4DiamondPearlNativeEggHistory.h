@@ -126,6 +126,17 @@ inline Result evaluate(const Input& in) noexcept {
         if(m.game!=in.game ||
            m.originalEggEventIdentity!=in.parentStageToken ||
            m.originalParentStageIdentity!=in.parentStageToken ||
+           // Read-only native PK4 bytes can verify species, moves and
+           // personality, but not the archived original snapshot ID.
+           // When independent source IDs ARE supplied, bind both ordered
+           // move donors to those exact original PID parent identities.
+           (pid.originalParentWitness.supplied &&
+            (m.originalPhysicalPairIdentity!=
+                 pid.originalParentWitness.originalPhysicalPairIdentity ||
+             m.physicalSlots[0].snapshotIdentity!=
+                 pid.originalParentWitness.physicalSlots[0].snapshotIdentity ||
+             m.physicalSlots[1].snapshotIdentity!=
+                 pid.originalParentWitness.physicalSlots[1].snapshotIdentity)) ||
            m.physicalSlots[0].species!=p0.species() ||
            m.physicalSlots[1].species!=p1.species() ||
            m.physicalSlots[0].gender!=p0.gender() ||

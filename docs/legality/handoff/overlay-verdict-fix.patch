@@ -1,0 +1,82 @@
+--- a/src/UI/Modals/PokemonDetailsModal.cpp
++++ b/src/UI/Modals/PokemonDetailsModal.cpp
+@@ -64,6 +64,19 @@
+                 ? std::string_view{} : std::string_view(screen.sourceGameId);
+         const Legality::Report legalityRep =
+             Legality::analyze(*p, p->getGameGroup(), legalitySource);
++        // Report::ok() only says no Invalid and no Warning was raised; it is also true for a
++        // report whose checks did not all run. Every "no problems" wording below must come
++        // from verdict(), so an Incomplete report never reads as a clean one.
++        const auto legalityVerdict = legalityRep.verdict();
++        const bool legalityClean = legalityVerdict == Legality::Verdict::NoProblemsFound;
++        const auto coverageLabel = [](Legality::CoverageLevel level) -> const char* {
++            switch (level) {
++                case Legality::CoverageLevel::Complete: return "checked";
++                case Legality::CoverageLevel::Partial:  return "partial";
++                case Legality::CoverageLevel::None:     return "not covered";
++            }
++            return "unknown";
++        };
+ 
+         screen.touchButtons.clear();
+ 
+@@ -313,12 +326,14 @@
+         // Legality summary pinned at the bottom of the left pane (R / tap opens the full issue list).
+         {
+             const int ly = colY + colH - legalityH + 6;
+-            if (legalityRep.ok()) {
+-                fb.drawText(Lx + 18, ly, "Legality: no problems found", Color(120, 205, 140), TextStyle::Caption);
++            if (legalityClean) {
++                fb.drawText(Lx + 18, ly, "Legality: no problems found by complete checks", Color(120, 205, 140), TextStyle::Caption);
+             } else {
+-                const std::string label = "Legality: " + std::to_string(legalityRep.problemCount())
+-                                        + " issue(s)  -  R / tap to view";
+-                fb.drawText(Lx + 18, ly, label, Color(235, 100, 100), TextStyle::Caption);
++                const std::string label = legalityRep.problemCount() == 0
++                    ? std::string("Legality: checks incomplete  -  R / tap to view")
++                    : "Legality: " + std::to_string(legalityRep.problemCount()) + " issue(s)  -  R / tap to view";
++                fb.drawText(Lx + 18, ly, label,
++                            legalityRep.hasInvalid() ? Color(235, 100, 100) : Colors::Orange, TextStyle::Caption);
+                 int lw, lh; fb.measureText(label, lw, lh, TextStyle::Caption);
+                 screen.touchButtons.push_back({ 95, Lx + 14, ly - 4, lw + 8, lh + 8 });  // id 95: open legality overlay
+             }
+@@ -505,9 +520,9 @@
+         // legality/ribbon popup dims it like everything else behind them.
+         {
+             std::string navHint;
+-            // Y opens ribbons; R opens the legality list -- but only when there ARE issues, so a clean
+-            // mon simply omits R: Legality (the button is disabled / nothing to view).
+-            const std::string legalSeg = legalityRep.ok() ? "" : "R: Legality  |  ";
++            // Y opens ribbons; R opens the legality list -- for every verdict except "No problems
++            // found" by complete checks, so an Incomplete report can show what was not checked.
++            const std::string legalSeg = legalityClean ? "" : "R: Legality  |  ";
+             // A freshly-created mon has no "save" -- every field is an unsaved edit until committed, so
+             // X reads KEEP (commit + close); Discard still lives on the B Keep/Discard prompt.
+             const std::string saveSeg = screen.creator.editing ? "X: Keep" : "X: Save";
+@@ -525,9 +540,24 @@
+         if (screen.details.legalityOverlay) {
+             struct ReportLine { std::string text; Color color; };
+             std::vector<ReportLine> lines;
+-            if (legalityRep.ok()) {
+-                lines.push_back({"No problems found.", Color(120, 205, 140)});
++            if (legalityClean) {
++                lines.push_back({"No problems found by complete checks.", Color(120, 205, 140)});
+             } else {
++                if (legalityRep.problemCount() == 0) {
++                    lines.push_back({"No problems found by the checks that ran. Coverage is incomplete.", Colors::Orange});
++                    const auto coverageRow = [&](const char* name, Legality::CoverageLevel level) {
++                        lines.push_back({std::string("    ") + name + ": " + coverageLabel(level),
++                                         level == Legality::CoverageLevel::Complete ? Colors::TextDim : Colors::Orange});
++                    };
++                    coverageRow("Exact source", legalityRep.coverage.sourceGame);
++                    coverageRow("Internal checks", legalityRep.coverage.internal);
++                    coverageRow("Moves", legalityRep.coverage.moves);
++                    coverageRow("Encounter", legalityRep.coverage.encounter);
++                    coverageRow("Event / Gift", legalityRep.coverage.eventGift);
++                    coverageRow("PID / RNG", legalityRep.coverage.pidRng);
++                    coverageRow("Egg / Breeding", legalityRep.coverage.eggBreeding);
++                    coverageRow("Transfer", legalityRep.coverage.transfer);
++                }
+                 for (const auto& issue : legalityRep.issues) {
+                     if (issue.severity == Legality::Severity::Info) continue;
+                     const bool invalid = issue.severity == Legality::Severity::Invalid;

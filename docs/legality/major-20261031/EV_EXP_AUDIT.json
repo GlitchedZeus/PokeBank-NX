@@ -1,0 +1,173 @@
+{
+  "scope": "Independent read-only audit of current Gen III/IV EV/EXP solver and production adapters; not full rule certification",
+  "date": "2026-10-31",
+  "native_source_manifest": "docs/legality/hardening-20261027/NATIVE_EV_SOURCE_PINS.json",
+  "native_hgss_battle_command_sha256": "6b1d9f5fcac3acb449dd7559f46cda212683e61a89e207b47e6853d08f4633bb",
+  "personal_table_audit": [
+    {
+      "source": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_rs",
+      "sha256": "648c39c819c97f6706db4119c50abf858d6c4af4c1e0183fc2625ccda9901808",
+      "record_size": 28,
+      "records": 387,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_e",
+      "sha256": "af8f94d16827cf05a8317be62ebf43a87607585c28c4cc4e5a4b4e1e9d989866",
+      "record_size": 28,
+      "records": 387,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_fr",
+      "sha256": "63b08802afcd6233a1bfd235d699004be6db80bc12e77ae40e5a6f296a5ce7bd",
+      "record_size": 28,
+      "records": 387,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_lg",
+      "sha256": "ac487f5d9687c00b2b7ee5359467d6f8dbeb984a8c0f9b005ac1bfe6d38844ab",
+      "record_size": 28,
+      "records": 387,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_dp",
+      "sha256": "18ff6b5803cd5c7a5c4afdc54d56af5a90f0d0354a8b6fdfba86d467f9165326",
+      "record_size": 44,
+      "records": 501,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_pt",
+      "sha256": "af57e87c9cc7a23df71a2df3e270490b963f2ce2828c9375c101b761ce9324b3",
+      "record_size": 44,
+      "records": 508,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_hgss",
+      "sha256": "f7040b193e96869d8d7f15f66e25a854f27b184f828e4fdd093f387df2395f30",
+      "record_size": 44,
+      "records": 508,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_rs",
+      "sha256": "648c39c819c97f6706db4119c50abf858d6c4af4c1e0183fc2625ccda9901808",
+      "record_size": 28,
+      "records": 387,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_e",
+      "sha256": "af8f94d16827cf05a8317be62ebf43a87607585c28c4cc4e5a4b4e1e9d989866",
+      "record_size": 28,
+      "records": 387,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_fr",
+      "sha256": "63b08802afcd6233a1bfd235d699004be6db80bc12e77ae40e5a6f296a5ce7bd",
+      "record_size": 28,
+      "records": 387,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_lg",
+      "sha256": "ac487f5d9687c00b2b7ee5359467d6f8dbeb984a8c0f9b005ac1bfe6d38844ab",
+      "record_size": 28,
+      "records": 387,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_dp",
+      "sha256": "18ff6b5803cd5c7a5c4afdc54d56af5a90f0d0354a8b6fdfba86d467f9165326",
+      "record_size": 44,
+      "records": 501,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_pt",
+      "sha256": "af57e87c9cc7a23df71a2df3e270490b963f2ce2828c9375c101b761ce9324b3",
+      "record_size": 44,
+      "records": 508,
+      "maximum_joint_ev_yield": 3
+    },
+    {
+      "source": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+      "path": "PKHeX.Core/Resources/byte/personal/personal_hgss",
+      "sha256": "f7040b193e96869d8d7f15f66e25a854f27b184f828e4fdd093f387df2395f30",
+      "record_size": 44,
+      "records": 508,
+      "maximum_joint_ev_yield": 3
+    }
+  ],
+  "findings": [
+    {
+      "status": "supported",
+      "rule": "HGSS six participants/five EXP Shares, subject holds EV item",
+      "evidence": "BtlCmd_CalcExpGain splits baseExperience*level/7 in half then by participant count, clamps zero to one. Task_GetExp gates on recipient eligibility/alive/level!=100 and applies foreign 150/170% after splitting. BattleScript_CalcEffortValues runs in that same action."
+    },
+    {
+      "status": "supported",
+      "rule": "Global necessary joint action bound",
+      "evidence": "Every audited personal row/form yields at most three combined EVs. Macho Brace and Power item are mutually exclusive held effects; Pokerus doubles. Thus relaxed maxima are12 for Gen III and14 for Gen IV. Vitamins cannot create EVs above100; berries/caps only reduce them. Summing deficits above100, then dividing the JOINT total by the relaxed per-action maximum, is a necessary bound; independent per-stat summation is not used."
+    },
+    {
+      "status": "supported",
+      "rule": "Native HGSS EV writer",
+      "evidence": "Same HP,ATK,DEF,SPEED,SPATK,SPDEF iteration, stat255/total510 clamping; Power+4 before Pokerus and distinct Macho effect. Core apply preserves these operations."
+    },
+    {
+      "status": "conservative",
+      "rule": "Action catalog subset and search boundary",
+      "evidence": "Catalog uses only ordinary repeatable wild slots with single totalEV yield. Safari/Contest and other unsupported modes omitted. Search absence only Incomplete; no catalog-completeness premise is used for negatives."
+    },
+    {
+      "status": "conservative",
+      "rule": "Traded egg origin version",
+      "evidence": "Stored origin game may differ from hatching game. Adapter requires positive proof in each possible native hatch title. This can reject proof opportunities but never establishes impossibility from a failed positive search."
+    },
+    {
+      "status": "limitation",
+      "rule": "Witness EXP precision",
+      "evidence": "Non-HGSS/own-Emerald and foreign contexts may use a supported upper EXP bound, rather than exact native EXP. Complete the residual EXP with Rare Candies to the target level (declining unwanted moves/evolution where legal), then Day Care only within that level, avoiding automatic overwrite of inherited moves. Witness metadata must identify version, upper-bound status and battle context for independent native replay; an abstract model replay alone does not certify arbitrary full histories."
+    },
+    {
+      "status": "limitation",
+      "rule": "Native source/table provenance",
+      "evidence": "This audit checks the immutable HGSS source and all raw personal records at both pinned PKHeX references. It does not claim all game tables were independently rebuilt from original regional ROMs."
+    },
+    {
+      "status": "conservative repair",
+      "rule": "Orre initial EV / deferred shadow EXP premise",
+      "evidence": "PKHeX zero-initial-EV templates do not independently establish the native Orre initial state or deferred shadow EXP history. Production Gen III no longer certifies non-vitamin Orre EV histories through the retail solver. They remain Incomplete; independent EV511 contradictions still reject. No new definitive native Orre EXP bound is invented."
+    },
+    {
+      "status": "supported within stated helper domain",
+      "rule": "BW2 wings and EV berries without EXP",
+      "evidence": "BW2_WING_SOURCE_AUDIT.json pins 15 original reconstruction blobs. The unchanged StatusRcv_AddEffort body was compiled and exercised with GCC/Clang: every stat0..255 can be cleared, incremented by wings through255 and constrained by total510. HP-positive Shedinja restriction, published48/51 dispatcher-parameter mismatch and absent independent ROM rebuild prevent universal native-history certification."
+    },
+    {
+      "status": "explicit coverage repair",
+      "rule": "Required EV certificates must survive warning removal",
+      "evidence": "Gen III and IV track evExpVerified separately from finding text. Public native merges retain Partial by coverage-area minimum, so deleting display warnings or retaining stale Complete metadata cannot promote unsupported history to NoProblemsFound. Regression tests exercise actual production reports and existing clean controls."
+    }
+  ],
+  "continuation_date": "2026-11-01"
+}

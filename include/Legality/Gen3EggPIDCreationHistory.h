@@ -7,6 +7,7 @@
 // A historical RNG, pair or creation-time held item cannot be recovered
 // merely from one detached native PK3. Contradictions are candidate-local.
 #include "Legality/Gen3RetailDaycarePairHistory.h"
+#include "Legality/Gen3OriginalEggAcquisitionTranscript.h"
 #include "Legality/Gen34OriginalDaycareRoles.h"
 #include <array>
 #include <cstdint>
@@ -26,7 +27,9 @@ enum class Status : uint8_t {
     UnknownCreationItems, UnknownOriginalStage,
     IncoherentOriginalStage, UnknownPendingRNG, UnknownCollectionRNG,
     UnknownEverstoneVBlankSeed, OriginalEggPIDContradicted,
-    ConditionallyMatchedOriginalEggPID
+    ConditionallyMatchedOriginalEggPID,
+    UnknownOriginalAcquisitionTranscript, IncoherentOriginalAcquisitionTranscript,
+    OriginalPendingPayloadContradicted, OriginalCollectionPayloadContradicted
 };
 struct Parent {
     uint32_t snapshotIdentity=0;
@@ -65,6 +68,8 @@ struct Input {
     // before choosing its PID; detached PK3s never preserve this count.
     bool originalEmeraldVBlankCounterIndependentlyVerified=false;
     uint16_t originalEmeraldVBlankCounter=0;
+    // Optional original source archive record; absent never inferred from PK3.
+    Gen3OriginalEggAcquisitionTranscript::Transcript acquisitionTranscript{};
 };
 struct Result {
     Status status=Status::UnknownOriginalEgg;
@@ -77,6 +82,8 @@ struct Result {
     uint8_t collectionRNGDraws=0;
     int8_t originalEverstoneDonor=-1;
     bool natureInheritanceActivated=false,natureSearchExhausted=false;
+    Gen3OriginalEggAcquisitionTranscript::Status acquisitionStatus=
+        Gen3OriginalEggAcquisitionTranscript::Status::NotProvided;
 };
 constexpr uint16_t nextRNG(uint32_t& s) noexcept {
     s=s*1103515245u+24691u;
@@ -235,6 +242,31 @@ constexpr Result evaluate(const Input& in) noexcept {
         out.finalSecondRNGState=secondary;
         // Emerald collection SetInitialEggData simply uses the
         // original FULL saved pending PID; no new high-half draw.
+    }
+    // Bind an independently preserved source acquisition transcript to
+    // THIS exact original event and deposited pair. RS/FRLG pending state
+    // contains only the generated low 16 bits; Emerald retains full PID.
+    // No transcript is ever synthesized from the child's retained PK3.
+    namespace Acquisition=Gen3OriginalEggAcquisitionTranscript;
+    const auto source=f==Family::Emerald ? Acquisition::Family::Emerald :
+        Acquisition::Family::RubySapphireFireRedLeafGreen;
+    out.acquisitionStatus=Acquisition::evaluate(in.acquisitionTranscript,{
+        source,in.originalParentStageIdentity,
+        in.physicalSlots[0].snapshotIdentity,
+        in.physicalSlots[1].snapshotIdentity,
+        out.pendingPersonality,out.finalPersonality});
+    switch(out.acquisitionStatus) {
+        case Acquisition::Status::UnknownSourceEvidence:
+            out.status=Status::UnknownOriginalAcquisitionTranscript;return out;
+        case Acquisition::Status::IncoherentHistoricalSource:
+            out.status=Status::IncoherentOriginalAcquisitionTranscript;return out;
+        case Acquisition::Status::PendingPayloadContradicted:
+            out.status=Status::OriginalPendingPayloadContradicted;return out;
+        case Acquisition::Status::CollectionPayloadContradicted:
+            out.status=Status::OriginalCollectionPayloadContradicted;return out;
+        case Acquisition::Status::NotProvided:
+        case Acquisition::Status::ConditionallyMatched:
+            break;
     }
     out.status=out.finalPersonality==in.originalUnhatchedEggPID?
         Status::ConditionallyMatchedOriginalEggPID:

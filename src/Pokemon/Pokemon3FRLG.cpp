@@ -193,7 +193,7 @@ namespace Pokemon {
         // Unown's LETTER is PID-derived too: four 2-bit fields (bits 0-1, 8-9, 16-17, 24-25) form an
         // 8-bit value, and the letter is that value % 28.
         constexpr uint32_t UNOWN_FORM_BITS = 0x03030303u;
-        inline uint32_t unownFormValue(uint32_t p) noexcept {
+        [[maybe_unused]] inline uint32_t unownFormValue(uint32_t p) noexcept {
             return ((p & 0x03000000u) >> 18) | ((p & 0x00030000u) >> 12)
                  | ((p & 0x00000300u) >> 6)  | (p & 0x00000003u);
         }

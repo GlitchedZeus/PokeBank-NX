@@ -276,6 +276,69 @@ int main() {
             }
         }
     }
+    // Source-exact acquisition composition: independently preserved
+    // pending payload, collection payload, stage event and original deposited
+    // parents. RS/FRLG store only a low-16 pending personality whereas
+    // Emerald stores the full pending personality. Missing metadata remains
+    // Unknown; a contradictory selected source route is only local evidence.
+    namespace A=Legality::Gen3OriginalEggAcquisitionTranscript;
+    unsigned acquisitionChecks=0;
+    for(const char* game:{"ruby_gba","sapphire_gba","emerald_gba",
+                          "firered_gba","leafgreen_gba"}) {
+        for(uint32_t seed=0;seed<1024;++seed) {
+            auto x=ordinary(game,seed,seed^0xA5C3197Bu,
+                            static_cast<uint16_t>(seed));
+            const auto replay=H::evaluate(x);
+            setObserved(x,replay.finalPersonality);
+            assert(H::evaluate(x).status==H::Status::ConditionallyMatchedOriginalEggPID);
+            ++acquisitionChecks;
+            auto& source=x.acquisitionTranscript;
+            source.supplied=true;
+            source.pendingPayloadIndependentlyVerified=true;
+            source.collectedPayloadIndependentlyVerified=true;
+            source.originalPhysicalPairIndependentlyVerified=true;
+            source.stageIdentityIndependentlyVerified=true;
+            source.originalStageIdentity=x.originalParentStageIdentity;
+            source.physicalSlot0Snapshot=x.physicalSlots[0].snapshotIdentity;
+            source.physicalSlot1Snapshot=x.physicalSlots[1].snapshotIdentity;
+            source.archivedPendingPayload=replay.pendingPersonality;
+            source.archivedCollectedPersonality=replay.finalPersonality;
+            const auto integrated=H::evaluate(x);
+            assert(integrated.status==H::Status::ConditionallyMatchedOriginalEggPID);
+            assert(integrated.acquisitionStatus==A::Status::ConditionallyMatched);
+            if(H::family(game)!=H::Family::Emerald)
+                assert((source.archivedPendingPayload&0xFFFF0000u)==0);
+            acquisitionChecks+=2;
+            auto wrong=x;wrong.acquisitionTranscript.archivedPendingPayload^=1u;
+            assert(H::evaluate(wrong).status==H::Status::OriginalPendingPayloadContradicted);
+            ++acquisitionChecks;
+            wrong=x;wrong.acquisitionTranscript.archivedCollectedPersonality^=1u;
+            assert(H::evaluate(wrong).status==H::Status::OriginalCollectionPayloadContradicted);
+            ++acquisitionChecks;
+            wrong=x;wrong.acquisitionTranscript.originalStageIdentity++;
+            assert(H::evaluate(wrong).status==H::Status::IncoherentOriginalAcquisitionTranscript);
+            ++acquisitionChecks;
+            wrong=x;wrong.acquisitionTranscript.physicalSlot0Snapshot++;
+            assert(H::evaluate(wrong).status==H::Status::IncoherentOriginalAcquisitionTranscript);
+            ++acquisitionChecks;
+            wrong=x;wrong.acquisitionTranscript.physicalSlot1Snapshot++;
+            assert(H::evaluate(wrong).status==H::Status::IncoherentOriginalAcquisitionTranscript);
+            ++acquisitionChecks;
+            wrong=x;wrong.acquisitionTranscript.originalPhysicalPairIndependentlyVerified=false;
+            assert(H::evaluate(wrong).status==H::Status::UnknownOriginalAcquisitionTranscript);
+            ++acquisitionChecks;
+            wrong=x;wrong.acquisitionTranscript.collectedPayloadIndependentlyVerified=false;
+            assert(H::evaluate(wrong).status==H::Status::UnknownOriginalAcquisitionTranscript);
+            ++acquisitionChecks;
+            wrong=x;wrong.acquisitionTranscript.supplied=false;
+            assert(H::evaluate(wrong).status==H::Status::ConditionallyMatchedOriginalEggPID);
+            ++acquisitionChecks;
+            wrong=x;wrong.originalUnhatchedEggPID^=1u;
+            assert(H::evaluate(wrong).status==H::Status::OriginalEggPIDContradicted);
+            ++acquisitionChecks;
+        }
+    }
+    assert(acquisitionChecks==61440);
     std::cout<<"L2 B07 Gen III source-game egg PID/Everstone: "
              <<checks<<" seeded and fixed cases plus Unknown controls PASS\n";
 }

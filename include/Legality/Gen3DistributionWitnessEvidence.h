@@ -17,7 +17,8 @@ enum class Mechanism : uint8_t {
     Unknown, PokemonGift, InGameEncounter, ServiceOnly, ShadowEncounter
 };
 enum class OriginalSource : uint8_t {
-    Unknown, Ruby, Sapphire, Emerald, FireRed, LeafGreen, Colosseum, XD
+    Unknown, Ruby, Sapphire, Emerald, FireRed, LeafGreen, Colosseum, XD,
+    ColosseumBonusDisc, PokemonChannel
 };
 enum class History : uint8_t {
     Unknown, IndependentlyVerifiedUnchanged, IndependentlyVerifiedFinal
@@ -130,9 +131,20 @@ constexpr bool compatible(Family family, Mechanism mechanism) noexcept {
     }
     return false;
 }
+constexpr bool originalSourceRecognized(OriginalSource origin) noexcept {
+    switch(origin) {
+    case OriginalSource::Ruby: case OriginalSource::Sapphire:
+    case OriginalSource::Emerald: case OriginalSource::FireRed:
+    case OriginalSource::LeafGreen: case OriginalSource::Colosseum:
+    case OriginalSource::XD: case OriginalSource::ColosseumBonusDisc:
+    case OriginalSource::PokemonChannel: return true;
+    case OriginalSource::Unknown: return false;
+    }
+    return false; // malformed/future source enum cannot authenticate a row
+}
 constexpr SourceStatus sourceStatus(const OriginalCandidate& c) noexcept {
     if(c.family==Family::Unknown || c.mechanism==Mechanism::Unknown ||
-       c.originalSource==OriginalSource::Unknown ||
+       !originalSourceRecognized(c.originalSource) ||
        !c.exactRouteIndependentlyVerified)return SourceStatus::UnknownSource;
     if(!compatible(c.family,c.mechanism))return SourceStatus::RouteContradicted;
     if(!c.originalArchiveIndependentlyAuthenticated)return SourceStatus::UntrustedArchive;
@@ -163,8 +175,9 @@ constexpr Result evaluate(const Native& n,const OriginalCandidate& c) noexcept {
     out.nativeAvailable=n.available;
     if(!n.available)return out;
     if(!c.originalTemplateIndependentlyAttested || !c.originalArchiveIndependentlyAuthenticated ||
-       !c.originalPayloadDigestVerified || !c.exactRouteIndependentlyVerified ||
-       c.originalSource==OriginalSource::Unknown ||
+       !c.originalPayloadDigestVerified || !c.historicalReleaseIndependentlyCorroborated ||
+       !c.exactRouteIndependentlyVerified ||
+       !originalSourceRecognized(c.originalSource) ||
        c.family==Family::Unknown || c.mechanism==Mechanism::Unknown ||
        !compatible(c.family,c.mechanism) ||
        c.originalPayloadSha256==std::array<std::byte,32>{}) {
@@ -176,8 +189,10 @@ constexpr Result evaluate(const Native& n,const OriginalCandidate& c) noexcept {
         compare(c.speciesInternal,n.speciesInternal),compare(c.pid,n.pid),
         compare(c.ids,n.ids),compare(c.trainerGender,n.trainerGender),
         c.languageConversionPossible ? Status::UnknownHistory : compare(c.language,n.language),
-        c.nicknameOrOTReencodingPossible ? Status::UnknownHistory : compare(c.nickname,n.nickname),
-        c.nicknameOrOTReencodingPossible ? Status::UnknownHistory : compare(c.otName,n.otName),
+        (c.nicknameOrOTReencodingPossible || c.languageConversionPossible)
+            ? Status::UnknownHistory : compare(c.nickname,n.nickname),
+        (c.nicknameOrOTReencodingPossible || c.languageConversionPossible)
+            ? Status::UnknownHistory : compare(c.otName,n.otName),
         compare(c.originGame,n.originGame),compare(c.metLevel,n.metLevel),
         compare(c.metLocation,n.metLocation),compare(c.ball,n.ball),
         compare(c.moves,n.moves),compare(c.heldItem,n.heldItem),
@@ -192,6 +207,109 @@ constexpr Result evaluate(const Native& n,const OriginalCandidate& c) noexcept {
     }
     return out;
 }
+// Historical original-to-observed PK3 source join. Encrypted/validated
+// native fields are observations, NOT proofs of a GameCube disc transfer,
+// exact original source, receipt or original game-font encoding.
+enum class TransferRoute : uint8_t { Unknown, GbaLocal, GameCubeToGba };
+enum class JoinedStatus : uint8_t {
+    UnknownNative, UnknownOriginalSource, UnknownRoute,
+    UnknownEncodingOrMoveHistory, CandidateExcluded, ConditionalCandidate
+};
+struct TransferHistory {
+    TransferRoute route=TransferRoute::Unknown;
+    bool originalToNativeRecordIndependentlyLinked=false;
+    bool receivingGbaVersionIndependentlyVerified=false;
+    uint8_t receivingGbaVersion=0;
+    bool nativeOriginVersionPreservedIndependentlyVerified=false;
+    bool gameCubeOriginalIndependentlyVerified=false;
+    OriginalSource originalGameCubeVersion=OriginalSource::Unknown;
+    bool gameCubeToGbaDeliveryIndependentlyVerified=false;
+    bool originalGameFontEncodingIndependentlyVerified=false;
+    bool originalEventMovesHistoryIndependentlyVerified=false;
+};
+struct JoinedResult {
+    JoinedStatus status=JoinedStatus::UnknownNative;
+    Result fields{};
+    uint32_t excluded=0, unknown=0;
+    bool authenticated=false;
+    bool globallyInvalid=false;
+};
+constexpr bool gbaVersion(uint8_t v) noexcept {
+    return v>=1 && v<=5;
+}
+constexpr bool originalGameCube(OriginalSource g) noexcept {
+    return g==OriginalSource::Colosseum || g==OriginalSource::XD ||
+           g==OriginalSource::ColosseumBonusDisc ||
+           g==OriginalSource::PokemonChannel;
+}
+constexpr JoinedResult evaluateOriginalHistory(
+    const Native& native,const OriginalCandidate& source,
+    const TransferHistory& history) noexcept {
+    JoinedResult out{};
+    if(!native.available)return out;
+    out.status=JoinedStatus::UnknownOriginalSource;
+    // Do not promote unsupported/unreleased distributions or a missing
+    // individually attested receipt to a source candidate.
+    if(sourceStatus(source)!=SourceStatus::ConditionalSource)return out;
+    out.status=JoinedStatus::UnknownRoute;
+    if(!history.originalToNativeRecordIndependentlyLinked ||
+       !history.receivingGbaVersionIndependentlyVerified ||
+       !gbaVersion(history.receivingGbaVersion))return out;
+    // GC transfer sources need an independently identified GC family
+    // and the very same original GC version as the source hypothesis.
+    // A standalone GBA Wondercard or service-only Berry Fix must not be
+    // relabeled a GameCube gift using plausible native OT/move bytes.
+    if(history.route==TransferRoute::GameCubeToGba &&
+       (!history.gameCubeOriginalIndependentlyVerified ||
+        !originalGameCube(history.originalGameCubeVersion) ||
+        source.originalSource!=history.originalGameCubeVersion ||
+        !((source.family==Family::Wishmaker &&
+           source.originalSource==OriginalSource::ColosseumBonusDisc) ||
+          (source.family==Family::Channel &&
+           source.originalSource==OriginalSource::PokemonChannel) ||
+          (source.family==Family::GameCubeGift &&
+           (source.originalSource==OriginalSource::Colosseum ||
+            source.originalSource==OriginalSource::XD))) ||
+        !history.gameCubeToGbaDeliveryIndependentlyVerified))return out;
+    if(history.route!=TransferRoute::GameCubeToGba &&
+       history.route!=TransferRoute::GbaLocal)return out;
+    // A GameCube-origin Pokémon may retain a GC-origin version after a
+    // documented transfer to a GBA game. Never equate that origin marker
+    // with the recipient edition in the GC route.
+    if(history.route==TransferRoute::GbaLocal) {
+        if(originalGameCube(source.originalSource))return out;
+        if(!history.nativeOriginVersionPreservedIndependentlyVerified ||
+           native.originGame!=history.receivingGbaVersion)return out;
+    }
+    out.fields=evaluate(native,source);
+    out.excluded=out.fields.mismatchMask;
+    out.unknown=out.fields.unknownMask;
+    // A language conversion or uncertain OT/name charset cannot establish
+    // a candidate-specific native-byte contradiction. The source's
+    // language and text histories remain separate from decoded Unicode.
+    constexpr uint32_t originalText=(1u<<static_cast<unsigned>(Field::Language)) |
+        (1u<<static_cast<unsigned>(Field::Nickname)) |
+        (1u<<static_cast<unsigned>(Field::OTName));
+    if(!history.originalGameFontEncodingIndependentlyVerified) {
+        out.unknown|=originalText;
+        out.excluded&=~originalText;
+    }
+    constexpr uint32_t originalMoves=(1u<<static_cast<unsigned>(Field::Moves));
+    if(!history.originalEventMovesHistoryIndependentlyVerified) {
+        out.unknown|=originalMoves;
+        out.excluded&=~originalMoves;
+    }
+    out.status=out.excluded?JoinedStatus::CandidateExcluded:
+        out.unknown?JoinedStatus::UnknownEncodingOrMoveHistory:
+        JoinedStatus::ConditionalCandidate;
+    return out;
+}
+static_assert(!originalGameCube(OriginalSource::Ruby));
+static_assert(originalGameCube(OriginalSource::XD));
+static_assert(!JoinedResult{}.globallyInvalid);
+static_assert(!originalSourceRecognized(static_cast<OriginalSource>(255)));
+static_assert(originalSourceRecognized(OriginalSource::ColosseumBonusDisc));
+static_assert(originalSourceRecognized(OriginalSource::PokemonChannel));
 static_assert(FIELD_COUNT==16);
 static_assert(!compatible(Family::BerryFix,Mechanism::PokemonGift));
 static_assert(compatible(Family::BerryFix,Mechanism::ServiceOnly));

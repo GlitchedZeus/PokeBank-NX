@@ -191,3 +191,79 @@ In particular, do not claim the newly extended
 `test_legality_l4_ranger_gift_history.cpp` has passed a complete
 native PK4 link/build. No master acceptance, no coordinator merge,
 and no original archive or individual recipient authentication.
+
+## Source-manifest domain closure and historical mechanics verification
+
+**L4-only corrected production header:** `include/Legality/Gen14HistoricalEventPathEvidence.h`,
+blob `3c9f399282d67b5ba872298b288bcf77635f455c`.
+Before this correction, a source-authored `Action(255)` and a matching
+`Generation(255)` with an exhaustive-claim flag could become
+`ConditionalCandidate` in a same-generation route. This was reproduced
+against the original header blob `a6005bbdc5873166dd6b6b51173ad3b37e4e69b4`
+with a failing C++ assertion (exit 134). These are untrusted serialized
+tags, not independently witnessed retail mechanics.
+
+The fix explicitly validates original-generation, observed-generation and
+all per-step source/action tags before a candidate can be classified.
+Unrecognized source generation remains `UnknownOriginalSource`;
+unrecognized observed generation `UnknownRoute`; malformed history steps
+`UnknownHistoricalTransformation`. Bad tags are **never** global Invalid,
+nor a candidate-only contradiction. Original action legality also reflects
+the historically documented absence of native eggs/breeding and held items
+in Gen I. These mechanics become supported in Gen II; Pal Park and
+Time Capsule remain bounded to their independently documented transitions.
+
+**Executed, exact-blob local C++ evidence (not full repository checkout):**
+
+- New `tests/fixtures/legality_l4_historical_domain.cpp`, blob
+  `5dee9f2c70bedb055184529266fadccd72a919fb`:
+  **70,144 classified inputs per execution**. Exhausts all 256 raw
+  generation tags, all 256 raw action tags, all 16 supported
+  from/to-generation pairs x 256 action tags, unknown snapshots, and
+  a three-step timeline whose middle tag is corrupt.
+  **GCC normal PASS, GCC ASan+UBSan PASS, Clang normal PASS, Clang
+  ASan+UBSan PASS (4/4 executions)**.
+- Existing `test_legality_l4_historical_event_path.cpp`, now blob
+  `7ebfdfd6b95abd568accfc845fbf7c28d4c4e737`:
+  **32,767 candidate-only field-mask negatives**, 120 action/field
+  combinations, 16-vs-17-step chronology, and new malformed original/native
+  generation and Gen I/II mechanics tests.
+  **GCC/Clang normal/sanitizer 4/4 PASS**.
+- Existing `test_legality_l4_historical_adversarial.cpp`, now blob
+  `6d2e6c801e581cf82ddac73906bd5242ab22de7d`:
+  **90 conditional, six Unknown and 24 candidate-only
+  contradictions**, plus new corrupt-middle-step rejection.
+  **GCC/Clang normal/sanitizer 4/4 PASS**.
+
+The production header and both preexisting C++ suites were independently
+reconstructed byte-for-byte from their original GitHub blobs before
+modification, and all modified source/test blob SHA-1s match the
+locally compiled files. Commands actually run (for each of the
+three tests and both compiler values `g++`, `clang++`):
+
+```bash
+CXX=g++ # repeated with clang++
+$CXX -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+    -Wno-unused-parameter -Iinclude -O2 \
+    tests/test_legality_l4_historical_event_path.cpp -o /tmp/l4-historical
+/tmp/l4-historical
+
+$CXX -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+    -Wno-unused-parameter -Iinclude -O1 -g \
+    -fsanitize=address,undefined -fno-omit-frame-pointer \
+    tests/test_legality_l4_historical_event_path.cpp -o /tmp/l4-historical-asan
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 /tmp/l4-historical-asan
+```
+
+The same normal/sanitized flags were actually used for the historical
+adversarial suite and new domain fixture. The new domain fixture is now
+compiled/run **in addition to the 28 registered L4 suites**, without
+changing their registration count or shared CI.
+
+**Stage 1 remains NOT ACCEPTED:** the four exact-head jobs for all 28
+repository C++ programs are still queued. A complete repository checkout
+cannot be cloned locally because remote GitHub DNS is unavailable.
+No claim is made for the other native PK3/PK4, Ranger, Python archive-rights
+or coordinator integration gates. The coordinator alone can perform the
+separate accepted-branch L4 integration after this lane is reviewed.

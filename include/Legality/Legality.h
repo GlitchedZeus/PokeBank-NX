@@ -108,9 +108,13 @@ namespace Legality {
         }
     };
 
+    class Gen3BerryContext;
+
     struct Context {
         Enums::GameVersion originGroup;
         std::string_view exactSourceGameId{};
+        // Optional immutable evidence from the actual validated source save.
+        const Gen3BerryContext* gen3Berry = nullptr;
     };
 
     /// Preferred context-aware API for the Gen I-IV legality engine.

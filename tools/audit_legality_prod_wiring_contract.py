@@ -66,11 +66,14 @@ def audit(root: Path) -> dict:
     ):
         if forbidden in production:
             raise ValueError("unsafe typed adapter downcast reintroduced: " + forbidden)
+    # A native PK2 is dispatched to analyzeNativeGen2 (GB::checkGen2) through the
+    # same pointer capability, before any generic Gen III/IV rule can run on it.
     require_all("typed native adapters", production, (
         "pk.nativePk1ReadOnly() != nullptr",
-        "pk.nativePk2ReadOnly() != nullptr",
         "*pk.nativePk1ReadOnly()",
-        "*pk.nativePk2ReadOnly()",
+        "if (const auto* gen2 = pk.nativePk2ReadOnly())",
+        "return analyzeNativeGen2(*gen2,",
+        "const Pokemon::Pokemon2ReadOnly& gen2",
     ))
 
     f5 = segment(production, F5_START, F5_END)
@@ -138,7 +141,7 @@ def audit(root: Path) -> dict:
         "l5-pk2-egg-fixed\n", "l5-pk2-egg-fixed-sanitize",
         "l5-platinum-native\n", "l5-platinum-native-sanitize",
         "l5-pk12-fixed-sanitize",
-        "--expected-invalid 38", "stage4_crosslane.py --l1-root ."))
+        "--expected-invalid 48", "stage4_crosslane.py --l1-root ."))
     return {
         "schema": "POKEBANK_LEGALITY_PRODUCTION_CONNECTION_CONTRACT_V1",
         "contracts": ["native Gen II egg F5"] + audited,

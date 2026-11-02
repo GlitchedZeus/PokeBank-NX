@@ -1,0 +1,842 @@
+{
+  "policy": "Fresh generated records, including generated INVALID, retained without exclusions. Raw binary agreement is not historical accuracy or completeness. Deliberate disagreements remain in raw counts. Fishy is exposed in every reference stream. LOADFAIL remains in denominator.",
+  "reference": "bfe89c74a3f5265805e364b79bc04ad38ebbc5ea",
+  "groups": [
+    "gen1",
+    "gen2",
+    "gen34",
+    "gen5"
+  ],
+  "generations": {
+    "1": {
+      "records": 12000,
+      "raw_agreement": 11172,
+      "raw_agreement_percent": 93.1,
+      "raw_false_invalid": 111,
+      "raw_false_clean": 2,
+      "incomplete": 715,
+      "loadfail": 0,
+      "reference_fishy_all": 9990,
+      "reference_fishy_valid": 7978,
+      "reference_misc_error": 0,
+      "cross_table": {
+        "INVALID/INCOMPLETE": 463,
+        "INVALID/INVALID": 2372,
+        "INVALID/NOPROBLEMS": 2,
+        "VALID/INCOMPLETE": 252,
+        "VALID/INVALID": 111,
+        "VALID/NOPROBLEMS": 8800
+      },
+      "fishy_cross_table": {
+        "INVALID/INCOMPLETE": 263,
+        "INVALID/INVALID": 1747,
+        "INVALID/NOPROBLEMS": 2,
+        "VALID/INCOMPLETE": 249,
+        "VALID/INVALID": 21,
+        "VALID/NOPROBLEMS": 7708
+      },
+      "by_game_or_origin": {
+        "no source save title": {
+          "records": 12000,
+          "raw_agreement": 11172,
+          "raw_agreement_percent": 93.1,
+          "raw_false_invalid": 111,
+          "raw_false_clean": 2,
+          "incomplete": 715,
+          "loadfail": 0,
+          "reference_fishy_all": 9990,
+          "reference_fishy_valid": 7978,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 463,
+            "INVALID/INVALID": 2372,
+            "INVALID/NOPROBLEMS": 2,
+            "VALID/INCOMPLETE": 252,
+            "VALID/INVALID": 111,
+            "VALID/NOPROBLEMS": 8800
+          },
+          "fishy_cross_table": {
+            "INVALID/INCOMPLETE": 263,
+            "INVALID/INVALID": 1747,
+            "INVALID/NOPROBLEMS": 2,
+            "VALID/INCOMPLETE": 249,
+            "VALID/INVALID": 21,
+            "VALID/NOPROBLEMS": 7708
+          }
+        }
+      }
+    },
+    "2": {
+      "records": 12000,
+      "raw_agreement": 11276,
+      "raw_agreement_percent": 93.96666666666667,
+      "raw_false_invalid": 82,
+      "raw_false_clean": 33,
+      "incomplete": 609,
+      "loadfail": 0,
+      "reference_fishy_all": 7145,
+      "reference_fishy_valid": 6263,
+      "reference_misc_error": 0,
+      "cross_table": {
+        "INVALID/INCOMPLETE": 393,
+        "INVALID/INVALID": 1493,
+        "INVALID/NOPROBLEMS": 33,
+        "VALID/INCOMPLETE": 216,
+        "VALID/INVALID": 82,
+        "VALID/NOPROBLEMS": 9783
+      },
+      "fishy_cross_table": {
+        "INVALID/INCOMPLETE": 194,
+        "INVALID/INVALID": 669,
+        "INVALID/NOPROBLEMS": 19,
+        "VALID/INCOMPLETE": 198,
+        "VALID/NOPROBLEMS": 6065
+      },
+      "by_game_or_origin": {
+        "no source save title": {
+          "records": 12000,
+          "raw_agreement": 11276,
+          "raw_agreement_percent": 93.96666666666667,
+          "raw_false_invalid": 82,
+          "raw_false_clean": 33,
+          "incomplete": 609,
+          "loadfail": 0,
+          "reference_fishy_all": 7145,
+          "reference_fishy_valid": 6263,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 393,
+            "INVALID/INVALID": 1493,
+            "INVALID/NOPROBLEMS": 33,
+            "VALID/INCOMPLETE": 216,
+            "VALID/INVALID": 82,
+            "VALID/NOPROBLEMS": 9783
+          },
+          "fishy_cross_table": {
+            "INVALID/INCOMPLETE": 194,
+            "INVALID/INVALID": 669,
+            "INVALID/NOPROBLEMS": 19,
+            "VALID/INCOMPLETE": 198,
+            "VALID/NOPROBLEMS": 6065
+          }
+        }
+      }
+    },
+    "3": {
+      "records": 40945,
+      "raw_agreement": 40205,
+      "raw_agreement_percent": 98.19269752106484,
+      "raw_false_invalid": 0,
+      "raw_false_clean": 0,
+      "incomplete": 740,
+      "loadfail": 0,
+      "reference_fishy_all": 4482,
+      "reference_fishy_valid": 1073,
+      "reference_misc_error": 0,
+      "cross_table": {
+        "INVALID/INCOMPLETE": 5,
+        "INVALID/INVALID": 21937,
+        "VALID/INCOMPLETE": 735,
+        "VALID/NOPROBLEMS": 18268
+      },
+      "fishy_cross_table": {
+        "INVALID/INVALID": 3409,
+        "VALID/INCOMPLETE": 730,
+        "VALID/NOPROBLEMS": 343
+      },
+      "by_game_or_origin": {
+        "E": {
+          "records": 7860,
+          "raw_agreement": 7739,
+          "raw_agreement_percent": 98.46055979643766,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 121,
+          "loadfail": 0,
+          "reference_fishy_all": 804,
+          "reference_fishy_valid": 204,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 2,
+            "INVALID/INVALID": 4197,
+            "VALID/INCOMPLETE": 119,
+            "VALID/NOPROBLEMS": 3542
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 600,
+            "VALID/INCOMPLETE": 115,
+            "VALID/NOPROBLEMS": 89
+          }
+        },
+        "FR": {
+          "records": 8635,
+          "raw_agreement": 8476,
+          "raw_agreement_percent": 98.15865662999421,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 159,
+          "loadfail": 0,
+          "reference_fishy_all": 951,
+          "reference_fishy_valid": 220,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 4626,
+            "VALID/INCOMPLETE": 158,
+            "VALID/NOPROBLEMS": 3850
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 731,
+            "VALID/INCOMPLETE": 157,
+            "VALID/NOPROBLEMS": 63
+          }
+        },
+        "LG": {
+          "records": 8655,
+          "raw_agreement": 8500,
+          "raw_agreement_percent": 98.20912767186597,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 155,
+          "loadfail": 0,
+          "reference_fishy_all": 911,
+          "reference_fishy_valid": 234,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 4608,
+            "VALID/INCOMPLETE": 155,
+            "VALID/NOPROBLEMS": 3892
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 677,
+            "VALID/INCOMPLETE": 155,
+            "VALID/NOPROBLEMS": 79
+          }
+        },
+        "R": {
+          "records": 8180,
+          "raw_agreement": 8031,
+          "raw_agreement_percent": 98.17848410757946,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 149,
+          "loadfail": 0,
+          "reference_fishy_all": 1036,
+          "reference_fishy_valid": 209,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 4467,
+            "VALID/INCOMPLETE": 148,
+            "VALID/NOPROBLEMS": 3564
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 827,
+            "VALID/INCOMPLETE": 148,
+            "VALID/NOPROBLEMS": 61
+          }
+        },
+        "S": {
+          "records": 7615,
+          "raw_agreement": 7459,
+          "raw_agreement_percent": 97.95141168745896,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 156,
+          "loadfail": 0,
+          "reference_fishy_all": 780,
+          "reference_fishy_valid": 206,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 4039,
+            "VALID/INCOMPLETE": 155,
+            "VALID/NOPROBLEMS": 3420
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 574,
+            "VALID/INCOMPLETE": 155,
+            "VALID/NOPROBLEMS": 51
+          }
+        }
+      }
+    },
+    "4": {
+      "records": 63224,
+      "raw_agreement": 62316,
+      "raw_agreement_percent": 98.56383651777806,
+      "raw_false_invalid": 48,
+      "raw_false_clean": 1,
+      "incomplete": 859,
+      "loadfail": 0,
+      "reference_fishy_all": 4610,
+      "reference_fishy_valid": 555,
+      "reference_misc_error": 0,
+      "cross_table": {
+        "INVALID/INVALID": 36345,
+        "INVALID/NOPROBLEMS": 1,
+        "VALID/INCOMPLETE": 859,
+        "VALID/INVALID": 48,
+        "VALID/NOPROBLEMS": 25971
+      },
+      "fishy_cross_table": {
+        "INVALID/INVALID": 4055,
+        "VALID/NOPROBLEMS": 555
+      },
+      "by_game_or_origin": {
+        "D": {
+          "records": 11209,
+          "raw_agreement": 11038,
+          "raw_agreement_percent": 98.47444018199661,
+          "raw_false_invalid": 16,
+          "raw_false_clean": 0,
+          "incomplete": 155,
+          "loadfail": 0,
+          "reference_fishy_all": 857,
+          "reference_fishy_valid": 105,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 6410,
+            "VALID/INCOMPLETE": 155,
+            "VALID/INVALID": 16,
+            "VALID/NOPROBLEMS": 4628
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 752,
+            "VALID/NOPROBLEMS": 105
+          }
+        },
+        "HG": {
+          "records": 15372,
+          "raw_agreement": 15175,
+          "raw_agreement_percent": 98.7184491282852,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 1,
+          "incomplete": 196,
+          "loadfail": 0,
+          "reference_fishy_all": 1083,
+          "reference_fishy_valid": 126,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 8898,
+            "INVALID/NOPROBLEMS": 1,
+            "VALID/INCOMPLETE": 196,
+            "VALID/NOPROBLEMS": 6277
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 957,
+            "VALID/NOPROBLEMS": 126
+          }
+        },
+        "P": {
+          "records": 10804,
+          "raw_agreement": 10643,
+          "raw_agreement_percent": 98.50981118104406,
+          "raw_false_invalid": 21,
+          "raw_false_clean": 0,
+          "incomplete": 140,
+          "loadfail": 0,
+          "reference_fishy_all": 807,
+          "reference_fishy_valid": 110,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 6150,
+            "VALID/INCOMPLETE": 140,
+            "VALID/INVALID": 21,
+            "VALID/NOPROBLEMS": 4493
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 697,
+            "VALID/NOPROBLEMS": 110
+          }
+        },
+        "Pt": {
+          "records": 10587,
+          "raw_agreement": 10418,
+          "raw_agreement_percent": 98.40370265419854,
+          "raw_false_invalid": 11,
+          "raw_false_clean": 0,
+          "incomplete": 158,
+          "loadfail": 0,
+          "reference_fishy_all": 747,
+          "reference_fishy_valid": 82,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 6005,
+            "VALID/INCOMPLETE": 158,
+            "VALID/INVALID": 11,
+            "VALID/NOPROBLEMS": 4413
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 665,
+            "VALID/NOPROBLEMS": 82
+          }
+        },
+        "SS": {
+          "records": 15252,
+          "raw_agreement": 15042,
+          "raw_agreement_percent": 98.62313139260425,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 210,
+          "loadfail": 0,
+          "reference_fishy_all": 1116,
+          "reference_fishy_valid": 132,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 8882,
+            "VALID/INCOMPLETE": 210,
+            "VALID/NOPROBLEMS": 6160
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 984,
+            "VALID/NOPROBLEMS": 132
+          }
+        }
+      }
+    },
+    "5": {
+      "records": 135213,
+      "raw_agreement": 134086,
+      "raw_agreement_percent": 99.16650026254872,
+      "raw_false_invalid": 0,
+      "raw_false_clean": 59,
+      "incomplete": 1068,
+      "loadfail": 0,
+      "reference_fishy_all": 32985,
+      "reference_fishy_valid": 14757,
+      "reference_misc_error": 603,
+      "cross_table": {
+        "INVALID/INCOMPLETE": 384,
+        "INVALID/INVALID": 72352,
+        "INVALID/NOPROBLEMS": 59,
+        "VALID/INCOMPLETE": 684,
+        "VALID/NOPROBLEMS": 61734
+      },
+      "fishy_cross_table": {
+        "INVALID/INCOMPLETE": 270,
+        "INVALID/INVALID": 17941,
+        "INVALID/NOPROBLEMS": 17,
+        "VALID/INCOMPLETE": 467,
+        "VALID/NOPROBLEMS": 14290
+      },
+      "by_game_or_origin": {
+        "B": {
+          "records": 22424,
+          "raw_agreement": 22223,
+          "raw_agreement_percent": 99.10363895825901,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 6,
+          "incomplete": 195,
+          "loadfail": 0,
+          "reference_fishy_all": 4351,
+          "reference_fishy_valid": 1583,
+          "reference_misc_error": 119,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 132,
+            "INVALID/INVALID": 12331,
+            "INVALID/NOPROBLEMS": 6,
+            "VALID/INCOMPLETE": 63,
+            "VALID/NOPROBLEMS": 9892
+          },
+          "fishy_cross_table": {
+            "INVALID/INCOMPLETE": 116,
+            "INVALID/INVALID": 2652,
+            "VALID/INCOMPLETE": 8,
+            "VALID/NOPROBLEMS": 1575
+          }
+        },
+        "B2": {
+          "records": 24668,
+          "raw_agreement": 24540,
+          "raw_agreement_percent": 99.48110912923626,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 10,
+          "incomplete": 118,
+          "loadfail": 0,
+          "reference_fishy_all": 4378,
+          "reference_fishy_valid": 2006,
+          "reference_misc_error": 165,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 79,
+            "INVALID/INVALID": 12936,
+            "INVALID/NOPROBLEMS": 10,
+            "VALID/INCOMPLETE": 39,
+            "VALID/NOPROBLEMS": 11604
+          },
+          "fishy_cross_table": {
+            "INVALID/INCOMPLETE": 39,
+            "INVALID/INVALID": 2330,
+            "INVALID/NOPROBLEMS": 3,
+            "VALID/INCOMPLETE": 1,
+            "VALID/NOPROBLEMS": 2005
+          }
+        },
+        "CXD": {
+          "records": 1505,
+          "raw_agreement": 1446,
+          "raw_agreement_percent": 96.0797342192691,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 1,
+          "incomplete": 58,
+          "loadfail": 0,
+          "reference_fishy_all": 317,
+          "reference_fishy_valid": 126,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 4,
+            "INVALID/INVALID": 966,
+            "INVALID/NOPROBLEMS": 1,
+            "VALID/INCOMPLETE": 54,
+            "VALID/NOPROBLEMS": 480
+          },
+          "fishy_cross_table": {
+            "INVALID/INCOMPLETE": 2,
+            "INVALID/INVALID": 189,
+            "VALID/INCOMPLETE": 51,
+            "VALID/NOPROBLEMS": 75
+          }
+        },
+        "D": {
+          "records": 5675,
+          "raw_agreement": 5674,
+          "raw_agreement_percent": 99.98237885462555,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 1,
+          "incomplete": 0,
+          "loadfail": 0,
+          "reference_fishy_all": 1771,
+          "reference_fishy_valid": 830,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 3039,
+            "INVALID/NOPROBLEMS": 1,
+            "VALID/NOPROBLEMS": 2635
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 941,
+            "VALID/NOPROBLEMS": 830
+          }
+        },
+        "E": {
+          "records": 3530,
+          "raw_agreement": 3517,
+          "raw_agreement_percent": 99.63172804532577,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 3,
+          "incomplete": 10,
+          "loadfail": 0,
+          "reference_fishy_all": 1395,
+          "reference_fishy_valid": 640,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 1859,
+            "INVALID/NOPROBLEMS": 3,
+            "VALID/INCOMPLETE": 10,
+            "VALID/NOPROBLEMS": 1658
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 754,
+            "INVALID/NOPROBLEMS": 1,
+            "VALID/INCOMPLETE": 10,
+            "VALID/NOPROBLEMS": 630
+          }
+        },
+        "FR": {
+          "records": 3590,
+          "raw_agreement": 3583,
+          "raw_agreement_percent": 99.8050139275766,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 7,
+          "loadfail": 0,
+          "reference_fishy_all": 1466,
+          "reference_fishy_valid": 712,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 2,
+            "INVALID/INVALID": 1865,
+            "VALID/INCOMPLETE": 5,
+            "VALID/NOPROBLEMS": 1718
+          },
+          "fishy_cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 753,
+            "VALID/INCOMPLETE": 5,
+            "VALID/NOPROBLEMS": 707
+          }
+        },
+        "HG": {
+          "records": 5825,
+          "raw_agreement": 5824,
+          "raw_agreement_percent": 99.98283261802575,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 1,
+          "incomplete": 0,
+          "loadfail": 0,
+          "reference_fishy_all": 2208,
+          "reference_fishy_valid": 1094,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 2963,
+            "INVALID/NOPROBLEMS": 1,
+            "VALID/NOPROBLEMS": 2861
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 1114,
+            "VALID/NOPROBLEMS": 1094
+          }
+        },
+        "LG": {
+          "records": 3018,
+          "raw_agreement": 3008,
+          "raw_agreement_percent": 99.66865473823724,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 3,
+          "incomplete": 7,
+          "loadfail": 0,
+          "reference_fishy_all": 1202,
+          "reference_fishy_valid": 605,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 1496,
+            "INVALID/NOPROBLEMS": 3,
+            "VALID/INCOMPLETE": 6,
+            "VALID/NOPROBLEMS": 1512
+          },
+          "fishy_cross_table": {
+            "INVALID/INCOMPLETE": 1,
+            "INVALID/INVALID": 594,
+            "INVALID/NOPROBLEMS": 2,
+            "VALID/INCOMPLETE": 6,
+            "VALID/NOPROBLEMS": 599
+          }
+        },
+        "P": {
+          "records": 5239,
+          "raw_agreement": 5235,
+          "raw_agreement_percent": 99.92364955144112,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 4,
+          "incomplete": 0,
+          "loadfail": 0,
+          "reference_fishy_all": 1836,
+          "reference_fishy_valid": 946,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 2632,
+            "INVALID/NOPROBLEMS": 4,
+            "VALID/NOPROBLEMS": 2603
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 887,
+            "INVALID/NOPROBLEMS": 3,
+            "VALID/NOPROBLEMS": 946
+          }
+        },
+        "Pt": {
+          "records": 5629,
+          "raw_agreement": 5624,
+          "raw_agreement_percent": 99.91117427607035,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 5,
+          "incomplete": 0,
+          "loadfail": 0,
+          "reference_fishy_all": 1789,
+          "reference_fishy_valid": 857,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 2944,
+            "INVALID/NOPROBLEMS": 5,
+            "VALID/NOPROBLEMS": 2680
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 929,
+            "INVALID/NOPROBLEMS": 3,
+            "VALID/NOPROBLEMS": 857
+          }
+        },
+        "R": {
+          "records": 3593,
+          "raw_agreement": 3427,
+          "raw_agreement_percent": 95.37990537155581,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 166,
+          "loadfail": 0,
+          "reference_fishy_all": 1508,
+          "reference_fishy_valid": 597,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 1996,
+            "VALID/INCOMPLETE": 166,
+            "VALID/NOPROBLEMS": 1431
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 911,
+            "VALID/INCOMPLETE": 166,
+            "VALID/NOPROBLEMS": 431
+          }
+        },
+        "S": {
+          "records": 3187,
+          "raw_agreement": 2968,
+          "raw_agreement_percent": 93.12833385629118,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 2,
+          "incomplete": 217,
+          "loadfail": 0,
+          "reference_fishy_all": 1459,
+          "reference_fishy_valid": 618,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INVALID": 1849,
+            "INVALID/NOPROBLEMS": 2,
+            "VALID/INCOMPLETE": 217,
+            "VALID/NOPROBLEMS": 1119
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 840,
+            "INVALID/NOPROBLEMS": 1,
+            "VALID/INCOMPLETE": 217,
+            "VALID/NOPROBLEMS": 401
+          }
+        },
+        "SS": {
+          "records": 5202,
+          "raw_agreement": 5200,
+          "raw_agreement_percent": 99.96155324875048,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 0,
+          "incomplete": 2,
+          "loadfail": 0,
+          "reference_fishy_all": 2117,
+          "reference_fishy_valid": 1076,
+          "reference_misc_error": 0,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 2,
+            "INVALID/INVALID": 2678,
+            "VALID/NOPROBLEMS": 2522
+          },
+          "fishy_cross_table": {
+            "INVALID/INVALID": 1041,
+            "VALID/NOPROBLEMS": 1076
+          }
+        },
+        "W": {
+          "records": 19595,
+          "raw_agreement": 19409,
+          "raw_agreement_percent": 99.05077825976014,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 9,
+          "incomplete": 177,
+          "loadfail": 0,
+          "reference_fishy_all": 3432,
+          "reference_fishy_valid": 1288,
+          "reference_misc_error": 151,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 100,
+            "INVALID/INVALID": 10875,
+            "INVALID/NOPROBLEMS": 9,
+            "VALID/INCOMPLETE": 77,
+            "VALID/NOPROBLEMS": 8534
+          },
+          "fishy_cross_table": {
+            "INVALID/INCOMPLETE": 83,
+            "INVALID/INVALID": 2061,
+            "VALID/NOPROBLEMS": 1288
+          }
+        },
+        "W2": {
+          "records": 22533,
+          "raw_agreement": 22408,
+          "raw_agreement_percent": 99.44525806594773,
+          "raw_false_invalid": 0,
+          "raw_false_clean": 14,
+          "incomplete": 111,
+          "loadfail": 0,
+          "reference_fishy_all": 3756,
+          "reference_fishy_valid": 1779,
+          "reference_misc_error": 168,
+          "cross_table": {
+            "INVALID/INCOMPLETE": 64,
+            "INVALID/INVALID": 11923,
+            "INVALID/NOPROBLEMS": 14,
+            "VALID/INCOMPLETE": 47,
+            "VALID/NOPROBLEMS": 10485
+          },
+          "fishy_cross_table": {
+            "INVALID/INCOMPLETE": 28,
+            "INVALID/INVALID": 1945,
+            "INVALID/NOPROBLEMS": 4,
+            "VALID/INCOMPLETE": 3,
+            "VALID/NOPROBLEMS": 1776
+          }
+        }
+      }
+    }
+  },
+  "files": {
+    "gen1-reference.txt": {
+      "sha256": "f18fbbc82eef76f2e8eb1e901b8da4a911c0f525928bc4ccca1d7ea302dc4382",
+      "bytes": 803724
+    },
+    "gen1-production.txt": {
+      "sha256": "bdff4b1cddb07166bf5d4f7d37658169a5b93b6193cdf72aa68bf69e7c03d11e",
+      "bytes": 925027
+    },
+    "gen2-reference.txt": {
+      "sha256": "946f4a5ca2becdce4893b966e3a0444270821c14ada2c7b9531692b063caa541",
+      "bytes": 694465
+    },
+    "gen2-production.txt": {
+      "sha256": "758e6e8e0d936caff768c2e70ff351abce0d8c6dde77a8d346796b6b2c97092e",
+      "bytes": 888898
+    },
+    "gen34-reference.txt": {
+      "sha256": "6c664f1720bcc269fb6af7abb046e8af86c9f74fa33a73705279fce1b766df18",
+      "bytes": 31197598
+    },
+    "gen34-production.txt": {
+      "sha256": "1c9773a111d3784fd7215cb07f4d4e321a922d6293671ca3f515771de513565f",
+      "bytes": 15655249
+    },
+    "gen5-reference.txt": {
+      "sha256": "a9b1858e2c71b16d48569859138f8995057ac2811807169e6c10bc6f0d459349",
+      "bytes": 48836883
+    },
+    "gen5-production.txt": {
+      "sha256": "4dcfd9e1beb8cf8ab4b4735dfac2a4582776b630186313348b1b253455a46075",
+      "bytes": 10693456
+    }
+  },
+  "total": {
+    "records": 263382,
+    "raw_agreement": 259055,
+    "raw_agreement_percent": 98.35713906037618,
+    "raw_false_invalid": 241,
+    "raw_false_clean": 95,
+    "incomplete": 3991,
+    "loadfail": 0,
+    "reference_fishy_all": 59212,
+    "reference_fishy_valid": 30626,
+    "reference_misc_error": 603,
+    "cross_table": {
+      "INVALID/INCOMPLETE": 1245,
+      "INVALID/INVALID": 134499,
+      "INVALID/NOPROBLEMS": 95,
+      "VALID/INCOMPLETE": 2746,
+      "VALID/INVALID": 241,
+      "VALID/NOPROBLEMS": 124556
+    },
+    "fishy_cross_table": {
+      "INVALID/INCOMPLETE": 727,
+      "INVALID/INVALID": 27821,
+      "INVALID/NOPROBLEMS": 38,
+      "VALID/INCOMPLETE": 1644,
+      "VALID/INVALID": 21,
+      "VALID/NOPROBLEMS": 28961
+    }
+  }
+}

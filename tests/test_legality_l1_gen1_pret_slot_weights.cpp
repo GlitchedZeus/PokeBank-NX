@@ -7,7 +7,7 @@
 namespace S=Legality::Gen1OriginalWildFishingStage;
 namespace W=Legality::Gen1PretWildRollStage;
 int main(){
- static_assert(S::kPretSlotCount==1512);
+ static_assert(S::kPretSlotCount==1621);
  static_assert(W::sumWeights()==256);
  std::uint64_t physical=0,groups=0,rod=0,checks=0;
  for(std::size_t i=0;i<S::kPretSlotCount;++i){
@@ -45,7 +45,7 @@ int main(){
   }
  }
  assert(physical==1385); // map-physical R/B/Y grass + surf in 8 includes
- assert(rod==127); // Yellow 124 Super Rod + Old/Good game-global 3
+ assert(rod==236); // Yellow 124 + Red/Blue 109 Super Rod + Old/Good game-global 3
  assert(S::pretWildSlotWeight(S::kPretSlotCount)==0);
  assert(S::pretSlot(S::kPretSlotCount)==nullptr);
  checks+=4;

@@ -22,6 +22,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+          submodules: recursive
           persist-credentials: false
       - name: Verify exact immutable checkout
         shell: bash
@@ -41,6 +42,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/audit_legality_l5_stage2.py --native-analyzer --timeout 900
+      - name: Link real PK1/PK2 wrappers and reproduce source-free F3/F4 baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-baseline \
+            | tee /tmp/l5-pk12-sourcefree-normal.log
+          grep -Fx "L5 actual PK1/PK2 native analyzer: known false-Invalid baseline PASS (12 synthetic contexts, no retail history)" \
+            /tmp/l5-pk12-sourcefree-normal.log
+          make -f Makefile.host -f tools/audit_legality_l5_pk12_probe.mk l5-pk12-baseline-sanitize \
+            | tee /tmp/l5-pk12-sourcefree-sanitized.log
+          grep -Fx "L5 actual PK1/PK2 native analyzer: known false-Invalid baseline PASS (12 synthetic contexts, no retail history)" \
+            /tmp/l5-pk12-sourcefree-sanitized.log
       - name: Recheck source changes
         shell: bash
         run: |

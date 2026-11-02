@@ -1,0 +1,2155 @@
+{
+  "policy": "41 synthetic retained records/controlled derivatives, not authenticated acquired specimens. All 33 committed payloads preserved byte for byte. Three Happiny expectations explicitly corrected Invalid to Incomplete after the full-report/standalone discrepancy exposed an uncertified inference.",
+  "rows": [
+    {
+      "id": "b7875",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "16f54a5fda977354de6dc5db43bb7bd13d0fd3ef717dabf335ba3af7ba18e499",
+      "reference_line": "b7875 AEF2EA28000029C2710000003C49A3B6000000002883000200000000000000000000000000000000AA01040201002D000A0F23280000000036E6FFFF000000000208010000000000450067006700FFFF730065007900FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 INVALID EncounterEgg5:113 native regression W2 ; Egg:EggMoveCombination",
+      "production_line": "b7875 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b7875",
+        "sha256": "16f54a5fda977354de6dc5db43bb7bd13d0fd3ef717dabf335ba3af7ba18e499",
+        "species": 113,
+        "version": 22,
+        "moves": [
+          426,
+          516,
+          1,
+          45
+        ],
+        "move_names": [
+          "MudBomb",
+          "Bestow",
+          "Pound",
+          "Growl"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "EggMove",
+          "InheritLevelUp",
+          "InheritLevelUp",
+          "InheritLevelUp"
+        ],
+        "gathered_moves": [
+          426,
+          516,
+          1,
+          45
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "m7876-tid",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "f8967e0dbe4fb600c3aad339cd2d7bb1513c198f50310bbbd159d5adb65454aa",
+      "reference_line": "m7876-tid AEF2EA280000418A710000005411A3B6000000002883000200000000000000000000000000000000AA01040201002D000A0F23280000000036E6FFFF000000000208010000000000450067006700FFFF730065007900FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 INVALID EncounterEgg5:113 native regression W2 ; Egg:EggMoveCombination",
+      "production_line": "m7876-tid INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m7876-tid",
+        "sha256": "f8967e0dbe4fb600c3aad339cd2d7bb1513c198f50310bbbd159d5adb65454aa",
+        "species": 113,
+        "version": 22,
+        "moves": [
+          426,
+          516,
+          1,
+          45
+        ],
+        "move_names": [
+          "MudBomb",
+          "Bestow",
+          "Pound",
+          "Growl"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "EggMove",
+          "InheritLevelUp",
+          "InheritLevelUp",
+          "InheritLevelUp"
+        ],
+        "gathered_moves": [
+          426,
+          516,
+          1,
+          45
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "b9545",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "fbc1486303a13d65fb9e72e1df069ec914e7f846c36f36167351cb362d3439f8",
+      "reference_line": "b9545 B1E1C8D7000037F7EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017A00070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF0000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native regression B2 ; Egg:EggMoveCombination",
+      "production_line": "b9545 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b9545",
+        "sha256": "fbc1486303a13d65fb9e72e1df069ec914e7f846c36f36167351cb362d3439f8",
+        "species": 238,
+        "version": 23,
+        "moves": [
+          1,
+          357,
+          122,
+          263
+        ],
+        "move_names": [
+          "Pound",
+          "MiracleEye",
+          "Lick",
+          "Facade"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          357,
+          122
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "m9546-otname",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "203c54f3f707804c98d79658d248c609d39646e662b1ff8b74531f1d7a84be07",
+      "reference_line": "m9546-otname B1E1C8D7000083F6EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017A00070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF00000000001700000000000000004E0065006F003000FFFF7200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native regression B2 ; Egg:EggMoveCombination",
+      "production_line": "m9546-otname INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m9546-otname",
+        "sha256": "203c54f3f707804c98d79658d248c609d39646e662b1ff8b74531f1d7a84be07",
+        "species": 238,
+        "version": 23,
+        "moves": [
+          1,
+          357,
+          122,
+          263
+        ],
+        "move_names": [
+          "Pound",
+          "MiracleEye",
+          "Lick",
+          "Facade"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          357,
+          122
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "m9547-otname",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "4b94b26ea4217f280bf588c3b572cb386a4eac4258938931d1ce097ad013ccc0",
+      "reference_line": "m9547-otname B1E1C8D700009CF6EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017A00070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF00000000001700000000000000004100420043004400450046004700FFFF1A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native regression B2 ; Egg:EggMoveCombination",
+      "production_line": "m9547-otname INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m9547-otname",
+        "sha256": "4b94b26ea4217f280bf588c3b572cb386a4eac4258938931d1ce097ad013ccc0",
+        "species": 238,
+        "version": 23,
+        "moves": [
+          1,
+          357,
+          122,
+          263
+        ],
+        "move_names": [
+          "Pound",
+          "MiracleEye",
+          "Lick",
+          "Facade"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          357,
+          122
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "b21270",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "d1a3db4c408c1391346fb8c62849381671b9ac3d6cf0209506650b6edda180f0",
+      "reference_line": "b21270 65D1D880000065283A0100004EA8A19E000000000F9E00020000000000000000000000000000000021004A0057010000232828000000000071FF5FFF000000000204010000000000450067006700FFFF6D00690073006500FFFF0000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:314 native regression B ; Egg:EggMoveCombination",
+      "production_line": "b21270 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b21270",
+        "sha256": "d1a3db4c408c1391346fb8c62849381671b9ac3d6cf0209506650b6edda180f0",
+        "species": 314,
+        "version": 21,
+        "moves": [
+          33,
+          74,
+          343,
+          0
+        ],
+        "move_names": [
+          "Tackle",
+          "Growth",
+          "Covet",
+          "None"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "Empty"
+        ],
+        "gathered_moves": [
+          74,
+          343
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "m21273-iv",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "f972197ed6d773ae1433689a5fcc1d1e27915ed610f055b20fa021ff87fa5dfc",
+      "reference_line": "m21273-iv 65D1D880000060283A0100004EA8A19E000000000F9E00020000000000000000000000000000000021004A005701000023282800000000006CFF5FFF000000000204010000000000450067006700FFFF6D00690073006500FFFF0000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:314 native regression B ; Egg:EggMoveCombination",
+      "production_line": "m21273-iv INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m21273-iv",
+        "sha256": "f972197ed6d773ae1433689a5fcc1d1e27915ed610f055b20fa021ff87fa5dfc",
+        "species": 314,
+        "version": 21,
+        "moves": [
+          33,
+          74,
+          343,
+          0
+        ],
+        "move_names": [
+          "Tackle",
+          "Growth",
+          "Covet",
+          "None"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "Empty"
+        ],
+        "gathered_moves": [
+          74,
+          343
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "positive-b7875",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "59c49d8ab9421b259d648d748c891ddcaca8f9e67eb0c9bb17b2bdcd94fc0559",
+      "reference_line": "positive-b7875 AEF2EA280000F5C0710000003C49A3B60000000028830002000000000000000000000000000000007600040201002D000A0F23280000000036E6FFFF000000000208010000000000450067006700FFFF730065007900FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 VALID EncounterEgg5:113 native regression W2 ; ",
+      "production_line": "positive-b7875 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "positive-b7875",
+        "sha256": "59c49d8ab9421b259d648d748c891ddcaca8f9e67eb0c9bb17b2bdcd94fc0559",
+        "species": 113,
+        "version": 22,
+        "moves": [
+          118,
+          516,
+          1,
+          45
+        ],
+        "move_names": [
+          "Metronome",
+          "Bestow",
+          "Pound",
+          "Growl"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "EggMove",
+          "InheritLevelUp",
+          "InheritLevelUp",
+          "InheritLevelUp"
+        ],
+        "gathered_moves": [
+          118,
+          516,
+          1,
+          45
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 113,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 22,
+            "OriginVersion": 22,
+            "MotherSpecies": 113,
+            "MotherForm": 0,
+            "FatherSpecies": 35,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 118,
+            "Move2": 516,
+            "Move3": 1,
+            "Move4": 45
+          }
+        ]
+      }
+    },
+    {
+      "id": "positive-b9545",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "c03bb34acb9f28477d0d7653e0108d5ee95d6f00ab634ffd5e2bc4ff9f908e8e",
+      "reference_line": "positive-b9545 B1E1C8D700002EF7EE00000067FB30BE00000000195D000200000000000000000000000000000000010065017100070123281E14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF0000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:238 native regression B2 ; ",
+      "production_line": "positive-b9545 NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "positive-b9545",
+        "sha256": "c03bb34acb9f28477d0d7653e0108d5ee95d6f00ab634ffd5e2bc4ff9f908e8e",
+        "species": 238,
+        "version": 23,
+        "moves": [
+          1,
+          357,
+          113,
+          263
+        ],
+        "move_names": [
+          "Pound",
+          "MiracleEye",
+          "LightScreen",
+          "Facade"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "TMHM",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          357
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 238,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 124,
+            "MotherForm": 0,
+            "FatherSpecies": 63,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 1,
+            "Move2": 357,
+            "Move3": 113,
+            "Move4": 263
+          }
+        ]
+      }
+    },
+    {
+      "id": "positive-b21270",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "08b19f14a80bcd0de1b5335550d227593bdd6972a8ff68a2cab397959fb6b365",
+      "reference_line": "positive-b21270 65D1D8800000FE053A0100004EA8A19E000000000F9E0002000000000000000000000000000000002100E30057010000230528000000000071FF5FFF000000000204010000000000450067006700FFFF6D00690073006500FFFF0000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:314 native regression B ; Egg:EggMoveCombination",
+      "production_line": "positive-b21270 NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "positive-b21270",
+        "sha256": "08b19f14a80bcd0de1b5335550d227593bdd6972a8ff68a2cab397959fb6b365",
+        "species": 314,
+        "version": 21,
+        "moves": [
+          33,
+          227,
+          343,
+          0
+        ],
+        "move_names": [
+          "Tackle",
+          "Encore",
+          "Covet",
+          "None"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "Empty"
+        ],
+        "gathered_moves": [
+          227,
+          343
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "chansey-ordered-positive",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "be72cd0710fe521da1c99fde4faa17caf930476af85335c8aa0187a22f8c3987",
+      "reference_line": "chansey-ordered-positive AEF2EA280000F5C0710000003C49A3B600000000288300020000000000000000000000000000000001002D007600040223280A0F0000000036E6FFFF000000000208010000000000450067006700FFFF730065007900FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 VALID EncounterEgg5:113 native regression W2 ; ",
+      "production_line": "chansey-ordered-positive NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "chansey-ordered-positive",
+        "sha256": "be72cd0710fe521da1c99fde4faa17caf930476af85335c8aa0187a22f8c3987",
+        "species": 113,
+        "version": 22,
+        "moves": [
+          1,
+          45,
+          118,
+          516
+        ],
+        "move_names": [
+          "Pound",
+          "Growl",
+          "Metronome",
+          "Bestow"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "InheritLevelUp"
+        ],
+        "gathered_moves": [
+          118,
+          516
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 113,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 22,
+            "OriginVersion": 22,
+            "MotherSpecies": 113,
+            "MotherForm": 0,
+            "FatherSpecies": 35,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 1,
+            "Move2": 45,
+            "Move3": 118,
+            "Move4": 516
+          }
+        ]
+      }
+    },
+    {
+      "id": "chansey-ordered-negative",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "ff79dbfc5853091ea5498a92c0596b41be1a387a73cea462652d8000a5921793",
+      "reference_line": "chansey-ordered-negative AEF2EA28000029C2710000003C49A3B600000000288300020000000000000000000000000000000001002D00AA01040223280A0F0000000036E6FFFF000000000208010000000000450067006700FFFF730065007900FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 INVALID EncounterEgg5:113 native regression W2 ; Egg:EggMoveCombination",
+      "production_line": "chansey-ordered-negative INCOMPLETE ;",
+      "reference_trace": {
+        "id": "chansey-ordered-negative",
+        "sha256": "ff79dbfc5853091ea5498a92c0596b41be1a387a73cea462652d8000a5921793",
+        "species": 113,
+        "version": 22,
+        "moves": [
+          1,
+          45,
+          426,
+          516
+        ],
+        "move_names": [
+          "Pound",
+          "Growl",
+          "MudBomb",
+          "Bestow"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "InheritLevelUp"
+        ],
+        "gathered_moves": [
+          426,
+          516
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "egg-b58750",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "710fc662a25ad8c05fa08a8b8bc96a18ca93959129a46fb83a7c4e9e89345be9",
+      "reference_line": "egg-b58750 C27C14C20000BEA77802000047981F780000000014360002000000000000000000000000000000001C00E200940156000F280F1400000000DFFF6FFE00000000000B010000000000450067006700FFFF6E007400FFFF000000000000000000170000000000000000540065007300740065007200FFFF00001A0A1100000062EA0000000481000000 VALID EncounterEgg5:632 native regression B2 ; ",
+      "production_line": "egg-b58750 NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "egg-b58750",
+        "sha256": "710fc662a25ad8c05fa08a8b8bc96a18ca93959129a46fb83a7c4e9e89345be9",
+        "species": 632,
+        "version": 23,
+        "moves": [
+          28,
+          226,
+          404,
+          86
+        ],
+        "move_names": [
+          "SandAttack",
+          "BatonPass",
+          "XScissor",
+          "ThunderWave"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          226
+        ],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 632,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 632,
+            "MotherForm": 0,
+            "FatherSpecies": 632,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 28,
+            "Move2": 226,
+            "Move3": 404,
+            "Move4": 86
+          },
+          {
+            "Species": 632,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 632,
+            "MotherForm": 0,
+            "FatherSpecies": 15,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 226,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "b0",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "d5f24f8a699767b2c387130b25128c84c83637d9a981de1228f3c206d04296b9",
+      "reference_line": "b0 B4048BB20000CB4D010000001179810B00000000784100020000000000000000000000000000000021000000000000002300000000000000F1FC9F3F00000000000C000000000000420075006C00620061007300610075007200FFFF000000150000000000000000540065007300740065007200FFFF00001A0A0F1A0A0F62EA4000000401000000 VALID EncounterEgg5:1 native regression B ; ",
+      "production_line": "b0 NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "b0",
+        "sha256": "d5f24f8a699767b2c387130b25128c84c83637d9a981de1228f3c206d04296b9",
+        "species": 1,
+        "version": 21,
+        "moves": [
+          33,
+          0,
+          0,
+          0
+        ],
+        "move_names": [
+          "Tackle",
+          "None",
+          "None",
+          "None"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "LevelUp",
+          "Empty",
+          "Empty",
+          "Empty"
+        ],
+        "gathered_moves": [],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 1,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 1,
+            "MotherForm": 0,
+            "FatherSpecies": 1,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 33,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "b1535",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "601a6a51b7ae8b183d92019ac63feeefb2e240459e0d357c28d298741e75d1ec",
+      "reference_line": "b1535 8D5A1E99000063E620000000B2C0439A000000001437000200000000000000000000000000000000400024001F009C002314140A0000000017FFFFEF00000000000D010000000000450067006700FFFF720061006E006D24FFFF0000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 VALID EncounterEgg5:32 native regression B ; ",
+      "production_line": "b1535 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b1535",
+        "sha256": "601a6a51b7ae8b183d92019ac63feeefb2e240459e0d357c28d298741e75d1ec",
+        "species": 32,
+        "version": 21,
+        "moves": [
+          64,
+          36,
+          31,
+          156
+        ],
+        "move_names": [
+          "Peck",
+          "TakeDown",
+          "FuryAttack",
+          "Rest"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          36,
+          31
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 32,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 29,
+            "MotherForm": 0,
+            "FatherSpecies": 32,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 64,
+            "Move2": 36,
+            "Move3": 31,
+            "Move4": 156
+          },
+          {
+            "Species": 32,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 29,
+            "MotherForm": 0,
+            "FatherSpecies": 1,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 36,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "m1538-pokerus",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "fba76c2a1a10527e0ef45df27bea7d1300a8949aa3c548fbc2ca959a92836862",
+      "reference_line": "m1538-pokerus 8D5A1E990000A3E620000000B2C0439A000000001437000200000000000000000000000000000000400024001F009C002314140A0000000017FFFFEF00000000000D010000000000450067006700FFFF720061006E006D24FFFF0000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000400401000000 VALID EncounterEgg5:32 native regression B ; ",
+      "production_line": "m1538-pokerus INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m1538-pokerus",
+        "sha256": "fba76c2a1a10527e0ef45df27bea7d1300a8949aa3c548fbc2ca959a92836862",
+        "species": 32,
+        "version": 21,
+        "moves": [
+          64,
+          36,
+          31,
+          156
+        ],
+        "move_names": [
+          "Peck",
+          "TakeDown",
+          "FuryAttack",
+          "Rest"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          36,
+          31
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 32,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 29,
+            "MotherForm": 0,
+            "FatherSpecies": 32,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 64,
+            "Move2": 36,
+            "Move3": 31,
+            "Move4": 156
+          },
+          {
+            "Species": 32,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 29,
+            "MotherForm": 0,
+            "FatherSpecies": 1,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 36,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "b1585",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "ed5642166b4d08196d684ca494c0f7af743689be2c1c76244feabbc253e6657d",
+      "reference_line": "b1585 8623BC8A00007C7F20000000930BC9DE0000000014370002000000000000000000000000000000002B004000F20120001E23140500000000F0FEFFED00000000000B010000000000450067006700FFFF720061006E006D24FFFF0000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:32 native regression B2 ; ",
+      "production_line": "b1585 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b1585",
+        "sha256": "ed5642166b4d08196d684ca494c0f7af743689be2c1c76244feabbc253e6657d",
+        "species": 32,
+        "version": 23,
+        "moves": [
+          43,
+          64,
+          498,
+          32
+        ],
+        "move_names": [
+          "Leer",
+          "Peck",
+          "ChipAway",
+          "HornDrill"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "InheritLevelUp"
+        ],
+        "gathered_moves": [
+          498,
+          32
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 32,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 29,
+            "MotherForm": 0,
+            "FatherSpecies": 32,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 43,
+            "Move2": 64,
+            "Move3": 498,
+            "Move4": 32
+          }
+        ]
+      }
+    },
+    {
+      "id": "b7220",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "e74f01b4536bb083a26ea84de6c01a16d27a892befc27fcb2dec001b67cc4dc4",
+      "reference_line": "b7220 B3BE8A15000087F0EC000000C5E30C7E00000000193E0002000000000000000000000000000000000E01FC00C100A201140A281E0000000033FEF5FF000000000010000000000000450067006700FFFF670075006500FFFF00000000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:236 native regression B ; ",
+      "production_line": "b7220 NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "b7220",
+        "sha256": "e74f01b4536bb083a26ea84de6c01a16d27a892befc27fcb2dec001b67cc4dc4",
+        "species": 236,
+        "version": 21,
+        "moves": [
+          270,
+          252,
+          193,
+          418
+        ],
+        "move_names": [
+          "HelpingHand",
+          "FakeOut",
+          "Foresight",
+          "BulletPunch"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "Initial",
+          "EggMove"
+        ],
+        "gathered_moves": [
+          418
+        ],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 236,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 236,
+            "MotherForm": 0,
+            "FatherSpecies": 107,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 270,
+            "Move2": 252,
+            "Move3": 193,
+            "Move4": 418
+          }
+        ]
+      }
+    },
+    {
+      "id": "m7223-iv",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "3b0f68c14a240770cad458219d870f0c179eaa323956d4b42993a94343a57259",
+      "reference_line": "m7223-iv B3BE8A15000027EFEC000000C5E30C7E00000000193E0002000000000000000000000000000000000E01FC00C100A201140A281E00000000D3FCF5FF000000000010000000000000450067006700FFFF670075006500FFFF00000000000000150000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:236 native regression B ; ",
+      "production_line": "m7223-iv NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "m7223-iv",
+        "sha256": "3b0f68c14a240770cad458219d870f0c179eaa323956d4b42993a94343a57259",
+        "species": 236,
+        "version": 21,
+        "moves": [
+          270,
+          252,
+          193,
+          418
+        ],
+        "move_names": [
+          "HelpingHand",
+          "FakeOut",
+          "Foresight",
+          "BulletPunch"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "Initial",
+          "EggMove"
+        ],
+        "gathered_moves": [
+          418
+        ],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 236,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 236,
+            "MotherForm": 0,
+            "FatherSpecies": 107,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 270,
+            "Move2": 252,
+            "Move3": 193,
+            "Move4": 418
+          }
+        ]
+      }
+    },
+    {
+      "id": "b7250",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "d99a3d5adb4b8faf7b8a8c064b12bdefae1231a50ea715a54ed56b99c1b3d059",
+      "reference_line": "b7250 D250069500006886EC000000689C5E2600000000193E0002000000000000000000000000000000000E01FC00C100CB00140A280A00000000FB7FF0CD00000000000B000000000000450067006700FFFF670075006500FFFF00000000000000140000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:236 native regression W ; ",
+      "production_line": "b7250 NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "b7250",
+        "sha256": "d99a3d5adb4b8faf7b8a8c064b12bdefae1231a50ea715a54ed56b99c1b3d059",
+        "species": 236,
+        "version": 20,
+        "moves": [
+          270,
+          252,
+          193,
+          203
+        ],
+        "move_names": [
+          "HelpingHand",
+          "FakeOut",
+          "Foresight",
+          "Endure"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "Initial",
+          "EggMove"
+        ],
+        "gathered_moves": [
+          203
+        ],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 236,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 20,
+            "OriginVersion": 20,
+            "MotherSpecies": 236,
+            "MotherForm": 0,
+            "FatherSpecies": 107,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 270,
+            "Move2": 252,
+            "Move3": 193,
+            "Move4": 203
+          }
+        ]
+      }
+    },
+    {
+      "id": "m7251-tid",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "b8415b8ace3c36f4a1f1c73e987d3beb6f3f926fc7aa13ac21c29b940b72b300",
+      "reference_line": "m7251-tid D25006950000B62DEC000000B6435E2600000000193E0002000000000000000000000000000000000E01FC00C100CB00140A280A00000000FB7FF0CD00000000000B000000000000450067006700FFFF670075006500FFFF00000000000000140000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:236 native regression W ; ",
+      "production_line": "m7251-tid NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "m7251-tid",
+        "sha256": "b8415b8ace3c36f4a1f1c73e987d3beb6f3f926fc7aa13ac21c29b940b72b300",
+        "species": 236,
+        "version": 20,
+        "moves": [
+          270,
+          252,
+          193,
+          203
+        ],
+        "move_names": [
+          "HelpingHand",
+          "FakeOut",
+          "Foresight",
+          "Endure"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "Initial",
+          "EggMove"
+        ],
+        "gathered_moves": [
+          203
+        ],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 236,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 20,
+            "OriginVersion": 20,
+            "MotherSpecies": 236,
+            "MotherForm": 0,
+            "FatherSpecies": 107,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 270,
+            "Move2": 252,
+            "Move3": 193,
+            "Move4": 203
+          }
+        ]
+      }
+    },
+    {
+      "id": "m7252-otname",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "0ab70ac7a8a8d4ddd0c67db5d0192bf7a9a688c3ead4ddc8296c6260fd169ec5",
+      "reference_line": "m7252-otname D250069500004F86EC000000689C5E2600000000193E0002000000000000000000000000000000000E01FC00C100CB00140A280A00000000FB7FF0CD00000000000B000000000000450067006700FFFF670075006500FFFF00000000000000140000000000000000500069006E00650063006F00FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:236 native regression W ; ",
+      "production_line": "m7252-otname NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "m7252-otname",
+        "sha256": "0ab70ac7a8a8d4ddd0c67db5d0192bf7a9a688c3ead4ddc8296c6260fd169ec5",
+        "species": 236,
+        "version": 20,
+        "moves": [
+          270,
+          252,
+          193,
+          203
+        ],
+        "move_names": [
+          "HelpingHand",
+          "FakeOut",
+          "Foresight",
+          "Endure"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "Initial",
+          "EggMove"
+        ],
+        "gathered_moves": [
+          203
+        ],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 236,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 20,
+            "OriginVersion": 20,
+            "MotherSpecies": 236,
+            "MotherForm": 0,
+            "FatherSpecies": 107,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 270,
+            "Move2": 252,
+            "Move3": 193,
+            "Move4": 203
+          }
+        ]
+      }
+    },
+    {
+      "id": "b7275",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "cd6b8ee9e72be7249b17baccd4c403bb5c2e90b71b5dbbdbb42fe817b87bd8f1",
+      "reference_line": "b7275 BBF3AC9200007233EC000000A9032ECE00000000193E000200000000000000000000000000000000FC00C100CB005C000A280A0A000000003FFFFFC900000000000E000000000000450067006700FFFF670075006500FFFF00000000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 VALID EncounterEgg5:236 native regression B2 ; ",
+      "production_line": "b7275 NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "b7275",
+        "sha256": "cd6b8ee9e72be7249b17baccd4c403bb5c2e90b71b5dbbdbb42fe817b87bd8f1",
+        "species": 236,
+        "version": 23,
+        "moves": [
+          252,
+          193,
+          203,
+          92
+        ],
+        "move_names": [
+          "FakeOut",
+          "Foresight",
+          "Endure",
+          "Toxic"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          203
+        ],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 236,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 236,
+            "MotherForm": 0,
+            "FatherSpecies": 107,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 252,
+            "Move2": 193,
+            "Move3": 203,
+            "Move4": 92
+          }
+        ]
+      }
+    },
+    {
+      "id": "b7280",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "a9ebac5a17796a7c8795869bc1c0d35390dd89c50f9078989c1a7e3e019a6e51",
+      "reference_line": "b7280 BBF3AC920000A73DEC000000A9032ECE00000000193E000200000000000000000000000000000000FC00C10044000E010A281414000000003FFFFFC900000000000E000000000000450067006700FFFF670075006500FFFF00000000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 VALID EncounterEgg5:236 native regression B2 ; ",
+      "production_line": "b7280 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b7280",
+        "sha256": "a9ebac5a17796a7c8795869bc1c0d35390dd89c50f9078989c1a7e3e019a6e51",
+        "species": 236,
+        "version": 23,
+        "moves": [
+          252,
+          193,
+          68,
+          270
+        ],
+        "move_names": [
+          "FakeOut",
+          "Foresight",
+          "Counter",
+          "HelpingHand"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "EggMove"
+        ],
+        "gathered_moves": [
+          68,
+          270
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 236,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 236,
+            "MotherForm": 0,
+            "FatherSpecies": 107,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 252,
+            "Move2": 193,
+            "Move3": 68,
+            "Move4": 270
+          }
+        ]
+      }
+    },
+    {
+      "id": "b7295",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "d5a7a5c8226e44b3b840eabc368b1d3a9acc2e82acc6689982da9660ab4ec512",
+      "reference_line": "b7295 F342F1EE0000DAF4EC000000EE7C8EF20000000019500002000000000000000000000000000000000E01FC00C100E400140A2814000000001FF7EFFF000000000006000000000000450067006700FFFF670075006500FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 VALID EncounterEgg5:236 native regression W2 ; ",
+      "production_line": "b7295 NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "b7295",
+        "sha256": "d5a7a5c8226e44b3b840eabc368b1d3a9acc2e82acc6689982da9660ab4ec512",
+        "species": 236,
+        "version": 22,
+        "moves": [
+          270,
+          252,
+          193,
+          228
+        ],
+        "move_names": [
+          "HelpingHand",
+          "FakeOut",
+          "Foresight",
+          "Pursuit"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "Initial",
+          "EggMove"
+        ],
+        "gathered_moves": [
+          228
+        ],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 236,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 22,
+            "OriginVersion": 22,
+            "MotherSpecies": 236,
+            "MotherForm": 0,
+            "FatherSpecies": 107,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 270,
+            "Move2": 252,
+            "Move3": 193,
+            "Move4": 228
+          }
+        ]
+      }
+    },
+    {
+      "id": "m7296-pid",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": "NOPROBLEMS",
+      "sha256": "21c95dc9d10bf320addb1dd56fcb736a19c193d24b9db1d4f1f2678703e522b0",
+      "reference_line": "m7296-pid 6EAF55DF0000DAF4EC000000EE7C8EF20000000019500002000000000000000000000000000000000E01FC00C100E400140A2814000000001FF7EFFF000000000006000000000000450067006700FFFF670075006500FFFF00000000000000160000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000401000000 VALID EncounterEgg5:236 native regression W2 ; ",
+      "production_line": "m7296-pid NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "m7296-pid",
+        "sha256": "21c95dc9d10bf320addb1dd56fcb736a19c193d24b9db1d4f1f2678703e522b0",
+        "species": 236,
+        "version": 22,
+        "moves": [
+          270,
+          252,
+          193,
+          228
+        ],
+        "move_names": [
+          "HelpingHand",
+          "FakeOut",
+          "Foresight",
+          "Pursuit"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "Initial",
+          "EggMove"
+        ],
+        "gathered_moves": [
+          228
+        ],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 236,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 22,
+            "OriginVersion": 22,
+            "MotherSpecies": 236,
+            "MotherForm": 0,
+            "FatherSpecies": 107,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 270,
+            "Move2": 252,
+            "Move3": 193,
+            "Move4": 228
+          }
+        ]
+      }
+    },
+    {
+      "id": "b7800",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INVALID",
+      "sha256": "9995e39260567a2a0e677ee214ff38b528fe4e1cc14b775523e90a872befc1fb",
+      "reference_line": "b7800 82E5DE1400007FD1B801000093AC86910000000028840002000000000000000000000000000000000100CC00AA01020123140A0A000000001FFCCFD7000000000201010000000000450067006700FFFF69006E007900FFFF00000000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:440 native regression B2 ; ",
+      "production_line": "b7800 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b7800",
+        "sha256": "9995e39260567a2a0e677ee214ff38b528fe4e1cc14b775523e90a872befc1fb",
+        "species": 440,
+        "version": 23,
+        "moves": [
+          1,
+          204,
+          426,
+          258
+        ],
+        "move_names": [
+          "Pound",
+          "Charm",
+          "MudBomb",
+          "Hail"
+        ],
+        "full_report_valid": true,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          426
+        ],
+        "gathered_chain_valid": true,
+        "steps": []
+      }
+    },
+    {
+      "id": "m7803-pid",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INVALID",
+      "sha256": "b4d6e15483b399601d180a9afbcce5a08188aa293450e31441e6b192495d62be",
+      "reference_line": "m7803-pid EFA4399500007FD1B801000093AC86910000000028840002000000000000000000000000000000000100CC00AA01020123140A0A000000001FFCCFD7000000000201010000000000450067006700FFFF69006E007900FFFF00000000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:440 native regression B2 ; ",
+      "production_line": "m7803-pid INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m7803-pid",
+        "sha256": "b4d6e15483b399601d180a9afbcce5a08188aa293450e31441e6b192495d62be",
+        "species": 440,
+        "version": 23,
+        "moves": [
+          1,
+          204,
+          426,
+          258
+        ],
+        "move_names": [
+          "Pound",
+          "Charm",
+          "MudBomb",
+          "Hail"
+        ],
+        "full_report_valid": true,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          426
+        ],
+        "gathered_chain_valid": true,
+        "steps": []
+      }
+    },
+    {
+      "id": "m7804-pid",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INVALID",
+      "sha256": "8f078bd90cc65d5086edcaa3fa12d093ed418479cd47dc6b73a2200e3ccff60a",
+      "reference_line": "m7804-pid 9FA322EF00007FD1B801000093AC86910000000028840002000000000000000000000000000000000100CC00AA01020123140A0A000000001FFCCFD7000000000201010000000000450067006700FFFF69006E007900FFFF00000000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:440 native regression B2 ; ",
+      "production_line": "m7804-pid INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m7804-pid",
+        "sha256": "8f078bd90cc65d5086edcaa3fa12d093ed418479cd47dc6b73a2200e3ccff60a",
+        "species": 440,
+        "version": 23,
+        "moves": [
+          1,
+          204,
+          426,
+          258
+        ],
+        "move_names": [
+          "Pound",
+          "Charm",
+          "MudBomb",
+          "Hail"
+        ],
+        "full_report_valid": true,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          426
+        ],
+        "gathered_chain_valid": true,
+        "steps": []
+      }
+    },
+    {
+      "id": "b7750",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "1a7a08f7ca164b92ec6eaf11b05740490b91834e5413daa6280dced17a80df5b",
+      "reference_line": "b7750 45ADF2EF000071217100000048DEEC9200000000288300020000000000000000000000000000000001002D00CB00F90123280A0A00000000F2FF9FD0000000000213010000000000450067006700FFFF730065007900FFFF00000000000000140000000000000000540065007300740065007200FFFF00001A0A1C00000062EA0000000481000000 VALID EncounterEgg5:113 native regression W ; ",
+      "production_line": "b7750 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b7750",
+        "sha256": "1a7a08f7ca164b92ec6eaf11b05740490b91834e5413daa6280dced17a80df5b",
+        "species": 113,
+        "version": 20,
+        "moves": [
+          1,
+          45,
+          203,
+          505
+        ],
+        "move_names": [
+          "Pound",
+          "Growl",
+          "Endure",
+          "HealPulse"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "InheritLevelUp"
+        ],
+        "gathered_moves": [
+          203,
+          505
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 113,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 20,
+            "OriginVersion": 20,
+            "MotherSpecies": 113,
+            "MotherForm": 0,
+            "FatherSpecies": 420,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 1,
+            "Move2": 45,
+            "Move3": 203,
+            "Move4": 505
+          },
+          {
+            "Species": 420,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 20,
+            "OriginVersion": 20,
+            "MotherSpecies": 420,
+            "MotherForm": 0,
+            "FatherSpecies": 152,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 505,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          },
+          {
+            "Species": 152,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 20,
+            "OriginVersion": 20,
+            "MotherSpecies": 152,
+            "MotherForm": 0,
+            "FatherSpecies": 79,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 505,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "m7754-version",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "365919b7b1e0eb7248809090af2e74c7a7900adb5cb3166dbbf61b5945fb65bd",
+      "reference_line": "m7754-version 45ADF2EF000071227100000048DEEC9200000000288300020000000000000000000000000000000001002D00CB00F90123280A0A00000000F2FF9FD0000000000213010000000000450067006700FFFF730065007900FFFF00000000000000150000000000000000540065007300740065007200FFFF00001A0A1C00000062EA0000000481000000 VALID EncounterEgg5:113 native regression B ; ",
+      "production_line": "m7754-version INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m7754-version",
+        "sha256": "365919b7b1e0eb7248809090af2e74c7a7900adb5cb3166dbbf61b5945fb65bd",
+        "species": 113,
+        "version": 21,
+        "moves": [
+          1,
+          45,
+          203,
+          505
+        ],
+        "move_names": [
+          "Pound",
+          "Growl",
+          "Endure",
+          "HealPulse"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "InheritLevelUp"
+        ],
+        "gathered_moves": [
+          203,
+          505
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 113,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 113,
+            "MotherForm": 0,
+            "FatherSpecies": 420,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 1,
+            "Move2": 45,
+            "Move3": 203,
+            "Move4": 505
+          },
+          {
+            "Species": 420,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 420,
+            "MotherForm": 0,
+            "FatherSpecies": 152,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 505,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          },
+          {
+            "Species": 152,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 21,
+            "OriginVersion": 21,
+            "MotherSpecies": 152,
+            "MotherForm": 0,
+            "FatherSpecies": 79,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 505,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "b21320",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": "INCOMPLETE",
+      "sha256": "a7a0117214826bdd9e3d4c3d7cc2209ac9c9903493ca6fbe228c400f5bf7f09c",
+      "reference_line": "b21320 D1AF4C51000088FF3A0100003674A8B0000000000F9E0002000000000000000000000000000000002100E30011014C0023050A0A00000000B3FE4FFE000000000216010000000000450067006700FFFF6D00690073006500FFFF0000000000170000000000000000540065007300740065007200FFFF00001A0A1C00000062EA0000000401000000 VALID EncounterEgg5:314 native regression B2 ; ",
+      "production_line": "b21320 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b21320",
+        "sha256": "a7a0117214826bdd9e3d4c3d7cc2209ac9c9903493ca6fbe228c400f5bf7f09c",
+        "species": 314,
+        "version": 23,
+        "moves": [
+          33,
+          227,
+          273,
+          76
+        ],
+        "move_names": [
+          "Tackle",
+          "Encore",
+          "Wish",
+          "SolarBeam"
+        ],
+        "full_report_valid": true,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "InheritLevelUp",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          227,
+          273
+        ],
+        "gathered_chain_valid": true,
+        "steps": []
+      }
+    },
+    {
+      "id": "smoochum-two-exclusive-egg-moves",
+      "expected": "INVALID",
+      "previous_committed_expectation": "INVALID",
+      "sha256": "ac7fce6c44a40864b0eaf0d6da74e4f82c007ccc7208cb0c0293e18fa5e1a36d",
+      "reference_line": "smoochum-two-exclusive-egg-moves B1E1C8D70000A5F7EE00000067FB30BE00000000195D00020000000000000000000000000000000001006501FC00070123280A14000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF0000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 INVALID EncounterEgg5:238 native regression B2 ; Egg:EggMoveCombination",
+      "production_line": "smoochum-two-exclusive-egg-moves INVALID ; No compatible single father can jointly supply this egg's inherited moves in the known Gen III-V ancestry model",
+      "reference_trace": {
+        "id": "smoochum-two-exclusive-egg-moves",
+        "sha256": "ac7fce6c44a40864b0eaf0d6da74e4f82c007ccc7208cb0c0293e18fa5e1a36d",
+        "species": 238,
+        "version": 23,
+        "moves": [
+          1,
+          357,
+          252,
+          263
+        ],
+        "move_names": [
+          "Pound",
+          "MiracleEye",
+          "FakeOut",
+          "Facade"
+        ],
+        "full_report_valid": false,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "EggMove",
+          "EggMove",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          357,
+          252
+        ],
+        "gathered_chain_valid": false,
+        "steps": []
+      }
+    },
+    {
+      "id": "b8230",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": null,
+      "sha256": "56883a79baa3f4d3394ee23a2d9a5d9c5651940be7f33c840c005fceaee470dc",
+      "reference_line": "b8230 28E09CA70000860873000000C921179B00000000142700020000000000000000000000000000000004002B0032010E020F1E0A1E00000000FFDFFFDF00000000020E010000000000450067006700FFFF610073006B00680061006E00FFFF00160000000000000000540065007300740065007200FFFF00001A0A1C00000062EA0000000401000000 VALID EncounterEgg5:115 native regression W2 ; ",
+      "production_line": "b8230 INCOMPLETE ;",
+      "reference_trace": {
+        "id": "b8230",
+        "sha256": "56883a79baa3f4d3394ee23a2d9a5d9c5651940be7f33c840c005fceaee470dc",
+        "species": 115,
+        "version": 22,
+        "moves": [
+          4,
+          43,
+          306,
+          526
+        ],
+        "move_names": [
+          "CometPunch",
+          "Leer",
+          "CrushClaw",
+          "WorkUp"
+        ],
+        "full_report_valid": true,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          306
+        ],
+        "gathered_chain_valid": true,
+        "steps": []
+      }
+    },
+    {
+      "id": "m8231-tid",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": null,
+      "sha256": "41fb53556d22a22aa759c49fa908e0e86c55a9966ed09f7bf32eca6d5756a787",
+      "reference_line": "m8231-tid 28E09CA70000F15373000000346D179B00000000142700020000000000000000000000000000000004002B0032010E020F1E0A1E00000000FFDFFFDF00000000020E010000000000450067006700FFFF610073006B00680061006E00FFFF00160000000000000000540065007300740065007200FFFF00001A0A1C00000062EA0000000401000000 VALID EncounterEgg5:115 native regression W2 ; ",
+      "production_line": "m8231-tid INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m8231-tid",
+        "sha256": "41fb53556d22a22aa759c49fa908e0e86c55a9966ed09f7bf32eca6d5756a787",
+        "species": 115,
+        "version": 22,
+        "moves": [
+          4,
+          43,
+          306,
+          526
+        ],
+        "move_names": [
+          "CometPunch",
+          "Leer",
+          "CrushClaw",
+          "WorkUp"
+        ],
+        "full_report_valid": true,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          306
+        ],
+        "gathered_chain_valid": true,
+        "steps": []
+      }
+    },
+    {
+      "id": "m8234-otname",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": null,
+      "sha256": "6c6c53fd832fffd4534a94661188be8d93c8a89f15d023013c3f7839c824d751",
+      "reference_line": "m8234-otname 28E09CA70000190773000000C921179B00000000142700020000000000000000000000000000000004002B0032010E020F1E0A1E00000000FFDFFFDF00000000020E010000000000450067006700FFFF610073006B00680061006E00FFFF0016000000000000000041003100320033003400FFFFFFFF00001A0A1C00000062EA0000000401000000 VALID EncounterEgg5:115 native regression W2 ; ",
+      "production_line": "m8234-otname INCOMPLETE ;",
+      "reference_trace": {
+        "id": "m8234-otname",
+        "sha256": "6c6c53fd832fffd4534a94661188be8d93c8a89f15d023013c3f7839c824d751",
+        "species": 115,
+        "version": 22,
+        "moves": [
+          4,
+          43,
+          306,
+          526
+        ],
+        "move_names": [
+          "CometPunch",
+          "Leer",
+          "CrushClaw",
+          "WorkUp"
+        ],
+        "full_report_valid": true,
+        "chain_valid": false,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          306
+        ],
+        "gathered_chain_valid": true,
+        "steps": []
+      }
+    },
+    {
+      "id": "kangaskhan-facade-control",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": null,
+      "sha256": "0ac4ad8707054e51a625a79be1e94677346948170a9aee1fb313bfc89a11d587",
+      "reference_line": "kangaskhan-facade-control 28E09CA700007FFD73000000C921179B00000000142700020000000000000000000000000000000004002B00320107010F1E0A1400000000FFDFFFDF00000000020E010000000000450067006700FFFF610073006B00680061006E00FFFF00160000000000000000540065007300740065007200FFFF00001A0A1C00000062EA0000000401000000 VALID EncounterEgg5:115 native regression W2 ; ",
+      "production_line": "kangaskhan-facade-control NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "kangaskhan-facade-control",
+        "sha256": "0ac4ad8707054e51a625a79be1e94677346948170a9aee1fb313bfc89a11d587",
+        "species": 115,
+        "version": 22,
+        "moves": [
+          4,
+          43,
+          306,
+          263
+        ],
+        "move_names": [
+          "CometPunch",
+          "Leer",
+          "CrushClaw",
+          "Facade"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Initial",
+          "EggMove",
+          "TMHM"
+        ],
+        "gathered_moves": [
+          306
+        ],
+        "gathered_chain_valid": true,
+        "steps": [
+          {
+            "Species": 115,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 22,
+            "OriginVersion": 22,
+            "MotherSpecies": 115,
+            "MotherForm": 0,
+            "FatherSpecies": 111,
+            "FatherForm": 0,
+            "MoveCount": 4,
+            "Move1": 4,
+            "Move2": 43,
+            "Move3": 306,
+            "Move4": 263
+          },
+          {
+            "Species": 111,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 22,
+            "OriginVersion": 22,
+            "MotherSpecies": 111,
+            "MotherForm": 0,
+            "FatherSpecies": 27,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 306,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "native-unhatched-initial-only",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": null,
+      "sha256": "a43239c493147149df38552a4002d7e64f19dbbbaf1e708ef4bad5ec0973914e",
+      "reference_line": "native-unhatched-initial-only B1E1C8D7000033B8EE00000067FB30BE00000000195D000200000000000000000000000000000000010000000000000023000000000000002380FFFF000000000209010000000000450067006700FFFF6300680075006D00FFFF0000000000170000000000000000540065007300740065007200FFFF00001A0A1B00000062EA0000000481000000 VALID EncounterEgg5:238 native regression B2 ; ",
+      "production_line": "native-unhatched-initial-only NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "native-unhatched-initial-only",
+        "sha256": "a43239c493147149df38552a4002d7e64f19dbbbaf1e708ef4bad5ec0973914e",
+        "species": 238,
+        "version": 23,
+        "moves": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "move_names": [
+          "Pound",
+          "None",
+          "None",
+          "None"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "Empty",
+          "Empty",
+          "Empty"
+        ],
+        "gathered_moves": [],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 238,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 124,
+            "MotherForm": 0,
+            "FatherSpecies": 96,
+            "FatherForm": 0,
+            "MoveCount": 1,
+            "Move1": 1,
+            "Move2": 0,
+            "Move3": 0,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "pidgey-native-shared-order",
+      "expected": "NOPROBLEMS",
+      "previous_committed_expectation": null,
+      "sha256": "a10330e2f6db38bfbb10dd467b31b7ac4d83e937b110435e4c697c5ff3eee4cd",
+      "reference_line": "pidgey-native-shared-order D8BDEC7C000007A310000000D6112CBF000000000F910002000000000000000000000000000000002100610011000000231E230000000000FFFD8FFE00000000000F010000000000450067006700FFFF65007900FFFF000000000000000000170000000000000000540065007300740065007200FFFF00001A0A1C00000062EA0000000481000000 VALID EncounterEgg5:16 native regression B2 ; ",
+      "production_line": "pidgey-native-shared-order NOPROBLEMS ;",
+      "reference_trace": {
+        "id": "pidgey-native-shared-order",
+        "sha256": "a10330e2f6db38bfbb10dd467b31b7ac4d83e937b110435e4c697c5ff3eee4cd",
+        "species": 16,
+        "version": 23,
+        "moves": [
+          33,
+          97,
+          17,
+          0
+        ],
+        "move_names": [
+          "Tackle",
+          "Agility",
+          "WingAttack",
+          "None"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "InheritLevelUp",
+          "InheritLevelUp",
+          "Empty"
+        ],
+        "gathered_moves": [],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 16,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 16,
+            "MotherForm": 0,
+            "FatherSpecies": 16,
+            "FatherForm": 0,
+            "MoveCount": 3,
+            "Move1": 33,
+            "Move2": 97,
+            "Move3": 17,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "pidgey-reversed-shared-order",
+      "expected": "INVALID",
+      "previous_committed_expectation": null,
+      "sha256": "84a802355de26a100ad22652162f95d7f92a17e2b284d6d2a9984e4bc077564a",
+      "reference_line": "pidgey-reversed-shared-order D8BDEC7C000002A810000000D6112CBF000000000F91000200000000000000000000000000000000210011006100000023231E0000000000FFFD8FFE00000000000F010000000000450067006700FFFF65007900FFFF000000000000000000170000000000000000540065007300740065007200FFFF00001A0A1C00000062EA0000000481000000 VALID EncounterEgg5:16 native regression B2 ; ",
+      "production_line": "pidgey-reversed-shared-order INVALID ; Shared level-up moves cannot occur in this order in Black 2/White 2",
+      "reference_trace": {
+        "id": "pidgey-reversed-shared-order",
+        "sha256": "84a802355de26a100ad22652162f95d7f92a17e2b284d6d2a9984e4bc077564a",
+        "species": 16,
+        "version": 23,
+        "moves": [
+          33,
+          17,
+          97,
+          0
+        ],
+        "move_names": [
+          "Tackle",
+          "WingAttack",
+          "Agility",
+          "None"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "InheritLevelUp",
+          "InheritLevelUp",
+          "Empty"
+        ],
+        "gathered_moves": [],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 16,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 16,
+            "MotherForm": 0,
+            "FatherSpecies": 16,
+            "FatherForm": 0,
+            "MoveCount": 3,
+            "Move1": 33,
+            "Move2": 17,
+            "Move3": 97,
+            "Move4": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "pidgey-japanese-order-uncertified",
+      "expected": "INCOMPLETE",
+      "previous_committed_expectation": null,
+      "sha256": "ed670ba67344e8676e5debeba044bcaa8d669b2c8f70336f42b99dac05ab1c77",
+      "reference_line": "pidgey-japanese-order-uncertified D8BDEC7C0000293510000000D6112CBF000000000F91000100000000000000000000000000000000210011006100000023231E0000000000FFFD8FFE00000000000F010000000000BF30DE30B430FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF001700000000000000004A00FFFFFFFFFFFFFFFFFFFFFFFFFFFF1A0A1C00000062EA0000000481000000 VALID EncounterEgg5:16 native regression B2 ; ",
+      "production_line": "pidgey-japanese-order-uncertified INCOMPLETE ;",
+      "reference_trace": {
+        "id": "pidgey-japanese-order-uncertified",
+        "sha256": "ed670ba67344e8676e5debeba044bcaa8d669b2c8f70336f42b99dac05ab1c77",
+        "species": 16,
+        "version": 23,
+        "moves": [
+          33,
+          17,
+          97,
+          0
+        ],
+        "move_names": [
+          "Tackle",
+          "WingAttack",
+          "Agility",
+          "None"
+        ],
+        "full_report_valid": true,
+        "chain_valid": true,
+        "move_methods": [
+          "Initial",
+          "InheritLevelUp",
+          "InheritLevelUp",
+          "Empty"
+        ],
+        "gathered_moves": [],
+        "gathered_chain_valid": null,
+        "steps": [
+          {
+            "Species": 16,
+            "Form": 0,
+            "Kind": 1,
+            "Version": 23,
+            "OriginVersion": 23,
+            "MotherSpecies": 16,
+            "MotherForm": 0,
+            "FatherSpecies": 16,
+            "FatherForm": 0,
+            "MoveCount": 3,
+            "Move1": 33,
+            "Move2": 17,
+            "Move3": 97,
+            "Move4": 0
+          }
+        ]
+      }
+    }
+  ]
+}

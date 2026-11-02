@@ -30,3 +30,37 @@ $(HOST_BUILD)/test_gen34_language_analyzer: $(GEN34_LANGUAGE_ANALYZER_SOURCES) $
 $(HOST_BUILD)/test_gen34_language_analyzer_sanitize: $(GEN34_LANGUAGE_ANALYZER_SOURCES) $(GEN34_LANGUAGE_HEADERS) $(GEN34_LANGUAGE_PK4_HEADERS)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(GEN3_LEGALITY_CONTEXT_FLAGS) $(SANITIZE_FLAGS) -Iinclude $(GEN34_LANGUAGE_ANALYZER_SOURCES) -o $@
+
+GEN3_BERRY_CONTEXT_SOURCES := tests/test_gen3_berry_context.cpp $(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES))
+HOST_TESTS += $(HOST_BUILD)/test_gen3_berry_context
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_berry_context_sanitize
+host-test: $(HOST_BUILD)/test_gen3_berry_context
+host-sanitize: $(HOST_BUILD)/test_gen3_berry_context_sanitize
+$(HOST_BUILD)/test_gen3_berry_context: $(GEN3_BERRY_CONTEXT_SOURCES) include/Legality/Gen3BerryContext.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $(GEN3_BERRY_CONTEXT_SOURCES) -o $@
+$(HOST_BUILD)/test_gen3_berry_context_sanitize: $(GEN3_BERRY_CONTEXT_SOURCES) include/Legality/Gen3BerryContext.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $(GEN3_BERRY_CONTEXT_SOURCES) -o $@
+
+HOST_TESTS += $(HOST_BUILD)/test_legality_report_presentation
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legality_report_presentation_sanitize
+host-test: $(HOST_BUILD)/test_legality_report_presentation
+host-sanitize: $(HOST_BUILD)/test_legality_report_presentation_sanitize
+$(HOST_BUILD)/test_legality_report_presentation: tests/test_legality_report_presentation.cpp include/Legality/ReportPresentation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_legality_report_presentation_sanitize: tests/test_legality_report_presentation.cpp include/Legality/ReportPresentation.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
+
+HOST_TESTS += $(HOST_BUILD)/test_gen3_berry_source
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_gen3_berry_source_sanitize
+host-test: $(HOST_BUILD)/test_gen3_berry_source
+host-sanitize: $(HOST_BUILD)/test_gen3_berry_source_sanitize
+$(HOST_BUILD)/test_gen3_berry_source: tests/test_gen3_berry_source.cpp include/Legality/Gen3BerryContext.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $< -o $@
+$(HOST_BUILD)/test_gen3_berry_source_sanitize: tests/test_gen3_berry_source.cpp include/Legality/Gen3BerryContext.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $< -o $@
