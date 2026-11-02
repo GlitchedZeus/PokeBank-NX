@@ -334,6 +334,126 @@ void testLaunchDialogNoticesFit() {
         assert(L::build(false, "Pokemon SoulSilver Version", gameLaunchQuitRouteNotice(route)).fits);
 }
 
+
+// Round 15 R04 (RetroArch Gen I-III quit): what the outer loader does after a plain RetroArch
+// Quit, stated from facts PokeBank can read before it exits, plus the per-launch record the owner
+// sends back. Stock nx-hbloader 82b95122 main.c loadNro(): empty next-load -> open
+// DEFAULT_NRO "sdmc:/hbmenu.nro"; open() failure -> diagAbortWithResult(Module_HomebrewLoader, 3),
+// i.e. error 2347-0003.
+void testQuitExpectationAndHandoffRecord() {
+    using namespace UI;
+    namespace L = PokeBank::UIModel::LeaveDecisionLayout;
+
+    // Loader info is the first NUL-terminated, printable part of envGetLoaderInfo().
+    const char hbl[] = "nx-hbloader 2.4.4\0Do you mean to tell me that you're thinking seriously";
+    assert(gameLaunchLoaderInfoLine(hbl, sizeof(hbl)) == "nx-hbloader 2.4.4");
+    assert(gameLaunchLoaderInfoLine(nullptr, 12).empty());
+    assert(gameLaunchLoaderInfoLine("abc", 0).empty());
+    const char ctrl[] = "fwd\nloader\x01x";
+    assert(gameLaunchLoaderInfoLine(ctrl, sizeof(ctrl)) == "fwd?loader?x");
+    const std::string longInfo(300, 'a');
+    assert(gameLaunchLoaderInfoLine(longInfo.data(), longInfo.size()).size() == 96);
+
+    GameLaunchLoaderFacts facts;               // host build / facts unknown
+    using E = GameLaunchQuitExpectation;
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::LoaderDefault, facts) == E::LoaderDecides);
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::ReturnsToPokeBank, facts) == E::ReturnsToPokeBank);
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::EmulatorLauncher, facts) == E::EmulatorLauncher);
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::None, facts) == E::None);
+
+    facts.known = true;
+    facts.loaderInfo = "nx-hbloader 2.4.4";
+    facts.hbmenuPresent = true;
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::LoaderDefault, facts) == E::HomebrewMenu);
+    facts.hbmenuPresent = false;
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::LoaderDefault, facts) ==
+           E::LoaderErrorMissingHbmenu);
+    // The return host and DraStic routes never depend on hbmenu.
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::ReturnsToPokeBank, facts) == E::ReturnsToPokeBank);
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::EmulatorLauncher, facts) == E::EmulatorLauncher);
+    facts.loaderInfo = "SomeForwarder 1.0";   // not stock hbloader: the loader decides
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::LoaderDefault, facts) == E::LoaderDecides);
+    facts.loaderInfo.clear();
+    assert(gameLaunchQuitExpectation(GameLaunchQuitRoute::LoaderDefault, facts) == E::LoaderDecides);
+
+    // Dialog notice: unchanged everywhere except the one case PokeBank can prove will end in a
+    // loader error, which it now states before launching.
+    GameLaunchLoaderFacts unknown;
+    for (auto route : {GameLaunchQuitRoute::None, GameLaunchQuitRoute::LoaderDefault,
+                       GameLaunchQuitRoute::EmulatorLauncher, GameLaunchQuitRoute::ReturnsToPokeBank})
+        assert(std::string(gameLaunchQuitNotice(route, unknown)) == gameLaunchQuitRouteNotice(route));
+    GameLaunchLoaderFacts stock;
+    stock.known = true;
+    stock.loaderInfo = "nx-hbloader 2.4.4";
+    stock.hbmenuPresent = true;
+    assert(std::string(gameLaunchQuitNotice(GameLaunchQuitRoute::LoaderDefault, stock)) ==
+           gameLaunchQuitRouteNotice(GameLaunchQuitRoute::LoaderDefault));
+    stock.hbmenuPresent = false;
+    const std::string missing = gameLaunchQuitNotice(GameLaunchQuitRoute::LoaderDefault, stock);
+    assert(missing.find("2347-0003") != std::string::npos);
+    assert(missing.find("sdmc:/hbmenu.nro") != std::string::npos);
+    // Fits the launch dialog alone and after the longest core-evidence notice.
+    assert(L::build(false, "Pokemon SoulSilver Version", missing).fits);
+    const auto evidence = retroArchSaveCoreEvidence("platinum_nds",
+                                                    "sdmc:/retroarch/saves/melonDS DS/Pokemon Platinum.sav");
+    const std::string withCore = "Core unproven (" + evidence.reason + "); it may not load this save. " + missing;
+    const L::Text t = L::build(false, "Pokemon SoulSilver Version", withCore);
+    if (!t.fits) std::cerr << "does not fit: " << withCore << "\n";
+    assert(t.fits);
+
+    // Handoff record: one key=value per line, values verbatim from the plan and the facts.
+    GameLaunchDescriptor retro;
+    retro.backend = GameLaunchBackend::RetroArch;
+    retro.state = GameLaunchState::Ready;
+    retro.providerId = "retroarch";
+    retro.corePath = "sdmc:/retroarch/cores/gambatte_libretro_libnx.nro";
+    retro.launcherPath = retro.corePath;
+    retro.contentPath = "sdmc:/roms/gbc/Pok\xC3\xA9mon - Crystal Version (USA).gbc";
+    const auto plan = buildGameLaunchChainPlan(retro);
+    GameLaunchLoaderFacts device;
+    device.known = true;
+    device.loaderInfo = "nx-hbloader 2.4.4";
+    device.isApplication = true;
+    device.hbmenuPresent = true;
+    device.pokeBankNroPath = "sdmc:/switch/PokeBank-NX/PokeBank-NX.nro";
+    const std::string record = formatGameLaunchHandoffRecord(retro, plan, device);
+    const auto has = [&](const std::string& line) {
+        return record.find(line + "\n") != std::string::npos;
+    };
+    assert(record.rfind("POKEBANK_LAUNCH_HANDOFF_V1\n", 0) == 0);
+    assert(has("provider=retroarch"));
+    assert(has("backend=retroarch"));
+    assert(has("route=direct"));
+    assert(has("nro=" + retro.corePath));
+    assert(has("argv=" + plan.argv));
+    assert(has("content=" + retro.contentPath));
+    assert(has("pokebank=" + device.pokeBankNroPath));
+    assert(has("loader=nx-hbloader 2.4.4"));
+    assert(has("applet=application"));
+    assert(has("hbmenu=present"));
+    assert(has("quit=homebrew-menu"));
+    // Unknown facts say so instead of guessing.
+    const std::string bare = formatGameLaunchHandoffRecord(retro, plan, GameLaunchLoaderFacts{});
+    assert(bare.find("loader=unknown\n") != std::string::npos);
+    assert(bare.find("applet=unknown\n") != std::string::npos);
+    assert(bare.find("hbmenu=unknown\n") != std::string::npos);
+    assert(bare.find("quit=loader-decides\n") != std::string::npos);
+    // Return-host plans record the host route and the PokeBank return expectation.
+    GameLaunchReturnOptions options;
+    options.pokeBankNroPath = device.pokeBankNroPath;
+    options.returnHostNroPath = "sdmc:/switch/PokeBank-NX/runtime/PokeBankReturnHost.nro";
+    options.returnHostEnabled = true;
+    const auto hosted = buildGameLaunchChainPlan(retro, options);
+    const std::string hostedRecord = formatGameLaunchHandoffRecord(retro, hosted, device);
+    assert(hostedRecord.find("route=return-host\n") != std::string::npos);
+    assert(hostedRecord.find("quit=returns-to-pokebank\n") != std::string::npos);
+    // A newline inside any value can never forge another key.
+    GameLaunchLoaderFacts forged = device;
+    forged.loaderInfo = "evil\nquit=returns-to-pokebank";
+    const std::string forgedRecord = formatGameLaunchHandoffRecord(retro, plan, forged);
+    assert(forgedRecord.find("\nquit=returns-to-pokebank\n") == std::string::npos);
+}
+
 } // namespace
 
 int main() {
@@ -343,6 +463,7 @@ int main() {
     testReturnSelection();
     testRetroArchSaveCoreEvidence();
     testLaunchDialogNoticesFit();
+    testQuitExpectationAndHandoffRecord();
 
     assert(normalizedLaunchStem("sdmc:/retroarch/cores/savefiles/Pokemon Yellow.srm") == "pokemonyellow");
     assert(normalizedLaunchStem("/roms/gba/Pokemon - Emerald Version (USA).gba") ==
