@@ -1,0 +1,14 @@
+{
+  "date_of_size_scan_utc": "2026-11-02T07:55:59.925227+00:00",
+  "initial_codex_allocated_bytes": 27232681984,
+  "measured_current_codex_allocated_bytes": 30047510528,
+  "measured_current_project_allocated_bytes": 28945723392,
+  "measured_archival_session_allocated_bytes": 7003389952,
+  "verified_cleanup_allocated_bytes": 21571874816,
+  "existing_files_cleanup_allocated_bytes": 15162486784,
+  "archive_staging_and_duplicate_download_cleanup_allocated_bytes": 6409388032,
+  "cleanup_file_count": 5818,
+  "cleanup_performed": false,
+  "retained": "All source worktrees/Git metadata, global/private Codex state, synced sources, SDK/public-source caches, original local fuzz/corpus/probe files and private inventories remain outside cleanup.",
+  "units": "GB means 1000000000 bytes; figures are allocated file blocks, not a guarantee of physical free-space gain."
+}

@@ -1,0 +1,307 @@
+{
+  "schema": 2,
+  "engine_commit": "2144a6820490fa81c932dd2d917b5153283feefc",
+  "evidence_tag": "evidence/gen1-5-2144a682-20261102",
+  "release_id": 431141822,
+  "release_url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/evidence/gen1-5-2144a682-20261102",
+  "archival_document_branch": "wip/legality-evidence-20261025",
+  "archived_regular_original_paths": 13225,
+  "unique_content_addressed_blobs": 9926,
+  "all_archived_regular_file_payloads_download_verified": true,
+  "source_hashes_verified_in_fresh_clone": 810,
+  "eligible_cleanup_allocated_bytes": 21571874816,
+  "cleanup_executed": false,
+  "private_global_and_unreviewed_git_state": "Retained locally; UNSAFE TO DELETE",
+  "assets": {
+    "ARCHIVE_MANIFEST.v2.json.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/ARCHIVE_MANIFEST.v2.json.gz",
+      "asset_id": 700973068,
+      "bytes": 952253,
+      "sha256": "331441c89014c649bacde16e2baeab9a6e9d0a15fa4c6c9e2c32c2e8e009eb2f",
+      "independent_download_verified": true
+    },
+    "BULK_PUBLIC_UPLOAD_CLEARANCE.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/BULK_PUBLIC_UPLOAD_CLEARANCE.json",
+      "asset_id": 700973142,
+      "bytes": 3841,
+      "sha256": "94e71235ee91e57288cadf0c019aa161b3b8e315306a645f92131416dd92d5ec",
+      "independent_download_verified": true
+    },
+    "CLEANUP_INVENTORY.v2.json.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/CLEANUP_INVENTORY.v2.json.gz",
+      "asset_id": 700973078,
+      "bytes": 296481,
+      "sha256": "6dda1b142e1bf3c509043ffa9ea359532dd323dcefa313034b5c5885abc3a73b",
+      "independent_download_verified": true
+    },
+    "EVENTS_PUBLIC_FIXTURE_PROVENANCE.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/EVENTS_PUBLIC_FIXTURE_PROVENANCE.json",
+      "asset_id": 700832820,
+      "bytes": 72722,
+      "sha256": "a71292a70ddd88da2a20b0fbe60b8ac7eef69ff27f5630d51768da4caf53854b",
+      "independent_download_verified": true
+    },
+    "EXCLUSIONS_AND_LOCAL_RETENTION.v1.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/EXCLUSIONS_AND_LOCAL_RETENTION.v1.json",
+      "asset_id": 700973133,
+      "bytes": 2652,
+      "sha256": "f8350984dfa04a66db7d715601ef0014670e319cd2c43ebf24c40f28475a5b19",
+      "independent_download_verified": true
+    },
+    "FINAL_REPORT.md": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/FINAL_REPORT.md",
+      "asset_id": 700797622,
+      "bytes": 6282,
+      "sha256": "40e0771e11ca6226a04338b425b279b7658e15fbd7b0175d429d16b12921a116",
+      "independent_download_verified": true
+    },
+    "FRESH_CLONE_SOURCE_PIN_VERIFICATION.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/FRESH_CLONE_SOURCE_PIN_VERIFICATION.json",
+      "asset_id": 700973152,
+      "bytes": 276,
+      "sha256": "168da4d59c2c610852f880c7d153190a2c3d73ce92e5dce4dd2b54dfe957cad1",
+      "independent_download_verified": true
+    },
+    "GEN12_SNAPSHOT_REMOTE_VERIFIED.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/GEN12_SNAPSHOT_REMOTE_VERIFIED.json",
+      "asset_id": 700973164,
+      "bytes": 286,
+      "sha256": "8ed1df478bda6c739aafa02ec993c687699d6621d7c0008c90b860bd45421ec7",
+      "independent_download_verified": true
+    },
+    "ORPHAN_BACKUP_REFS.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/ORPHAN_BACKUP_REFS.json",
+      "asset_id": 700973163,
+      "bytes": 15862,
+      "sha256": "f0652231e3bc8e025ca635efa2ac9efae4425bc06f2bf9f5164f9f94371d7acb",
+      "independent_download_verified": true
+    },
+    "PART_B_PUBLIC_UPLOAD_CLEARANCE.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/PART_B_PUBLIC_UPLOAD_CLEARANCE.json",
+      "asset_id": 700832822,
+      "bytes": 1339,
+      "sha256": "3c8e6c1d0d30dbb73a59f6206b08d009cf5b3623cc462fb48b276a5f1de777b0",
+      "independent_download_verified": true
+    },
+    "PUBLIC_ARCHIVAL_REPORT.v2.md": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/PUBLIC_ARCHIVAL_REPORT.v2.md",
+      "asset_id": 700973072,
+      "bytes": 12447,
+      "sha256": "e434a5e4cbf337a4d833bde9f363aa65702cc20c45553b971ea80bbdc35817ff",
+      "independent_download_verified": true
+    },
+    "PUBLIC_ARCHIVAL_REPORT.v3.md": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/PUBLIC_ARCHIVAL_REPORT.v3.md",
+      "asset_id": 700974572,
+      "bytes": 13063,
+      "sha256": "ec3731317b7dd642849bf7284a232c2b886861eb089c7876226a93e8a125ae95",
+      "independent_download_verified": true
+    },
+    "PUBLIC_RETRIEVAL_VERIFIED.v1.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/PUBLIC_RETRIEVAL_VERIFIED.v1.json",
+      "asset_id": 700973881,
+      "bytes": 16801,
+      "sha256": "5b458a640c48b7bf03c6a56839b84190c04b14347261350b5296fddd1a069065",
+      "independent_download_verified": true
+    },
+    "PUBLIC_SPACE_BREAKDOWN.v1.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/PUBLIC_SPACE_BREAKDOWN.v1.json",
+      "asset_id": 700974573,
+      "bytes": 866,
+      "sha256": "ced98007c7c897fc202805993e55e31abae2c3fdd0651fbb96d66272e962ca4e",
+      "independent_download_verified": true
+    },
+    "RECOVERY_GUIDE.v6.md": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/RECOVERY_GUIDE.v6.md",
+      "asset_id": 700973065,
+      "bytes": 12102,
+      "sha256": "8c9e2bbe9998baa0f213ce28aa4309dbaefd5e408e94fe810fb0d16e58496737",
+      "independent_download_verified": true
+    },
+    "RECOVERY_PROOF.v1.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/RECOVERY_PROOF.v1.tar.gz",
+      "asset_id": 700873834,
+      "bytes": 8260,
+      "sha256": "70addee410468401c7ceb73997abbe739a29da6b0e521fa4b9233854b6065710",
+      "independent_download_verified": true
+    },
+    "RECOVERY_PROOF_INDEX.v1.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/RECOVERY_PROOF_INDEX.v1.json",
+      "asset_id": 700873833,
+      "bytes": 2968,
+      "sha256": "05407b7230cdc2ef01a54471c7636b99af6fa2c6eb7bb68e457dd46dc3b29f91",
+      "independent_download_verified": true
+    },
+    "REMOTE_GIT_RECOVERY_PROOF.v1.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/REMOTE_GIT_RECOVERY_PROOF.v1.json",
+      "asset_id": 700973149,
+      "bytes": 292,
+      "sha256": "cc523aee9bea249f0f40e66a842c5be686881232eac3e558d80e50ed69752b48",
+      "independent_download_verified": true
+    },
+    "REMOTE_WITNESS_RECOVERY_PROOF.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/REMOTE_WITNESS_RECOVERY_PROOF.json",
+      "asset_id": 700973153,
+      "bytes": 701,
+      "sha256": "b7998d48ea3b2c1c4c29fc07718a6abe7e06d112c284fee5be60853c24767ddc",
+      "independent_download_verified": true
+    },
+    "SAFE_CLEANUP_COMMANDS.v2.txt": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/SAFE_CLEANUP_COMMANDS.v2.txt",
+      "asset_id": 700973119,
+      "bytes": 906,
+      "sha256": "4b005210e8b9a3a7f45c4891ec6f043d98c7cabb52943a1e4e643efc1abbbab3",
+      "independent_download_verified": true
+    },
+    "SHA256SUMS.v2.txt": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/SHA256SUMS.v2.txt",
+      "asset_id": 700973167,
+      "bytes": 3544,
+      "sha256": "f24e29d4bed9ec5d6a4c1a6aaf6ee0fe4111b63493a784ea091483a4efc53f0e",
+      "independent_download_verified": true
+    },
+    "SOFTWARE_SOURCE_CORPUS.v1.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/SOFTWARE_SOURCE_CORPUS.v1.json",
+      "asset_id": 700832819,
+      "bytes": 7212,
+      "sha256": "a79bf93663cb4353cdbdd7f241d36c5ce26ae2835476275ed5b15d5fdf59329f",
+      "independent_download_verified": true
+    },
+    "SOURCE_CORPUS_SUPPLEMENT_ASSET.v1.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/SOURCE_CORPUS_SUPPLEMENT_ASSET.v1.json",
+      "asset_id": 700973143,
+      "bytes": 134212,
+      "sha256": "618a5c74ba1fcac401dca521496a79b99ac9f353a370f5e44bea3b06dfe47285",
+      "independent_download_verified": true
+    },
+    "VERIFICATION_REPORT.v2.json": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/VERIFICATION_REPORT.v2.json",
+      "asset_id": 700973074,
+      "bytes": 25346,
+      "sha256": "e3f17766af2d2d1466fb24d5821aa2654465988a243632312b4da15c7302f691",
+      "independent_download_verified": true
+    },
+    "cleanup_guard_v4.py": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/cleanup_guard_v4.py",
+      "asset_id": 700973127,
+      "bytes": 2544,
+      "sha256": "2b30e5429a89cf163edf0c7b127d97d731f1cce6a562154870590160c988aebe",
+      "independent_download_verified": true
+    },
+    "legality-major-2144a682-CI_LOGS.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-major-2144a682-CI_LOGS.tar.gz",
+      "asset_id": 700797626,
+      "bytes": 706357,
+      "sha256": "026bde9a10b3472790d338388f126b4003ab96edd2256d55c8341ebe1e6e55f7",
+      "independent_download_verified": true
+    },
+    "legality-major-2144a682-PART_B-RECONSTITUTED.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-major-2144a682-PART_B-RECONSTITUTED.tar.gz",
+      "asset_id": 700808998,
+      "bytes": 1338891230,
+      "sha256": "4ec41ab2a2ff883d0510ffb9f96126837c3da3146a111b7db45cd3fa40f590ba",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part01.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part01.tar.gz",
+      "asset_id": 700826720,
+      "bytes": 309295900,
+      "sha256": "9bd3340280e2fdbcb879a18e227534a42c16eef4654ec1c0dca1bfd40ac72cad",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part02.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part02.tar.gz",
+      "asset_id": 700889703,
+      "bytes": 754946762,
+      "sha256": "37bf806e576806bb6d510d49b606c03d6594bcbe84cbdef7ac338cf8b32d3a60",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part03.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part03.tar.gz",
+      "asset_id": 700889700,
+      "bytes": 693358590,
+      "sha256": "866995954999694c8bf7c781494f8252f7f98170c4831aaaba149e298c7530b7",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part04.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part04.tar.gz",
+      "asset_id": 700889708,
+      "bytes": 689539287,
+      "sha256": "0580b4c542bf37bcd7791413be4fa1842f4e969532a103bdfede307409c2e3d7",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part05.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part05.tar.gz",
+      "asset_id": 700889647,
+      "bytes": 554103683,
+      "sha256": "12f58eeb5a4bc1ff64daa46befa1d8b6272a4db5052caa747b903403a02fe363",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part06.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part06.tar.gz",
+      "asset_id": 700889692,
+      "bytes": 709780546,
+      "sha256": "50b6100a05953915aea8b53e26718f212a461bd451a7c0c6d0150507fc55bdc7",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part07.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part07.tar.gz",
+      "asset_id": 700923580,
+      "bytes": 940118406,
+      "sha256": "2ba9a24cb0d2f6bec6307f02269b51a9267c4ac1018a3dde2245b9d108dda926",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part08.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part08.tar.gz",
+      "asset_id": 700931145,
+      "bytes": 321593250,
+      "sha256": "1681b5ad45fca1254b5a79e8e36295345739a8ab056740dc56f64337654c9510",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part09-http1.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part09-http1.tar.gz",
+      "asset_id": 700836792,
+      "bytes": 47639611,
+      "sha256": "083eb5301e11a60d76950e63eb8107722ef7c18c5497bd1d664ab78d573ef434",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part09.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part09.tar.gz",
+      "asset_id": 700834253,
+      "bytes": 47639611,
+      "sha256": "083eb5301e11a60d76950e63eb8107722ef7c18c5497bd1d664ab78d573ef434",
+      "independent_download_verified": true
+    },
+    "legality-storage-evidence-v1-part10.tar.gz": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/legality-storage-evidence-v1-part10.tar.gz",
+      "asset_id": 700916285,
+      "bytes": 1665644,
+      "sha256": "50f9d15c8a8bcf7b1db3ee02c3e9f18fdc7ad29d5548ffb8eddce3a2a06945ee",
+      "independent_download_verified": true
+    },
+    "restore_evidence_v4.py": {
+      "url": "https://github.com/GlitchedZeus/PokeBank-NX/releases/download/evidence/gen1-5-2144a682-20261102/restore_evidence_v4.py",
+      "asset_id": 700973125,
+      "bytes": 3371,
+      "sha256": "39209f445007af70ad503d64d12c9d40c541be9ae685f809335675e11c293fb4",
+      "independent_download_verified": true
+    }
+  },
+  "archival_tools": {
+    "inventory.py": "5ce2142f251876b262aa2102e1d0c73ef21875a1255deb80dd4d0035bb9e31e0",
+    "audit_public.py": "01e0624e6b50a81201d41fd49a89819d187e9fd97ee611a1a2acdf12a4841188",
+    "audit_selected.py": "fcd44653a20ef8524670b8f37acbcc9a5c06dbc6e1de3c5570e79928d16cd8da",
+    "package_bulk.py": "f1150f0f2c238f79299b3a7a19d9feea467ea92ab4f8ca157105eb4771022b1e",
+    "reconstitute_part_b.py": "106a5ebf4ee9f002d079708fdc1da9dadf629b28e6f6c5cf7f8bc6627f141aec",
+    "verify_remote_assets_v5.py": "f45f2c6c9c787800af880cc55c02c167226c8fe15d2324e97ce7378d48557cdd",
+    "verify_control_assets.py": "b498a194cd61d7ba8ba8330c82d5f7595fbadd8a08b9bbf7667f2de062287de7",
+    "restore_evidence_v4.py": "39209f445007af70ad503d64d12c9d40c541be9ae685f809335675e11c293fb4",
+    "cleanup_guard_v4.py": "2b30e5429a89cf163edf0c7b127d97d731f1cce6a562154870590160c988aebe",
+    "upload_remaining_http1.py": "b2da82653e7b73486bad796163a653dbb74c80929399909ed2c89f46dfc8a436",
+    "build_final_inventory_v3.py": "36f47368d533d5b5d6cd4dab4af559e8eee6522629d467cfe62f1ae6947525d0",
+    "generate_public_report.py": "064d5af7ff6c46705caf4e2c97a298928555bebdf15e14dd098c9fbe99abcd0b",
+    "publish_after_verified_v3.py": "d18e58fe2f11ee74a5f75f92ae895b953ac8f6ef336db95adf3fccbc4321e874",
+    "finalize_control_assets.py": "cee96e97076bf33bced883d032d1bd8ebcee2c88b804994f8bc853aab4a98c4e"
+  },
+  "important_missing_original_archive_bytes": "Three original compressed seals absent after initial inventory; all original Part B and older EABE named payload bindings recovered and independently verified. No claim that the original gzip byte streams were recovered."
+}

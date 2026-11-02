@@ -1,0 +1,7 @@
+{
+  "commit": "2a681f2cbfbc4d3d543cd882f93166e56109e639",
+  "remote_branch": "audit/gen12-independent-20261013",
+  "all_47_working_files_match_committed_bytes": true,
+  "remote_ref_verified": true,
+  "note": "Historical audit snapshot, not a current production correctness assertion."
+}
