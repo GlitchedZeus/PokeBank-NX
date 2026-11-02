@@ -3,6 +3,7 @@
 
 #include "Integration/Gen5/Gen5ExactFormatEditorProvider.h"
 #include "Integration/Gen5/Gen5SharedPokemonSession.h"
+#include "Integration/Gen5/Gen5TrainerName.h"
 #include "UI/SharedPokemonEditorContract.h"
 
 #include <optional>
@@ -32,6 +33,15 @@ struct SharedEditorSlot {
     return {location,valid && !pk->empty(),valid};
 }
 
+// A freshly initialized emulator placeholder has no actual OT identity.
+ // Creating or importing into it would offer a seemingly editable working copy
+ // of a game that has never established its Trainer.
+[[nodiscard]] inline bool hasEstablishedTrainer5(const Gen5StagedPokemonWorkspace& workspace) noexcept {
+    const auto& t = workspace.sourceSave().trainer();
+    return !newGameNoTrainer5(t.rawName.size(), t.tid, t.sid, t.playedHours,
+                             t.playedMinutes, t.playedSeconds);
+}
+
 [[nodiscard]] inline Shared::ActionSet actions(
     const Gen5StagedPokemonWorkspace& workspace,
     const SharedEditorSlot& slot) {
@@ -50,7 +60,7 @@ struct SharedEditorSlot {
     // Feature A (owner Oct 28): a .pk5 / .ek5 file into the same verified empty
     // box cell (Gen5PokemonFile.h importPokemonFile5; the UI runs the shared
     // file dialog).
-    caps.canAdd=live.validated && !live.occupied && box &&
+    caps.canAdd=hasEstablishedTrainer5(workspace) && live.validated && !live.occupied && box &&
                 workspace.emptyCloneDestination(slot.location.box,slot.location.slot);
     caps.canImportFile=caps.canAdd;
     // Move Pokemon matches Gen IV's box action: an exact clone into a
