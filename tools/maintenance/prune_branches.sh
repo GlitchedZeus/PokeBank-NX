@@ -55,7 +55,11 @@
 #     --archive-nro-fallback    with gh logged in: publish the missing nro/7fea1797 and nro/e10f307f
 #                               pre-releases from their original artifacts (verified against
 #                               docs/hardware/NRO_ARCHIVE.md; re-downloaded and re-verified after)
-#     Modes: without --group, --with-metadata / --archive-nro-fallback run alone (no branch prune).
+#     --tag-pr-heads            annotated tags archive/pr-122, archive/pr-163, archive/pr-280 at the live
+#                               PR heads (refused if a head moved from 36c0d1d6 / 79679950 / dcd855a7);
+#                               the PRs stay open and their branches stay excluded from deletion
+#     Modes: without --group, --with-metadata / --archive-nro-fallback / --tag-pr-heads run alone
+#     (no branch prune).
 #     Every mode is a dry run unless --execute is given.
 #     --audit-json PATH         default docs/maintenance/branch_audit_2026-11-02.json
 #     --remote NAME             default origin
@@ -80,6 +84,7 @@ SKIP_DRIFT=0
 ALLOW_LEGALITY_BASE=0
 WITH_METADATA=0
 NRO_FALLBACK=0
+TAG_PR_HEADS=0
 REMOTE="origin"
 AUDIT_JSON=""
 
@@ -98,6 +103,7 @@ while [[ $# -gt 0 ]]; do
     --allow-legality-base) ALLOW_LEGALITY_BASE=1 ;;
     --with-metadata) WITH_METADATA=1 ;;
     --archive-nro-fallback) NRO_FALLBACK=1 ;;
+    --tag-pr-heads) TAG_PR_HEADS=1 ;;
     --audit-json) AUDIT_JSON="${2:?}"; shift ;;
     --remote) REMOTE="${2:?}"; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -388,9 +394,57 @@ PY
   done
 }
 
+# ---------------------------------------------------------------- PR head tags (--tag-pr-heads)
+# Open PRs #122, #163 and #280 stay open and their head branches stay EXCLUDED from deletion; these
+# annotated tags only make their histories permanently reachable before the owner closes them.
+PR_HEAD_TAGS=("122|36c0d1d6" "163|79679950" "280|dcd855a7")
+append_log() {  # branch tip group preserved tag action (execute mode only)
+  local t; t="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  if [[ ! -f "$LOG_TSV" ]]; then
+    printf 'utc_time\trun\tbatch\tbranch\ttip\tgroup\tpreserved_by\ttag\taction\n' > "$LOG_TSV"
+  fi
+  printf '%s\t%s\t-\t%s\t%s\t%s\t%s\t%s\t%s\n' "$t" "$RUN_ID" "$1" "$2" "$3" "$4" "$5" "$6" >> "$LOG_TSV"
+  printf '| %s | %s | - | `%s` | `%s` | %s | %s | %s | %s |\n' "$t" "$RUN_ID" "$1" "$2" "$3" "$4" "$5" "$6" >> "$LOG_MD"
+}
+tag_pr_heads() {
+  local entry num prefix head ref tag remote_c
+  note "PR head tags ($MODE)"
+  for entry in "${PR_HEAD_TAGS[@]}"; do
+    IFS='|' read -r num prefix <<<"$entry"
+    tag="archive/pr-$num"
+    api_get "pulls/$num" "$WORK/pr$num.json" || die "cannot read PR #$num ($(cat "$WORK/api.err" 2>/dev/null))"
+    read -r head ref < <(python3 -c 'import json,sys; p=json.load(open(sys.argv[1])); print(p["head"]["sha"], p["head"]["ref"])' "$WORK/pr$num.json")
+    [[ "$head" =~ ^[0-9a-f]{40}$ ]] || die "PR #$num: no head SHA"
+    [[ "$head" == "$prefix"* ]] || die "PR #$num head moved: expected $prefix..., live $head; re-approve before tagging"
+    remote_c="$(remote_tag_commit "$tag")"
+    if [[ -n "$remote_c" ]]; then
+      [[ "$remote_c" == "$head" ]] || die "remote tag $tag exists at $remote_c, not $head"
+      echo "  $tag already on the remote at $head (verified)"; continue
+    fi
+    git cat-file -e "${head}^{commit}" 2>/dev/null || git fetch --quiet "$REMOTE" "refs/pull/$num/head" \
+      || die "cannot fetch the head commit of PR #$num"
+    git cat-file -e "${head}^{commit}" || die "PR #$num head $head is not available locally"
+    if (( ! EXECUTE )); then
+      echo "  would tag $tag at $head (PR #$num head $ref; the branch stays, PR stays open)"; continue
+    fi
+    if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+      [[ "$(git rev-parse "refs/tags/$tag^{commit}")" == "$head" ]] || die "local tag $tag points elsewhere"
+    else
+      git tag -a "$tag" "$head" -m "Archive of PR #$num head ($ref) at $head (PokeBank-NX cleanup, run $RUN_ID).
+Restore: git push $REMOTE refs/tags/$tag^{commit}:refs/heads/$ref"
+    fi
+    git push --quiet "$REMOTE" "refs/tags/$tag"
+    [[ "$(remote_tag_commit "$tag")" == "$head" ]] || die "pushed $tag does not verify as $head"
+    printf 'TAG\t%s\t%s\t%s\n' "$ref" "$head" "$tag" >> "$DONE_FILE"
+    append_log "$ref" "$head" "pr-head-tag" "tag $tag (PR #$num stays open; branch kept)" "$tag" "TAG"
+    echo "  tagged $tag at $head (verified on the remote)"
+  done
+}
+
 # Modes: prune (default, or whenever --group is given) / --with-metadata / --archive-nro-fallback.
 # Given only metadata and/or NRO flags, the branch prune is not run.
-if (( (WITH_METADATA || NRO_FALLBACK) && ${#GROUPS_REQ[@]} == 0 )); then
+if (( (WITH_METADATA || NRO_FALLBACK || TAG_PR_HEADS) && ${#GROUPS_REQ[@]} == 0 )); then
+  (( TAG_PR_HEADS )) && tag_pr_heads
   (( WITH_METADATA )) && apply_metadata
   (( NRO_FALLBACK )) && archive_nro_fallback
   summary
@@ -840,6 +894,7 @@ for g in "${ORDERED[@]}"; do
   done
 done
 
+if (( TAG_PR_HEADS )); then tag_pr_heads; fi
 if (( WITH_METADATA )); then apply_metadata; fi
 if (( NRO_FALLBACK )); then archive_nro_fallback; fi
 

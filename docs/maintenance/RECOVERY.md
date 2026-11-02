@@ -50,11 +50,21 @@ git clone --mirror /path/to/pokebank-nx-full-YYYYMMDD.bundle pokebank-nx-restore
 
 The bundle is made from `git clone --mirror` of GitHub. It therefore also contains GitHub's read-only `refs/pull/*` refs. Do not push those back.
 
+## Restore a PR head from its archive tag
+
+`--tag-pr-heads` checks that each live PR head still starts with the approved prefix: `36c0d1d6` for #122, `79679950` for #163, `dcd855a7` for #280. It then tags the head, pushes the tag and verifies `tag^{}` against `git ls-remote`. The run is logged in `BRANCH_DELETION_LOG.md` (group `pr-head-tag`). To bring a head back as a branch:
+
+```bash
+git fetch origin refs/tags/archive/pr-122:refs/tags/archive/pr-122
+git push origin 'refs/tags/archive/pr-122^{commit}:refs/heads/feature/touch-controls-20261005'
+```
+
 ## Fetching tags that already exist
 
 | Tags | What they preserve | Fetch |
 |---|---|---|
 | `archive/branches/*` | Branch tips archived by `prune_branches.sh` (about 54 after a full run) | `git fetch origin 'refs/tags/archive/branches/*:refs/tags/archive/branches/*'` |
+| `archive/pr-122`, `archive/pr-163`, `archive/pr-280` | Heads of open PRs #122, #163 and #280, made by `prune_branches.sh --tag-pr-heads` before the owner closes them. The PRs and their branches are kept. | `git fetch origin 'refs/tags/archive/pr-*:refs/tags/archive/pr-*'` |
 | `archive/local-reflog-20261102/*` (61) | Commits recovered from local reflogs on 2026-11-02. These are lightweight tags. Each name is the 12-hex prefix of the commit it points to. | `git fetch origin 'refs/tags/archive/local-reflog-20261102/*:refs/tags/archive/local-reflog-20261102/*'` |
 | `nro/*` (9) | Source commits of the archived candidate NRO pre-releases ([NRO_ARCHIVE.md](../hardware/NRO_ARCHIVE.md)) | `git fetch origin 'refs/tags/nro/*:refs/tags/nro/*'` |
 | `evidence/*` (1) | Evidence draft pre-release `evidence/gen1-5-2144a682-20261102` | `git fetch origin 'refs/tags/evidence/*:refs/tags/evidence/*'` |
