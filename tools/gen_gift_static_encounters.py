@@ -164,8 +164,25 @@ PREREQS = [
     (("platinum_nds",), 377, 125, "OtherGame", "Regigigas in the party (itself needs the Regis)"),
     (("platinum_nds",), 378, 124, "OtherGame", "Regigigas in the party (itself needs the Regis)"),
     (("platinum_nds",), 379, 123, "OtherGame", "Regigigas in the party (itself needs the Regis)"),
+    # Coordinator follow-up (owner rule: unknown ticket / distribution / regional / event
+    # prerequisites -> Incomplete; when in doubt, be conservative). Full sweep of every static / gift
+    # row: docs/data/GIFT_STATIC_ENCOUNTER_COVERAGE.md "Prerequisite sweep".
+    (("black2_nds", "white2_nds"), 377, 150, "LinkOrDevice",
+     "Key System chamber (Rock Peak): a key may come from the other version via Unova Link"),
+    (("black2_nds", "white2_nds"), 378, 151, "LinkOrDevice",
+     "Key System chamber (Iceberg): a key may come from the other version via Unova Link"),
+    (("black2_nds", "white2_nds"), 379, 152, "LinkOrDevice",
+     "Key System chamber (Iron): a key may come from the other version via Unova Link"),
+    (("black2_nds", "white2_nds"), 486, 38, "OtherGame",
+     "Regirock, Regice and Registeel in the party (Key System Regis)"),
+    (("heartgold_nds",), 382, 232, "Unconfirmed",
+     "Embedded Tower: Blue Orb / Kyogre access condition not confirmed by the pinned sources"),
+    (("soulsilver_nds",), 383, 232, "Unconfirmed",
+     "Embedded Tower: Red Orb / Groudon access condition not confirmed by the pinned sources"),
+    (("diamond_nds", "pearl_nds", "platinum_nds"), 442, 24, "LinkOrDevice",
+     "Odd Keystone after talking to 32 people in the Underground (link play)"),
 ]
-PREREQ_KINDS = ["None", "TicketOrItem", "EventPokemon", "OtherGame"]
+PREREQ_KINDS = ["None", "TicketOrItem", "EventPokemon", "OtherGame", "LinkOrDevice", "Unconfirmed"]
 CONFIDENCE = ["PretChecked", "PretSpotChecked", "SingleSource"]
 
 

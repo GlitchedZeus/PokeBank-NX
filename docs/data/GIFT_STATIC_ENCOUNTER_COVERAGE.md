@@ -82,6 +82,8 @@ in the game's scripts." Every row carries two more fields (generator, `.inc`, JS
    IV / V data row's editor / Review note reads "Encounter data: single source (PKHeX)".
 2. **Access prerequisite** — `prereq`: `TicketOrItem` (ticket / key item distribution), `EventPokemon`
    (an event-distributed Pokémon in the party), `OtherGame` (a Pokémon only another game provides),
+   `LinkOrDevice` (link play / another device: Unova Link Key System, Underground players),
+   `Unconfirmed` (a special access condition the pinned sources do not let the generator confirm),
    with the reason in `kPrerequisiteReasons`.
 3. **Incomplete** — a prerequisite the save cannot show. Design: the row STAYS in the default list,
    because the encounter is in the game ("Navel Rock — Event Lv. 70; access unverified"), but it is
@@ -102,10 +104,40 @@ in the game's scripts." Every row carries two more fields (generator, `.inc`, JS
 | Black / White Victini (Liberty Pass) | TicketOrItem |
 | Black / White Zorua (event Celebi), Zoroark (event shiny beasts) | EventPokemon |
 | HeartGold / SoulSilver Dialga / Palkia / Giratina, Sinjoh Ruins (event Arceus); Spiky-eared Pichu (event Pichu) | EventPokemon |
+| Black 2 / White 2 Regirock / Regice / Registeel (Key System chambers; a key may come from the other version via Unova Link) ; Diamond / Pearl / Platinum Spiritomb (Odd Keystone after talking to 32 people in the Underground) | LinkOrDevice |
+| HeartGold Kyogre / SoulSilver Groudon, Embedded Tower (orb access condition not confirmed by the pinned sources) | Unconfirmed |
+| Black 2 / White 2 Regigigas (the three Key System Regis) | OtherGame |
 | HeartGold / SoulSilver Rayquaza (Kyogre + Groudon); Black / White Landorus (Tornadus + Thundurus); Diamond / Pearl / Platinum Regigigas (the three Regis); Platinum Regirock / Regice / Registeel (Regigigas) | OtherGame |
 
 Arceus (Spear Pillar / Hall of Origin, Azure Flute), the HG/SS GS Ball Celebi and other pure
 distributions have no data rows (no in-game script row in PKHeX's tables), so they stay unverified.
+
+### Prerequisite sweep (coordinator follow-up, conservative)
+
+Every static / gift / prize / fossil row of all 15 games was reviewed against: another game,
+Pal Park, Dual-slot, Poké Transfer, Dream World / Dream Radar, event items, and Pokémon that must be
+obtained by event first. Rulings (rows not named are reachable by in-game progress alone):
+
+- Crystal: only Celebi (GS Ball). Suicune / Lugia / Ho-Oh need the Clear Bell / Silver Wing /
+  Rainbow Wing, all in-game.
+- Ruby / Sapphire / Emerald: Southern Island, Navel Rock, Birth Island, Faraway Island flagged.
+  The Regis need Wailord + Relicanth (in-game); Kyogre / Groudon / Rayquaza, Sudowoodo in-game.
+- FireRed / LeafGreen: Navel Rock, Birth Island flagged. Mewtwo, Sevii legendaries in-game.
+- Diamond / Pearl / Platinum: Regigigas, Platinum Regis, Shaymin, Darkrai flagged; Spiritomb
+  flagged (32 Underground players need link play). Heatran, the lake trio, Dialga / Palkia,
+  Giratina, Rotom in-game.
+- HeartGold / SoulSilver: Sinjoh trio, Spiky-eared Pichu, Enigma Stone Latios / Latias, Rayquaza
+  flagged; Kyogre (HG) / Groudon (SS) flagged Unconfirmed (orb condition not in the pinned sources).
+  Lugia / Ho-Oh, Suicune, Mewtwo, Kanto birds in-game.
+- Black / White: Victini, Zorua, Zoroark, Landorus flagged. Musharna (Friday), Swords of Justice,
+  Volcarona, Kyurem in-game.
+- Black 2 / White 2: Regirock / Regice / Registeel flagged LinkOrDevice for BOTH versions (which
+  chamber each version opens natively is not confirmed by the pinned sources, and the Key System
+  state is not part of the Pokémon's record, so none is save-verifiable from its history);
+  Regigigas flagged (needs the three). Latios / Latias, lake trio, Heatran, Cresselia, Swords of
+  Justice, Kyurem, Zekrom / Reshiram, N's Pokémon, day-of-week statics, Floccesy Gible / Dratini
+  in-game. Hidden Grottoes and Dream Radar are not in this table.
+- In-game trades were not flagged: each wanted Pokémon is obtainable in the same game.
 
 ## Gaps (explicit; nothing invented)
 
@@ -115,10 +147,6 @@ distributions have no data rows (no in-game script row in PKHeX's tables), so th
   and kept, but its access cannot be known from a save, so the acquisition evidence is Incomplete
   (see "Three tiers" below). Their fateful flag is recorded but the pickers do not check the record's
   fateful flag.
-- **Prerequisites not judged**: Black 2 / White 2 Regi keys (Key System / Unova Link) and
-  Regigigas, Heart Gold / Soul Silver Kyogre / Groudon orb conditions, and similar "post-game" rows
-  were not flagged because the generator only flags prerequisites it can name with certainty; they
-  read as ordinary verified rows and should be reviewed.
 - **Egg gifts** (Odd Egg, Togepi, Wynaut, Riolu, Happiny, Mareep / Wooper / Slugma, Larvesta): data
   rows only. An egg is met where it hatched, so they are not Met Location rows (egg / breeding
   histories are the breeding lane).
@@ -170,5 +198,8 @@ day; unverified". Gift / trade rows at LANDMARK_GIFT write level 0 and time 0 as
    Encounter origin and Review read "Incomplete: encounter in game script; ticket / distribution not
    verifiable from the save". Crystal Celebi Lv 30 → Ilex Forest row "; access unverified", Met evidence
    Incomplete. HeartGold Chikorita gift → Met evidence "Encounter data: single source (PKHeX)".
-10. Any game: a species with no gift / trade data (e.g. FireRed Pikachu) still shows the trade /
+10. Black 2: Regirock Lv 65 → "Rock Peak Chamber — Static Lv. 65; access unverified", Met evidence
+    "Incomplete: … link play / another device not verifiable from the save". Diamond Spiritomb Lv 25
+    and HeartGold Kyogre Lv 50 read the same way; Black 2 Cresselia Lv 68 stays a verified row.
+11. Any game: a species with no gift / trade data (e.g. FireRed Pikachu) still shows the trade /
    event markers labelled "marker; unverified".

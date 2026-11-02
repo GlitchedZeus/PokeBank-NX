@@ -23,7 +23,8 @@ BAG_TOP_UP_HEADERS := include/Inventory/BulkItemPlan.h include/Inventory/BulkIte
 	include/Integration/Gen1/Gen1StagedInventoryEditor.h include/Integration/Gen2/Gen2StagedEditor.h \
 	include/Integration/Gen3/Gen3StagedInventoryEditor.h include/Integration/Gen5/Gen5Bag.h
 
-BAG_TOP_UP_TESTS := $(HOST_BUILD)/test_bag_top_up_adapters $(HOST_BUILD)/test_bag_top_up_real_saves
+BAG_TOP_UP_TESTS := $(HOST_BUILD)/test_bag_top_up_adapters $(HOST_BUILD)/test_bag_top_up_real_saves \
+	$(HOST_BUILD)/test_bag_top_up_capacity
 BAG_TOP_UP_SANITIZE_TESTS := $(addsuffix _sanitize,$(BAG_TOP_UP_TESTS))
 
 HOST_TESTS += $(BAG_TOP_UP_TESTS)
@@ -35,6 +36,7 @@ host-sanitize: $(BAG_TOP_UP_SANITIZE_TESTS)
 host-bag-top-up: $(BAG_TOP_UP_TESTS)
 	./$(HOST_BUILD)/test_bag_top_up_adapters
 	./$(HOST_BUILD)/test_bag_top_up_real_saves
+	./$(HOST_BUILD)/test_bag_top_up_capacity
 
 $(HOST_BUILD)/test_bag_top_up_%: tests/test_bag_top_up_%.cpp $(BAG_TOP_UP_COMMON_SOURCES) $(BAG_TOP_UP_HEADERS)
 	@mkdir -p $(HOST_BUILD)

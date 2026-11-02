@@ -68,16 +68,21 @@ void runSession(const L& layout,SourceGame game) {
         Session species; species.begin(entry, mode); assert(species.setLevel(50));
         species.working.moves = {}; species.working.pp = {}; species.working.ppUps = {};
         const auto stagedBefore = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
-        const auto expectedLevel =
+        // Round 13 owner decision 9: a Create draft takes the new species' default level; an
+        // EXISTING Pokemon (Edit) keeps Lv 50, and Pikachu's 125,000 EXP already lies in Pidgey's
+        // (Medium Slow) Lv 50 range, so it is kept unchanged.
+        const auto defaultLevel =
             PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 16);
+        const uint8_t expectedLevel = mode == SessionMode::Create ? defaultLevel : 50;
         assert(species.setSpecies(16, sourceId));
         // Round 11 (owner H28): a species change adds no move and Add/Keep need one, so pick Tackle.
         assert(species.working.moves == (std::array<uint8_t, 4>{}));
         assert(species.setMove(0, 33));
         assert(species.working.level == expectedLevel);
-        assert(species.working.level != 50);
-        assert(expectedLevel == (game == SourceGame::Crystal ? 2 : 5));
-        assert(species.working.experience == Pokemon::getExpForLevel(species.working.level, personalRecord(16)->experienceGrowth));
+        assert(mode == SessionMode::Edit ? species.working.experience == 125000 : species.working.level != 50);
+        assert(defaultLevel == (game == SourceGame::Crystal ? 2 : 5));
+        assert(mode == SessionMode::Edit ||
+               species.working.experience == Pokemon::getExpForLevel(species.working.level, personalRecord(16)->experienceGrowth));
         assert(std::equal(stagedBefore.begin(), stagedBefore.end(), editor->stagedBytes().begin()));
         assert(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
         // Serialize the same visible result into a separate staged workspace.
@@ -94,9 +99,9 @@ void runSession(const L& layout,SourceGame game) {
         if (mode == SessionMode::Create) assert(species.add(*committed, 2, changedSlot, error));
         else assert(species.keep(*committed, 0, 0, error));
         const auto result = committed->boxedPokemon(mode == SessionMode::Create ? 2 : 0, changedSlot, error);
-        assert(result && result->species == 16 && result->level ==
-               PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 16));
-        assert(result->experience == Pokemon::getExpForLevel(result->level, personalRecord(16)->experienceGrowth));
+        assert(result && result->species == 16 && result->level == expectedLevel);
+        assert(result->experience == species.working.experience);
+        assert(result->level == Pokemon::getLevelFromExp(result->experience, personalRecord(16)->experienceGrowth));
         assert(std::equal(raw.begin(), raw.end(), committed->originalBytes().begin()));
         // Discard a fresh local change, preserving the pre-existing staged bytes.
         species.begin(entry, mode); assert(species.setLevel(50)); assert(species.setSpecies(16, sourceId));
@@ -212,10 +217,11 @@ void runSession(const L& layout,SourceGame game) {
     assert(!session.editRequest().level && session.editRequest().experience==27001);
     assert(session.setLevel(40));assert(session.editRequest().level==40&&!session.editRequest().experience);
     assert(session.setSpecies(1, sourceId));
-    const auto speciesOneLevel =
-        PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 1);
-    assert(session.working.level == speciesOneLevel);
-    assert(session.working.experience==Pokemon::getExpForLevel(speciesOneLevel,3));
+    // Round 13 owner decision 9: the existing Pokemon keeps Lv 40; Pikachu's 64,000 EXP is outside
+    // Bulbasaur's (Medium Slow) Lv 40 range, so EXP becomes that level's minimum.
+    assert(session.working.level == 40);
+    assert(session.working.experience==Pokemon::getExpForLevel(40,3));
+    assert(!session.editRequest().level && session.editRequest().experience==Pokemon::getExpForLevel(40,3));
     for (uint8_t manual : {uint8_t(1), uint8_t(50), uint8_t(100)}) {
         assert(session.setLevel(manual));
         assert(session.working.level == manual);
@@ -235,8 +241,7 @@ void runSession(const L& layout,SourceGame game) {
     assert(picker.speciesChoice()==1);
     assert(Picker::applySpeciesChoice(session,picker.speciesChoice(), sourceId));
     assert(session.working.species==1);
-    assert(session.working.level ==
-           PokeBank::UIModel::SpeciesChangeLevelPolicy::defaultLevel(sourceId, 1));
+    assert(session.working.level == kept.level);   // Round 13 owner decision 9
     assert(session.working.level==Pokemon::getLevelFromExp(session.working.experience,3));
     assert(session.working.gender==static_cast<uint8_t>(genderFromAttackDV(1,session.working.dvs[1])));
 

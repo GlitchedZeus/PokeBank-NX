@@ -327,27 +327,29 @@ namespace Utils {
      *
      * @param destination first byte of the field
      * @param slotCount   total u16 units the field holds (one is reserved for the terminator)
-     * @param text        UTF-16 text to store; characters with no Gen 4 glyph end the name, so ask
-     *                    gen4CanEncode() first
+     * @param text        UTF-16 text to store; a character with no Gen 4 glyph, or a text longer
+     *                    than the cap, refuses the whole write (returns false, nothing written)
      * @param maxCharacterCount the game's own cap on this field (7 for a trainer name, 8 for a box)
      */
-    inline void writeGen4Field(uint8_t* destination, size_t slotCount, const std::u16string& text,
+    inline bool writeGen4Field(uint8_t* destination, size_t slotCount, const std::u16string& text,
                                size_t maxCharacterCount) noexcept {
-        if (destination == nullptr || slotCount == 0) return;
+        // Round 14 P0-2: all-or-nothing. A name longer than the cap or the field, or one with a
+        // character the table lacks, is refused with the destination untouched -- never cut.
+        if (destination == nullptr || slotCount == 0) return false;
+        if (text.size() > maxCharacterCount || text.size() > slotCount - 1) return false;
+        if (!gen4CanEncode(text)) return false;
         for (size_t byteIndex = 0; byteIndex < slotCount * 2; ++byteIndex) {
             destination[byteIndex] = 0;
         }
-        size_t writableCount = slotCount - 1;   // one unit reserved for the terminator
-        if (writableCount > maxCharacterCount) writableCount = maxCharacterCount;
-        if (writableCount > text.size()) writableCount = text.size();
         size_t slotIndex = 0;
-        for (; slotIndex < writableCount; ++slotIndex) {
+        for (; slotIndex < text.size(); ++slotIndex) {
             const uint16_t encoded = charToGen4(static_cast<uint16_t>(text[slotIndex]));
             destination[slotIndex * 2] = static_cast<uint8_t>(encoded & 0xFF);
             destination[slotIndex * 2 + 1] = static_cast<uint8_t>((encoded >> 8) & 0xFF);
         }
         destination[slotIndex * 2] = static_cast<uint8_t>(GEN4_TERMINATOR & 0xFF);
         destination[slotIndex * 2 + 1] = static_cast<uint8_t>((GEN4_TERMINATOR >> 8) & 0xFF);
+        return true;
     }
 }
 

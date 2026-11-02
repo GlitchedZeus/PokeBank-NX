@@ -3,6 +3,7 @@
 #include "Conversion/Gen3PidSearch.h"
 #include "Encryption/Encryption4.h"
 #include "Pokemon/Experience.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "Pokemon/PersonalInfo4DP.h"
 #include "Pokemon/PersonalInfo4HGSS.h"
 #include "Pokemon/PersonalInfo4PT.h"
@@ -18,6 +19,7 @@
 #include "Names/DefaultSpeciesName.h"
 #include "Utils/StringHelpers.h"
 #include "Utils/Gen4TextCodec.h"
+#include "Text/TextFieldCapability.h"
 
 #include <algorithm>
 #include <array>
@@ -391,14 +393,17 @@ bool Pokemon4Mutable::writeTextPreservingTrash(
     const std::u16string& value) noexcept {
     if (!valid_ || offset + slotCount * 2 > decrypted_.size() || slotCount == 0)
         return false;
-    const std::u16string bounded =
-        value.substr(0, std::min(value.size(), maxCharacters));
+    // Round 14 P0-2: all-or-nothing. The text used to be cut to the cap BEFORE the round-trip
+    // check, so the check compared the cut text with itself and an over-long name was stored as
+    // its prefix. The shared capability now refuses over-long text, a missing glyph or a name
+    // that would not read back unchanged; on refusal no byte is touched.
+    const PokeBank::Text::Gen4NameField field(PokeBank::Text::FieldKind::Nickname, language(),
+                                              maxCharacters, slotCount);
+    if (!field.check16(value).ok()) return false;
     const auto encoded =
-        Utils::encodeGen4Field(bounded, slotCount, maxCharacters, language());
+        Utils::encodeGen4Field(value, slotCount, maxCharacters, language());
     if (encoded.size() != slotCount * 2) return false;
-    // The codec deliberately substitutes '?' for unsupported glyphs. Editing should
-    // refuse an unrepresentable keyboard result rather than silently mangling it.
-    if (Utils::decodeGen4Field(encoded) != bounded) return false;
+    if (Utils::decodeGen4Field(encoded) != value) return false;
 
     size_t copyBytes = encoded.size();
     for (size_t i = 0; i + 1 < encoded.size(); i += 2) {
@@ -424,6 +429,7 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
 
     const auto backup = decrypted_;
     const uint8_t oldLevel = level();
+    const uint8_t oldGrowth = personalFor(sourceGroup_, species(), form()).growthRate;
     const uint8_t oldNature = nature();
     const bool oldShiny = shiny();
     const uint8_t oldGender = gender();
@@ -449,9 +455,12 @@ bool Pokemon4Mutable::setSpecies(uint16_t value) noexcept {
         target.ability2 != 0 && target.ability2 != target.ability1;
     const int wantedAbilityBit = targetDual ? static_cast<int>(oldAbilitySlot) : -1;
 
-    // Preserve Level across growth-rate changes, and preserve Nature/Shiny plus Gender
-    // where the target species permits it. PID search is bounded and rollback-safe.
-    write32(0x10, getExpForLevel(oldLevel, target.growthRate));
+    // Preserve Level across growth-rate changes (Round 13 owner decision 9: EXP is kept when it
+    // already lies in that level's range for the new growth rate, else it becomes the level's
+    // minimum; Pokemon/SpeciesChangeExperience.h), and preserve Nature/Shiny plus Gender where the
+    // target species permits it. PID search is bounded and rollback-safe.
+    write32(0x10, SpeciesChangeExperience::keepLevel(oldLevel, experience(), oldGrowth == target.growthRate,
+        [&](uint8_t level) { return getExpForLevel(level, target.growthRate); }).experience);
     if (!rerollPid(oldShiny ? 1 : 0, wantedGender, oldNature, wantedAbilityBit)) {
         decrypted_ = backup;
         return false;

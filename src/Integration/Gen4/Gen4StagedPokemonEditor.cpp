@@ -1314,7 +1314,10 @@ bool Gen4StagedPokemonEditor::stageTrainerName(const std::u16string& name, std::
         return false;
     }
     std::array<uint8_t, kTrainerNameUnits * 2> field{};
-    Utils::writeGen4Field(field.data(), kTrainerNameUnits, name, kTrainerNameMax);
+    if (!Utils::writeGen4Field(field.data(), kTrainerNameUnits, name, kTrainerNameMax)) {
+        setError(error, "Gen IV trainer name cannot be stored unchanged; nothing was changed");
+        return false;
+    }
     return stageTrainerBytes(kTrainerNameField, field,
         [&](const TrainerReadOnly& trainer) { return trainer.name == name; }, error);
 }

@@ -7,6 +7,7 @@
 #include "Integration/Gen5/Gen5EncounterLocations.h"
 #include "Integration/Gen5/Gen5PersonalData.h"
 #include "Integration/Gen5/Gen5Progression.h"
+#include "Pokemon/SpeciesChangeExperience.h"
 #include "Integration/Gen5/Gen5NativeText.h"
 #include "Integration/Gen5/Gen5PidCoordination.h"
 
@@ -104,9 +105,9 @@ public:
         switch (field) {
             case Field::Species: {
                 // No silent PID rerolls, species-specific form remapping,
-                // gender overrides, EXP curve changes, or imported mechanics.
-                // These belong to dedicated verified transactions, not to a
-                // blind Pokémon ID replacement.
+                // gender overrides or imported mechanics. Round 13 owner
+                // decision 9: the Pokemon keeps its level and its EXP is
+                // reconciled to the new species' growth rate below.
                 if(stat!=0 || value<1 || value>649 || !personal)
                     return fail("Gen V species requires a native 1..649 identity");
                 if(value==species)break;
@@ -120,9 +121,8 @@ public:
                 if((Crypto::read32(candidate,0x38)&0x80000000u)==0)
                     return fail("Name this Pokemon before changing species; no automatic rename");
                 const auto target=personal5(value,0,black2White2_);
-                if(!target || personal.info->growthRate>5 ||
-                   target.info->growthRate!=personal.info->growthRate)
-                    return fail("Gen V target species must share the source EXP growth group");
+                if(!target || personal.info->growthRate>5 || target.info->growthRate>5)
+                    return fail("Gen V species change requires exact native EXP growth data");
                 const auto gender=static_cast<uint8_t>((candidate[0x40]>>1)&3);
                 if(!genderAllowed5(target.info->genderRatio,gender))
                     return fail("Gen V target species cannot preserve this Pokémon gender");
@@ -139,10 +139,32 @@ public:
                 const uint8_t ability=abilityForSlot5(*target.info,slot);
                 if(ability==0)
                     return fail("Gen V target species has no corresponding ability slot");
-                // No changes to nickname, met history, moves, PID, EXP,
-                // EV/IV or OT. Such details may need later legality review.
+                // No changes to nickname, met history, moves, PID, EV/IV or
+                // OT. Such details may need later legality review.
                 Crypto::write16(candidate,0x08,static_cast<uint16_t>(value));
                 candidate[0x15]=ability;
+                // Round 13 owner decision 9 (Pokemon/SpeciesChangeExperience.h):
+                // the level the Pokemon shows (Party level byte, else the
+                // level its EXP reads as) is kept; EXP stays when it lies in
+                // that level's range for the new growth rate, else it becomes
+                // the level's minimum. Party stats regenerate below.
+                {
+                    const bool partyRecord=candidate.size()==Crypto::PartySize;
+                    const uint32_t exp=Crypto::read32(candidate,0x10);
+                    const uint8_t shown=partyRecord?candidate[0x8C]:
+                        levelForExperience5(personal.info->growthRate,exp);
+                    const uint8_t growth=target.info->growthRate;
+                    const auto kept=::Pokemon::SpeciesChangeExperience::keepLevel(shown,exp,
+                        personal.info->growthRate==growth,
+                        [growth](uint8_t level){return experienceForLevel5(growth,level);});
+                    // Same growth rate: nothing is written (a party level byte
+                    // that already disagreed with EXP is left as found).
+                    if(kept.experienceChanged) {
+                        Crypto::write16(candidate,0x10,static_cast<uint16_t>(kept.experience));
+                        Crypto::write16(candidate,0x12,static_cast<uint16_t>(kept.experience>>16));
+                    }
+                    if(partyRecord && personal.info->growthRate!=growth)candidate[0x8C]=kept.level;
+                }
                 break;
             }
             case Field::Form: {

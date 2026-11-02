@@ -11,6 +11,7 @@
 #include "Pokemon/PersonalInfoTable.h"  // getPersonalInfo (gender ratio) / getPersonalInfoG3
 #include "Pokemon/Experience.h"         // getLevelFromExp / getExpForLevel / getGrowthRate
 #include "Utils/Gen3Text.h"             // the Gen 3 character set, shared with Trainer3FRLG + Convert
+#include "Text/TextFieldCapability.h"   // the one all-or-nothing name check (Round 14 P0-2)
 #include "Conversion/Gen3PidSearch.h"   // PID-derived trait construction (nature/gender/shiny/ability/Unown)
 
 namespace Pokemon {
@@ -86,30 +87,29 @@ namespace Pokemon {
         return readG3Name(0x14, 7, otTextLanguage());
     }
 
-    static void g3EncodeName(std::byte* dst, size_t offset, const std::u16string& value,
+    // Round 14 P0-1 / P0-2: all-or-nothing through the shared text capability. This used to stop
+    // at the first character the table lacked (`break`) and at the cap, storing the prefix: a
+    // FireRed Egg OT "A×B" was exported as "A". On refusal no byte is written.
+    static bool g3EncodeName(std::byte* dst, size_t offset, const std::u16string& value,
                              size_t maxChars, uint8_t languageId) {
-        size_t n = 0;
-        for (const char16_t c : value) {
-            if (n >= maxChars) break;
-            const uint8_t packed = Utils::charToGen3(c, languageId);
-            if (packed == Utils::GEN3_TERMINATOR) break;
-            dst[offset + n] = static_cast<std::byte>(packed);
-            ++n;
-        }
-        if (n < maxChars) dst[offset + n] = static_cast<std::byte>(Utils::GEN3_TERMINATOR);
+        const PokeBank::Text::Gen3NameField field(PokeBank::Text::FieldKind::Nickname, languageId,
+                                                  maxChars, maxChars);
+        return field.encode16(value, std::span<uint8_t>(
+                   reinterpret_cast<uint8_t*>(dst + offset), maxChars)).ok();
     }
 
     void Pokemon3FRLG::setOTName(const std::u16string& value) noexcept {
-        g3EncodeName(data.data(), 0x14, value, 7, otTextLanguage());
-        refreshChecksum();
+        if (g3EncodeName(data.data(), 0x14, value, 7, otTextLanguage())) refreshChecksum();
+    }
+
+    bool Pokemon3FRLG::canStoreOTName(const std::u16string& value) const noexcept {
+        return PokeBank::Text::Gen3NameField(PokeBank::Text::FieldKind::OriginalTrainer,
+                                             otTextLanguage(), 7, 7).check16(value).ok();
     }
 
     bool Pokemon3FRLG::canStoreNickname(const std::u16string& value) const noexcept {
-        const uint8_t languageId = language();
-        for (const char16_t c : value) {
-            if (Utils::charToGen3(c, languageId) == Utils::GEN3_TERMINATOR) return false;
-        }
-        return true;
+        return PokeBank::Text::Gen3NameField(PokeBank::Text::FieldKind::Nickname,
+                                             language(), 10, 10).check16(value).ok();
     }
 
     // While the egg bit is set the games keep the Japanese word for egg as the nickname, and
@@ -117,8 +117,7 @@ namespace Pokemon {
     // 9a9a731). Clear the egg bit before naming a hatched Pokemon.
     void Pokemon3FRLG::setNickname(const std::u16string& value) noexcept {
         const std::u16string stored = isEgg() ? std::u16string(EGG_NICKNAME_JAPANESE) : value;
-        g3EncodeName(data.data(), 0x08, stored, 10, language());
-        refreshChecksum();
+        if (g3EncodeName(data.data(), 0x08, stored, 10, language())) refreshChecksum();
     }
 
     uint8_t Pokemon3FRLG::baseHP()  const noexcept { return getPersonalInfoG3(speciesID()).hp;  }

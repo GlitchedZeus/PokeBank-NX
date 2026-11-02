@@ -366,8 +366,9 @@ namespace Trainer {
                 if (!isBoxNameDirty(boxIndex)) continue;   // never persist a display default
                 const size_t offset = boxIndex * BOX_NAME_LENGTH8_LA;
                 if (offset + BOX_NAME_LENGTH8_LA > block.data.size()) break;
-                setString(block.data.data() + offset, BOX_NAME_LENGTH8_LA,
-                          utf8ToUtf16(boxNames[boxIndex]), BOX_NAME_LENGTH8_LA / 2 - 1);
+                if (setStringChecked(block.data.data() + offset, BOX_NAME_LENGTH8_LA,
+                          utf8ToUtf16(boxNames[boxIndex]), BOX_NAME_LENGTH8_LA / 2 - 1) != CheckedTextResult::Accepted)
+                    logErrorToFile("Box name refused by the checked writer (Round 14 P0-3); stored name kept");
             }
             break;
         }
@@ -727,7 +728,8 @@ namespace Trainer {
         for (auto& block : blocks) {
             if (block.key == MY_STATUS8_LA) {
                 if (block.data.size() >= 0x20 + 0x1A)
-                    setString(&block.data[0x20], 0x1A, utf8ToUtf16(trainerName), 12);
+                    if (setStringChecked(&block.data[0x20], 0x1A, utf8ToUtf16(trainerName), 12) != CheckedTextResult::Accepted)
+                        logErrorToFile("Trainer name refused by the checked writer (Round 14 P0-3); stored name kept");
             } else if (block.key == MONEY8_LA) {
                 if (block.data.size() >= 4)
                     writeUInt32LittleEndian(block.data.data(), money);   // MONEY8_LA is a u32 scalar block

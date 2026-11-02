@@ -366,8 +366,8 @@ namespace Pokemon {
          *  unwired (base no-op), so a created LGPE mon showed a BLANK name in-game. */
         void setNickname(const std::u16string& value) noexcept override
         {
-            setString(reinterpret_cast<uint8_t*>(data.data() + 0x40), 26, value, 12);
-            refreshChecksum();
+            if (setStringChecked(reinterpret_cast<uint8_t*>(data.data() + 0x40), 26, value, 12) == CheckedTextResult::Accepted)
+                refreshChecksum();   // all-or-nothing (Round 14 P0-3)
         }
         /** "Has a custom nickname" flag -- bit 31 of the packed IV32 (0x74). */
         bool isNicknamed() const noexcept override { return (iv32() & 0x80000000u) != 0; }
@@ -451,13 +451,24 @@ namespace Pokemon {
         }
         void setFriendship(uint8_t value) noexcept override { data[0xCA] = static_cast<std::byte>(value); refreshChecksum(); }
 
+        /** All-or-nothing name check (Round 14 P0-3): 12 UTF-16 code units in a 26-byte field, so
+         *  a non-BMP character costs two and is never split. The setters refuse what this refuses. */
+        bool canStoreNickname(const std::u16string& value) const noexcept override
+        {
+            return Utils::stringFits(26, value, 12);
+        }
+        bool canStoreOTName(const std::u16string& value) const noexcept override
+        {
+            return Utils::stringFits(26, value, 12);
+        }
+
         // ---- OT / handler / origin / met / ball / language (PB7 offsets per PKHeX PB7.cs) ----
         /** Original Trainer name (0xB0, 26 bytes UTF-16). */
         std::u16string otName() const override { return getString(reinterpret_cast<const uint8_t*>(data.data() + 0xB0), 26); }
-        void setOTName(const std::u16string& value) noexcept override { setString(reinterpret_cast<uint8_t*>(data.data() + 0xB0), 26, value, 12); refreshChecksum(); }
+        void setOTName(const std::u16string& value) noexcept override { if (setStringChecked(reinterpret_cast<uint8_t*>(data.data() + 0xB0), 26, value, 12) == CheckedTextResult::Accepted) refreshChecksum(); }
         /** Handling (current) Trainer name (0x78, 26 bytes). */
         std::u16string htName() const override { return getString(reinterpret_cast<const uint8_t*>(data.data() + 0x78), 26); }
-        void setHTName(const std::u16string& value) noexcept override { setString(reinterpret_cast<uint8_t*>(data.data() + 0x78), 26, value, 12); refreshChecksum(); }
+        void setHTName(const std::u16string& value) noexcept override { if (setStringChecked(reinterpret_cast<uint8_t*>(data.data() + 0x78), 26, value, 12) == CheckedTextResult::Accepted) refreshChecksum(); }
         /** Handling Trainer gender (0 = Male, 1 = Female). Location: 0x92 (PKHeX PB7.HandlingTrainerGender),
          *  directly before currentHandler below. This was the one HT field left on the base stub, and both
          *  halves of that stub were wrong: the getter returned a hard 0, so every

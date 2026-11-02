@@ -84,8 +84,12 @@ def main() -> None:
     dialog = read("src/UI/Dialogs/KeyboardDialog.cpp")
     assert ": request.koreanHangul ? KeyboardPage::Hangul" in dialog
     assert "H::compose(" in dialog
-    # Mojibake guard: the round-trip check in Pokemon4Mutable stays the storage rule.
-    assert "if (Utils::decodeGen4Field(encoded) != bounded) return false;" in read("src/Pokemon/Pokemon4Mutable.cpp")
+    # Mojibake guard: the round-trip check in Pokemon4Mutable stays the storage rule. Round 14 P0-2:
+    # it now compares against the REQUESTED text; the old copy was cut to the cap first ("bounded"),
+    # so an over-long name passed the check as its own prefix.
+    mutable = read("src/Pokemon/Pokemon4Mutable.cpp")
+    assert "if (Utils::decodeGen4Field(encoded) != value) return false;" in mutable
+    assert "value.substr(0, std::min(value.size(), maxCharacters))" not in mutable
     print("Korean shared font fallback and Gen V display decoder contract: PASS")
 
 

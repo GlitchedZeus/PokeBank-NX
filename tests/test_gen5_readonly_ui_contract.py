@@ -964,8 +964,11 @@ require(read("include/Integration/Gen5/Gen5SharedReview.h"),"Field::Experience",
 require(surface,
         "experienceForLevel5(")
 # Species changes must use exact native personal data and never reroll PID.
+# Round 13 owner decision 9: another growth rate is allowed; the level is kept
+# and EXP reconciled by the shared rule (was: the growth rates had to match).
 require(native_stage,"case Field::Species:","value>649",
-        "target.info->growthRate!=personal.info->growthRate",
+        "personal.info->growthRate>5 || target.info->growthRate>5",
+        "SpeciesChangeExperience::keepLevel(",
         "genderAllowed5(target.info->genderRatio,gender)",
         "candidate[0x15]=ability;",
         "field==Field::Species || field==Field::Nature")
@@ -994,7 +997,7 @@ require(native_screen,
 
 
         "current->form()!=0",
-        "source.info->growthRate!=target.info->growthRate")
+        "source.info->growthRate>5 || target.info->growthRate>5")
 require(surface,
 
 

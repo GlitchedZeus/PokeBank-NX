@@ -43,7 +43,9 @@ inline constexpr uint8_t kCaughtLevelUnrecorded = 4; // Crystal SetGiftMonCaught
 //  3. when that prerequisite cannot be known from a save, the acquisition evidence is INCOMPLETE:
 //     the row is listed as "encounter in the game" but never as a verified encounter, and the
 //     editor / Review note says Incomplete (incompleteNote()).
-enum class Prerequisite : uint8_t { None, TicketOrItem, EventPokemon, OtherGame };
+// LinkOrDevice: link play / another device (Unova Link Key System, Underground players);
+// Unconfirmed: a special access condition the pinned sources do not let the generator confirm.
+enum class Prerequisite : uint8_t { None, TicketOrItem, EventPokemon, OtherGame, LinkOrDevice, Unconfirmed };
 // Source confidence of a row: matched to a pret map script (every Crystal static / gift / prize /
 // trade row), one of the Gen III pret spot checks, or PKHeX alone (every Gen IV / V row and the
 // other Gen III / Crystal rows). A single-source row is never called independently verified.
@@ -109,6 +111,8 @@ constexpr const char* prerequisiteLabel(Prerequisite prereq) noexcept {
         case Prerequisite::TicketOrItem: return "ticket / distribution";
         case Prerequisite::EventPokemon: return "event Pokémon";
         case Prerequisite::OtherGame: return "Pokémon from another game";
+        case Prerequisite::LinkOrDevice: return "link play / another device";
+        case Prerequisite::Unconfirmed: return "access condition (not confirmed)";
     }
     return "prerequisite";
 }

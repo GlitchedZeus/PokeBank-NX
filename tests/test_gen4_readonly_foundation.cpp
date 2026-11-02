@@ -615,9 +615,12 @@ void testFieldFidelity() {
     auto jp=Utils::encodeGen4Field(u"ピ♂",8,7,1),ko=Utils::encodeGen4Field(u"피♂",8,7,8);
     assert(code(jp,1)==0xEE && code(ko,1)==0x1BB);
     assert(Utils::decodeGen4Field(jp)==u"ピ♂" && Utils::decodeGen4Field(ko)==u"피♂");
-    assert(code(Utils::encodeGen4Field(u"A♂ピ",8,2,2),1)==0x1BB);
+    // Round 14 P0-2 (owner Nov 2: refuse, never cut or substitute): text over the cap and a glyph
+    // the table lacks are refused (empty result) instead of being cut / stored as '?' (0x1AC).
+    assert(code(Utils::encodeGen4Field(u"A♂",8,2,2),1)==0x1BB);
+    assert(Utils::encodeGen4Field(u"A♂ピ",8,2,2).empty());
     assert(code(Utils::encodeGen4Field(u"’",8,7,2),0)==0x1B3);
-    assert(code(Utils::encodeGen4Field(u"\u0378",8,7,2),0)==0x1AC);
+    assert(Utils::encodeGen4Field(u"\u0378",8,7,2).empty());
 }
 
 void testAssignmentsOnDisk() {

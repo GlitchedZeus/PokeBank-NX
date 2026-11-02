@@ -48,10 +48,12 @@ struct Session {
     // CHOSEN (a stored value alone is never a choice). Gold / Silver have no caught data.
     bool metLocationChosen = false;
     void noteMetLocationChosen() noexcept { if (mode == SessionMode::Create) metLocationChosen = true; }
+    std::string experienceNote;
     void begin(const Gen2::PokemonRecord& p, SessionMode next) {
         baseline = working = p; mode = next; confirmExit = false;
         pokerusCleared = caughtDataCleared = false;
         metLocationChosen = false;
+        experienceNote.clear();
         progression = next == SessionMode::Create ? ProgressionSource::Level : ProgressionSource::Unchanged;
     }
     bool editable() const noexcept { return mode == SessionMode::Create || mode == SessionMode::Edit; }
@@ -78,8 +80,11 @@ struct Session {
     }
     bool setSpecies(uint16_t species, std::string_view sourceGameId = {}) noexcept {
         pokerusCleared = caughtDataCleared = false;
-        if (!editable() || !Gen2::personalRecord(species)) return false;
+        const auto* personal = Gen2::personalRecord(species);
+        if (!editable() || !personal) return false;
         if (species == working.species) return true;
+        experienceNote.clear();
+        const auto* previousPersonal = Gen2::personalRecord(working.species);
         const uint8_t nextLevel =
             SpeciesChangeLevelPolicy::defaultLevel(sourceGameId, species);
         working.nickname = nicknameAfterSpeciesChange(working.nickname, working.species, species);
@@ -90,7 +95,21 @@ struct Session {
         working.gender = static_cast<uint8_t>(Gen2::genderFromAttackDV(species, dvs[0]));
         // Unown's letter comes from the same DVs (pokecrystal GetUnownLetter); any other species has form 0.
         working.form = species == 201 ? static_cast<uint8_t>(Gen12DVReroll::unownLetter(dvs)) : 0;
-        if (!setLevel(nextLevel)) return false;
+        if (mode == SessionMode::Create) {
+            if (!setLevel(nextLevel)) return false;
+        } else {
+            // Round 13 owner decision 9: an existing Pokemon keeps the level it shows (the stored
+            // level byte) and its EXP is reconciled to the new growth rate. EXP is canonical in
+            // the edit request, so Keep / Review stage exactly this level and EXP.
+            const uint32_t beforeExperience = working.experience;
+            const auto kept = ::Pokemon::SpeciesChangeExperience::keepLevel(working.level, working.experience,
+                previousPersonal && previousPersonal->experienceGrowth == personal->experienceGrowth,
+                [&](uint8_t level) { return Pokemon::getExpForLevel(level, personal->experienceGrowth); });
+            working.level = kept.level;
+            working.experience = kept.experience;
+            progression = ProgressionSource::Experience;
+            experienceNote = ::Pokemon::SpeciesChangeExperience::note(beforeExperience, kept);
+        }
         // Round 11 (owner H28): keep each current move the new species can use in this exact
         // Gold / Silver / Crystal ruleset (Gen2MoveCompatibility, the move picker's filter) with
         // its PP and PP Ups; clear the rest; never add one. An unknown game proves nothing
@@ -124,6 +143,8 @@ struct Session {
     // The status a Create species change posts: what it reset ("" when nothing was). Round 14
     // (owner R09): a Crystal Create needs a chosen Met Location, so a cleared one asks for a new
     // choice; Gold / Silver have no caught data and only report a clear.
+    // Round 13 owner decision 9: what the last Edit species change did to EXP ("" when unchanged).
+    std::string speciesChangeExperienceNote() const { return experienceNote; }
     std::string speciesChangeResetStatus(std::string_view sourceGameId = {}) const {
         return SpeciesChangeHistoryPolicy::resetStatus(
             pokerusCleared, caughtDataCleared,

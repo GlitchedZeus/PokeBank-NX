@@ -56,14 +56,17 @@ template <class TouchLike>
         const int tapped = touchId >= touchBase && touchId < touchBase + Model::kRows ? touchId - touchBase : -1;
         return Model::setupInput(s, keys(down), tapped);
     }
-    if (s.step == Model::Step::Preview) {
+    if (s.step == Model::Step::Preview || s.step == Model::Step::Result) {
         const auto l = previewLayout(s);
         const auto bar = SharedScrollbar::handleTouch(ui.scrollbar, SharedScrollbar::sample(touch),
             SharedScrollbar::rows(static_cast<int>(s.lines.size()), l.visibleRows, s.scroll));
         if (bar.changed) s.scroll = bar.scroll;
         if (bar.consumed) return Model::Action::None;
-        const auto action = Model::previewInput(s, keys(down), l.visibleRows);
-        if (s.step != Model::Step::Preview) ui.scrollbar.reset();
+        const auto step = s.step;
+        // Round 14 (P0-9): RESULT (what was / was not staged) scrolls like PREVIEW; A or B closes it.
+        const auto action = step == Model::Step::Result ? Model::resultInput(s, keys(down), l.visibleRows)
+                                                         : Model::previewInput(s, keys(down), l.visibleRows);
+        if (s.step != step) ui.scrollbar.reset();
         return action;
     }
     return Model::Action::None;
@@ -114,16 +117,18 @@ inline void drawTopUpModal(PKSEFramebuffer& fb, Buttons& touchButtons, Ui& ui, i
         drawNavBar(fb, {{"Up/Down", "Choose"}, {"Left/Right", "Change"}, {"A", "OK"}, {"B", "Close"}});
         return;
     }
-    if (s.step != Model::Step::Preview) return;
+    if (s.step != Model::Step::Preview && s.step != Model::Step::Result) return;
+    const bool result = s.step == Model::Step::Result;
     const auto l = previewLayout(s);
     const auto& f = l.frame;
     fb.drawFilledRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Panel);
     fb.drawRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Divider, 1);
-    fb.drawText(f.x + l.rule.padX, f.y + 14, "Preview: Top Up / Add Missing", Colors::Text, TextStyle::Heading);
-    fb.drawText(f.x + l.rule.padX, f.y + 56,
-                s.totals + "  |  " + Model::modeLabel(s.mode) + ", " +
-                    Model::scopeLabel(s.scope, pocketName, s.sharedBagSlots) + ", up to " + std::to_string(s.quantity),
-                Colors::TextSecondary, TextStyle::Caption);
+    fb.drawText(f.x + l.rule.padX, f.y + 14, result ? "Result: Top Up / Add Missing" : "Preview: Top Up / Add Missing",
+                Colors::Text, TextStyle::Heading);
+    const std::string caption = result ? s.totals
+        : s.totals + "  |  " + Model::modeLabel(s.mode) + ", " +
+              Model::scopeLabel(s.scope, pocketName, s.sharedBagSlots) + ", up to " + std::to_string(s.quantity);
+    fb.drawText(f.x + l.rule.padX, f.y + 56, caption, Colors::TextSecondary, TextStyle::Caption);
     s.scroll = std::clamp(s.scroll, 0, Model::maxScroll(s, l.visibleRows));
     const int textW = l.list.w - SharedScrollbar::kTrackWidth - 12;
     fb.setClipRect(l.list.x, l.list.y, textW, l.list.h);
@@ -134,15 +139,18 @@ inline void drawTopUpModal(PKSEFramebuffer& fb, Buttons& touchButtons, Ui& ui, i
         const auto cell = MG::cellRect(l, i);
         const bool heading = line.kind == Model::LineKind::Heading;
         const int x = cell.x + (heading ? 0 : l.rule.cellPadX + 8);
+        // Round 14 (H07): a native list's capacity line is drawn in the accent colour.
         fb.drawText(x, MG::textTop(cell, MG::Text::Body), line.text,
-                    heading ? Colors::Accent : lineColor(line.kind), TextStyle::Body);
+                    heading || line.emphasis ? Colors::Accent : lineColor(line.kind), TextStyle::Body);
     }
     fb.clearClip();
     SharedScrollbar::drawAndPublish(fb, ui.scrollbar, l.list.right() - SharedScrollbar::kTrackWidth, l.list.y,
                                     SharedScrollbar::kTrackWidth, l.list.h,
                                     SharedScrollbar::rows(static_cast<int>(s.lines.size()), l.visibleRows, s.scroll));
     // A confirmation modal's footer: B backs out first, A (stage everything listed) last.
-    if (s.plan.empty())
+    if (result)
+        drawNavBar(fb, {{"B", "Close"}, {"Up/Down", "Scroll"}, {"A", "Done"}});
+    else if (s.plan.empty())
         drawNavBar(fb, {{"B", "Back"}, {"Up/Down", "Scroll"}});
     else
         SharedEditorChrome::drawFooter(fb, SharedEditorChrome::Presentation::confirmFooter("A", "Stage All", "Up/Down", "Scroll"));

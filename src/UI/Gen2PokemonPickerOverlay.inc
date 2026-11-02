@@ -84,6 +84,9 @@ bool applyPickerChoice(TrainerViewScreen& screen, State& state, PickerOverlaySta
         // (it was cleared here before, in Edit too) and a misfit is flagged in the editor and Review.
         if (const auto reset = state.speciesChangeResetStatus(screen.sourceGameId); !reset.empty())
             screen.postStatus(reset, 300);
+        // Round 13 owner decision 9: an existing Pokemon keeps its level; an EXP change is named.
+        else if (const auto exp = state.speciesChangeExperienceNote(); !exp.empty())
+            screen.postStatus(exp, 300);
     } else if (picker.model.kind == Gen2Picker::Kind::Move) {
         if (!Gen2Picker::applyMoveChoice(state, picker.model.moveSlot, picker.model.moveChoice())) return false;
     } else if (picker.model.kind == Gen2Picker::Kind::Location) {
@@ -225,9 +228,10 @@ void drawListPicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, const State&
         fb.drawText(g.x + 24, g.y + 18, model.unverifiedList ? "Met Location (unverified)" : "Met Location",
                     Colors::Text, TextStyle::Heading);
         fb.drawText(g.x + 24, g.y + 52,
-                    model.unverifiedList ? Policy::kUnverifiedListScope
-                    : model.encounterChoices.empty() ? Policy::kMarkersOnlyScope
-                                                     : "Verified Crystal encounters + markers",
+                    // Round 14 (R06 / P1-9): the shared caption says why there is no verified row.
+                    model.unverifiedList ? std::string(Policy::kUnverifiedListScope)
+                    : PokeVault::Integration::MetListScope::defaultScope(model.encounterChoices.size(), model.levelGap,
+                                                                         "Verified Crystal encounters + markers"),
                     Colors::TextDim, TextStyle::Caption);
         overlay.locationViewport.ensure(model.index, count, g.visible);
         const int first = overlay.locationViewport.firstRow;

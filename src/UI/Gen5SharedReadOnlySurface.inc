@@ -859,6 +859,15 @@ struct Gen5Editor {
             screen.postStatus("Could not reconcile Species/Shiny while preserving PID-linked traits: " + error, 360);
             return false;
         }
+        // Round 13 owner decision 9: the Pokemon kept its level; an EXP change is named.
+        if (species != p.species()) {
+            ::Pokemon::SpeciesChangeExperience::Result kept;
+            kept.level = Fields::level(*probe.current(), b2w2(screen));
+            kept.experience = probe.current()->experience();
+            kept.experienceChanged = kept.experience != p.experience();
+            if (const auto note = ::Pokemon::SpeciesChangeExperience::note(p.experience(), kept); !note.empty())
+                screen.postStatus(note, 300);
+        }
         return offer(screen, state, std::move(probe),
                      std::string("Species ") + Names::getSpeciesName(species) +
                          (state.speciesPreviewShiny ? ", Shiny" : ", not Shiny"));
@@ -1132,6 +1141,7 @@ void handleGen5TopUp(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput
             auto snapshot=ws;
             auto* bag=ws.stagedBag(&error);
             const auto result=bag?BI::apply(*bag,ui.model.plan,BI::Gen5Bag::Adapter{}):BI::ApplyResult{};
+            auto lines=ui.model.lines;   // Round 14 (P0-9): RESULT lists what was / was not staged
             Model::close(ui.model);
             ui.scrollbar.reset();
             if(!result.applied) {
@@ -1148,6 +1158,7 @@ void handleGen5TopUp(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput
             syncBagCursor(screen);
             screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again,
                 [](BI::Pocket p){return gen5TopUpPocketName(p);}),400);   // again == the applied plan
+            Model::showResult(ui.model,std::move(lines),again);
             return;
         }
     }

@@ -190,12 +190,16 @@ void run() {
           plan.full[0].freeBefore == 2 && plan.full[0].notFitted == full);
     for (const auto& s : plan.skipped)
         if (s.reason == B::SkipReason::PocketFull)
-            CHECK(s.sharedList && s.slots == 20 && B::skipText(s) == "Bag full: its 20 slots are shared by every category");
+            // Round 14 (owner H07 "again only adds some of the items"): plain "won't fit" wording.
+            CHECK(s.sharedList && s.slots == 20 &&
+                  B::skipText(s) == "won't fit (the Bag's 20 native slots are shared by every category)");
     {
         const auto lines = Model::previewLines(plan, request.pockets, [](B::Pocket, uint16_t id) { return std::to_string(id); },
                                                [](B::Pocket) { return std::string("Pocket"); });
         CHECK(!lines.empty() && lines[0].kind == Model::LineKind::Note &&
-              lines[0].text == "Bag (every category shares 20 slots): 2 free, " + std::to_string(full) + " more did not fit");
+              lines[0].emphasis &&
+              lines[0].text == "Bag (all categories share 20 native slots): 18 used. Only 2 fit; " + std::to_string(full) +
+                                   " missing items won't fit");
     }
 
     const auto stagedBefore = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
@@ -266,8 +270,9 @@ void pc() {
     // ordinary unique TM/HM item now, so a held one is "only one" (never topped up), not excluded.
     CHECK(skipped(pcPlan, 6, B::SkipReason::KeyOrStoryItem) && skipped(pcPlan, 196, B::SkipReason::OnlyOnce));
     for (const uint16_t key : {5, 31}) CHECK(!added(pcPlan, B::Pocket::PCItems, key) && skipped(pcPlan, key, B::SkipReason::KeyOrStoryItem));
-    // HM02-05 are eligible; the 46 free PC slots take lower item ids first, so they did not fit.
-    for (const uint16_t hm : {197, 198, 199, 200}) CHECK(skipped(pcPlan, hm, B::SkipReason::PocketFull));
+    // Round 14 (owner H08 "Every TM/HM", H07): the PC's 46 free slots go first to items held
+    // nowhere, so HM02-05 (held nowhere) now fit; second copies of what the Bag holds come last.
+    for (const uint16_t hm : {197, 198, 199, 200}) CHECK(added(pcPlan, B::Pocket::PCItems, hm));
     CHECK(pcPlan.full.size() == 1 && !pcPlan.full[0].sharedList && pcPlan.full[0].slots == 50 && pcPlan.full[0].freeBefore == 46);
 
     const auto result = B::apply(*editor, pcPlan, B::Gen1Bag::Adapter(*editor));
@@ -292,15 +297,19 @@ void pc() {
     editor->discard();
     CHECK(std::equal(source.begin(), source.end(), editor->stagedBytes().begin()) && !editor->hasPendingChanges());
 
-    // Bag + PC Items: the shared Bag takes its 2 free slots, the PC its own 46; Moon Stone (10), an
-    // ordinary item held nowhere, may go into BOTH lists (native); Potion is topped up in each list.
+    // Bag + PC Items: the shared Bag takes its 2 free slots, the PC its own 46; Potion is topped up in
+    // each list. Round 14 (H07): the PC first takes what did not fit in the Bag, so Moon Stone (10),
+    // added to the Bag, is not repeated in the PC while other items still wait for a slot.
     const auto both = B::plan(QP::Game::Blue, Model::request(scoped(Model::Scope::BagAndPc, 99), B::Pocket::Items, state), state);
     planIsSafe(QP::Game::Blue, both, state, true);
     noStoryChange(QP::Game::Blue, both);
     std::size_t bagAdds = 0;
     for (const auto& a : both.adds) bagAdds += a.pocket != B::Pocket::PCItems;
     CHECK(bagAdds == 2 && addsIn(both, B::Pocket::PCItems) == 46);
-    CHECK(added(both, B::Pocket::Items, 10) && added(both, B::Pocket::PCItems, 10));
+    CHECK(added(both, B::Pocket::Items, 10) && !added(both, B::Pocket::PCItems, 10));
+    for (const auto& k : both.skipped)
+        if (k.reason == B::SkipReason::PocketFull && k.pocket != B::Pocket::PCItems && k.addedToPc)
+            CHECK(added(both, B::Pocket::PCItems, k.itemId) && B::skipText(k).find("added to PC Items instead") != std::string::npos);
     CHECK(topUp(both, 20) && topUpsIn(both, B::Pocket::PCItems) >= 2);
     CHECK(both.full.size() == 2);   // the shared Bag once, the PC once
     CHECK(B::apply(*editor, both, B::Gen1Bag::Adapter(*editor)).applied);
@@ -693,8 +702,8 @@ void pcOne(SourceGame game, std::size_t pcOffset, std::size_t pcSlots, std::size
     CHECK(plan.full.size() == 1 && plan.full[0].slots == pcSlots && plan.full[0].freeBefore == 4);
     CHECK(Model::previewLines(plan, {B::Pocket::PCItems}, [](B::Pocket, uint16_t id) { return std::to_string(id); },
                               [](B::Pocket) { return std::string("PC Items"); })[0].text ==
-          "PC Items (" + std::to_string(pcSlots) + " slots): 4 free, " +
-              std::to_string(count(plan, B::SkipReason::PocketFull, B::Pocket::PCItems)) + " more did not fit");
+          "PC Items: " + std::to_string(pcSlots) + " native slots, " + std::to_string(pcSlots - 4) + " used. Only 4 fit; " +
+              std::to_string(count(plan, B::SkipReason::PocketFull, B::Pocket::PCItems)) + " missing items won't fit");
 
     CHECK(B::apply(*editor, plan, B::Gen3Bag::Adapter{}).applied);
     readsBack(*editor, plan, B::Gen3Bag::Adapter{});
@@ -1301,9 +1310,11 @@ void model() {
         const auto roomLines = Model::previewLines(rooms, {B::Pocket::Items}, [](B::Pocket, uint16_t id) { return std::to_string(id); },
                                                    [](B::Pocket p) { return p == B::Pocket::Items ? std::string("Items")
                                                                           : p == B::Pocket::Balls ? std::string("Balls") : std::string("Key Items"); });
-        CHECK(roomLines.size() >= 3 && roomLines[0].text == "Items (20 slots): 20 free, 118 more did not fit" &&
-              roomLines[1].text == "Balls (16 slots): 16 free, all 11 missing added" &&
-              roomLines[2].text == "Key Items (20 slots): 20 free, nothing missing to add");
+        // Round 14 (owner H07): plain words, the game's slot count first, emphasised.
+        CHECK(roomLines.size() >= 3 && roomLines[0].text == "Items: 20 native slots, 0 used. Only 20 fit; 118 missing items won't fit" &&
+              roomLines[1].text == "Balls: 16 native slots, 0 used. All 11 missing items fit" &&
+              roomLines[2].text == "Key Items: 20 native slots, 0 used. Nothing missing to add" &&
+              roomLines[0].emphasis && roomLines[1].emphasis && roomLines[2].emphasis);
     }
     // Gen I-III (PC item storage): This pocket -> All Bag -> PC Items -> Bag + PC Items, both ways.
     CHECK((Model::scopes(s) == std::vector<Model::Scope>{Model::Scope::ThisPocket, Model::Scope::AllBag,
@@ -1352,12 +1363,13 @@ void model() {
     s.scope = Model::Scope::ThisPocket;
     CHECK(Model::request(s, B::Pocket::Balls, st).pockets == std::vector<B::Pocket>{B::Pocket::Balls});
     s.scope = Model::Scope::AllBag;
-    CHECK((Model::request(s, B::Pocket::Balls, st).pockets == std::vector<B::Pocket>{B::Pocket::Items, B::Pocket::Balls}));
+    // Round 14 (H07 / H08): the pocket on screen first, so a shared list fills from it.
+    CHECK((Model::request(s, B::Pocket::Balls, st).pockets == std::vector<B::Pocket>{B::Pocket::Balls, B::Pocket::Items}));
     s.scope = Model::Scope::PcItems;
     CHECK(Model::request(s, B::Pocket::Balls, st).pockets == std::vector<B::Pocket>{B::Pocket::PCItems});
     s.scope = Model::Scope::BagAndPc;
     CHECK((Model::request(s, B::Pocket::Balls, st).pockets ==
-           std::vector<B::Pocket>{B::Pocket::Items, B::Pocket::Balls, B::Pocket::PCItems}));
+           std::vector<B::Pocket>{B::Pocket::Balls, B::Pocket::Items, B::Pocket::PCItems}));
     // A save without PC Items never gets an empty request (the planner reads empty as "every pocket").
     std::vector<B::PocketState> nds{{B::Pocket::Items, {}, 1, {}}, {B::Pocket::Medicine, {}, 1, {}}};
     s.scope = Model::Scope::PcItems;
@@ -1380,8 +1392,9 @@ void model() {
     std::vector<std::string> texts;
     for (const auto& l : s.lines) texts.push_back(l.text);
     CHECK((texts == std::vector<std::string>{"Items", "Potion 3 \xE2\x86\x92 99", "Balls", "+ Ultra Ball \xC3\x97" "99",
-                                             "Master Ball: pocket full"}));
-    CHECK(s.totals == "1 topped up, 1 added, 1 skipped");
+                                             "Master Ball: won't fit (no free native slot)"}));
+    // Round 14 (H07): "won't fit" is counted apart from the other skips.
+    CHECK(s.totals == "1 topped up, 1 added, 1 won't fit (native slots), 0 skipped");
     CHECK(Model::previewInput(s, {.down = true}, 2) == Model::Action::None && s.scroll == 1);
     // A page is one line short of the view (one line of context stays); the end clamps.
     CHECK(Model::previewInput(s, {.pageDown = true}, 2) == Model::Action::None && s.scroll == 2);
