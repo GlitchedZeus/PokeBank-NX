@@ -239,6 +239,17 @@ constexpr uint8_t nextGen3Language(uint8_t current) noexcept {
     return cycleNext(kGen3Languages, kGen3Languages.size(), current);
 }
 
+// Round 12 R12-009: Korean (8) is not a Gen III language -- no Ruby, Sapphire, Emerald, FireRed or
+// LeafGreen was released in Korean, and the PK3 text tables have no Hangul -- so it is never offered.
+// Gen IV and V list it after Spanish; the Gen III cycle says so where it would have appeared (the
+// wrap from Spanish back to Japanese) instead of skipping it silently.
+inline constexpr const char* kGen3NoKoreanNote =
+    "Korean is not offered: no Generation III game was released in Korean";
+
+constexpr bool gen3LanguageCyclePassesKorean(uint8_t current, uint8_t next) noexcept {
+    return current == kGen3Languages.back() && next == kGen3Languages.front();
+}
+
 // ---------------------------------------------------------------------------------------------
 // Left DETAILS viewport (shared shell geometry: panel at y=96, 1280x720, 56px footer).
 // ---------------------------------------------------------------------------------------------

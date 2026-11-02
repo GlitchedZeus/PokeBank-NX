@@ -195,11 +195,11 @@ struct Session {
     // The draft's Met Location / Met Level is a catch template of its current species (or its
     // ancestry) in the record's own origin game -- the same list the Met Location picker offers as
     // verified catches (EncounterPicker::templatesForOrigin), never the save being edited.
+    // Round 12 (R12-005): and the draft's level has reached that template's minimum level.
     bool encounterStillValid() const {
-        for (const auto& choice : Gen3EncounterPicker::templatesForOrigin(working.originGame, working.species))
-            if (choice.encounter.location == working.metLocation && choice.encounter.containsLevel(working.metLevel))
-                return true;
-        return false;
+        return Gen3EncounterPicker::verifiedTemplate(
+                   Gen3EncounterPicker::templatesForOrigin(working.originGame, working.species),
+                   working.metLocation, working.metLevel, working.level) != nullptr;
     }
 
     // Round 11 (owner clarification 2): an existing Pokemon whose species was changed in this
@@ -213,28 +213,37 @@ struct Session {
     // The surface's Met Location picker applied an encounter the user chose.
     void noteMetLocationChosen() noexcept { if (mode == Mode::Create) metLocationChosen = true; }
 
-    // The Met Location picker's model for this draft (Round 11 follow-up): the record's origin
-    // game's catch templates for the species, and the rows the picker shows -- keep-stored, those
-    // templates, then every other native location of that origin game and its markers.
+    // The Met Location picker's model for this draft. Round 12 (R12-004 / R12-005, owner H14 / H08;
+    // Integration/Encounter/MetLocationPolicy.h): the record's origin game's catch templates for
+    // the species and its pre-evolutions, and the rows of ONE of two lists. The DEFAULT list:
+    // keep-stored, the templates the draft's level reaches, the gift egg / trade / event markers and
+    // "Other location (unverified)..." (kUnverifiedListRow), which opens the UNVERIFIED list: the
+    // templates above the draft's level and every other native location of the origin game.
     struct MetLocationPicker {
         std::vector<PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice> choices;
         std::vector<uint16_t> rows;
+        bool unverifiedList = false;
     };
-    MetLocationPicker metLocationPicker() const {
+    MetLocationPicker metLocationPicker(bool unverifiedList = false) const {
         MetLocationPicker picker;
         picker.choices = Gen3EncounterPicker::templatesForOrigin(working.originGame, working.species);
-        picker.rows = Gen3EncounterPicker::rowValuesWithNative(picker.choices, working.metLocation, working.originGame);
+        picker.unverifiedList = unverifiedList;
+        picker.rows = unverifiedList
+            ? Gen3EncounterPicker::unverifiedRows(picker.choices, working.metLocation, working.originGame, working.level)
+            : Gen3EncounterPicker::defaultRows(picker.choices, working.metLocation, working.originGame, working.level);
         return picker;
     }
 
     // Applies one picker row; every offered row is an explicit choice (catch template, other native
     // location, trade / egg / event marker, or keep-stored), so each one marks a Create draft's Met
     // Location chosen. Returns the template applied, nullptr for any other row; false when `row` is
-    // not a row of `picker`.
+    // not a row of `picker`, or is "Other location (unverified)..." (it opens the unverified list:
+    // metLocationPicker(true); it is not a location).
     bool applyMetLocationRow(const MetLocationPicker& picker, uint16_t row,
                              const PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice*& applied) {
         applied = nullptr;
-        if (!editable() || std::find(picker.rows.begin(), picker.rows.end(), row) == picker.rows.end()) return false;
+        if (!editable() || row == Gen3EncounterPicker::kUnverifiedListRow ||
+            std::find(picker.rows.begin(), picker.rows.end(), row) == picker.rows.end()) return false;
         if (ExactGameMetLocations::isOtherNativeRow(row)) {
             // No template: the met level stays as entered (the Met Level row prompts 0-100).
             working.metLocation = ExactGameMetLocations::otherNativeRowLocation(row);
@@ -242,6 +251,13 @@ struct Session {
             const auto* choice = Gen3EncounterPicker::choiceAt(picker.choices, row);
             if (!choice) return false;
             working.metLocation = choice->encounter.location;
+            if (!Gen3EncounterPicker::levelReached(*choice, working.level)) {
+                // R12-005: a template above the draft's level (unverified list) is the place only;
+                // its met level would exceed the current level, so the met level stays as entered
+                // and the record stays labelled unverified ("level is below this encounter").
+                noteMetLocationChosen();
+                return true;
+            }
             if (!setEncounterMetLevel(choice->encounter.minLevel)) return false;
             applied = choice;
         }

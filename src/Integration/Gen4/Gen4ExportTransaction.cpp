@@ -254,6 +254,17 @@ std::vector<std::pair<std::string,std::string>> describeStagedReviewChanges(
         emit("Shiny",av.isShiny(a.id32(),{})?"Yes":"No",bv.isShiny(b.id32(),{})?"Yes":"No");
         emit("Pokerus",std::to_string(a.pokerusState()),std::to_string(b.pokerusState()));
         emit("Met Level",std::to_string(a.metLevel()),std::to_string(b.metLevel()));
+        // Round 12 (R12-004 / R12-005): a changed Met Location / Met Level / level that is not a
+        // verified wild encounter of the species / its ancestry at this level stays labelled
+        // unverified in Review (one note; nothing is refused or changed).
+        if(av.metLocation()!=bv.metLocation() || a.metLevel()!=b.metLevel() || av.level()!=bv.level() ||
+           a.species()!=b.species()) {
+            const uint8_t origin=static_cast<uint8_t>(b.originVersion());
+            const uint16_t met=origin==7 || origin==8 ? b.metLocationExtended() : bv.metLocation();
+            if(const auto note=PokeVault::Integration::EncounterContext45::unverifiedMetNote45(
+                   origin,b.species(),met,static_cast<uint8_t>(bv.level()));!note.empty())
+                rows.push_back({location+" / Met evidence",note});
+        }
         const auto am=a.moves(),bm=b.moves();
         const auto ap=a.pp(),bp=b.pp(),au=a.ppUps(),bu=b.ppUps();
         for(size_t i=0;i<4;++i) {

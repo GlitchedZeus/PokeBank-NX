@@ -1056,6 +1056,167 @@ void phase4Game(SourceGame game, Family family) {
     fs::remove_all(root);
 }
 
+// Round 12 R12-008 (owner H19: "it changes the stats for japanese language"). Cycling Language
+// English -> Japanese -> English on a Create draft (the LeafGreen screenshot) or an Edit of an
+// existing Pokemon must touch only the language byte and the name bytes: PID, IVs, EVs, computed
+// stats and every other byte stay put, the exact preview never fails into "PID 0 / stats -", and
+// the staged record survives export and a strict reparse. A record whose names cannot be written
+// in the new language is refused with a message and nothing is staged. The source is never written.
+namespace r12 {
+std::vector<uint8_t> plainExport(const StagedPokemonEditor& editor, std::size_t box, std::size_t slot) {
+    std::string error;
+    const auto bytes = editor.exportBoxPokemonFile(box, slot, error);
+    if (!bytes) std::cerr << "R12-008 export failed: " << error << "\n";
+    assert(bytes && bytes->size() == 80);
+    return *bytes;
+}
+// PKHeX PK3 plaintext: 0x08-0x11 nickname, 0x12 language, 0x14-0x1A OT name, 0x1C checksum.
+void assertOnlyLanguageAndNamesDiffer(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) {
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        if (a[i] == b[i]) continue;
+        const bool allowed = (i >= 0x08 && i <= 0x12) || (i >= 0x14 && i <= 0x1A) || i == 0x1C || i == 0x1D;
+        if (!allowed) std::cerr << "R12-008 unexpected PK3 byte change at 0x" << std::hex << i << std::dec << "\n";
+        assert(allowed);
+    }
+}
+void assertSameIdentityAndStats(const StagedPokemonRecord& a, const StagedPokemonRecord& b) {
+    assert(a.pid == b.pid && a.ivs == b.ivs && a.evs == b.evs && a.calculatedStats == b.calculatedStats);
+    assert(a.nature == b.nature && a.gender == b.gender && a.shiny == b.shiny &&
+           a.abilityNumber == b.abilityNumber && a.level == b.level && a.experience == b.experience);
+    assert(a.tid == b.tid && a.sid == b.sid && a.species == b.species && a.moves == b.moves);
+}
+} // namespace r12
+
+void languageStabilityGame(SourceGame game, Family family) {
+    namespace S3 = PokeBank::UIModel::Gen3SharedEditor;
+    namespace fs = std::filesystem;
+    const auto source = fixture(family, game);
+    const auto immutableSource = source;
+    std::string error;
+    for (const auto mode : {S3::Mode::Create, S3::Mode::Edit}) {
+        auto editor = StagedPokemonEditor::create(source, game, error);
+        assert(editor);
+        S3::Session session;
+        if (mode == S3::Mode::Create) {
+            session.beginCreate(editor->trainer(), editor->originGame());
+            session.working.otName = "RED";   // a Latin OT, as an international save's trainer has
+            session.baseline.otName = "RED";
+            session.working.ivs = {31, 0, 7, 12, 20, 3};
+            session.working.evs = {4, 0, 252, 0, 0, 0};
+            session.working.moves[0] = 84; session.working.pp[0] = 30;
+            session.noteMetLocationChosen();
+        } else {
+            const auto existing = editor->boxedPokemon(0, 0, error);
+            assert(existing && existing->language == 2 && existing->nickname == "PIKACHU");
+            session.begin(*existing, S3::Mode::Edit);
+        }
+        const auto previewNow = [&] {
+            error.clear();
+            auto shown = mode == S3::Mode::Create
+                ? editor->previewCreate(0, 1, session.createRequest(), error)
+                : editor->previewEdit(0, 0, session.editRequest(), error);
+            if (!shown) std::cerr << "R12-008 " << exactSourceGameId(game) << (mode == S3::Mode::Create ? " Create" : " Edit")
+                                  << " language " << int(session.working.language) << " preview failed: " << error << "\n";
+            assert(shown && error.empty());
+            return *shown;
+        };
+        // (a) English -> Japanese -> English with no other input: every preview succeeds and
+        // shows the same PID, IVs, EVs and computed stats; the name follows the language.
+        const auto english = previewNow();
+        assert(english.pid != 0 && english.calculatedStats[0] != 0);
+        session.working.language = 1;
+        const auto japanese = previewNow();
+        r12::assertSameIdentityAndStats(english, japanese);
+        assert(japanese.language == 1);
+        // R12-009: the un-nicknamed name is the Gen III Japanese default (katakana), and a Latin
+        // OT reads as the full-width letters a Japanese cartridge stores for the same bytes.
+        assert(japanese.nickname == "ピカチュウ");
+        assert(japanese.otName == "ＲＥＤ");
+        session.working.language = 2;
+        const auto back = previewNow();
+        r12::assertSameIdentityAndStats(english, back);
+        assert(back.encryptedBytes == english.encryptedBytes && back.nickname == "PIKACHU" && back.otName == "RED");
+        assert(editor->stagedBytes() == immutableSource && !editor->hasPendingChanges());
+
+        // (b) Keep/Add in Japanese stages a record that differs from the English draft only in
+        // the language and name bytes; export -> strict reparse reads the same values back.
+        auto englishEditor = StagedPokemonEditor::create(source, game, error);
+        assert(englishEditor);
+        {
+            auto englishSession = session;
+            englishSession.working.language = 2;
+            const bool ok = mode == S3::Mode::Create ? englishSession.add(*englishEditor, 0, 1, error)
+                                                     : englishSession.keep(*englishEditor, 0, 0, error);
+            // An Edit with no change stages nothing; the English record is the source record.
+            assert(ok || (mode == S3::Mode::Edit && !englishEditor->hasPendingChanges()));
+        }
+        session.working.language = 1;
+        const std::size_t slot = mode == S3::Mode::Create ? 1 : 0;
+        const bool staged = mode == S3::Mode::Create ? session.add(*editor, 0, 1, error)
+                                                     : session.keep(*editor, 0, 0, error);
+        if (!staged) std::cerr << "R12-008 Japanese stage failed: " << error << "\n";
+        assert(staged);
+        const auto stagedJapanese = editor->boxedPokemon(0, slot, error);
+        assert(stagedJapanese);
+        r12::assertSameIdentityAndStats(english, *stagedJapanese);
+        assert(stagedJapanese->language == 1 && stagedJapanese->nickname == "ピカチュウ");
+        r12::assertOnlyLanguageAndNamesDiffer(r12::plainExport(*englishEditor, 0, slot),
+                                              r12::plainExport(*editor, 0, slot));
+        // The Latin OT keeps its exact bytes (0xBB-0xEE hold A-z in both tables).
+        const auto ja = r12::plainExport(*editor, 0, slot), en = r12::plainExport(*englishEditor, 0, slot);
+        assert(std::equal(ja.begin() + 0x14, ja.begin() + 0x1B, en.begin() + 0x14));
+        // The Edit's Review lists Language and Nickname only, never PID / IV / EV rows.
+        if (mode == S3::Mode::Edit)
+            for (const auto& change : editor->pendingChanges())
+                    assert(change.label.find("PID") == std::string::npos && change.label.find(" IV") == std::string::npos &&
+                       change.label.find(" EV") == std::string::npos);
+
+        const fs::path root = fs::temp_directory_path() /
+            ("pokebank-r12-language-" + std::to_string(::getpid()));
+        fs::remove_all(root);
+        PokeVault::Integration::Gen3::Gen3ExportRequest request;
+        request.rootDirectory = root.string();
+        request.directoryStem = std::string(exactSourceGameId(game)) + "_r12_language";
+        request.sourcePath = "sdmc:/retroarch/saves/fixture.srm";
+        request.timestamp = "20261102-120000";
+        const auto exported = PokeVault::Integration::Gen3::publishVerifiedGen3Export(*editor, request);
+        assert(exported.success);
+        const auto edited = slurpFile(fs::path(exported.directory) / "edited.sav");
+        auto reopened = StagedPokemonEditor::create(edited, game, error);
+        assert(reopened);
+        const auto reparsed = reopened->boxedPokemon(0, slot, error);
+        assert(reparsed);
+        r12::assertSameIdentityAndStats(english, *reparsed);
+        assert(reparsed->language == 1 && reparsed->nickname == "ピカチュウ" && reparsed->otName == "ＲＥＤ");
+        assert(r12::plainExport(*reopened, 0, slot) == ja);
+        fs::remove_all(root);
+        assert(source == immutableSource && editor->originalBytes() == immutableSource);
+    }
+
+    // A name the new language cannot hold unchanged is refused with a message, nothing staged:
+    // an OT with an accented letter (no Japanese glyph), and a Japanese OT going international.
+    for (const auto& names : {std::pair<const char*, uint8_t>{"ÉVA", 2}, std::pair<const char*, uint8_t>{"サトシ", 1}}) {
+        auto editor = StagedPokemonEditor::create(source, game, error);
+        assert(editor);
+        BoxPokemonCreate create; create.species = 25; create.level = 5; create.language = names.second;
+        create.otName = names.first; create.moves[0] = 84; create.pp[0] = 30;
+        assert(editor->stageAddBoxPokemon(0, 1, create, error));
+        const auto before = editor->stagedBytes();
+        const auto changes = editor->pendingChanges().size();
+        const auto record = editor->boxedPokemon(0, 1, error);
+        assert(record && record->otName == names.first);
+        BoxPokemonEdit relanguage; relanguage.language = names.second == 1 ? 2 : 1;
+        error.clear();
+        assert(!editor->previewEdit(0, 1, relanguage, error) && !error.empty());
+        error.clear();
+        assert(!editor->stageBoxPokemonEdit(0, 1, relanguage, error));
+        assert(error.find("OT") != std::string::npos);
+        assert(editor->stagedBytes() == before && editor->pendingChanges().size() == changes);
+        assert(editor->originalBytes() == immutableSource);
+    }
+    assert(source == immutableSource);
+}
+
 int main() {
     // A PK3 egg stores language=Japanese as a placeholder, so its OT charset comes from the
     // containing save. clone() must carry that non-byte context or a Japanese OT becomes Latin.
@@ -1169,5 +1330,10 @@ int main() {
     phase4Game(SourceGame::EmeraldGBA, Family::Emerald);
     phase4Game(SourceGame::FireRedGBA, Family::FRLG);
     phase4Game(SourceGame::LeafGreenGBA, Family::FRLG);
+    languageStabilityGame(SourceGame::RubyGBA, Family::RS);
+    languageStabilityGame(SourceGame::SapphireGBA, Family::RS);
+    languageStabilityGame(SourceGame::EmeraldGBA, Family::Emerald);
+    languageStabilityGame(SourceGame::FireRedGBA, Family::FRLG);
+    languageStabilityGame(SourceGame::LeafGreenGBA, Family::FRLG);
     std::cout << "Generation III staged boxed Pokemon editor: PASS\n";
 }

@@ -689,7 +689,8 @@ void openMetLocationPicker(TrainerViewScreen& screen, State& state,
     Pokemon::Pokemon4ReadOnlyView view(record);
     const uint16_t current = view.metLocation();
     Surface::openContextualMetLocationPicker(screen, state, record.originVersion(), record.species(),
-        current, std::move(native), {view.eggLocation(), view.isEgg(), record.fatefulEncounter()});
+        current, std::move(native), {view.eggLocation(), view.isEgg(), record.fatefulEncounter()},
+        static_cast<uint8_t>(view.level()));
 }
 
 void openFormPicker(TrainerViewScreen& screen, State& state) {
@@ -1249,6 +1250,9 @@ std::string pickerValueLabel(TrainerViewScreen& screen, const State& state,
         std::string label = preview
             ? Names::getMetLocationChoiceName(preview->originVersion(), value)   // P5: twins show their id
             : std::string("Unknown location");
+        // Round 12 (R12-004): the default list's last row opens the unverified list.
+        if (PokeVault::Integration::EncounterContext45::Catalogue::isUnverifiedListRow(value))
+            label = PokeVault::Integration::MetLocationPolicy::kUnverifiedListRowPlace;
         if (state.pickerMetContextActive)
             label += "  |  " + state.pickerMetContext.detail(value,
                 [](uint16_t species) { return Names::getSpeciesName(species); });
@@ -1550,6 +1554,16 @@ struct Gen4Editor {
         namespace History = PokeBank::UIModel::HistoryConsistency;
         if (const auto caution = History::joined(gen4(state).session.historyFlags(family(screen))); !caution.empty())
             rows.insert(rows.begin() + 5, {History::kCautionLabel, caution});
+        // Round 12 (R12-004 / R12-005): a Met Location that is not a verified wild encounter of the
+        // species / its ancestry at this level stays labelled unverified, right under "Met".
+        Pokemon::Pokemon4ReadOnlyView view(r);
+        const uint8_t origin = static_cast<uint8_t>(r.originVersion());
+        const uint16_t met = origin == 7 || origin == 8 ? r.metLocationExtended() : view.metLocation();
+        if (auto note = PokeVault::Integration::EncounterContext45::unverifiedMetNote45(
+                origin, r.species(), met, static_cast<uint8_t>(view.level())); !note.empty()) {
+            auto at = std::find_if(rows.begin(), rows.end(), [](const auto& row) { return row.label == "Met"; });
+            rows.insert(at == rows.end() ? rows.end() : at + 1, {"Met evidence", std::move(note)});
+        }
         return rows;
     }
     static std::vector<Surface::DataRow> dataRowsWithoutCaution(TrainerViewScreen& screen, const Record& r) {
@@ -1845,7 +1859,8 @@ void handleGen4TopUp(TrainerViewScreen& screen,State& state,u64 down,const Touch
             const auto rows=screen.visibleItemIndices().size();
             if(screen.selectedItemIndex>=static_cast<int>(rows))
                 screen.selectedItemIndex=rows?static_cast<int>(rows)-1:0;
-            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again),400);   // again == the applied plan
+            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again,
+                [](BI::Pocket p){return gen4TopUpPocketName(p);}),400);   // again == the applied plan
             return;
         }
     }

@@ -36,8 +36,8 @@ inline std::vector<std::string> lines(int generation) {
         classic ? "L / R   Previous / next category" : "L / R   Previous / next pocket",
         "A   Edit the quantity (items with an editable quantity; unique items stay at 1)",
         "X   Add an item from this game's catalog     Y   Ask to remove the selected item",
-        classic ? "ZR   Top Up / Add Missing: pocket, Bag or PC (preview first; no Key Items / HMs)"
-                : "ZR   Top Up / Add Missing: pocket or whole Bag (preview first; no Key Items / HMs)",
+        classic ? "ZR   Top Up / Add Missing: pocket, Bag or PC (preview first; TMs / HMs too, no Key Items)"
+                : "ZR   Top Up / Add Missing: pocket or whole Bag (preview first; TMs / HMs too, no Key Items)",
         "A / B   Remove question: A removes, B cancels",
         generation == 5 ? "+   Review staged changes (shown once something is staged)"
                         : "+   Review staged changes (Export Copy and Discard All are there)",

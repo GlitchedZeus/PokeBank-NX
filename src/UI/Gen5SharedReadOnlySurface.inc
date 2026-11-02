@@ -149,9 +149,9 @@ bool beginSharedCreate(TrainerViewScreen& screen,std::string& error) {
     const ScreenState::CreateDate5 date{static_cast<uint32_t>(local.tm_year+1900),
                                         static_cast<uint32_t>(local.tm_mon+1),
                                         static_cast<uint32_t>(local.tm_mday)};
-    const auto request=ScreenState::sharedCreateDefaults(
-        ws,pid,Names::getSpeciesName(static_cast<uint16_t>(ScreenState::kSharedCreateSpecies)),
-        date,error);
+    // Round 12 R12-009: no nickname -> an un-nicknamed Pikachu whose name follows Language, as in
+    // Gen IV (the default name in the save's language, nickname flag clear).
+    const auto request=ScreenState::sharedCreateDefaults(ws,pid,{},date,error);
     if(!request)return false;
     return state.beginCreateDraft(ws,*request,[&](std::string& why) {
         return trainer.refreshStagedPokemonPresentation(why);
@@ -520,7 +520,8 @@ struct Gen5Editor {
                 }
                 EditorSurface::openContextualMetLocationPicker(screen, state, p.originVersion(),
                     p.species(), p.metLocation(), Fields::metLocationChoices(),
-                    {p.eggLocation(), p.egg(), p.fatefulEncounter()});
+                    {p.eggLocation(), p.egg(), p.fatefulEncounter()},
+                    static_cast<uint8_t>(Fields::level(p, b2w2(screen))));
                 return true;
             case Pokerus: {
                 // Inline toggle: None -> Infected -> Cured -> None (Gen V modes 0 / 2 / 1).
@@ -729,6 +730,9 @@ struct Gen5Editor {
             case PickerTarget::Ball: return Enums::getBallName(static_cast<uint8_t>(value));
             case PickerTarget::MetLocation: {
                 std::string label = Names::getMetLocationChoiceName(p ? p->originVersion() : 20, value);   // P5
+                // Round 12 (R12-004): the default list's last row opens the unverified list.
+                if (PokeVault::Integration::EncounterContext45::Catalogue::isUnverifiedListRow(value))
+                    label = PokeVault::Integration::MetLocationPolicy::kUnverifiedListRowPlace;
                 if (state.pickerMetContextActive)
                     label += "  |  " + state.pickerMetContext.detail(value,
                         [](uint16_t species) { return Names::getSpeciesName(species); });
@@ -925,6 +929,9 @@ struct Gen5Editor {
         namespace History = PokeBank::UIModel::HistoryConsistency;
         if (const auto caution = History::joined(backend(screen).historyFlags()); !caution.empty())
             rows.insert(rows.begin() + 6, {History::kCautionLabel, caution});
+        // Round 12 (R12-004 / R12-005): an unverified Met Location stays labelled, under "Met".
+        if (auto note = PokeVault::Integration::Gen5::metEvidence5(p, b2w2(screen)); !note.empty())
+            rows.insert(rows.begin() + 5, {"Met evidence", std::move(note)});
         return rows;
     }
 };
@@ -1139,7 +1146,8 @@ void handleGen5TopUp(TrainerViewScreen& screen,u64 keys,int tap,const TouchInput
                 return;
             }
             syncBagCursor(screen);
-            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again),400);   // again == the applied plan
+            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again,
+                [](BI::Pocket p){return gen5TopUpPocketName(p);}),400);   // again == the applied plan
             return;
         }
     }
@@ -1627,13 +1635,12 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
             HidNpadButton_Left,HidNpadButton_Right);
         return handleSharedWorkspace(screen,workspaceKeys,touch);
     }
-    // A Move or Clone carry (shared ClassicPackedMove overlay) owns A / B / Y / X
-    // and cell taps; navigation keys fall through to the box grid below.
+    // Round 12 R12-001: the Boxes grid has the Gen I-IV keys (shared ClassicPackedMove overlay). A Y
+    // tap picks up to Move, a Y hold multi-selects, and a Move or Clone carry owns A / B / Y / X and
+    // cell taps; navigation keys fall through to the box grid below, and + is Review there.
     if(state.surface()==Surface::Browse && screen.detailViewActive &&
        screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
-       ClassicPackedMove::gen5CarryActive(screen)) {
-        if(ClassicPackedMove::handleGen5CarryInput(screen,down,tap))return true;
-    }
+       ClassicPackedMove::handleGen5BoxInput(screen,down,held,stickX,stickY,tap))return true;
     if(state.surface()==Surface::Actions) {
         const auto actions=state.availableActions(staged);
         if(tap>=kGen5ActionTouchBase &&
@@ -1884,9 +1891,9 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
         screen.controllerNavigation.reset();
         return true;
     }
-    // Round 7 (ReviewEntry.h): one Review key per screen. Party and Boxes: Y, where Y has no other
-    // job in Browse (carrying is handled above); + is not a second key there. The save hub keeps
-    // its + Review. B in Review returns here with the cursor and box intact.
+    // Round 7 (ReviewEntry.h): one Review key per screen. Party: Y, where Y has no other job; + is
+    // not a second key there. Round 12 R12-001: Boxes use +, as Gen I-IV (Y picks up, above). The
+    // save hub keeps its + Review. B in Review returns here with the cursor and box intact.
     namespace Entry=PokeBank::UIModel::ReviewEntry;
     const bool party=screen.selectedMode==TrainerViewScreen::ViewMode::Party;
     const bool boxes=screen.selectedMode==TrainerViewScreen::ViewMode::Boxes;
@@ -2111,12 +2118,17 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
                 std::string name=reviewedFieldName(v);
                 if(v.field==F::AbilitySlot)name="Ability";
                 rows.push_back({loc+" / "+name,value});
+                // Round 12 (R12-004 / R12-005): an unverified Met Location stays labelled in Review.
+                if(v.field==F::MetLocation)
+                    if(const auto note=G::metEvidence5(after,nativeTrainer(screen).sharedScreen().black2White2());
+                       !note.empty())rows.push_back({loc+" / Met evidence",note});
             }
             constexpr std::array<const char*,6> statLabels{{"HP","Atk","Def","Spe","SpA","SpD"}};
             if(const auto line=CR::nonZero(statLabels,ivs);!line.empty())rows.push_back({loc+" / IVs",line});
             if(const auto line=CR::nonZero(statLabels,evs);!line.empty())rows.push_back({loc+" / EVs",line});
             continue;
         }
+        bool metEvidenceShown=false;
         for(const auto& field:verified->fields) {
             using F=G::StagedPokemon5Record::Field;
             std::string detail=reviewedFieldLabel(field);
@@ -2133,6 +2145,12 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
                 detail="Met Location: "+Names::getMetLocationDisplayName(before.originVersion(),before.metLocation())+
                     " -> "+Names::getMetLocationDisplayName(after.originVersion(),after.metLocation());
             rows.push_back({location(c.location),detail});
+            // Round 12 (R12-004 / R12-005): an unverified Met Location stays labelled in Review.
+            if((field.field==F::MetLocation || field.field==F::MetLevel) && !metEvidenceShown) {
+                metEvidenceShown=true;
+                if(const auto note=G::metEvidence5(after,nativeTrainer(screen).sharedScreen().black2White2());
+                   !note.empty())rows.push_back({location(c.location),"Met evidence: "+note});
+            }
         }
         // Round 11 (owner H25 clarification 2): the species changed and the record kept its own
         // history; a misfit is one caution note on this entry, never a change or a refusal.
@@ -2362,14 +2380,29 @@ bool draw(TrainerViewScreen& screen,PKSEFramebuffer& fb) {
         }
     }
     if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes &&
-       ClassicPackedMove::gen5CarryActive(screen))
-        ClassicPackedMove::draw(screen,fb); // carried sprite + "A Place / L/R Box / B Cancel"
+       ClassicPackedMove::gen5BoxLayerBusy(screen))
+        ClassicPackedMove::draw(screen,fb); // carried sprite + "A Place / L/R Box / B Cancel", or the Y rectangle
     else if(screen.selectedMode==TrainerViewScreen::ViewMode::Boxes) {
-        // Round 11 X-IMPEXP: X Export / Import after A, before Y, from the same decision as the key.
-        std::vector<ControllerHint> hints{{"D-pad","Navigate"},{"L/R","Box"},{"ZL/ZR","Jump 5"},{"A","Actions"}};
-        if(const char* x=boxFileLabel(screen,nativeTrainer(screen).stagedPokemon()))hints.push_back({"X",x});
-        hints.push_back({"Y","Review"});
-        hints.push_back({"B","Back"});
+        // Round 12 R12-001 (owner H16: "gen 5 still needs the footer and controls for review and move
+        // changed"): the Gen I-IV Boxes footer, same model and order (ClassicBrowseFooter): D-pad, A
+        // Actions, X Export / Import (Round 11 X-IMPEXP, the same decision as the key), Y Move / Hold
+        // Multi, L/R, ZL/ZR, + Review, B, - Help.
+        namespace BrowseFooter=PokeBank::UIModel::ClassicBrowseFooter;
+        const auto& ws=nativeTrainer(screen).stagedPokemon();
+        const auto here=ws.viewBox(static_cast<size_t>(std::max(0,screen.selectedBoxIndex)),
+                                   static_cast<size_t>(std::max(0,screen.selectedItemIndex)));
+        const bool occupied=here && here->valid() && !here->empty();
+        BrowseFooter::Spec spec;
+        spec.canOpen=true;
+        spec.openLabel="Actions";
+        spec.boxes=true;
+        if(const char* x=boxFileLabel(screen,ws))spec.actions.push_back({"X",x});
+        spec.actions.push_back({"Y",occupied?"Move / Hold Multi":"Hold Multi"});
+        spec.review=true;
+        spec.reviewGlyph=PokeBank::UIModel::ReviewEntry::footerHint(
+            PokeBank::UIModel::ReviewEntry::Screen::Boxes,5).glyph;
+        std::vector<ControllerHint> hints;
+        for(const auto& hint:BrowseFooter::hints(spec))hints.push_back({hint.glyph,hint.label});
         drawNavBar(fb,hints);
     }
     else

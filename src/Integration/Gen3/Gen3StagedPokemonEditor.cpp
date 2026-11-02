@@ -2,6 +2,7 @@
 #include "Integration/Gen1/Gen12CreateReview.h"
 #include "Integration/Gen3/Gen3StagedPokemonEditor.h"
 #include "UI/HistoryConsistencyFacts.h"
+#include "UI/Gen3EncounterPickerModel.h"
 
 #include "Encryption/Encryption3FRLG.h"
 #include "Enums/GameVersion.h"
@@ -19,6 +20,7 @@
 #include "Names/LocationDisplayNames.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Pokemon/Experience.h"
+#include "Utils/Gen3Text.h"
 #include "Utils/StringHelpers.h"
 
 #include <algorithm>
@@ -268,6 +270,18 @@ std::string recordLabel(std::size_t box, std::size_t slot) {
     return "Box " + std::to_string(box + 1) + " / Slot " + std::to_string(slot + 1);
 }
 
+// Round 12 (R12-004 / R12-005): the Review note for a Met Location that is not a verified encounter
+// of the species / its pre-evolutions that the record's level reaches ("" when it is one). The same
+// line the editor's "Encounter origin" row shows (Gen3EncounterPickerModel.h).
+constexpr const char* kMetEvidenceLabel = "Met evidence";
+template <typename Record>
+std::string metEvidenceNote(const Record& record) {
+    namespace Picker = PokeBank::UIModel::Gen3EncounterPicker;
+    const auto choices = Picker::templatesForOrigin(record.originGame, record.species);
+    if (Picker::verifiedTemplate(choices, record.metLocation, record.metLevel, record.level)) return {};
+    return Picker::encounterOriginText(choices, record.species, record.metLocation, record.metLevel, record.level);
+}
+
 } // namespace
 
 StagedPokemonEditor::StagedPokemonEditor(
@@ -454,18 +468,40 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
             return false;
         }
         const std::u16string shown = pokemon.nickname();
+        // Round 12 R12-008: the OT name is decoded through the record's language too (PKHeX
+        // PK3.OriginalTrainerName), so the same bytes read as a different name in the other
+        // table. It is re-stored in the new language exactly like a custom nickname; a name that
+        // table cannot hold is refused, never left to be reread as other glyphs.
+        const std::u16string shownOt = pokemon.otName();
         const bool wasDefault =
             Utils::utf16ToUtf8(shown) == defaultNickname(pokemon.speciesID(), pokemon.language());
         pokemon.setLanguage(*edit.language);
+        // Latin text read full-width from a Japanese record is the same name half-width in an
+        // international one (Utils::gen3FoldWidth); the Japanese encoder widens it by itself.
+        const auto forLanguage = [&](const std::u16string& text) {
+            return *edit.language == 1 ? text : Utils::gen3FoldWidth(text);
+        };
+        if (!edit.otName) {
+            const std::u16string keptOt = forLanguage(shownOt);
+            if (!pokemon.canStoreNickname(keptOt)) {
+                error = "This OT name cannot be written in the new language; change the OT name too";
+                return false;
+            }
+            pokemon.setOTName(keptOt);
+            if (Utils::gen3FoldWidth(pokemon.otName()) != Utils::gen3FoldWidth(shownOt)) {
+                error = "This OT name cannot be kept unchanged in the new language; change the OT name too";
+                return false;
+            }
+        }
         if (!edit.nickname) {
             const std::u16string kept = wasDefault
-                ? Utils::utf8ToUtf16(defaultNickname(pokemon.speciesID(), *edit.language)) : shown;
+                ? Utils::utf8ToUtf16(defaultNickname(pokemon.speciesID(), *edit.language)) : forLanguage(shown);
             if (!pokemon.canStoreNickname(kept)) {
                 error = "This nickname cannot be written in the new language; change the nickname too";
                 return false;
             }
             pokemon.setNickname(kept);
-            if (pokemon.nickname() != kept) {
+            if (Utils::gen3FoldWidth(pokemon.nickname()) != Utils::gen3FoldWidth(kept)) {
                 error = "This nickname cannot be kept unchanged in the new language; change the nickname too";
                 return false;
             }
@@ -478,7 +514,8 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
             return false;
         }
         pokemon.setNickname(value);
-        if (pokemon.nickname() != value) {
+        // A Japanese record stores Latin full-width; that is the same name (Utils::gen3FoldWidth).
+        if (Utils::gen3FoldWidth(pokemon.nickname()) != Utils::gen3FoldWidth(value)) {
             error = "Nickname would not read back unchanged in this record's language";
             return false;
         }
@@ -734,6 +771,14 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,std::size_t box,std::size_t
     }
     field("Met Location",oldMet,newMet);
     field("Met Level",std::to_string(before->metLevel),std::to_string(after->metLevel));
+    // Round 12 (R12-004 / R12-005): a changed Met Location / Met Level that is not a verified
+    // encounter of the species (or its pre-evolutions) at the current level stays labelled
+    // unverified in Review (one note; nothing is refused or changed because of it).
+    if((before->metLocation!=after->metLocation || before->metLevel!=after->metLevel || before->level!=after->level) &&
+       after->metLocation!=0)
+        if(const auto note=metEvidenceNote(*after);!note.empty())
+            changes_.push_back({static_cast<uint8_t>(box),static_cast<uint8_t>(slot),location+" "+kMetEvidenceLabel,
+                                "",note,party,true});
     field("Friendship",std::to_string(before->friendship),std::to_string(after->friendship));
     field("PID",std::to_string(before->pid),std::to_string(after->pid));
     field("Shiny",before->shiny?"Yes":"No",after->shiny?"Yes":"No");
@@ -828,6 +873,14 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         return false;
     }
     pokemon.setOTName(ot);
+    // Round 12 R12-008: a Japanese record has no half-width Latin, so a Latin OT (an international
+    // save's trainer name) is stored full-width at the same bytes. That is the same name; the
+    // strict reparse below compares against what the record really holds, not the typed width.
+    if (Utils::gen3FoldWidth(pokemon.otName()) != Utils::gen3FoldWidth(ot)) {
+        error = "Create OT name would not read back unchanged in this record's language";
+        return false;
+    }
+    const std::string expectedOt = Utils::utf16ToUtf8(pokemon.otName());
 
     std::string nickname = create.nickname;
     if (nickname.empty()) nickname = defaultNickname(create.species, create.language);
@@ -837,6 +890,11 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         return false;
     }
     pokemon.setNickname(nickname16);
+    if (Utils::gen3FoldWidth(pokemon.nickname()) != Utils::gen3FoldWidth(nickname16)) {
+        error = "Create nickname would not read back unchanged in this record's language";
+        return false;
+    }
+    const std::string expectedNickname = Utils::utf16ToUtf8(pokemon.nickname());
     pokemon.setLevel(create.level);
     if (create.experience) {
         if (Pokemon::getLevelFromExp(*create.experience, Pokemon::getGrowthRate(create.species)) != create.level) {
@@ -913,9 +971,6 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
         return false;
     }
     auto after = boxedPokemon(box, slot, error);
-    const std::string expectedNickname = create.nickname.empty()
-        ? defaultNickname(create.species, create.language) : create.nickname;
-    const std::string expectedOt = create.otName.value_or(trainer_.name);
     if (!after || after->species != create.species || after->level != create.level ||
         (create.experience && after->experience != *create.experience) ||
         after->nickname != expectedNickname || after->otName != expectedOt ||
@@ -959,6 +1014,8 @@ bool StagedPokemonEditor::stageAddBoxPokemon(
     detail("Ball",Enums::getBallName(after->ball));
     detail("Met",Names::getMetLocationDisplayName(after->originGame,after->metLocation)+
            ", Lv "+std::to_string(after->metLevel));
+    if(after->metLocation!=0)
+        if(const auto note=metEvidenceNote(*after);!note.empty())detail(kMetEvidenceLabel,note);   // Round 12
     detail("Nature",Names::getNatureName(after->nature));
     detail("Gender",after->gender==0?"Male":after->gender==1?"Female":"Genderless");
     if(after->shiny)detail("Shiny","Yes");

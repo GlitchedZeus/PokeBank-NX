@@ -140,6 +140,7 @@ struct State {
     std::string pickerQuery;   // NEW-06: Held Item search (narrows the presentation copy only)
     SharedHeldItemSearch::State heldItemSearch;
     std::vector<Encounter::EncounterProvenanceChoice> encounterChoices;
+    bool metUnverifiedList = false;   // Round 12: the Met Location picker shows its unverified list
     std::optional<Encounter::EncounterProvenanceChoice> selectedEncounter;
     int actionRow = 0;
     int box = 0;
@@ -419,20 +420,12 @@ static_assert(PokeBank::UIModel::SharedMenuGeometry::rule(
 
 std::string encounterOriginText(const TrainerViewScreen&,
                                 const Gen3::StagedPokemonRecord& p) {
-    if (p.metLocation == 0) return "Unknown";
     // Round 11 FRLG: the record's own origin game's catch templates (not the save's). A location
     // with no template is valid trade / gift / hatch history the data cannot confirm.
-    const auto choices = EncounterPicker::templatesForOrigin(p.originGame, p.species);
-    const Encounter::EncounterProvenanceChoice* selected = nullptr;
-    for (const auto& choice : choices) {
-        if (choice.encounter.location != p.metLocation) continue;
-        if (!selected) selected = &choice;
-        if (choice.encounter.containsLevel(p.metLevel)) { selected = &choice; break; }
-    }
-    if (!selected) return "Not a listed catch; unverified";
-    if (!selected->evolved) return std::string(Names::getSpeciesName(p.species));
-    return std::string(Names::getSpeciesName(selected->originalEncounterSpecies)) +
-           " → " + Names::getSpeciesName(p.species);
+    // Round 12 (R12-004 / R12-005): one model line (Gen3EncounterPickerModel.h): a location / met
+    // level that is not a verified template the current level reaches stays labelled unverified.
+    return EncounterPicker::encounterOriginText(EncounterPicker::templatesForOrigin(p.originGame, p.species),
+                                                p.species, p.metLocation, p.metLevel, p.level);
 }
 
 Color genderValueColor(uint8_t gender) {
@@ -607,7 +600,7 @@ std::pair<std::string, std::string> metLocationChoiceText(const State& state, ui
     // markers name themselves, and keep-stored is the save's own value, never judged.
     const auto& stored = state.session.working;
     auto text = EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,
-                                         stored.metLocation, stored.metLevel);
+                                         stored.metLocation, stored.metLevel, stored.level);
     return {std::move(text.place), std::move(text.detail)};
 }
 
@@ -716,7 +709,10 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
         // Sevii; R/S/E: Hoenn), never the save's. A species with no catch template in that game
         // (a traded Rayquaza, an evolved Charizard) still gets every native location.
         // Session::metLocationPicker is the one model (templates + rows) the tests drive.
-        auto picker = state.session.metLocationPicker();
+        // Round 12 (R12-004 / R12-005): it opens on the DEFAULT list (verified rows the level
+        // reaches, markers, "Other location (unverified)..."); that last row opens the unverified list.
+        state.metUnverifiedList = false;
+        auto picker = state.session.metLocationPicker(false);
         state.encounterChoices = std::move(picker.choices);
         // R2-BUG-008: a stored origin the templates do not cover stays choosable (keep stored).
         state.pickerValues = std::move(picker.rows);
@@ -725,7 +721,7 @@ void openValuePicker(TrainerViewScreen& screen, State& state, PickerTarget targe
             screen.postStatus("Met Location has no native Generation III list for this origin game", 300);
             return;
         }
-        state.pickerRow = EncounterPicker::selectedRowWithNative(
+        state.pickerRow = EncounterPicker::selectedRowIn(
             state.encounterChoices, state.pickerValues, state.session.working.metLocation,
             state.session.working.metLevel);
         state.valuePicker = true;
@@ -815,7 +811,20 @@ void applyValuePicker(State& state) {
             // marker (labelled unverified), or keep-stored -- and marks the Create Met Location
             // explicitly chosen for each one (a FireRed Rayquaza or Charizard has only non-template
             // rows). The chosen flag, never "location != 0", is what Create requires.
-            const SessionModel::Session::MetLocationPicker picker{state.encounterChoices, state.pickerValues};
+            if (value == EncounterPicker::kUnverifiedListRow) {
+                // Round 12 (R12-004): not a location -- show the unverified list; the picker stays
+                // open and a choice there is still an explicit one, labelled unverified.
+                auto unverified = state.session.metLocationPicker(true);
+                state.metUnverifiedList = true;
+                state.encounterChoices = std::move(unverified.choices);
+                state.pickerValues = std::move(unverified.rows);
+                state.pickerRow = 0;
+                state.pickerScroll.reset();
+                state.pickerViewport.reset();
+                return;
+            }
+            const SessionModel::Session::MetLocationPicker picker{state.encounterChoices, state.pickerValues,
+                                                                  state.metUnverifiedList};
             const Encounter::EncounterProvenanceChoice* applied = nullptr;
             if (state.session.applyMetLocationRow(picker, value, applied)) {
                 if (applied) state.selectedEncounter = *applied;
@@ -905,27 +914,50 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         // place. PK3 names are 5 / 5 characters in Japanese and 10 / 7 otherwise
         // (Gen3StagedPokemonEditor maxNicknameLength / maxOtLength), so a language the current
         // nickname or OT cannot fit is skipped with a clear message, never staged.
+        // Round 12 R12-008: a language is offered only when the exact preview of the draft in it
+        // succeeds (names re-stored in that language's table, PID / IVs / EVs / stats untouched).
+        // A language the editor refuses is skipped with its reason, so the panels never fall back
+        // to an unbuilt draft ("PID 0", stats "—") because of a language choice.
         const auto codepoints = [](const std::string& text) {
             std::size_t n = 0;
             for (unsigned char c : text) n += (c & 0xC0) != 0x80;
             return n;
         };
-        const auto fits = [&](uint8_t language) {
-            return codepoints(p.nickname) <= (language == 1 ? 5u : 10u) &&
-                   codepoints(p.otName) <= (language == 1 ? 5u : 7u);
+        const auto representable = [&](uint8_t language, std::string& why) {
+            if (codepoints(p.nickname) > (language == 1 ? 5u : 10u) ||
+                codepoints(p.otName) > (language == 1 ? 5u : 7u)) {
+                why = "Japanese needs a nickname and OT of 5 characters or fewer";
+                return false;
+            }
+            auto* staged = editor(screen);
+            if (!staged) return true;   // drawWorkspace reports "Exact preview unavailable"
+            auto trial = state.session;
+            trial.working.language = language;
+            why.clear();
+            const auto preview = trial.mode == SessionModel::Mode::Create
+                ? staged->previewCreate(state.box, state.slot, trial.createRequest(), why)
+                : state.party ? staged->previewPartyEdit(state.slot, trial.editRequest(), why)
+                : staged->previewEdit(state.box, state.slot, trial.editRequest(), why);
+            return preview.has_value();
         };
         uint8_t next = Presentation::nextGen3Language(p.language);
-        bool skipped = false;
-        for (std::size_t i = 0; i < Presentation::kGen3Languages.size() && !fits(next); ++i) {
-            skipped = true;
-            next = Presentation::nextGen3Language(next);
+        bool passedKorean = Presentation::gen3LanguageCyclePassesKorean(p.language, next);
+        std::string skipped;
+        std::string why;
+        for (std::size_t i = 0; i < Presentation::kGen3Languages.size() && next != p.language &&
+                                !representable(next, why); ++i) {
+            if (skipped.empty())
+                skipped = std::string(Enums::getLanguageName(next)) + " skipped: " + why;
+            const uint8_t after = Presentation::nextGen3Language(next);
+            passedKorean = passedKorean || Presentation::gen3LanguageCyclePassesKorean(next, after);
+            next = after;
         }
         if (next != p.language) {
             p.language = next;
             state.previewValid = false;
         }
-        if (skipped)
-            screen.postStatus("Japanese needs a nickname and OT of 5 characters or fewer", 300);
+        if (!skipped.empty()) screen.postStatus(skipped, 360);
+        else if (passedKorean) screen.postStatus(Presentation::kGen3NoKoreanNote, 300);
         return;
     }
     if (row == 11) { openValuePicker(screen, state, PickerTarget::Ball); return; }
@@ -940,11 +972,13 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
     if (row == 12) {
         auto choices = EncounterPicker::templatesForOrigin(p.originGame, p.species);
         std::optional<Encounter::EncounterProvenanceChoice> chosen = state.selectedEncounter;
+        // R12-005: a template above the current level is never this record's encounter.
+        if (chosen && !EncounterPicker::levelReached(*chosen, p.level)) chosen.reset();
         if (!chosen || chosen->encounter.location != p.metLocation) {
             chosen.reset();
             for (const auto& choice : choices) {
                 const auto& encounter = choice.encounter;
-                if (encounter.location != p.metLocation) continue;
+                if (encounter.location != p.metLocation || !EncounterPicker::levelReached(choice, p.level)) continue;
                 if (encounter.containsLevel(p.metLevel)) { chosen = choice; break; }
                 if (!chosen) chosen = choice;
             }
@@ -967,8 +1001,10 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
             screen.postStatus("This encounter has fixed met level " + std::to_string(encounter.minLevel), 240);
             return;
         }
+        // A Pokémon is never below the level it was met at: the range stops at the current level.
+        const int maxMet = std::max<int>(encounter.minLevel, std::min<int>(encounter.maxLevel, p.level));
         const auto r = Utils::promptNumber("Met Level for selected encounter", p.metLevel,
-                                           encounter.minLevel, encounter.maxLevel);
+                                           encounter.minLevel, maxMet);
         if (r.accepted) {
             state.session.setEncounterMetLevel(static_cast<uint8_t>(r.value));
             state.selectedEncounter = *chosen;
@@ -2067,13 +2103,26 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, State& stat
         SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
-    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget),
+    const bool metLocationList = state.pickerTarget == PickerTarget::MetLocation;
+    fb.drawText(x + 28, y + 20,
+                metLocationList && state.metUnverifiedList
+                    ? PokeVault::Integration::MetLocationPolicy::kUnverifiedListTitle   // R12-004
+                    : pickerTitle(state.pickerTarget),
                 Colors::Text, TextStyle::Heading);
 
     fb.drawText(x + 28, y + 55,
                 std::to_string(state.pickerRow + 1) + " / " +
                     std::to_string(state.pickerValues.size()),
                 Colors::TextDim, TextStyle::Caption);
+    if (metLocationList) {
+        // Round 12 (R12-004): which list this is; a species with no verified row here says so.
+        namespace Policy = PokeVault::Integration::MetLocationPolicy;
+        const char* scope = state.metUnverifiedList ? Policy::kUnverifiedListScope
+            : EncounterPicker::verifiedRowCount(state.encounterChoices, state.pickerValues) == 0
+                ? Policy::kMarkersOnlyScope : Policy::kDefaultListScope;
+        fb.drawText(x + 165, y + 55, SharedMovesPanel::fit(fb, scope, w - 195, TextStyle::Caption),
+                    Colors::TextSecondary, TextStyle::Caption);
+    }
     const int visible = compactChoices ? visibleChoices : 10;
     // A picker opened this frame still has an unset viewport (firstRow -1): settle it the way
     // input does, so the first draw never reads pickerValues[-1] or shifts its hitboxes.

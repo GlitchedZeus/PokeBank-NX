@@ -100,9 +100,12 @@ struct Session {
         const auto history = SpeciesChangeHistoryPolicy::reconcile(
             mode == SessionMode::Create ? SpeciesChangeHistoryPolicy::Mode::Create : SpeciesChangeHistoryPolicy::Mode::Edit,
             caught.present, [&] {
-                for (const auto& encounter :
-                     PokeVault::Integration::EncounterGuardrails::forGameSpecies(sourceGameId, species))
-                    if (encounter.location == caught.location) return true;
+                // Round 12 (owner H08 / R12-005): the species' or a pre-evolution's Crystal template
+                // at that landmark, whose minimum level the new level reaches (the picker's rule).
+                for (const auto& encounter : ExactGameMetLocations::crystalTemplatesWithAncestry(sourceGameId, species))
+                    if (encounter.location == caught.location &&
+                        PokeVault::Integration::MetLocationPolicy::levelReachesEncounter(encounter.minLevel, working.level))
+                        return true;
                 return false;
             });
         pokerusCleared = history.resetPokerus && working.pokerus != 0;

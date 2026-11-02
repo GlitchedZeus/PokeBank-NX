@@ -15,9 +15,19 @@
 //      what they are.
 // Only the record's own origin game is used: a FireRed / LeafGreen record is offered Kanto and
 // Sevii ids (Names::isGen3NativeMetLocation), never the Hoenn list, and the reverse for R/S/E.
+//
+// Round 12 (R12-004 / R12-005, owner H14 / H08): that full list is no longer the DEFAULT. The
+// shared policy (Integration/Encounter/MetLocationPolicy.h) splits it: the default list holds the
+// stored row, the verified rows of the species AND its pre-evolutions whose level the Pokémon has
+// reached, the game's own markers and one "Other location (unverified)..." row; every other
+// native location (and each verified row above the Pokémon's level) is in the unverified list.
+#include "Integration/Encounter/EncounterContext45.h"
+#include "Integration/Encounter/EncounterGuardrails.h"
+#include "Integration/Encounter/MetLocationPolicy.h"
 #include "Names/LocationNames.h"
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -27,13 +37,17 @@ namespace PokeBank::UIModel::ExactGameMetLocations {
 // location id with this flag; 0xFFFF stays the Gen III keep-stored row.
 inline constexpr uint16_t kOtherNativeRowFlag = 0x8000;
 inline constexpr uint16_t kKeepStoredRowValue = 0xFFFF;
+// Round 12: the default list's last row, "Other location (unverified)...", which opens the
+// unverified list. Not a location and not an other-native row.
+inline constexpr uint16_t kUnverifiedListRowValue = PokeVault::Integration::MetLocationPolicy::kUnverifiedListRow;
 
 constexpr uint16_t otherNativeRow(uint16_t location) noexcept {
     return static_cast<uint16_t>(kOtherNativeRowFlag | (location & 0x7FFF));
 }
 constexpr bool isOtherNativeRow(uint16_t row) noexcept {
-    return row != kKeepStoredRowValue && (row & kOtherNativeRowFlag) != 0;
+    return row != kKeepStoredRowValue && row != kUnverifiedListRowValue && (row & kOtherNativeRowFlag) != 0;
 }
+static_assert(!isOtherNativeRow(kUnverifiedListRowValue) && !isOtherNativeRow(kKeepStoredRowValue));
 constexpr uint16_t otherNativeRowLocation(uint16_t row) noexcept {
     return static_cast<uint16_t>(row & 0x7FFF);
 }
@@ -76,6 +90,10 @@ inline std::vector<uint16_t> gen3OfferedLocations(uint8_t origin) {
     return out;
 }
 
+// The game's own history markers (Gen III gift egg 253, in-game trade 254, fateful encounter
+// 255): offered in the default list, labelled as markers.
+constexpr bool gen3MarkerLocation(uint16_t location) noexcept { return location >= 253 && location <= 255; }
+
 constexpr const char* gen3OtherDetail(uint16_t location) noexcept {
     switch (location) {
         case 253: return kEggMarkerDetail;
@@ -100,11 +118,45 @@ inline std::vector<uint16_t> crystalOfferedLocations() {
     return out;
 }
 
+// Crystal's own markers (Gift 0x7E, Event 0x7F): offered in the default list, labelled as markers.
+constexpr bool crystalMarkerLocation(uint16_t location) noexcept { return location == 0x7E || location == 0x7F; }
+
 constexpr const char* crystalOtherDetail(uint16_t location) noexcept {
     return location == 0x7E ? kGiftMarkerDetail : location == 0x7F ? kEventMarkerDetail : kOtherPlaceDetail;
 }
 
 // ---- Shared composition ----
+
+// Round 12 (owner H08 "evolved"): the exact game's verified catch / gift / static / egg templates
+// for the species, then for each of its pre-evolutions (an evolved Pokémon was met as an ancestor).
+// Ancestry comes from the EncounterContext45 Gen IV evolution edges, which cover every Gen I-III
+// family; a member above `maxSpecies` (a later-generation baby) is not of this game. A row says the
+// species it was met as (originalEncounterSpecies); the Gen III Horsea edge keeps its level gate.
+inline std::vector<PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice>
+templatesWithAncestry(std::string_view gameId, uint16_t species, uint16_t maxSpecies) {
+    namespace Encounter = PokeVault::Integration::EncounterGuardrails;
+    std::vector<Encounter::EncounterProvenanceChoice> out;
+    if (gameId.empty() || species == 0 || species > maxSpecies) return out;
+    for (const auto& encounter : Encounter::forGameSpecies(gameId, species))
+        out.push_back({encounter, species, species, 0, false});
+    const auto family = PokeVault::Integration::EncounterContext45::ancestry(4, species);
+    const auto edge = Encounter::gen3EvolutionParent(species);
+    for (uint16_t member = 1; member <= maxSpecies; ++member) {
+        if (member == species || !family[member]) continue;
+        const uint8_t gate = edge && edge->originSpecies == member ? edge->minimumEvolutionLevel : 0;
+        for (const auto& encounter : Encounter::forGameSpecies(gameId, member))
+            out.push_back({encounter, species, member, gate, true});
+    }
+    return out;
+}
+
+// Crystal's plain-template view of it (species + pre-evolutions, 1-251).
+inline std::vector<PokeVault::Integration::EncounterGuardrails::EncounterTemplate>
+crystalTemplatesWithAncestry(std::string_view gameId, uint16_t species) {
+    std::vector<PokeVault::Integration::EncounterGuardrails::EncounterTemplate> out;
+    for (const auto& choice : templatesWithAncestry(gameId, species, 251)) out.push_back(choice.encounter);
+    return out;
+}
 
 // The other-native rows: every offered id that is neither a template location (already listed as a
 // catch) nor `skip` (the stored location when it has its own keep-stored row).
@@ -120,6 +172,25 @@ inline std::vector<uint16_t> otherNativeRows(const std::vector<uint16_t>& offere
         rows.push_back(otherNativeRow(id));
     }
     return rows;
+}
+
+// Round 12 (R12-004 / R12-005): the Crystal editor / Review line for recorded caught data. "" when
+// the landmark and level code are a verified Crystal template of the species or a pre-evolution
+// that the current level reaches; otherwise an honest unverified label (markers name themselves).
+inline std::string crystalUnverifiedNote(std::string_view gameId, uint16_t species, uint8_t location,
+                                         uint8_t levelCode, uint8_t level) {
+    namespace Encounter = PokeVault::Integration::EncounterGuardrails;
+    namespace Policy = PokeVault::Integration::MetLocationPolicy;
+    bool templateHere = false;
+    for (const auto& encounter : crystalTemplatesWithAncestry(gameId, species)) {
+        if (encounter.location != location) continue;
+        templateHere = true;
+        const bool levelFits = levelCode == 1 ? encounter.method == Encounter::Method::Egg
+                                              : levelCode >= 2 && encounter.containsLevel(levelCode);
+        if (levelFits && Policy::levelReachesEncounter(encounter.minLevel, level)) return {};
+    }
+    if (crystalMarkerLocation(location)) return crystalOtherDetail(location);
+    return templateHere ? "Not a listed catch at this level; unverified" : kOtherPlaceDetail;
 }
 
 } // namespace PokeBank::UIModel::ExactGameMetLocations

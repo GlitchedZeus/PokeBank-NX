@@ -9,6 +9,7 @@
 #include "UI/SharedMovesPanel.h"
 #include "UI/SharedPokemonShell.h"
 
+#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -255,6 +256,13 @@ static void testFooterAndToggles() {
         require(language >= 1 && language <= 7 && language != 6, "Gen III language ids");
     }
     require(P::nextGen3Language(5) == 7 && P::nextGen3Language(7) == 1, "Gen III language order");
+    // Round 12 R12-009: Korean is never a Gen III choice, and the cycle says so where it would sit.
+    require(std::find(P::kGen3Languages.begin(), P::kGen3Languages.end(), 8) == P::kGen3Languages.end(),
+            "Gen III never offers Korean");
+    require(P::gen3LanguageCyclePassesKorean(7, 1) && !P::gen3LanguageCyclePassesKorean(5, 7) &&
+            !P::gen3LanguageCyclePassesKorean(1, 2), "Gen III Korean note only on the Spanish -> Japanese wrap");
+    require(std::string(P::kGen3NoKoreanNote).find("Korean") != std::string::npos &&
+            std::string(P::kGen3NoKoreanNote).find("Generation III") != std::string::npos, "Gen III Korean note wording");
     require(std::string(P::legalityLabel(P::LegalityState::Invalid))=="Invalid" &&
             std::string(P::legalityLabel(P::LegalityState::Verified))=="No problems found" &&
             std::string(P::legalityLabel(P::LegalityState::NotChecked))=="Not checked",
@@ -404,6 +412,10 @@ static void testRealSourcesUseSharedUnit() {
     require(shared.find("Reroll::reroll(rng, {A::ivs(*record), A::evs(*record)})") != std::string::npos, "Gen IV/V Y re-roll");
     require(gen3.find("Presentation::nextPokerusByte(p.pokerus, state.session.baseline.pokerus)") != std::string::npos, "Gen III Pokerus inline");
     require(gen3.find("Presentation::nextGen3Language(p.language)") != std::string::npos, "Gen III Language inline");
+    // Round 12 R12-008/009: the Gen III cycle offers only a language the exact preview accepts
+    // (never a fallback to an unbuilt "PID 0" draft) and names the missing Korean explicitly.
+    require(gen3.find("trial.working.language = language;") != std::string::npos &&
+            gen3.find("Presentation::kGen3NoKoreanNote") != std::string::npos, "Gen III Language cycle is preview-checked");
     require(gen4.find("SharedEditorPresentation::nextPokerusByte(") != std::string::npos, "Gen IV Pokerus inline");
     require(gen4.find("openPokerusPicker") == std::string::npos && gen4.find("openLanguagePicker") == std::string::npos, "Gen IV popups retired");
     require(gen5.find("const uint32_t next = mode == 0 ? 2u : mode == 2 ? 1u : 0u;") != std::string::npos, "Gen V Pokerus inline");

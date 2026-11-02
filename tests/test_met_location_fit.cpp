@@ -10,6 +10,7 @@
 #include "Integration/Gen5/Gen5EncounterLocations.h"
 #include "Names/LocationDisplayNames.h"
 #include "UI/ExactGameMetLocations.h"
+#include "UI/Gen3EncounterPickerModel.h"
 #include "UI/SharedMenuGeometry.h"
 
 #include <cassert>
@@ -79,18 +80,24 @@ void testGen45RowsFit() {
         for (int species = 1; species <= maxSpecies; ++species)
             // Each species is measured with the stored location at every encounter spot it has (the
             // "Stored: " row) and with no stored match, over both lists the X key shows.
+            // Round 12 (R12-005): also at Lv. 1, where every wild row is above the level and reads
+            // "...; level is below this encounter" in the unverified list.
+            for (const uint8_t level : {uint8_t{0}, uint8_t{1}})
             for (const uint16_t stored : {native.front(), native.back()}) {
-                const C::Catalogue catalogue(origin, static_cast<uint16_t>(species), stored, native, {});
+                const C::Catalogue catalogue(origin, static_cast<uint16_t>(species), stored, native, {}, level);
                 for (const bool other : {false, true})
                     for (const auto location : catalogue.choices(other)) {
-                        const std::string name = Names::getMetLocationChoiceName(origin, location);   // P5 row name
+                        // Round 12: the default list's last row is drawn with its own place text.
+                        const std::string name = C::Catalogue::isUnverifiedListRow(location)
+                            ? std::string(PokeVault::Integration::MetLocationPolicy::kUnverifiedListRowPlace)
+                            : Names::getMetLocationChoiceName(origin, location);   // P5 row name
                         const auto speciesName = [](uint16_t s) { return Names::getSpeciesName(s); };
                         std::string detail = catalogue.detail(location, speciesName);
                         if (catalogue.wildRow(location)) {
                             // The same spot as the record's stored location reads "Stored: <example>";
                             // the draw drops that prefix only when the row would not fit (the name is
                             // then accent-coloured and the header says "row 1 = stored").
-                            const C::Catalogue storedHere(origin, static_cast<uint16_t>(species), location, native, {});
+                            const C::Catalogue storedHere(origin, static_cast<uint16_t>(species), location, native, {}, level);
                             std::string asStored = storedHere.detail(location, speciesName);
                             if (asStored.rfind("Stored: ", 0) == 0 && rowWidth(name, asStored) > kTextRoom)
                                 asStored.erase(0, 8);
@@ -117,8 +124,10 @@ void testGen3RowsFit() {
     assert(surface.find("EncounterPicker::rowText(state.encounterChoices, value, stored.originGame,") != std::string::npos);
     const std::string src = read("include/UI/Gen3EncounterPickerModel.h");
     assert(src.find("\" Lv. \" + std::to_string(encounter.minLevel);") != std::string::npos);
-    assert(src.find("detail += \", met as \" + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));") != std::string::npos);
-    assert(src.find("detail += \" (evo. \" + std::to_string(selected->minimumEvolutionLevel) + \")\";") != std::string::npos);
+    assert(src.find("detail += \" via \" + std::string(Names::getSpeciesName(selected->originalEncounterSpecies));") != std::string::npos);
+    // Round 12 (owner H08 "evolved"; updated pin): every pre-evolution's rows are offered, so the
+    // "(evo. N)" gate is no longer drawn (Trainer Tower | Super Rod Lv. 15-25, met as Horsea).
+    assert(src.find("(evo. ") == std::string::npos);
     assert(src.find("\"Met Lv. \" + std::to_string(storedMetLevel), false};") != std::string::npos);
     int widest = 0, rows = 0;
     std::string worst;
@@ -131,9 +140,7 @@ void testGen3RowsFit() {
                 std::string detail = std::string(E::methodName(e.method)) + " Lv. " + std::to_string(e.minLevel);
                 if (e.maxLevel != e.minLevel) detail += "\xE2\x80\x93" + std::to_string(e.maxLevel);
                 if (choice.evolved) {
-                    detail += ", met as " + std::string(Names::getSpeciesName(choice.originalEncounterSpecies));
-                    if (choice.minimumEvolutionLevel != 0)
-                        detail += " (evo. " + std::to_string(choice.minimumEvolutionLevel) + ")";
+                    detail += " via " + std::string(Names::getSpeciesName(choice.originalEncounterSpecies));
                 }
                 ++rows;
                 const std::string name = Names::getMetLocationDisplayName(origin, e.location);
@@ -147,6 +154,26 @@ void testGen3RowsFit() {
             const int w = rowWidth(name, "Met Lv. 100");
             if (w > widest) { widest = w; worst = name; }
         }
+    // Round 12 (R12-004 / R12-005): the rows the model really builds (Gen3EncounterPickerModel.h
+    // rowText) for every species + pre-evolution template, verified (Lv. 100) and above the level
+    // (Lv. 1, "...; level is below this encounter"), plus the "Other location (unverified)..." row.
+    namespace Picker = PokeBank::UIModel::Gen3EncounterPicker;
+    for (uint8_t origin = 1; origin <= 5; ++origin)
+        for (uint16_t species = 1; species <= 386; ++species) {
+            const auto choices = Picker::templatesForOrigin(origin, species);
+            for (std::size_t i = 0; i < choices.size(); ++i)
+                for (const uint8_t level : {uint8_t{100}, uint8_t{1}}) {
+                    const auto text = Picker::rowText(choices, static_cast<uint16_t>(i), origin, 0, 0, level);
+                    ++rows;
+                    const int w = rowWidth(text.place, text.detail);
+                    if (w > widest) { widest = w; worst = text.place + " | " + text.detail; }
+                }
+        }
+    {
+        const auto entry = Picker::rowText(std::vector<E::EncounterProvenanceChoice>{}, Picker::kUnverifiedListRow, 2, 0, 0);
+        ++rows;
+        if (rowWidth(entry.place, entry.detail) > widest) { widest = rowWidth(entry.place, entry.detail); worst = entry.place; }
+    }
     // Round 11 FRLG: every other-native row (a native place that is not a listed catch, or a trade /
     // egg / event marker) of each exact origin game, with the text metLocationChoiceText() builds.
     assert(src.find("Names::getMetLocationDisplayName(origin, location), MetRows::gen3OtherDetail(location), false}") != std::string::npos);

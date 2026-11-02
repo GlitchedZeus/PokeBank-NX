@@ -206,10 +206,13 @@ inline void openPicker(TrainerViewScreen& screen, EditorState& state, PickerTarg
 
 inline void openContextualMetLocationPicker(TrainerViewScreen& screen, EditorState& state,
     uint8_t origin, uint16_t species, uint16_t current, std::vector<uint16_t> native,
-    PokeVault::Integration::EncounterContext45::History history) {
+    PokeVault::Integration::EncounterContext45::History history, uint8_t currentLevel) {
     // EncounterGuardrails supplies source facts only; native histories are never rejected here.
+    // Round 12 (R12-004 / R12-005): the picker opens on the DEFAULT list (stored, verified wild
+    // rows the current level reaches, trade / egg markers, "Other location (unverified)...");
+    // that last row (or X) shows the UNVERIFIED list (Integration/Encounter/MetLocationPolicy.h).
     PokeVault::Integration::EncounterContext45::Catalogue context(origin, species, current,
-                                                               std::move(native), history);
+                                                               std::move(native), history, currentLevel);
     openPicker(screen, state, PickerTarget::MetLocation, context.choices(), current);
     state.pickerNativeValues = context.choices(true);
     state.pickerMetContext = std::move(context);
@@ -519,6 +522,19 @@ bool handleValuePicker(TrainerViewScreen& screen, EditorState& state, u64 down, 
 
     state.pickerScroll.stop();
     const uint16_t value = state.pickerValues[static_cast<size_t>(state.pickerRow)];
+    // Round 12 (R12-004): "Other location (unverified)..." is not a location; it opens the
+    // unverified list, where a choice stays an explicit, unverified one.
+    if (state.pickerTarget == PickerTarget::MetLocation && state.pickerMetContextActive &&
+        PokeVault::Integration::EncounterContext45::Catalogue::isUnverifiedListRow(value)) {
+        state.pickerOtherHistories = true;
+        state.pickerValues = state.pickerMetContext.choices(true);
+        state.pickerRow = 0;
+        state.pickerScroll.reset();
+        state.pickerViewport.reset();
+        state.pickerScrollbar = {};
+        screen.controllerNavigation.reset();
+        return true;
+    }
     // The adapter applies the native choice to the draft, or reports why not
     // and leaves the picker open on the same row.
     const bool unchangedLocation = state.pickerTarget == PickerTarget::MetLocation &&
@@ -968,7 +984,11 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
         SharedEditorChrome::drawPickerFooter(fb, footer);
         return;
     }
-    fb.drawText(x + 28, y + 20, pickerTitle(state.pickerTarget),
+    fb.drawText(x + 28, y + 20,
+                state.pickerTarget == PickerTarget::MetLocation && state.pickerMetContextActive &&
+                        state.pickerOtherHistories
+                    ? PokeVault::Integration::MetLocationPolicy::kUnverifiedListTitle   // R12-004
+                    : pickerTitle(state.pickerTarget),
                 Colors::Text, TextStyle::Heading);
 
     fb.drawText(x + 28, y + 55,
@@ -1060,7 +1080,7 @@ void drawValuePicker(TrainerViewScreen& screen, PKSEFramebuffer& fb, EditorState
     footer.page = count > visible;
     footer.jump = count > 50;
     if (state.pickerTarget == PickerTarget::MetLocation && state.pickerMetContextActive)
-        footer.xLabel = state.pickerOtherHistories ? "Wild data" : "Other histories";
+        footer.xLabel = state.pickerOtherHistories ? "Verified list" : "Unverified list";
     SharedEditorChrome::drawPickerFooter(fb, footer);
 }
 

@@ -472,6 +472,14 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
         TrainerViewScreen& screen; PKSEFramebuffer& fb;
         ~StatusOnTop() { screen.drawTransientStatus(fb); }
     } statusOnTop{*this, fb};
+    // R12-010: this frame's layers are recorded by the shared draw primitives; once every layer
+    // (the file dialog included) is drawn, a status from a context the user left is ended before
+    // the painter above runs. Declared after StatusOnTop so it is destroyed (runs) first.
+    TransientStatusScope::beginFrame();
+    struct StatusScope {
+        TrainerViewScreen& screen;
+        ~StatusScope() { screen.scopeTransientStatus(); }
+    } statusScope{*this};
     // Feature A: the Import from file dialog owns the frame over every surface. Declared after the
     // status guard, so it is destroyed (paints) first and the status line still lands on top.
     struct FileDialogOnTop {

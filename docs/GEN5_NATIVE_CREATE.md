@@ -32,9 +32,13 @@ of PID in PK5. Supplied PID and shiny status are never rerolled.
 
 Only printable ASCII names in language IDs 2/3/4/5/7 are currently supported.
 Nickname length is 1..10, OT length 1..7; neither is truncated or transliterated.
-All nicknames are explicitly custom, with the native nickname flag set. There is
-no automatic localized species-name fallback. Japanese/Korean and other glyphs
-fail explicitly, even where a future codec could support them.
+A supplied nickname is explicitly custom, with the native nickname flag set.
+Round 12 (R12-009): `defaultNickname` (an empty nickname from the shared editor's
+Create) makes an un-nicknamed Pokémon instead, as Gen IV's Create does: the
+species' default name in the OT language (`Names::defaultSpeciesName(species,
+language, 5)`) written by `writeUnicodeName5` with the flag clear, so a later
+Language change renames it (M1 D3). Typed Japanese/Korean and other non-ASCII
+glyphs still fail explicitly, even where a future codec could support them.
 
 CallerSuppliedNative history encodes the supplied exact origin title, ordinary
 location ID, met level, ball and calendar date literally. Unknown, egg, event,

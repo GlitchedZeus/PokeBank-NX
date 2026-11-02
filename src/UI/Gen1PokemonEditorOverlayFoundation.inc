@@ -557,10 +557,10 @@ void foundationDrawWorkspace(TrainerViewScreen& screen, PKSEFramebuffer& fb) {
     namespace GameContext = PokeBank::UIModel::ClassicGameContext;
     const auto surfaceMode = add ? GameContext::SurfaceMode::CreateDraft
         : state.mode == UX2Mode::Edit ? GameContext::SurfaceMode::EditStaged : GameContext::SurfaceMode::ViewReadOnly;
-    fb.drawText(x + 24, y + 46,
-                GameContext::contextLine(state.party?"Party "+std::to_string(state.slot+1):
-                    "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1),
-                                         screen.sourceGameId, surfaceMode),
+    const std::string record = state.party ? "Party " + std::to_string(state.slot + 1)
+        : "Box " + std::to_string(state.box + 1) + " / Slot " + std::to_string(state.slot + 1);
+    TransientStatusScope::noteEditor(record);   // R12-010: the editor is a status-scope layer
+    fb.drawText(x + 24, y + 46, GameContext::contextLine(record, screen.sourceGameId, surfaceMode),
                 Colors::TextDim, TextStyle::Caption);
 
     const int contentY = y + 74;

@@ -140,6 +140,37 @@ HEADER_NOTE = ("**Status rules.** A status is never inferred from a passing test
                "identical to candidate `066e1db9`, NOT DEVICE TESTED).")
 
 
+
+# Round 12 owner results (docs/hardware/round12/ISSUE_LEDGER.csv, QA intake of the owner's 066e1db9 sheet)
+# and their state on fix/round12-gen15-repairs. A repair is never Hardware Accepted until the owner tests it.
+R12_STATUS = {**{f"R12-{n:03d}": ("Fixed in Code — Awaiting Hardware", f"H{n + 1:02d}") for n in range(1, 11)},
+              "R12-011": ("Missing Feature", "not in build (v1.0 blocker)"),
+              "R12-012": ("Missing Feature", "not in build (v1.0 blocker)")}
+
+
+def round12_section():
+    import csv
+    path = os.path.join(REPO, "docs", "hardware", "round12", "ISSUE_LEDGER.csv")
+    if not os.path.isfile(path):
+        return []
+    with open(path, encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+    out = ["## Round 12 owner results → Round 13 repairs", "",
+           "Source: `docs/hardware/round12/ISSUE_LEDGER.csv` (QA intake of the owner's `066e1db9` results). "
+           "Root causes, fixes and regressions: `docs/hardware/round12/ROUND12_REPAIR_MAPPING.md`. "
+           "Owner checklist: `docs/hardware/RETEST_ROUND13_TEMPLATE.md` (mapped by ID and title, not H-number). "
+           "**NOT DEVICE TESTED.**", "",
+           "| ID | Priority | Title | Owner result on 066e1db9 | Status now | Round 13 item |",
+           "|---|---|---|---|---|---|"]
+    for r in rows:
+        status, item = R12_STATUS.get(r["id"], ("Needs Investigation", "—"))
+        out.append("| " + " | ".join([f"`{r['id']}`", r["priority"], cell(r["title"], 120),
+                                      cell(r["status"]), status, item]) + " |")
+    missing = sorted(set(R12_STATUS) - {r["id"] for r in rows})
+    if missing:
+        raise SystemExit(f"Round 12 ledger is missing {missing}")
+    return out + [""]
+
 def write_ledger(issues, C):
     by_area = collections.defaultdict(list)
     for i in issues:
@@ -176,6 +207,7 @@ def write_ledger(issues, C):
     leftovers = [a for a in by_area if a not in AREA_NAMES]
     for area in leftovers:
         out += [f"## {area}", ""] + [f"- `{i['id']}` {cell(i.get('title'))} — {i['status']}" for i in by_area[area]] + [""]
+    out += round12_section()
     out += ["Legend: ⚠️ safety-critical · 🎯v1 required for v1.0.", ""]
     open(os.path.join(OUT, "MASTER_HARDWARE_ACCEPTANCE_LEDGER.md"), "w").write("\n".join(line.rstrip() for line in out).rstrip("\n") + "\n")
 
@@ -277,8 +309,10 @@ def write_audit(recs, issues, lineage, C):
     unguarded = [p for p in lineage.get("passed_then_unlisted", []) if not p.get("guarded")]
     out += ["", "### 5b. Owner-accepted items that left the checklist with no permanent guard", "",
             f"{len(unguarded)} of {lineage['counts']['passed_then_unlisted']} accepted items that are no longer "
-            "on a checklist are not guarded by `tests/test_hw_round1_regression_gate.py` (it has no Round 11 "
-            "table). See `PERMANENT_REGRESSION_MATRIX.md` §3.", ""]
+            "on a checklist are not guarded by `tests/test_hw_round1_regression_gate.py` (its Round 11 table, "
+            "GUARDS_ROUND11, covers all 34 Round 11 PASS rows). See `PERMANENT_REGRESSION_MATRIX.md` §3."]
+    if unguarded:
+        out.append("")
     for p in unguarded:
         out.append(f"- {cell(p.get('item'))} — last PASS {cell(p.get('last_pass'))}")
     # evidence record
@@ -440,16 +474,25 @@ def write_matrix(issues, accepted, extras, lineage, C):
     unguarded = [p for p in lineage.get("passed_then_unlisted", []) if not p.get("guarded")]
     out += ["", "## 3. Regression guard coverage", "",
             "`tests/test_hw_round1_regression_gate.py` pins owner PASS items from Round 1 (42), Round 2 (6), "
-            "Round 3 (30 new), Oct 24 (27), Oct 25 (10) and Oct 26 (19) to host tests and contracts and runs on "
-            "every PR. **It has no Round 11 table**, so Round 11 PASS items that are not on the Round 12 checklist "
-            "are not protected:", ""]
+            "Round 3 (30 new), Oct 24 (27), Oct 25 (10), Oct 26 (19) and Round 11 (34, `GUARDS_ROUND11`, keyed by "
+            "the worksheet IDs and count-checked against `docs/hardware/ROUND11_OWNER_WORKSHEET.md`) to host tests "
+            "and contracts and runs on every PR. Accepted items that left the checklist with no guard: "
+            + (str(len(unguarded)) if unguarded else "none") + "."]
+    if unguarded:
+        out.append("")
     for p in unguarded:
         out.append(f"- {cell(p.get('item'))} (last PASS {cell(p.get('last_pass'))})")
     out += ["", "Known gate caveats: the Oct 26 table keys rows by Round 6 sheet number (its B01/C02 are not the "
-            "Round 1 items of the same name); the E02 guard pins the pre-Round-11 Actions order; the E12/C14 "
-            "guards were updated for the owner's Round 11 reversal (Create starts with no moves).", "",
-            "**Required next step:** add a Round 11 guard table (the 34 R11 PASS items) and a Round 12 table once "
-            "the owner reports Round 12, so no accepted behaviour can leave a checklist unguarded.", ""]
+            "Round 1 items of the same name), and the Round 11 table by Round 11 worksheet number (its H01-H48 are "
+            "not the Round 12 checklist's); the E02 guard pins the pre-Round-11 Actions order; the E12/C14 "
+            "guards were updated for the owner's Round 11 reversal (Create starts with no moves). Round 11 guards "
+            "for behaviour the owner later asked to change (H07, H21, H23, H28; Round 12 R12-001/002/003) pin the "
+            "current owner-requested behaviour. H13 (no Japanese save opened) and H46 (no game or comparison notes "
+            "recorded; the guard covers export-copy verification only, not the owner's emulator reload) are owner "
+            "PASS without evidence notes.", "",
+            "**Required next step:** add a Round 12 table for the owner's 066e1db9 PASS results "
+            "(`docs/hardware/round12/ROUND12_OWNER_HARDWARE_INTAKE.md`), so no accepted behaviour can leave a "
+            "checklist unguarded.", ""]
     m = extras.get("item_ops_matrix")
     if m:
         ops = ["add", "remove", "quantity", "sort", "pc_items_view_edit", "top_up_add_missing"]

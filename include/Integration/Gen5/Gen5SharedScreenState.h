@@ -40,6 +40,16 @@ namespace PokeVault::Integration::Gen5 {
         static_cast<uint8_t>(p.metLevel()),level);
 }
 
+// Round 12 (R12-004 / R12-005): the editor / Review "Met evidence" line ("" when verified).
+[[nodiscard]] inline std::string metEvidence5(const Pokemon5ReadOnly& p, bool b2w2) {
+    uint8_t level=1;
+    if(p.partyRecord())level=p.partyLevel();
+    else if(const auto personal=personal5(p.species(),p.form(),b2w2))
+        level=levelForExperience5(personal.info->growthRate,p.experience());
+    return EncounterContext45::unverifiedMetNote45(static_cast<uint8_t>(p.originVersion()),
+        static_cast<uint16_t>(p.species()),static_cast<uint16_t>(p.metLocation()),level);
+}
+
 // Round 11 (owner H28, UI/SpeciesChangeMoves.h): the moves a Gen V Pokemon keeps when it becomes
 // `species` -- each current move the new species can use in this exact game (Gen5MoveCompatibility:
 // native, Transfer or Form history) with its own PP and PP Ups; the rest clear; nothing is added.
@@ -308,6 +318,59 @@ public:
         error.clear();
         return true;
     }
+    // Round 12 R12-001 (owner H03: "bring gen 5 up to date with the other gens"): a Y-hold group from
+    // one box lands as ONE transaction, the Gen IV exact-shape rule. Every picked-up PK5 must be
+    // unchanged, every destination a verified empty box slot that is not one of the group's own
+    // sources; each member is the same Move as dropCarriedPokemon (exact boxed clone + release of the
+    // source). Any refusal or a refused presentation restores the workspace exactly.
+    template<class Refresh>
+    [[nodiscard]] bool dropCarriedGroup(Workspace& workspace,size_t fromBox,
+                                        std::span<const std::pair<size_t,size_t>> moves,
+                                        std::span<const std::vector<uint8_t>> pickedUp,
+                                        size_t toBox,Refresh&& refresh,std::string& error) {
+        if(surface_!=Surface::Browse || moves.empty() || moves.size()!=pickedUp.size()) {
+            error="Gen V carried group changed; no move staged";
+            return false;
+        }
+        for(size_t i=0;i<moves.size();++i) {
+            const auto current=workspace.viewBox(fromBox,moves[i].first);
+            if(!current || !current->valid() || current->empty() ||
+               !std::equal(current->originalEncryptedBytes().begin(),
+                           current->originalEncryptedBytes().end(),
+                           pickedUp[i].begin(),pickedUp[i].end())) {
+                error="Gen V carried Pokemon changed; no move staged";
+                return false;
+            }
+        }
+        for(const auto& move:moves) {
+            const bool overlaps=toBox==fromBox && std::any_of(moves.begin(),moves.end(),
+                [&](const auto& other) { return other.first==move.second; });
+            if(overlaps || !workspace.emptyCloneDestination(toBox,move.second)) {
+                error="Box "+std::to_string(toBox+1)+" / Slot "+std::to_string(move.second+1)+
+                      " is not an empty verified Gen V box slot";
+                return false;
+            }
+        }
+        Workspace snapshot=workspace;
+        for(const auto& move:moves) {
+            const Slot from{Workspace::Region::Box,fromBox,move.first};
+            const bool staged=workspace.originalOccupied(from)
+                ? workspace.moveToEmptyBox(from,toBox,move.second,&error)
+                : workspace.moveStagedToEmptyBox(from,toBox,move.second,&error);
+            if(!staged) {
+                workspace=std::move(snapshot);
+                if(error.empty())error="Gen V group move refused; nothing staged";
+                return false;
+            }
+        }
+        if(!std::forward<Refresh>(refresh)(error)) {
+            workspace=std::move(snapshot);
+            if(error.empty())error="Gen V move presentation rejected; stage rolled back";
+            return false;
+        }
+        error.clear();
+        return true;
+    }
     // Round 11 H31 (owner): Clone uses the same shared carry as Move. Actions -> Clone closes
     // the menu and the overlay carries a ghost copy; nothing is staged until A drops it on a
     // verified empty box slot, B cancels with nothing to restore. Unlike Move, a Party source is
@@ -513,6 +576,9 @@ public:
         r.friendship=70;
         r.heldItem=0;
         r.trainer=ot;
+        // Round 12 R12-009: an empty nickname is the un-nicknamed default (Gen IV's Create rule),
+        // so the shown name follows a later Language change; a given name stays a custom nickname.
+        r.defaultNickname=nickname.empty();
         r.nickname=std::string(nickname);
         r.encounter={CreateHistory5::CallerSuppliedNative,kSharedCreateMetLocation,r.level,
                      kSharedCreateBall,date.year,date.month,date.day};
@@ -680,7 +746,10 @@ public:
         ot.language=p->language();
         r.trainer=ot;
         const auto nickname=asciiName5(p->decodedBytes(),true);
-        r.nickname=nickname && *nickname!=oldDefaultName?*nickname:std::string(newDefaultName);
+        // An un-nicknamed draft stays un-nicknamed: the new species' default name in its language.
+        r.defaultNickname=(Crypto::read32(p->decodedBytes(),0x38)&0x80000000u)==0;
+        r.nickname=r.defaultNickname?std::string{}:
+            nickname && *nickname!=oldDefaultName?*nickname:std::string(newDefaultName);
         const auto met=p->metDate();
         const bool hadPokerus=p->pokerusMode()!=0;   // the rebuild never carries it
         namespace History=PokeBank::UIModel::SpeciesChangeHistoryPolicy;

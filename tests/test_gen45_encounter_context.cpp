@@ -7,6 +7,7 @@
 #include <tuple>
 
 namespace C = PokeVault::Integration::EncounterContext45;
+namespace Policy = PokeVault::Integration::MetLocationPolicy;
 using PokeVault::Integration::Gen5::NativeMetLocations5;
 
 int main() {
@@ -42,14 +43,27 @@ int main() {
             assert(native == before);
             assert(context.choices().front() == 65534 && context.choices(true).front() == 65534);
             assert(context.choices().size() < context.choices(true).size());
-            assert(context.choices(true).size() == native.size() + 1);
+            // Round 12 (R12-004; updated deliberately): the default list (verified wild rows + the
+            // trade / egg markers + "Other location (unverified)...") and the unverified list share
+            // only the stored row 1; together they still offer every native id exactly once.
+            assert(context.choices().back() == Policy::kUnverifiedListRow);
             std::set<uint16_t> distinct(context.choices(true).begin(), context.choices(true).end());
             assert(distinct.size() == context.choices(true).size());
+            for (const auto id : context.choices()) {
+                if (id == 65534 || id == Policy::kUnverifiedListRow) continue;
+                assert(!distinct.count(id));
+                distinct.insert(id);
+            }
+            assert(distinct.size() == native.size() + 1);
             for (const auto id : native) assert(distinct.count(id));
             for (const auto id : context.choices()) {
-                if (id == 65534) continue;
+                if (id == 65534 || id == Policy::kUnverifiedListRow) continue;
+                if (Policy::gen45DefaultMarker(gen, id)) {
+                    assert(context.detail(id, name).find("Lv.") == std::string::npos);
+                    continue;
+                }
                 const auto* row = context.wildRow(id);
-                assert(row && C::ancestry(gen, species)[row->encounter.species]);
+                assert(row && row->levelReached && C::ancestry(gen, species)[row->encounter.species]);
                 const auto text = context.detail(id, name);
                 assert(text.find("Lv.") != std::string::npos && text.find("legal") == std::string::npos);
             }
@@ -88,6 +102,49 @@ int main() {
         const C::Catalogue context(origin,25,marker,all,{});
         assert(context.detail(marker,name).find(kind) != std::string::npos);
         assert(context.choices().front() == marker);
+    }
+    // Round 12 (R12-005): the owner's screenshots. A Lv. 5 Black 2 Nidorino is not offered the
+    // Hidden Grotto Lv. 55-60 slot (via Nidoran) as verified, and a Lv. 5 Diamond Pidgeotto is not
+    // offered Route 229 Lv. 51 (via Pidgey); both stay reachable in the unverified list, saying why.
+    for (const auto& [origin, species, levelLow, levelHigh] :
+         {std::tuple<uint8_t,uint16_t,uint8_t,uint8_t>{23,33,5,60}, {10,17,5,60}}) {
+        std::vector<uint16_t> native;
+        if (C::generation(origin) == 5) native.assign(NativeMetLocations5.begin(), NativeMetLocations5.end());
+        else for (uint16_t id=0; id<=111; ++id) native.push_back(id);
+        const C::Catalogue low(origin, species, native.front(), native, {}, levelLow);
+        const C::Catalogue high(origin, species, native.front(), native, {}, levelHigh);
+        size_t moved = 0;
+        for (const auto id : high.choices()) {
+            const auto* row = low.wildRow(id);
+            if (!row || id == native.front() || low.verifiedEncounter(id)) continue;
+            ++moved;
+            // Not in the low-level default list; in its unverified list with the reason.
+            assert(std::find(low.choices().begin(), low.choices().end(), id) == low.choices().end());
+            assert(std::find(low.choices(true).begin(), low.choices(true).end(), id) != low.choices(true).end());
+            assert(low.detail(id, name).find(Policy::kLevelBelowEncounter) != std::string::npos);
+            assert(row->encounter.minLevel > levelLow);
+        }
+        assert(moved > 0);
+        for (const auto id : low.choices())
+            if (const auto* row = low.wildRow(id); row && id != native.front())
+                assert(row->levelReached && low.detail(id, name).find(Policy::kLevelBelowEncounter) == std::string::npos);
+        std::cout << unsigned(origin) << " species " << species << " Lv. " << unsigned(levelLow) << ": "
+                  << moved << " wild rows above the level moved to the unverified list\n";
+    }
+    // The default list is never empty: a species with no wild row shows the stored row, the native
+    // markers and the entry row, and says so in its header.
+    {
+        const C::Catalogue turtwig(10, 387, 0, all, {}, 5);
+        assert(turtwig.verifiedCount() == 0 && turtwig.choices().back() == Policy::kUnverifiedListRow &&
+               std::string(turtwig.scope(false)) == Policy::kMarkersOnlyScope);
+        const C::Catalogue tepig(21, 498, 0, std::vector<uint16_t>(NativeMetLocations5.begin(), NativeMetLocations5.end()),
+                                 {}, 5);
+        assert(std::find(tepig.choices().begin(), tepig.choices().end(), 30002) != tepig.choices().end());
+        assert(std::find(tepig.choices().begin(), tepig.choices().end(), 60003) != tepig.choices().end());
+        assert(std::find(tepig.choices().begin(), tepig.choices().end(), 40001) == tepig.choices().end());
+        assert(std::string(tepig.detail(Policy::kUnverifiedListRow, name)) == Policy::kUnverifiedListRowDetail);
+        assert(C::unverifiedMetNote45(21, 498, 30002, 5).find("unverified") != std::string::npos);
+        assert(C::unverifiedMetNote45(21, 498, 4, 5) == "Not a listed encounter; unverified");
     }
     assert(C::gameId(77).empty() && C::generation(1)==0); // group ids are not PKM origins
     assert(!C::ancestry(4,649)[649] && !C::ancestry(0,25)[25]);

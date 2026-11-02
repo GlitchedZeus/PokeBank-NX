@@ -14,6 +14,7 @@
 #include "Pokemon/Pokemon3FRLG.h"
 #include "Integration/Gen3/Gen3LearnsetTable.h"
 #include "UI/Gen3SharedPokemonSession.h"
+#include "gen3_edit_discard_r11.h"   // Round 11 H24 regression (owner PASS), run from main()
 
 #include <algorithm>
 #include <array>
@@ -308,10 +309,12 @@ void run(SourceGame game, Family family) {
         create.noteMetLocationChosen();
     } else {
         // No Fearow template in this game: an unverified native row is still an explicit choice.
-        const auto picker = create.metLocationPicker();
+        // Round 12 (R12-004): it is in the unverified list, behind "Other location (unverified)...".
+        const auto picker = create.metLocationPicker(true);
         const PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice* applied = nullptr;
-        require(!picker.rows.empty() && create.applyMetLocationRow(picker, picker.rows.back(), applied) && !applied,
-                "choose an other-native row");
+        require(picker.unverifiedList && !picker.rows.empty() &&
+                create.applyMetLocationRow(picker, picker.rows.back(), applied) && !applied,
+                "choose an other-native row from the unverified list");
     }
     require(create.missingRequiredFields().empty(), "nothing missing");
     require(create.add(*editor, 0, slot, error), id + " add: " + error);
@@ -333,9 +336,11 @@ void run(SourceGame game, Family family) {
         const auto met = h.working.metLocation;
         require(h.setSpecies(24, id), "Create Pikachu -> Arbok");
         require(h.working.pokerus == 0, "Create: Pokerus resets");
-        bool arbokThere = false;
-        for (const auto& c : Encounter::forGameSpeciesWithGen3Provenance(id, 24))
-            arbokThere |= c.encounter.location == met;
+        // Round 12 (owner H08 / R12-005; updated pin): still valid exactly when it is a verified
+        // template of Arbok or its pre-evolution Ekans that Arbok's level reaches (the picker's rule).
+        const bool arbokThere = PokeBank::UIModel::Gen3EncounterPicker::verifiedTemplate(
+            PokeBank::UIModel::Gen3EncounterPicker::templatesForOrigin(origin(game), 24), met,
+            pikachuEncounters.front().encounter.minLevel, h.working.level) != nullptr;
         if (!arbokThere)
             require(h.encounterReset && !h.metLocationChosen && h.working.metLocation == 0 && h.working.metLevel == 0,
                     "Create: Arbok was never met at Pikachu's location -> encounter cleared");
@@ -354,13 +359,17 @@ void run(SourceGame game, Family family) {
         h.working.metLocation = horsea.front().encounter.location;
         require(h.setEncounterMetLevel(horsea.front().encounter.minLevel), "Horsea met level");
         h.noteMetLocationChosen();
-        bool seadraThere = false;   // through Seadra's own templates or, without any, Horsea ancestry
-        for (const auto& c : Encounter::forGameSpeciesWithGen3Provenance(id, 117))
-            seadraThere |= c.encounter.location == h.working.metLocation && c.encounter.containsLevel(h.working.metLevel);
+        const auto horseaMet = h.working.metLocation;
+        const auto horseaMetLevel = h.working.metLevel;
         require(h.setSpecies(117, id), "Create Horsea -> Seadra");
+        // Round 12 (owner H08 / R12-005; updated pin): Seadra's own templates and its Horsea
+        // ancestry both count, once Seadra's level reaches the template's minimum.
+        const bool seadraThere = PokeBank::UIModel::Gen3EncounterPicker::verifiedTemplate(
+            PokeBank::UIModel::Gen3EncounterPicker::templatesForOrigin(origin(game), 117), horseaMet,
+            horseaMetLevel, h.working.level) != nullptr;
         require(h.encounterReset == !seadraThere && h.metLocationChosen == seadraThere,
                 "Create: the Horsea location is kept exactly when it is valid for Seadra");
-        if (Encounter::forGameSpecies(id, 117).empty())
+        if (Encounter::forGameSpecies(id, 117).empty() && h.working.level >= horseaMetLevel)
             require(seadraThere, "Create: with no Seadra templates the Horsea ancestry location stays valid");
     }
     // The same Create draft in Edit mode keeps everything (existing record's history).
@@ -383,75 +392,163 @@ void run(SourceGame game, Family family) {
 // row makes Keep possible and the stored location round-trips through stage -> reparse. Verified
 // catch templates and unverified native rows are labelled distinctly. QA counted 1,267 Gen III /
 // Crystal combinations with no row; the count of empty combinations must now be 0.
-std::size_t exhaustiveMetLocation(SourceGame game, Family family) {
+//
+// Round 12 (R12-004 / R12-005, owner H14 "pikachu has like 87 met locaations we need just the legit
+// ones", H08 "evolved,traded gifted"; updated deliberately): the picker opens on the DEFAULT list --
+// only verified templates of the species / its pre-evolutions that the draft's level reaches, the
+// gift egg / trade / event markers, and ONE last row "Other location (unverified)..." -- and that row
+// opens the UNVERIFIED list (every other native place, plus the templates above the level, each
+// saying "level is below this encounter"). Both lists are exercised row by row.
+struct MetLocationCounts { std::size_t empty = 0, markersOnly = 0; };
+MetLocationCounts exhaustiveMetLocation(SourceGame game, Family family) {
     namespace Picker = PokeBank::UIModel::Gen3EncounterPicker;
     namespace Rows = PokeBank::UIModel::ExactGameMetLocations;
+    namespace Policy = PokeVault::Integration::MetLocationPolicy;
     const std::string id = sourceId(game);
     auto source = fixture(family, game);
     std::string error;
     auto editor = StagedPokemonEditor::create(source, game, error);
     require(editor && error.empty(), id + " editor: " + error);
-    std::size_t empty = 0, rowsChecked = 0, stagedChecked = 0, templateRows = 0, otherRows = 0;
+    MetLocationCounts counts;
+    std::size_t rowsChecked = 0, stagedChecked = 0, templateRows = 0, markerRows = 0, otherRows = 0, levelRows = 0;
     for (uint16_t species = 1; species <= 386; ++species) {
+        const std::string what = id + " " + std::to_string(species);
         Session base;
         base.beginCreate(editor->trainer(), origin(game));
         require(base.setSpecies(species, id), id + " Create species " + std::to_string(species));
         const auto picker = base.metLocationPicker();
-        if (picker.rows.empty()) { ++empty; continue; }
-        require(base.metLocationChoosable(), id + " " + std::to_string(species) + ": choosable");
+        if (picker.rows.empty()) { ++counts.empty; continue; }
+        const auto unverified = base.metLocationPicker(true);
+        require(!picker.unverifiedList && unverified.unverifiedList && !unverified.rows.empty(),
+                what + ": both lists are offered");
+        require(base.metLocationChoosable(), what + ": choosable");
         // A move the species can use in this exact game, as the move picker would offer it.
         uint16_t move = 0;
         for (uint16_t m = 1; m < Learnset::kMoveCount && !move; ++m)
             if (Learnset::directlyLearnable(game, species, m)) move = m;
-        require(move != 0, id + " " + std::to_string(species) + ": a learnable move exists");
+        require(move != 0, what + ": a learnable move exists");
         base.working.moves[0] = move;
         base.working.pp[0] = Names::getMoveBasePP(move, Enums::GameVersion::FRLG);
         require(base.missingRequiredFields() == "Choose a Met Location before Keep",
-                id + " " + std::to_string(species) + ": Keep refused until a row is chosen: " + base.missingRequiredFields());
+                what + ": Keep refused until a row is chosen: " + base.missingRequiredFields());
         {
             Session refused = base;
             const auto before = editor->finalizedBytes(error);
             require(!refused.add(*editor, 0, 1, error) && error == "Choose a Met Location before Keep" &&
                     !editor->hasPendingChanges() && editor->finalizedBytes(error) == before,
-                    id + " " + std::to_string(species) + ": refused Add stages nothing");
+                    what + ": refused Add stages nothing");
         }
-        // Every offered row is an explicit, valid choice; labels keep verified and unverified apart.
+        // DEFAULT list: verified templates the level reaches + markers, then the one unverified entry.
+        require(picker.rows.back() == Picker::kUnverifiedListRow &&
+                std::count(picker.rows.begin(), picker.rows.end(), Picker::kUnverifiedListRow) == 1,
+                what + ": the default list ends with the one 'Other location (unverified)...' row");
+        std::size_t verifiedHere = 0;
+        std::array<bool, 3> markerCovered{};   // 253 gift egg, 254 trade, 255 event
         for (const auto row : picker.rows) {
             Session chosen = base;
             const PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice* applied = nullptr;
-            require(chosen.applyMetLocationRow(picker, row, applied), id + ": apply row");
-            require(chosen.metLocationChosen && chosen.missingRequiredFields().empty(),
-                    id + " " + std::to_string(species) + ": any offered row makes Keep possible");
             const auto text = Picker::rowText(picker.choices, row, chosen.working.originGame,
-                                              base.working.metLocation, base.working.metLevel);
-            const bool unverified = text.detail.find("unverified") != std::string::npos;
+                                              base.working.metLocation, base.working.metLevel, base.working.level);
+            require(text.detail.find("legal") == std::string::npos, what + ": no row says legal");
             require(row != Picker::kKeepStoredRow, "a new draft has no stored location to keep");
+            if (row == Picker::kUnverifiedListRow) {
+                // Not a location: it opens the unverified list and leaves the draft unchosen.
+                require(text.place == Policy::kUnverifiedListRowPlace && !text.verifiedCatch &&
+                        !chosen.applyMetLocationRow(picker, row, applied) && !chosen.metLocationChosen &&
+                        chosen.missingRequiredFields() == "Choose a Met Location before Keep",
+                        what + ": the unverified entry row is not a choice");
+                continue;
+            }
+            require(chosen.applyMetLocationRow(picker, row, applied), what + ": apply row");
+            require(chosen.metLocationChosen && chosen.missingRequiredFields().empty(),
+                    what + ": any offered row makes Keep possible");
+            const bool unverifiedText = text.detail.find("unverified") != std::string::npos;
             if (Rows::isOtherNativeRow(row)) {
-                ++otherRows;
-                require(!applied && !text.verifiedCatch && unverified &&
+                // Only the game's own markers, labelled as markers.
+                ++markerRows;
+                markerCovered[Rows::otherNativeRowLocation(row) - 253] = true;
+                require(!applied && !text.verifiedCatch && unverifiedText &&
+                        Rows::gen3MarkerLocation(Rows::otherNativeRowLocation(row)) &&
+                        text.detail.find("marker") != std::string::npos &&
                         chosen.working.metLocation == Rows::otherNativeRowLocation(row),
-                        id + ": an other-native row is labelled unverified, never a catch: " + text.detail);
+                        what + ": a default non-template row is a labelled marker: " + text.detail);
             } else {
-                ++templateRows;
-                require(applied && text.verifiedCatch && !unverified && text.detail.find("Lv. ") != std::string::npos &&
-                        chosen.working.metLocation == applied->encounter.location,
-                        id + ": a catch template row says its method / level, never unverified: " + text.detail);
+                ++templateRows; ++verifiedHere;
+                if (applied && Rows::gen3MarkerLocation(applied->encounter.location))
+                    markerCovered[applied->encounter.location - 253] = true;   // a verified row there instead
+                // R12-005: never a template above the draft's level.
+                require(applied && text.verifiedCatch && !unverifiedText && text.detail.find("Lv. ") != std::string::npos &&
+                        applied->encounter.minLevel <= base.working.level &&
+                        chosen.working.metLocation == applied->encounter.location &&
+                        chosen.working.metLevel <= chosen.working.level &&
+                        Picker::verifiedTemplate(picker.choices, chosen.working.metLocation, chosen.working.metLevel,
+                                                 chosen.working.level) != nullptr,
+                        what + ": a default template row is a verified catch the level reaches: " + text.detail);
             }
             require(Names::isGen3NativeMetLocation(origin(game), chosen.working.metLocation),
-                    id + ": every offered row is native to the exact game");
+                    what + ": every offered row is native to the exact game");
             ++rowsChecked;
         }
-        // Stage and reparse: the first row, the last row and one rotating row of every species.
-        const std::array<std::size_t, 3> picks{0, picker.rows.size() - 1, species % picker.rows.size()};
-        for (std::size_t k = 0; k < picks.size(); ++k) {
-            if (k && picks[k] == picks[0]) continue;
-            if (k == 2 && picks[2] == picks[1]) continue;
+        // Never empty: a species with no verified row here still shows the three markers.
+        require(markerCovered == (std::array<bool, 3>{true, true, true}),
+                what + ": the gift egg / trade / event markers are in the default list");
+        if (verifiedHere == 0) ++counts.markersOnly;
+        // UNVERIFIED list: reachable, labelled, every row an explicit choice that stays unverified.
+        for (const auto row : unverified.rows) {
             Session chosen = base;
             const PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice* applied = nullptr;
-            require(chosen.applyMetLocationRow(picker, picker.rows[picks[k]], applied), "apply");
+            require(row != Picker::kUnverifiedListRow && row != Picker::kKeepStoredRow, what + ": unverified rows");
+            require(chosen.applyMetLocationRow(unverified, row, applied) && !applied, what + ": apply unverified row");
+            require(chosen.metLocationChosen && chosen.missingRequiredFields().empty(),
+                    what + ": an unverified row is still an explicit choice");
+            const auto text = Picker::rowText(unverified.choices, row, chosen.working.originGame,
+                                              base.working.metLocation, base.working.metLevel, base.working.level);
+            require(!text.verifiedCatch && text.detail.find("legal") == std::string::npos, what + ": never verified");
+            if (Rows::isOtherNativeRow(row)) {
+                ++otherRows;
+                require(text.detail == Rows::kOtherPlaceDetail &&
+                        !Rows::gen3MarkerLocation(Rows::otherNativeRowLocation(row)),
+                        what + ": an other place is labelled unverified: " + text.detail);
+            } else {
+                ++levelRows;   // R12-005: a template above the level, kept but moved here
+                const auto* choice = Picker::choiceAt(unverified.choices, row);
+                require(choice && choice->encounter.minLevel > base.working.level &&
+                        text.detail.find(Policy::kLevelBelowEncounter) != std::string::npos,
+                        what + ": a template above the level says why: " + text.detail);
+            }
+            // The editor / Origin & Legality / Review line stays unverified after the choice.
+            const auto originText = Picker::encounterOriginText(chosen.metLocationPicker().choices, chosen.working.species,
+                                                                chosen.working.metLocation, chosen.working.metLevel,
+                                                                chosen.working.level);
+            // (A place that also has a verified row the level reaches -- another method there -- reads
+            // as that verified row exactly when the stored met level fits it.)
+            const bool verifiedThere = Picker::verifiedTemplate(unverified.choices, chosen.working.metLocation,
+                                                                chosen.working.metLevel, chosen.working.level);
+            require(originText.find("unverified") != std::string::npos ||
+                        (verifiedThere && Picker::reachedTemplateAt(unverified.choices, chosen.working.metLocation,
+                                                                    chosen.working.level)),
+                    what + ": stays unverified: " + originText);
+            require(Names::isGen3NativeMetLocation(origin(game), chosen.working.metLocation),
+                    what + ": every unverified row is native to the exact game");
+            ++rowsChecked;
+        }
+        // Stage and reparse: the first and the last real default row, one rotating default row, and
+        // the first and last unverified rows of every species.
+        const std::size_t lastDefault = picker.rows.size() - 2;
+        const std::array<std::pair<bool, std::size_t>, 5> picks{{
+            {false, 0}, {false, lastDefault}, {false, species % (lastDefault + 1)},
+            {true, 0}, {true, unverified.rows.size() - 1}}};
+        for (std::size_t k = 0; k < picks.size(); ++k) {
+            bool repeated = false;
+            for (std::size_t j = 0; j < k; ++j) repeated |= picks[j] == picks[k];
+            if (repeated) continue;
+            const auto& list = picks[k].first ? unverified : picker;
+            Session chosen = base;
+            const PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice* applied = nullptr;
+            require(chosen.applyMetLocationRow(list, list.rows[picks[k].second], applied), "apply");
             const auto location = chosen.working.metLocation;
             const auto metLevel = chosen.working.metLevel;
-            require(chosen.add(*editor, 0, 1, error), id + " " + std::to_string(species) + " add: " + error);
+            require(chosen.add(*editor, 0, 1, error), what + " add: " + error);
             const auto out = editor->finalizedBytes(error);
             require(!out.empty() && error.empty(), id + " export: " + error);
             auto reparsed = StagedPokemonEditor::create(out, game, error);
@@ -459,15 +556,72 @@ std::size_t exhaustiveMetLocation(SourceGame game, Family family) {
             const auto back = reparsed->boxedPokemon(0, 1, error);
             require(back && back->species == species && back->metLocation == location && back->metLevel == metLevel &&
                     back->originGame == origin(game),
-                    id + " " + std::to_string(species) + ": the chosen Met Location round-trips");
+                    what + ": the chosen Met Location round-trips");
             editor->discard();
             ++stagedChecked;
         }
     }
-    require(templateRows > 0 && otherRows > 0, id + ": both kinds of row are exercised");
-    std::cout << id << ": 386 species, " << rowsChecked << " rows chosen, " << stagedChecked
-              << " staged and reparsed, " << empty << " empty\n";
-    return empty;
+    require(templateRows > 0 && markerRows > 0 && otherRows > 0 && levelRows > 0,
+            id + ": every kind of row is exercised");
+    std::cout << id << ": 386 species, " << rowsChecked << " rows chosen (" << templateRows << " verified, "
+              << markerRows << " markers, " << otherRows << " unverified places, " << levelRows
+              << " above the level), " << stagedChecked << " staged and reparsed, " << counts.markersOnly
+              << " markers only, " << counts.empty << " empty\n";
+    return counts;
+}
+
+// Round 12 (R12-004 / R12-005): the owner's screenshots, pinned. Ruby Pikachu's default list is its
+// verified Safari Zone catch, the three markers and the unverified entry (was 87 rows); an evolved
+// Raichu is offered Pikachu's catch only once its level reaches it; a Lv. 5 Raichu shows markers.
+void ownerExamples() {
+    namespace Picker = PokeBank::UIModel::Gen3EncounterPicker;
+    namespace Rows = PokeBank::UIModel::ExactGameMetLocations;
+    namespace Policy = PokeVault::Integration::MetLocationPolicy;
+    auto source = fixture(Family::RS, SourceGame::RubyGBA);
+    std::string error;
+    auto editor = StagedPokemonEditor::create(source, SourceGame::RubyGBA, error);
+    require(editor && error.empty(), "ruby editor: " + error);
+    Session pikachu;
+    pikachu.beginCreate(editor->trainer(), 2);
+    require(pikachu.setSpecies(25, "ruby_gba") && pikachu.setLevel(25), "Ruby Pikachu Lv. 25");
+    const auto rows = pikachu.metLocationPicker().rows;
+    const auto all = pikachu.metLocationPicker(true).rows;
+    std::cout << "Ruby Pikachu Lv. 25: default list " << rows.size() << " rows (was 87), unverified list "
+              << all.size() << " rows\n";
+    require(rows.size() == 5 && rows.front() == 0 && rows.back() == Picker::kUnverifiedListRow &&
+            rows[1] == Rows::otherNativeRow(253) && rows[2] == Rows::otherNativeRow(254) &&
+            rows[3] == Rows::otherNativeRow(255), "Ruby Pikachu: Safari Zone, 3 markers, Other location");
+    require(rows.size() - 1 + all.size() == 87, "every one of the 87 earlier rows is still reachable");
+    Session raichu;
+    raichu.beginCreate(editor->trainer(), 2);
+    require(raichu.setSpecies(26, "ruby_gba") && raichu.working.level == 5, "Ruby Raichu Lv. 5");
+    auto low = raichu.metLocationPicker();
+    require(Picker::verifiedRowCount(low.choices, low.rows) == 0 && low.rows.size() == 4,
+            "Lv. 5 Raichu: markers only (Pikachu's Safari Zone Lv. 25 is above its level)");
+    const auto blocked = raichu.metLocationPicker(true);
+    require(blocked.rows.front() == 0 &&
+            Picker::rowText(blocked.choices, 0, 2, 0, 0, 5).detail.find(Policy::kLevelBelowEncounter) != std::string::npos,
+            "the Safari Zone row is in the unverified list with its reason");
+    require(raichu.setLevel(30), "Raichu Lv. 30");
+    auto high = raichu.metLocationPicker();
+    require(Picker::verifiedRowCount(high.choices, high.rows) == 1 &&
+            Picker::rowText(high.choices, 0, 2, 0, 0, 30).detail.find("via Pikachu") != std::string::npos,
+            "Lv. 30 Raichu: Pikachu's Safari Zone catch is verified ancestry");
+    const PokeVault::Integration::EncounterGuardrails::EncounterProvenanceChoice* applied = nullptr;
+    require(raichu.applyMetLocationRow(high, 0, applied) && applied && raichu.encounterStillValid() &&
+            Picker::encounterOriginText(high.choices, 26, raichu.working.metLocation, raichu.working.metLevel,
+                                        raichu.working.level) == "Pikachu → Raichu", "evolved encounter origin");
+    // H25: an existing Lv. 5 Raichu whose stored history is that Lv. 25 catch keeps it (Keep stored),
+    // and it reads unverified; nothing is deleted.
+    StagedPokemonRecord existing = raichu.working;
+    existing.level = 5;
+    existing.metLevel = 25;
+    Session edit;
+    edit.begin(existing, Mode::Edit);
+    const auto kept = edit.metLocationPicker();
+    require(kept.rows.front() == Picker::kKeepStoredRow && edit.working.metLocation == existing.metLocation &&
+            Picker::encounterOriginText(kept.choices, 26, existing.metLocation, 25, 5).find("unverified") != std::string::npos,
+            "a stored history above the level is kept and flagged unverified");
 }
 
 } // namespace
@@ -479,14 +633,19 @@ int main() {
     run(SourceGame::FireRedGBA, Family::FRLG);
     run(SourceGame::LeafGreenGBA, Family::FRLG);
 
-    std::size_t emptyCombinations = 0;
-    emptyCombinations += exhaustiveMetLocation(SourceGame::RubyGBA, Family::RS);
-    emptyCombinations += exhaustiveMetLocation(SourceGame::SapphireGBA, Family::RS);
-    emptyCombinations += exhaustiveMetLocation(SourceGame::EmeraldGBA, Family::Emerald);
-    emptyCombinations += exhaustiveMetLocation(SourceGame::FireRedGBA, Family::FRLG);
-    emptyCombinations += exhaustiveMetLocation(SourceGame::LeafGreenGBA, Family::FRLG);
+    std::size_t emptyCombinations = 0, markersOnly = 0;
+    for (const auto& [game, family] : {std::pair{SourceGame::RubyGBA, Family::RS}, {SourceGame::SapphireGBA, Family::RS},
+                                       {SourceGame::EmeraldGBA, Family::Emerald}, {SourceGame::FireRedGBA, Family::FRLG},
+                                       {SourceGame::LeafGreenGBA, Family::FRLG}}) {
+        const auto counts = exhaustiveMetLocation(game, family);
+        emptyCombinations += counts.empty;
+        markersOnly += counts.markersOnly;
+    }
     require(emptyCombinations == 0, "Gen III species x game combinations with no Met Location row: " +
                                         std::to_string(emptyCombinations));
+    std::cout << "Gen III species x game combinations with markers only (no verified row at the Create level): "
+              << markersOnly << " of 1930\n";
+    ownerExamples();
 
     // Exact-game routing through the session: no move is added in either game.
     StagedPokemonRecord base{};
@@ -510,6 +669,9 @@ int main() {
     base.originGame = 0;
     none.begin(base, Mode::Edit);
     require(none.setSpecies(22) && none.working.moves == (std::array<uint16_t, 4>{}), "no game: empty slots");
+
+    // Round 11 H24 (owner PASS): species / held item / move / IV edit -> Review -> Discard, byte for byte.
+    require(r11_h24::runAll() == 0, "Round 11 H24 Gen III edit and discard");
 
     std::cout << "Gen III blank Create, species change keeps usable moves, Create history reset (Ruby, "
                  "Sapphire, Emerald, FireRed, LeafGreen; keep, add, export, reparse, Discard): PASS\n";

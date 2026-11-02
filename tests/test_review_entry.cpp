@@ -37,8 +37,8 @@ constexpr Entry::Screen kScreens[] = {Entry::Screen::Trainer, Entry::Screen::Par
 void buttonRule() {
     for (int gen = 1; gen <= 5; ++gen) {
         for (const auto screen : kScreens) {
-            const bool yFree = screen == Entry::Screen::Trainer || screen == Entry::Screen::Party ||
-                               (screen == Entry::Screen::Boxes && gen == 5);
+            // Round 12 R12-001 (owner H03): Boxes use + in every generation, Gen V included (Y is Move).
+            const bool yFree = screen == Entry::Screen::Trainer || screen == Entry::Screen::Party;
             // One key: Y where Y is free, otherwise +; the other key never opens Review.
             assert(Entry::opensReview(screen, gen, kY) == yFree);
             assert(Entry::opensReview(screen, gen, kPlus) == !yFree);
@@ -55,7 +55,8 @@ void buttonRule() {
         assert(!Entry::opensReview(Entry::Screen::Bag, gen, kY));      // Remove Item
         assert(!Entry::opensReview(Entry::Screen::Create, gen, kY));   // re-roll / confirm Discard
         assert(!Entry::opensReview(Entry::Screen::Edit, gen, kY));
-        if (gen <= 4) assert(!Entry::opensReview(Entry::Screen::Boxes, gen, kY));   // Move / Multi
+        assert(!Entry::opensReview(Entry::Screen::Boxes, gen, kY));   // Move / Multi, Gen I-V (R12-001)
+        assert(Entry::opensReview(Entry::Screen::Boxes, gen, kPlus));
     }
     // Not a Gen I-V save: nothing.
     assert(!Entry::opensReview(Entry::Screen::Party, 0, kPlus | kY));

@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Hardware-accepted regression gate: the owner's 42 round 1 PASS items on 7fea1797 and the 6 round 2
 PASS items on e10f307f (B01, B02, B03, B06, S01, S03; docs/hardware/ROUND2_RESULTS_e10f307f.md) are
-frozen behaviour.
+frozen behaviour, as are the later owner PASS items: round 3, Oct 24, Oct 25, Oct 26 and the 34 Round 11
+PASS results (docs/hardware/ROUND11_OWNER_WORKSHEET.md, H01-H03, H05-H11, H13-H21, H23, H24, H26, H28,
+H30, H33, H35-H38, H44-H48; GUARDS_ROUND11, keyed by the worksheet's own IDs).
 
 docs/hardware/ROUND1_RESULTS_7fea1797.md records the owner's sheet (54 items; 42 PASS). Every PASS ID
 (C01-C09, M01-M08, B05/B07/B08, E01/E02/E04-E10/E12/E13, L01-L05, N01-N04, S02/S05) is mapped below
 to the automated checks that guard it. The gate fails when:
 
-  - the mapping is not exactly the owner's 42 PASS IDs;
+  - the mapping is not exactly the owner's 42 PASS IDs (or, for Round 11, exactly the worksheet's 34
+    PASS rows, in sheet order, matching the intake's list);
   - an item has no guard that runs on every pull request;
   - a guard's file or its pinned literal is gone (the check was deleted or rewritten away);
   - a C++ guard is no longer built and run by `make -f Makefile.host host-test` (or `qa`), which
@@ -687,9 +690,236 @@ GUARDS_ROUND7: dict[str, tuple[str, G]] = {
 }
 
 
+# Round 11 (owner worksheet, docs/hardware/ROUND11_OWNER_WORKSHEET.md; build NOT RECORDED there, inferred to
+# be the Round 10 NRO 3634d1e6; no screenshots): 48 tests, 34 PASS / 13 FAIL / 1 NOT TESTED. Every PASS is
+# guarded here by the owner's own worksheet ID, in sheet order, and the gate fails if this mapping differs
+# from the worksheet's PASS rows (and from the intake's list, docs/hardware/ROUND11_ENGINEERING_INTAKE.md:43).
+# Round 11 notes on PASS rows asked for changes (H07 "added for all gens", H23 "change the drop control to
+# A", H28 "no auto-filled moves"), and Round 12 changed carry keys / toasts at the owner's request (R12-001
+# Gen V Y picks up, R12-002 no routine carry toast, R12-003 one packed-box cursor): those guards pin the
+# CURRENT owner-requested behaviour and say so in the title; no guard pins a behaviour the owner asked to
+# remove. H13 and H46 are owner PASS without evidence notes; their titles say exactly what is (and is not)
+# covered.
+ROUND11_DOC = "docs/hardware/ROUND11_OWNER_WORKSHEET.md"
+ROUND11_INTAKE = "docs/hardware/ROUND11_ENGINEERING_INTAKE.md"
+ROUND11_ROWS = 48
+ROUND11_PASS_COUNT = 34
+GUARDS_ROUND11: dict[str, tuple[str, G]] = {
+    'H01': ('Install and open: Product Home, no unexpected write, no duplicate save instance (R11 PASS)', [
+        ('host', 'test_clean_install_runtime', 'tests/test_clean_install_runtime.cpp', 'assert(!fs::exists(sd / "PKSE"));'),
+        ('host', 'test_save_instance_model', 'tests/test_save_instance_model.cpp', 'assert(!appendDeduplicated(instances, alias));'),
+        ('cg', 'CG60-no-backup-on-unchanged-open'),
+    ]),
+    'H02': ('One save per generation opens, inspects and exits untouched (R11 PASS)', [
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen12.cpp', 'source bytes, size and nanosecond mtime unchanged after discovery, linking, every edit and export'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen3.cpp', 'bytes, size and ns mtime unchanged after discovery, linking, staging, review and export'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen4.cpp', 'p.expect(sourceUnchanged("discovery"), "discovery changed the source");'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen5.cpp', 'need(!ws.hasChanges() && c.sourceUntouched(), "navigation changed the workspace or the source file");'),
+        ('cg', 'CG60-no-backup-on-unchanged-open'),
+    ]),
+    'H03': ('Inventory Controls Help is titled once and every row fits its window, Gen I-V (R11 PASS)', [
+        ('host', 'test_ui_layout_host', 'tests/test_ui_layout_host.cpp', 'where + ": Help text inside the window: " + t.text'),
+        ('host', 'test_ui_layout_host', 'tests/test_ui_layout_host.cpp', 'check(title, where + ": titled Inventory Controls");'),
+        ('host', 'test_classic_inventory_ui_model', 'tests/test_classic_inventory_ui_model.cpp', 'assert(std::string(InvHelp::kTitle) == "Inventory Controls");'),
+        ('cg', 'CG86-inventory-help-controls'),
+    ]),
+    'H05': ('Export the same Pokemon twice: new genN file, second gets " (2)", workspace unchanged (R11 PASS)', [
+        ('host', 'test_ui_pokemon_file_menus_host', 'tests/test_ui_pokemon_file_menus_host.cpp', 'g + ": a second export of the same Pokemon gets (2): "'),
+        ('host', 'test_ui_pokemon_file_menus_host', 'tests/test_ui_pokemon_file_menus_host.cpp', 'g + ": Export leaves the workspace unchanged (no new pending change)"'),
+        ('host', 'test_ui_pokemon_file_menus_host', 'tests/test_ui_pokemon_file_menus_host.cpp', 'const std::string folder = "sdmc:/switch/PokeBank-NX/pokemon/gen" + std::to_string(c.generation);'),
+        ('cg', 'CG58-export-outcome-visible'),
+    ]),
+    'H06': ('Import an exported Pokemon into an empty slot: staged, in Review, source unchanged, B navigates (R11 PASS)', [
+        ('host', 'test_ui_pokemon_file_menus_host', 'tests/test_ui_pokemon_file_menus_host.cpp', '" / Slot " + std::to_string(c.importSlot + 1) + " (staged; the source save is unchanged)"'),
+        ('host', 'test_ui_pokemon_file_menus_host', 'tests/test_ui_pokemon_file_menus_host.cpp', 'g + ": Review lists the imported slot "'),
+        ('host', 'test_ui_pokemon_file_menus_host', 'tests/test_ui_pokemon_file_menus_host.cpp', 'g + ": B at the start folder closes, nothing staged"'),
+        ('host', 'test_pokemon_file_dialog_model', 'tests/test_pokemon_file_dialog_model.cpp', '"B goes up one folder");'),
+    ]),
+    'H07': ('Create Keep refused until a Met Location is chosen (R11 PASS; extended to Gen III-V plus one move everywhere by owner request, R11 H07 / H28 notes)', [
+        ('host', 'test_gen5_party_box_parity', 'tests/test_gen5_party_box_parity.cpp', 'assert(!ui.keepWithPresentation(ws, ok, error) && error == "Choose a Met Location before Keep");'),
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', '"Gen V Create: Keep is refused until a Met Location is chosen");'),
+        ('host', 'test_species_change_history_policy', 'tests/test_species_change_history_policy.cpp', 'require(C::metLocationRequired(gen) == met, "Met Location required only in Gen III-V");'),
+        ('host', 'test_species_change_moves_gen3', 'tests/test_species_change_moves_gen3.cpp', 'require(base.missingRequiredFields() == "Choose a Met Location before Keep",'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen4.cpp', '"Create kept without a Met Location / move: "'),
+    ]),
+    'H08': ('Gen V Gender toggles inline: no Change PID dialog, the PID change is stated (R11 PASS)', [
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', '"Gen V Create: no separate Change PID dialog for Gender");'),
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', '"Gen V Create: the PID change is stated inline ("'),
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', 'check(genderNow() == before, "Gen V Create: A flips Gender back inline");'),
+        ('host', 'test_gen5_pid_coordination', 'tests/test_gen5_pid_coordination.cpp', 'void genderChangeMovesPidLowByteOnly() {'),
+        ('cg', 'CG92-gen5-shiny-inline'),
+    ]),
+    'H09': ('Gen V Trainer Gender reaches Review; Pokedex is a read-only list (R11 PASS)', [
+        ('host', 'test_gen5_trainer', 'tests/test_gen5_trainer.cpp', 'assert(changes[3].field == G::TrainerChange5::Field::Gender && changes[3].before == "Female" &&'),
+        ('host', 'test_gen5_trainer', 'tests/test_gen5_trainer.cpp', 'assert(hasGlyph(screen.footer(), "A") && !screen.beginEdit(ws, error));'),
+        ('host', 'test_gen5_trainer', 'tests/test_gen5_trainer.cpp', 'assert(screen.openPokedex(ws, error) && screen.dex().open() && screen.dex().cursor() == 0);'),
+    ]),
+    'H10': ('Gen I Play Time staged up to 255:00:00 and listed in Review (R11 PASS)', [
+        ('host', 'test_gen1_trainer_edit', 'tests/test_gen1_trainer_edit.cpp', 'assert(trainer->stagePlayTime({255, 0, 0, false}, error) && trainer->stagedBytes()[o + 1] == 0xFF);'),
+        ('host', 'test_gen1_trainer_edit', 'tests/test_gen1_trainer_edit.cpp', 'assert(changes.size() == 1 && changes[0].label == "Play Time" && changes[0].beforeValue == "12:34:56" &&'),
+        ('cg', 'CG47-classic-trainer-playtime-pokedex'),
+    ]),
+    'H11': ('L deletes the last search character, R is inert, nothing behind moves (R11 PASS)', [
+        ('host', 'test_search_shoulder_keys', 'tests/test_search_shoulder_keys.cpp', 'assert(S::handleKeys(s, l) == S::Event::QueryChanged && s.query.size() == 1 && s.revision == rev + 1);'),
+        ('host', 'test_search_shoulder_keys', 'tests/test_search_shoulder_keys.cpp', 'assert(S::handleKeys(s, r) == S::Event::Consumed && s.query.size() == 1);   // consumed, no paging'),
+    ]),
+    # Owner note: "i guess this passes i didnt test a japenese save". The PASS is not hardware evidence for
+    # Japanese saves; the guard pins the owner safety rule (Japanese Gen I/II editing stays locked).
+    'H13': ('Japanese Gen I/II stay read-only (R11 PASS is not evidence: no Japanese save was opened; guard pins the read-only lock only)', [
+        ('host', 'test_rby_readonly_bridge', 'tests/test_rby_readonly_bridge.cpp', 'assert(jt->stagedPokemonUnavailableReason()=="Japanese Generation I saves are read-only");'),
+        ('host', 'test_rby_readonly_bridge', 'tests/test_rby_readonly_bridge.cpp', 'assert(!jt->stagedInventoryAvailable()&&!jt->stagedTrainer());'),
+        ('host', 'test_gsc_readonly_bridge', 'tests/test_gsc_readonly_bridge.cpp', 'static_assert(!Integration::Common::kJapaneseClassicEditingEnabled);'),
+    ]),
+    'H14': ('Export Copy is a new file; the source stays byte-identical; nothing is overwritten (R11 PASS)', [
+        ('qa', 'test_qa_export_contracts', 'tests/test_qa_export_contracts.cpp', 'QA_EXPECT(fileState(source) == sourceBefore, std::string("C1 source file changed ") + when);'),
+        ('qa', 'test_qa_export_contracts', 'tests/test_qa_export_contracts.cpp', 'QA_EXPECT(backup == path.original, "C2 backup differs from source");'),
+        ('qa', 'test_qa_export_contracts', 'tests/test_qa_export_contracts.cpp', 'QA_EXPECT(second.success && second.directory != first.directory, "C4 second export reused the first directory");'),
+    ]),
+    'H15': ('Rounds 6-8 smoke check: navigation, open/exit, Trainer, Party/Boxes, a harmless staged edit (R11 PASS; generic, guarded by the earlier round tables plus these)', [
+        ('host', 'test_ui_layout_host', 'tests/test_ui_layout_host.cpp', 'check(overlaps == 0, where + ": no overlapping visible text");'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen3.cpp', '"fresh bindings load + fresh discovery resolve the current file; clean workspace"'),
+        ('cg', 'CG07-single-exit-and-launch-site'),
+        ('cg', 'CG31-classic-exit-offers-review'),
+    ]),
+    'H16': ('Gen IV Remove packs the pocket: every later stack stays visible, order kept (R11 PASS)', [
+        ('host', 'test_gen4_bag_remove_pack', 'tests/test_gen4_bag_remove_pack.cpp', 'CHECK((*bag)[pocket].size() == gameVisible(got));'),
+        ('host', 'test_gen4_bag_remove_pack', 'tests/test_gen4_bag_remove_pack.cpp', 'for (size_t i=0;i<3;++i) if(i!=victim) exp.push_back(three[i]);'),
+    ]),
+    'H17': ('Gen IV Berry / TM Add sorts by item ID; Items appends (R11 PASS)', [
+        ('host', 'test_gen4_staged_pokemon_editor', 'tests/test_gen4_staged_pokemon_editor.cpp', 'wantI{100, 70, 90};  // Items pocket is NOT sorted natively'),
+        ('host', 'test_gen4_staged_pokemon_editor', 'tests/test_gen4_staged_pokemon_editor.cpp', 'assert(ids(berries) == wantB);'),
+        ('cg', 'CG12-single-bag-add-flow'),
+    ]),
+    'H18': ('D-pad and joystick reach the same controls through one repeat engine (R11 PASS)', [
+        ('host', 'test_navigation_repeat', 'tests/test_navigation_repeat.cpp', 'assert(sample.down == up && sample.held == up);'),
+        ('host', 'test_gen3_hardware_surface_contract', 'tests/test_gen3_hardware_surface_contract.cpp', 'assert(surface.find("(void)stickX") == std::string::npos);'),
+        ('cg', 'CG10-single-navigation-repeat-engine'),
+    ]),
+    'H19': ('B closes nested menus one layer at a time, with no edit (R11 PASS)', [
+        ('host', 'test_gen2_workspace_layers', 'tests/test_gen2_workspace_layers.cpp', 'assert(!e.selector.open() && !e.open.exitConfirm && e.applied == 0);'),
+        ('host', 'test_gen2_workspace_layers', 'tests/test_gen2_workspace_layers.cpp', 'assert(r.layer == L::Layer::ExitConfirm && r.action == L::Action::ContinueEditing);'),
+        ('host', 'test_gen5_staged_slot_actions', 'tests/test_gen5_staged_slot_actions.cpp', 'tag + "B returns from Origin & Legality to Actions"'),
+        ('cg', 'CG29-help-closes-with-b'),
+    ]),
+    'H20': ('Emulator / provider names and distinct save instances (R11 PASS)', [
+        ('cg', 'CG26-trainer-provider-display-name'),
+        ('host', 'test_session_provider_names', 'tests/test_session_provider_names.cpp', '"Part 9: each provider (mGBA, RetroArch + DeSmuME core, melonDS, DraStic, Switch title) named "'),
+        ('host', 'test_home_card_providers', 'tests/test_home_card_providers.cpp', '"Home cards: real providers Gen I-V, measured labels, fingerprinted snapshot "'),
+        ('host', 'test_save_instance_model', 'tests/test_save_instance_model.cpp', 'assert(instances[1].providerId == "mgba");'),
+    ]),
+    'H21': ('Gen I DV/EV: HP DV derived and read-only, shiny from DVs (R11 PASS; routine reroll / Shiny toast removed by owner request R11 H22)', [
+        ('host', 'test_gen1_cleanup3_staged_semantics', 'tests/test_gen1_cleanup3_staged_semantics.cpp', 'assert(afterDVEdit->dvs[0] == StagedPokemonEditor::derivedHPDV(attackOnlyDVs));'),
+        ('host', 'test_gen1_pokemon_editor_ui_contract', 'tests/test_gen1_pokemon_editor_ui_contract.cpp', 'static_assert(!hpDVIsStoredEditableField());'),
+        ('host', 'test_gen1_shiny', 'tests/test_gen1_shiny.cpp', 'assert(ShinyDVs::makeShiny({attack,1,2,3}) == (std::array<uint8_t,4>{attack,10,10,10}));'),
+        ('cg', 'CG91-routine-edit-no-toast'),
+    ]),
+    'H23': ('Box-to-box Move lands the Pokemon, B restores (R11 PASS; A places by owner request R11 H23 note, Gen V Y picks up R12-001, no carry toast R12-002, one packed cursor R12-003)', [
+        ('host', 'test_ui_clone_carry_host', 'tests/test_ui_clone_carry_host.cpp', 'check(c.speciesAt(c.moveLanding) == species, g + "it is at " + where(c.moveLanding));'),
+        ('host', 'test_ui_clone_carry_host', 'tests/test_ui_clone_carry_host.cpp', 'check(c.snapshot() == before && !drawn("Place"), g + "B cancels back to the exact staged state");'),
+        ('host', 'test_ui_clone_carry_host', 'tests/test_ui_clone_carry_host.cpp', 'g + "placing posts no toast ("'),
+        ('host', 'test_gen2_box_move_presentation', 'tests/test_gen2_box_move_presentation.cpp', 'assert(editor->packedMoveActive());'),
+        ('cg', 'CG56-gen2-carry-refresh-without-finalize'),
+    ]),
+    'H24': ('Gen III species / held item / move / IV edit: Review lists only those rows, Discard restores exactly (R11 PASS; new focused test, tests/gen3_edit_discard_r11.h run by test_species_change_moves_gen3)', [
+        ('host', 'test_species_change_moves_gen3', 'tests/gen3_edit_discard_r11.h', 'id + ": Discard restores the staged save byte for byte"'),
+        ('host', 'test_species_change_moves_gen3', 'tests/gen3_edit_discard_r11.h', 'id + ": unintended Review row "'),
+        ('host', 'test_species_change_moves_gen3', 'tests/gen3_edit_discard_r11.h', 'id + ": the draft is a preview: nothing staged before Keep"'),
+        ('host', 'test_species_change_moves_gen3', 'tests/test_species_change_moves_gen3.cpp', 'sameIdentity(staged, entry, id + " staged");'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen3.cpp', '"plain field values did not round-trip"'),
+    ]),
+    'H26': ('Gen V move chooser is species-restricted, labelled with type and PP (R11 PASS)', [
+        ('host', 'test_gen5_move_compatibility', 'tests/test_gen5_move_compatibility.cpp', 'assert(list.front()==0&&list.size()>40&&list.size()<180);'),
+        ('host', 'test_gen5_move_compatibility', 'tests/test_gen5_move_compatibility.cpp', 'assert(std::find(list.begin(),list.end(),559)==list.end());'),
+        ('host', 'test_move_picker_presentation', 'tests/test_move_picker_presentation.cpp', 'SharedMovesPanel::drawChooserRow('),
+        ('cg', 'CG22-move-chooser-type-badges'),
+    ]),
+    'H28': ('Species change clears incompatible moves and never adds one (R11 PASS; blank Create moves added by owner request R11 H28 / Extra 5 / Extra 6)', [
+        ('cg', 'CG19-species-change-resets-moves'),
+        ('host', 'test_species_change_moves_gen3', 'tests/test_species_change_moves_gen3.cpp', 'require(at != before.moves.end(), what + ": no move is ever added");'),
+        ('host', 'test_species_change_moves_gen3', 'tests/test_species_change_moves_gen3.cpp', '"Fearow: Thunder Shock cleared, Growl kept with its PP");'),
+        ('host', 'test_species_change_moves_gen1', 'tests/test_species_change_moves_gen1.cpp', '"Thunder Shock cleared, Growl kept with its PP and PP Ups, nothing added");'),
+        ('host', 'test_species_change_moves_gen2', 'tests/test_species_change_moves_gen2.cpp', 'create.working.pp == (std::array<uint8_t, 4>{}), "Create starts with no moves (C14 reversed)");'),
+    ]),
+    'H30': ('Create, back out (slot stays empty), Keep stages exactly one, source not written (R11 PASS)', [
+        ('host', 'test_gen5_party_box_parity', 'tests/test_gen5_party_box_parity.cpp', 'assert(ws.changedRecordCount() == 2 && ws.emptyCloneDestination(0, 6));'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen4.cpp', '"Back on a Create draft did not ask to confirm"'),
+        ('host', 'test_gen3_shared_pokemon_session', 'tests/test_gen3_shared_pokemon_session.cpp', 'assert(!create.back() && create.confirmExit && create.mode == Mode::Create);'),
+        ('host', 'test_gsc_shared_editor_parity', 'tests/test_gsc_shared_editor_parity.cpp', 'assert(std::equal(afterAdd.begin(), afterAdd.end(), editor->stagedBytes().begin()));'),
+        ('host', 'test_gen2_workspace_layers', 'tests/test_gen2_workspace_layers.cpp', 'L::Action::AskExit'),
+    ]),
+    'H33': ('Bag Remove: cancel changes nothing, confirm removes only that stack, Discard restores (R11 PASS)', [
+        ('host', 'test_gen5_bag_screen', 'tests/test_gen5_bag_screen.cpp', 'assert(bag.surface() == Surface::Browse && trainer->items[3].size() == 2);'),
+        ('host', 'test_classic_inventory_ui_model', 'tests/test_classic_inventory_ui_model.cpp', 'static_assert(classicRemoveConfirmStep(false, true) == ClassicRemoveConfirm::Cancel);'),
+        ('host', 'test_gen4_bag_remove_pack', 'tests/test_gen4_bag_remove_pack.cpp', 'ed->discard(); CHECK(std::equal(src.begin(), src.end(), ed->stagedBytes().begin()));'),
+        ('host', 'test_shared_editor_unit', 'tests/test_shared_editor_unit.cpp', 'if (itemRemoveConfirmActive) {'),
+        ('cg', 'CG38-bag-confirm-glyphs-a-commits'),
+    ]),
+    'H35': ('Held item chooser and TM/HM details: type, power, accuracy, PP; commit only on choose (R11 PASS)', [
+        ('host', 'test_machine_moves_gen15', 'tests/test_machine_moves_gen15.cpp', 'CHECK(d.powerKind == PowerKind::Fixed && d.power == 60 && d.accuracy == 100 && d.pp == 25);'),
+        ('host', 'test_machine_display', 'tests/test_machine_display.cpp', 'assert(Names::machineIdentifier(hm03gsc) == "HM03");'),
+        ('host', 'test_held_item_input', 'tests/test_held_item_input.cpp', 'assert(r.choose && p.committed == p.shown[static_cast<std::size_t>(expected)]);'),
+        ('cg', 'CG25-gen5-machine-and-feather-art'),
+        ('cg', 'CG40-held-item-picker-search'),
+    ]),
+    'H36': ('Malformed Gen IV pocket: Add / Remove refused with a reason, no byte changes (R11 PASS, optional)', [
+        ('host', 'test_gen4_bag_remove_pack', 'tests/test_gen4_bag_remove_pack.cpp', 'if (victim == 0) CHECK(err.find("already has an empty or unreadable slot") != std::string::npos);'),
+        ('host', 'test_gen4_bag_remove_pack', 'tests/test_gen4_bag_remove_pack.cpp', 'CHECK(staged() == before && std::equal(raw.begin(), raw.end(), before.begin()));'),
+    ]),
+    'H37': ('Gen V Bag: every stored stack decodes; pockets and rows wrap (R11 PASS)', [
+        ('host', 'test_gen5_bag', 'tests/test_gen5_bag.cpp', 'assert((*bag)[3].size() == 2 && (*bag)[3][1].itemId == 26 && (*bag)[3][1].count == 3);'),
+        ('host', 'test_gen5_bag_screen', 'tests/test_gen5_bag_screen.cpp', 'assert(bag.row() == 0);  // wraps past the last item'),
+        ('host', 'test_gen5_bag_screen', 'tests/test_gen5_bag_screen.cpp', 'assert(bag.pocket() == 4 && bag.row() == 0);'),
+        ('cg', 'CG34-gen5-key-tm-pockets-editable'),
+    ]),
+    'H38': ('Wrong-generation / oversized Pokemon file refused with a reason, nothing staged (R11 PASS)', [
+        ('host', 'test_ui_pokemon_file_menus_host', 'tests/test_ui_pokemon_file_menus_host.cpp', 'g + ": another generation\'s file is refused with the editor\'s reason, shown in the dialog ("'),
+        ('host', 'test_ui_pokemon_file_menus_host', 'tests/test_ui_pokemon_file_menus_host.cpp', 'check(c.snapshot() == staged0, g + ": nothing staged for the refused file");'),
+        ('host', 'test_ui_pokemon_file_menus_host', 'tests/test_ui_pokemon_file_menus_host.cpp', 'g + ": the oversized file is refused before it is opened"'),
+        ('host', 'test_pokemon_file_dialog_model', 'tests/test_pokemon_file_dialog_model.cpp', 'check(out.command == D::Command::RefuseFile && out.path == "sdmc:/mons/huge.pk4" &&'),
+    ]),
+    'H44': ('Recovery files: newest and Bank copies Protected; B keeps everything (R11 PASS)', [
+        ('host', 'test_recovery_management_model', 'tests/test_recovery_management_model.cpp', 'check(!removable(v, 2), "the newest copy of a source is protected");'),
+        ('host', 'test_recovery_management_model', 'tests/test_recovery_management_model.cpp', '"the Bank file is protected");'),
+        ('host', 'test_ui_recovery_files_host', 'tests/test_ui_recovery_files_host.cpp', 'check(d.drawn("Older copies and leftovers") && fs::exists(older.recordDir), "B keeps everything");'),
+        ('host', 'test_ui_recovery_files_host', 'tests/test_ui_recovery_files_host.cpp', 'check(d.drawn("Protected") && d.drawn("Removable"), "rows show Protected and Removable");'),
+    ]),
+    'H45': ('Two edits -> Review lists both -> Discard restores both, no source mutation (R11 PASS)', [
+        ('host', 'test_gen5_review_discard_export_trace', 'tests/test_gen5_review_discard_export_trace.cpp', 'T + "Discard All: every party/box PK5 is byte-identical to the source"'),
+        ('host', 'test_gen5_review_discard_export_trace', 'tests/test_gen5_review_discard_export_trace.cpp', 'T + "Discard All: Review empty"'),
+        ('host', 'test_gen12_review_parity', 'tests/test_gen12_review_parity.cpp', 'assert(Discard::step(s, false, false, false) == Outcome::NotHandled);'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen12.cpp', '"Discard did not restore WILL / 123456"'),
+        ('cg', 'CG35-gen5-review-matches-gen4'),
+    ]),
+    # Owner note to honour: "Round 11 H46 was owner-reported PASS for Export Copy reload/compare, but no game
+    # or comparison notes were recorded." The automated guard covers export-copy verification only (strict
+    # reparse, byte-identical backup, whitelisted byte diff); it does not reproduce the owner's emulator
+    # reload or PC comparison.
+    'H46': ('Export Copy reparses with only the intended change (owner PASS, no game or comparison notes recorded; the automated guard covers export-copy verification only, not the owner\'s emulator reload)', [
+        ('qa', 'test_qa_export_contracts', 'tests/test_qa_export_contracts.cpp', 'QA_EXPECT(path.strictReparse(edited, error), "C2 edited save failed strict reparse: " + error);'),
+        ('qa', 'test_qa_export_contracts', 'tests/test_qa_export_contracts.cpp', 'QA_EXPECT(whitelisted, "C3 byte " + hex(offender) + " changed outside the whitelist");'),
+        ('host', 'test_classic_verified_export', 'tests/test_classic_verified_export.cpp', 'assert(slurp(dir / "original_backup.srm") == original);'),
+    ]),
+    'H47': ('Touch and controller agree: no layering, double activation or tap-through (R11 PASS)', [
+        ('cg', 'CG08-modal-footer-and-touch-layer'),
+        ('cg', 'CG78-tap-outside-dismisses-non-destructive'),
+        ('host', 'test_popup_dismiss', 'tests/test_popup_dismiss.cpp', 'assert(s.underneathActivations == 0);'),
+        ('host', 'test_ui_classic_picker_dismiss_host', 'tests/test_ui_classic_picker_dismiss_host.cpp', '"Red: the outside tap opens nothing underneath"'),
+        ('host', 'test_held_item_input', 'tests/test_held_item_input.cpp', 'assert(p.reveals == 0);'),
+    ]),
+    'H48': ('Discard, exit and relaunch: saves load, discarded edits absent, no unsolicited write (R11 PASS)', [
+        ('host', 'test_gen5_review_discard_export_trace', 'tests/test_gen5_review_discard_export_trace.cpp', 'T + "Discard All: source image intact"'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen3.cpp', '"relaunch workspace is not a clean copy of the current file: "'),
+        ('qa', 'test_qa_matrix', 'tests/test_qa_matrix_gen5.cpp', '"reloaded bindings + new cache + new Trainer session see the rewritten file; the old "'),
+        ('host', 'test_ui_editor_input_host', 'tests/test_ui_editor_input_host.cpp', 'check(trainerB->stagedPokemon()->pendingChanges().empty(), "save B: nothing from save A is staged");'),
+        ('cg', 'CG60-no-backup-on-unchanged-open'),
+    ]),
+}
+
+
 def all_guards():
     """Every (pid, title, guards) entry; an item passed again in a later round keeps every round's guards."""
-    for table in (GUARDS, GUARDS_ROUND2, GUARDS_ROUND3, GUARDS_ROUND5, GUARDS_ROUND6, GUARDS_ROUND7):
+    for table in (GUARDS, GUARDS_ROUND2, GUARDS_ROUND3, GUARDS_ROUND5, GUARDS_ROUND6, GUARDS_ROUND7,
+                  GUARDS_ROUND11):
         for pid, (title, guards) in table.items():
             yield pid, title, guards
 
@@ -823,6 +1053,35 @@ def check(root: Path, run_python: bool = True) -> list[str]:
         want7 = [n for n, _ in pass7 if not n.startswith("A")]
         if list(GUARDS_ROUND7) != want7:
             errors.append(f"{ROUND7_DOC}: Oct 26 B / C / D PASS rows {want7}, gate maps {list(GUARDS_ROUND7)}")
+    # Round 11: GUARDS_ROUND11 is exactly the owner's PASS rows on the worksheet's complete ledger, in sheet
+    # order, and agrees with the engineering intake's list of the 34 PASS results.
+    r11 = text(ROUND11_DOC)
+    if r11 is None:
+        errors.append(f"{ROUND11_DOC} is missing")
+    else:
+        ledger = r11.split("## Complete test ledger", 1)[-1] if "## Complete test ledger" in r11 else ""
+        rows11 = re.findall(r"^### (H\d\d) — [^\n]*\n- \*\*Status:\*\* ([^\n]+?)\s*$", ledger, re.M)
+        pass11 = [i for i, res in rows11 if res.strip() == "PASS"]
+        if len(rows11) != ROUND11_ROWS or len(pass11) != ROUND11_PASS_COUNT:
+            errors.append(f"{ROUND11_DOC}: {len(rows11)} rows / {len(pass11)} PASS, gate expects "
+                          f"{ROUND11_ROWS} / {ROUND11_PASS_COUNT}")
+        if list(GUARDS_ROUND11) != pass11:
+            errors.append(f"{ROUND11_DOC}: owner PASS {pass11}, gate maps {list(GUARDS_ROUND11)}")
+        summary = re.search(r"^\| All H01–H48 \| (\d+) \|", r11, re.M)
+        if not summary or int(summary.group(1)) != ROUND11_PASS_COUNT:
+            errors.append(f"{ROUND11_DOC}: summary PASS count is not {ROUND11_PASS_COUNT}")
+    intake = text(ROUND11_INTAKE)
+    m11 = re.search(r"The (\d+) PASS results \(([^)]*)\)", intake or "")
+    if not m11:
+        errors.append(f"{ROUND11_INTAKE}: the list of Round 11 PASS results is missing")
+    else:
+        listed: list[str] = []
+        for part in m11.group(2).split(","):
+            ends = re.findall(r"H(\d\d)", part)
+            lo, hi = (int(ends[0]), int(ends[-1])) if ends else (0, -1)
+            listed += [f"H{n:02d}" for n in range(lo, hi + 1)]
+        if int(m11.group(1)) != ROUND11_PASS_COUNT or listed != list(GUARDS_ROUND11):
+            errors.append(f"{ROUND11_INTAKE}: intake lists {m11.group(1)} PASS {listed}, gate maps {list(GUARDS_ROUND11)}")
     for pid, title, guards in all_guards():
         kinds = {g[0] for g in guards}
         if not kinds & PR_GATING_KINDS and pid not in PIN_ONLY_ALLOWED:
@@ -880,9 +1139,10 @@ def main(argv: list[str]) -> int:
                 print(f"      {g[0]:4} {' | '.join(str(x) for x in g[1:3])}")
     n = sum(len(g) for _, _, g in all_guards())
     label = (f"{len(GUARDS)} round 1 + {len(GUARDS_ROUND2)} round 2 + {len(GUARDS_ROUND3)} round 3 + "
-             f"{len(GUARDS_ROUND5)} Oct 24 + {len(GUARDS_ROUND6)} Oct 25 + {len(GUARDS_ROUND7)} Oct 26 owner PASS items; all "
-             f"{ROUND3_PASS_COUNT} round 3, {ROUND5_PASS_COUNT} Oct 24, {ROUND6_PASS_COUNT} Oct 25 and {ROUND7_PASS_COUNT} Oct 26 "
-             f"PASS guarded")
+             f"{len(GUARDS_ROUND5)} Oct 24 + {len(GUARDS_ROUND6)} Oct 25 + {len(GUARDS_ROUND7)} Oct 26 + "
+             f"{len(GUARDS_ROUND11)} Round 11 owner PASS items; all "
+             f"{ROUND3_PASS_COUNT} round 3, {ROUND5_PASS_COUNT} Oct 24, {ROUND6_PASS_COUNT} Oct 25, {ROUND7_PASS_COUNT} Oct 26 "
+             f"and {ROUND11_PASS_COUNT} Round 11 PASS guarded")
     if errors:
         print(f"Hardware-accepted regression gate: FAIL ({len(errors)} problem(s), {label}, {n} guards)")
         for e in errors:

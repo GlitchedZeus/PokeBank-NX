@@ -1233,6 +1233,18 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
         setChange(prefix + "pokerus", labelPrefix + "Pokerus", std::to_string(before.pokerus), std::to_string(verified->pokerus));
     if (before.caughtData != verified->caughtData)
         setChange(prefix + "caught", labelPrefix + "Caught/Met Data", std::to_string(before.caughtData), std::to_string(verified->caughtData));
+    // Round 12 (R12-004 / R12-005): changed caught data (or level) that is not a verified Crystal
+    // encounter of the species / its pre-evolutions at this level stays labelled unverified.
+    clearChange(prefix + "met_evidence");
+    if (sourceGame_ == SourceGame::Crystal &&
+        (before.caughtData != verified->caughtData || before.level != verified->level || before.species != verified->species)) {
+        const auto caught = PokeBank::UIModel::Gen2Native::decodeCrystalCaughtData(verified->caughtData);
+        if (caught.present)
+            if (const auto note = PokeBank::UIModel::ExactGameMetLocations::crystalUnverifiedNote(
+                    "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level);
+                !note.empty())
+                setChange(prefix + "met_evidence", labelPrefix + "Met evidence", "", note);
+    }
     return true;
 }
 
@@ -1513,6 +1525,11 @@ bool StagedEditor::stageAddBoxPokemon(std::size_t destinationBox, const BoxPokem
         detail("OT Gender", PokeBank::UIModel::Gen2Native::crystalOriginalTrainerGenderText(caught));
         detail("Met", std::string(PokeBank::UIModel::Gen2Native::crystalCaughtLocationName(caught.location)) + ", " +
                           PokeBank::UIModel::Gen2Native::crystalCaughtLevelText(caught));
+        // Round 12 (R12-004 / R12-005): an unverified caught history stays labelled in Review.
+        if (const auto note = PokeBank::UIModel::ExactGameMetLocations::crystalUnverifiedNote(
+                "crystal_gbc", verified->species, caught.location, caught.levelCode, verified->level);
+            !note.empty())
+            detail("Met evidence", note);
     }
     return true;
 }

@@ -129,6 +129,7 @@ void drawExactGen1WorkspaceSubtitle(TrainerViewScreen& screen, PKSEFramebuffer& 
         " / Slot " + std::to_string(state.slot + 1);
     const std::string exact = foundationExactGameName(screen, e->metadata().sourceGame);
     const std::string context = ClassicContext::contextLine(record, exact, foundationSurfaceMode(workspaceMode));
+    TransientStatusScope::noteEditor(record);   // R12-010: the editor is a status-scope layer
     fb.drawText(28, 66, context, Colors::TextDim, TextStyle::Caption);
 }
 

@@ -300,8 +300,10 @@ uint8_t crystalAllowedTimeMask(const TrainerViewScreen& screen,
                                const Gen2::PokemonRecord& p,
                                const Gen2Native::CrystalCaughtData& caught) {
     uint8_t mask = 0;
-    for (const auto& encounter : Encounter::forGameSpecies(screen.sourceGameId, p.species)) {
-        if (encounter.location != caught.location) continue;
+    for (const auto& encounter : PokeBank::UIModel::ExactGameMetLocations::crystalTemplatesWithAncestry(
+             screen.sourceGameId, p.species)) {
+        if (encounter.location != caught.location ||
+            !PokeVault::Integration::MetLocationPolicy::levelReachesEncounter(encounter.minLevel, p.level)) continue;
         const bool levelMatches = caught.levelCode == 1
             ? encounter.method == Encounter::Method::Egg
             : caught.levelCode >= 2 && encounter.containsLevel(caught.levelCode);
@@ -561,10 +563,14 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 return true;
             }
             if (focus.row == 10) {
-                const auto choices = Encounter::forGameSpecies(screen.sourceGameId, p.species);
+                // Round 12: species + pre-evolution templates the current level reaches (R12-005).
+                const auto choices = PokeBank::UIModel::ExactGameMetLocations::crystalTemplatesWithAncestry(
+                    screen.sourceGameId, p.species);
                 const Encounter::EncounterTemplate* selected = nullptr;
                 for (const auto& encounter : choices) {
-                    if (encounter.location != caught.location) continue;
+                    if (encounter.location != caught.location ||
+                        !PokeVault::Integration::MetLocationPolicy::levelReachesEncounter(encounter.minLevel, p.level))
+                        continue;
                     const bool timeMatches = Encounter::timeAllowed(encounter, caught.timeOfDay);
                     if (caught.levelCode == 1 && encounter.method == Encounter::Method::Egg && timeMatches) {
                         selected = &encounter; break;
@@ -593,7 +599,8 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                                       std::to_string(caught.levelCode), 240);
                 } else {
                     const int minLevel = std::clamp<int>(selected->minLevel, 2, 63);
-                    const int maxLevel = std::clamp<int>(selected->maxLevel, minLevel, 63);
+                    // Never above the current level (a Pokémon is not below its met level).
+                    const int maxLevel = std::clamp<int>(std::min<int>(selected->maxLevel, p.level), minLevel, 63);
                     const int current = caught.levelCode >= minLevel && caught.levelCode <= maxLevel
                         ? caught.levelCode : minLevel;
                     const auto result = Utils::promptNumber("Met Level for selected Crystal encounter",
@@ -603,8 +610,10 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
                 }
             }
             if (focus.row == 11) {
+                // Round 12 (R12-004 / R12-005): the default list (verified rows the level reaches,
+                // Gift / Event markers, "Other location (unverified)...").
                 pickerStateFor(screen).model.openLocation(
-                    screen.sourceGameId, p.species, caught.location, caught.levelCode);
+                    screen.sourceGameId, p.species, caught.location, caught.levelCode, p.level);
                 // Round 11: never a closed list; catch templates first, then every other native
                 // Crystal landmark (Gen2PokemonPickerModel.h / ExactGameMetLocations.h).
                 if (pickerStateFor(screen).model.locationCount() == 0) {

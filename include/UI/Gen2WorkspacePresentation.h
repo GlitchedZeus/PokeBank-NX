@@ -80,6 +80,13 @@ inline std::vector<DataRow> dataRows(const G::PokemonRecord& p, G::SourceGame ga
         rows.push_back({"Caught history", game == G::SourceGame::Crystal
             ? "Crystal caught data" : "Retained Crystal data"});
         rows.push_back({"Met", Gen2Native::crystalCaughtLocationName(caught.location)});
+        // Round 12 (R12-004 / R12-005): a landmark that is not a verified Crystal encounter of the
+        // species / its pre-evolutions at this level stays labelled unverified.
+        if (game == G::SourceGame::Crystal)
+            if (auto note = ExactGameMetLocations::crystalUnverifiedNote("crystal_gbc", p.species, caught.location,
+                                                                         caught.levelCode, p.level);
+                !note.empty())
+                rows.push_back({"Met evidence", std::move(note)});
         if (!caution.empty()) rows.push_back({"Caution", caution});
         rows.push_back({"Met level", Gen2Native::crystalCaughtLevelText(caught)});
         rows.push_back({"Time", Gen2Native::crystalMetTimeName(caught.timeOfDay)});

@@ -161,7 +161,7 @@ constexpr Rule rule(MenuType type) noexcept {
             return {Kind::Confirm, 560, 1, 0, 0, 0, 60, 24, 16, 0, 0, 8, Text::Body, 56, 3};
         case MenuType::BulkSetup:
             // A short command menu (52 px rows like BoxMenu) wide enough for "Scope  This pocket
-            // (Battle Items)" and the "Key Items and HMs are never changed" caption.
+            // (Battle Items)" and the "Fills native free slots; Key Items are never changed" caption.
             return {Kind::List, 600, 1, 52, 6, 5, 86, 22, 18, 18, 0, 8, Text::Body};
         case MenuType::BulkPreview:
             // Read-only text lines (30 px pitch, no gap: nothing is focusable), 14 visible, a title

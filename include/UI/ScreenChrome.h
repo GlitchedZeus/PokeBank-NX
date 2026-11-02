@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "UI/TransientStatusScope.h"
+
 #include "UI/PKSEFramebuffer.h"
 #include "UI/SharedScrollbar.h"
 #include "UI/SharedPopupDismiss.h"
@@ -346,6 +348,8 @@ namespace UI {
         int selectedNative, const std::string& title,
         const std::string& context, int touchIdBase) {
         using namespace PokeBank::UIModel::NarrowPokemonMenu;
+        // R12-010: an Actions sheet is a status-scope layer (its Pokemon and source).
+        TransientStatusScope::noteActions(title + "|" + context);
         const auto g = geometry(model.count, fb.getWidth(), fb.getHeight(), kNavBarH);
         drawModalSurface(fb, g.x, g.y, g.width, g.height, 16);
         fb.drawText(g.x + 22, g.y + 9, context, Colors::Accent, TextStyle::Caption);
