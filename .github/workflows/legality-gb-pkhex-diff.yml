@@ -17,6 +17,7 @@ on:
       - 'tools/gen_gb_legality_data.py'
       - 'tools/verify_gb_legality_data.py'
       - 'tools/pkhex_gb_diff/**'
+      - 'tests/audit/**'
       - '.github/workflows/legality-gb-pkhex-diff.yml'
   workflow_dispatch:
 
@@ -67,6 +68,21 @@ jobs:
           python3 -I tools/gen_gb_legality_data.py --pkhex _ref/PKHeX
           git diff --exit-code -- src/Legality/GBLegalityData.cpp
 
+      - name: GB differential protocol rejects masked or malformed evidence
+        run: python3 -m unittest discover -s tools/pkhex_gb_diff/audit -p 'test_protocol.py' -v
+
+      - name: Native PK1 application retains guards bypassed by the differential
+        run: |
+          make -f Makefile.host -f tests/audit/Makefile.gen12 build-host/audit_gen1_analyzer_guards build-host/audit_gen1_analyzer_guards_san
+          build-host/audit_gen1_analyzer_guards
+          ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 build-host/audit_gen1_analyzer_guards_san
+
+      - name: Native GB checker boundary and verdict integrity
+        run: |
+          make -f Makefile.host -f tests/audit/Makefile.gen12 build-host/audit_gen12_verdict_integrity build-host/audit_gen12_verdict_integrity_san
+          build-host/audit_gen12_verdict_integrity
+          ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 build-host/audit_gen12_verdict_integrity_san
+
       - name: Tables agree with the pret disassemblies
         run: python3 -I tools/verify_gb_legality_data.py --pkhex _ref/PKHeX --pokered _ref/pokered --pokeyellow _ref/pokeyellow
 
@@ -81,3 +97,22 @@ jobs:
           for seed in 1 2 3; do
             tools/pkhex_gb_diff/run.sh _ref/PKHeX _ref/pokered 50000 "$seed" 2
           done
+
+      # This gate deliberately FAILS for the current production defects. Do not
+      # waive it as an intentional PKHeX difference: expectations come from
+      # native record invariants and the original games, independently of PKHeX.
+      - name: Independent native duplicate-move and EXP regressions
+        run: tools/pkhex_gb_diff/audit/run.sh _ref/PKHeX _audit_gb
+
+      - name: Preserve independent structural findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gb-independent-structural-${{ github.sha }}
+          path: |
+            _audit_gb/corpus.txt
+            _audit_gb/manifest.json
+            _audit_gb/pkhex.txt
+            _audit_gb/nx.txt
+            _audit_gb/structural-results.json
+          if-no-files-found: warn

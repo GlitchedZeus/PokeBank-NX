@@ -1,0 +1,9 @@
+test_exact_gsball_exception (test_protocol.ProtocolTests.test_exact_gsball_exception) ... ok
+test_fail_closed (test_protocol.ProtocolTests.test_fail_closed) ... ok
+test_level100_exception_requires_only_that_problem (test_protocol.ProtocolTests.test_level100_exception_requires_only_that_problem) ... ok
+test_valid_controls (test_protocol.ProtocolTests.test_valid_controls) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.565s
+
+OK

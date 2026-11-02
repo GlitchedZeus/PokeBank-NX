@@ -1,0 +1,4 @@
+src/Legality/Legality.cpp:608:48: error: object backing the pointer will be destroyed at the end of the full-expression [-Werror,-Wdangling-gsl]
+  608 |                     pk.isShiny(pk.id32(), {}), pk.otName()
+      |                                                ^~~~~~~~~~~
+1 error generated.

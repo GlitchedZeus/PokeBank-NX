@@ -1,0 +1,3 @@
+explained yellow #64 catch: PKHeX 96 pret 100
+explained yellow #25 catch: PKHeX 163 pret 190
+2673 Gen I comparisons, 2 explained, 0 mismatches

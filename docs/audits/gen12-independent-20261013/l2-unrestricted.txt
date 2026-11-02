@@ -1,0 +1,203 @@
+L2 exact checkout head: 49240a36dd5dad2608b2571145652a39c0aeefd5
+L2 WARNING: checkout has tracked modifications; not a clean exact-head run
+L2 compile: test_legality_l2_gen1_native_dv_stat [normal] using g++
+L2 run: test_legality_l2_gen1_native_dv_stat [normal]
+L2 Gen I native DVs and Stat Experience: 329446 PASS
+L2 PASS: test_legality_l2_gen1_native_dv_stat [normal]
+L2 compile: test_legality_l2_gen1_native_dv_stat [sanitizers] using g++
+L2 run: test_legality_l2_gen1_native_dv_stat [sanitizers]
+L2 Gen I native DVs and Stat Experience: 329446 PASS
+L2 PASS: test_legality_l2_gen1_native_dv_stat [sanitizers]
+L2 compile: test_legality_l2_gen1_native_record_adversarial [normal] using g++
+L2 run: test_legality_l2_gen1_native_record_adversarial [normal]
+L2 Gen I adversarial PK1 source fields: 56 PASS
+L2 PASS: test_legality_l2_gen1_native_record_adversarial [normal]
+L2 compile: test_legality_l2_gen1_native_record_adversarial [sanitizers] using g++
+L2 run: test_legality_l2_gen1_native_record_adversarial [sanitizers]
+L2 Gen I adversarial PK1 source fields: 56 PASS
+L2 PASS: test_legality_l2_gen1_native_record_adversarial [sanitizers]
+L2 compile: test_legality_l2_gen1_native_exp_growth [normal] using g++
+L2 run: test_legality_l2_gen1_native_exp_growth [normal]
+L2 Gen I EXP thresholds for all 151 species: 241451 PASS
+L2 PASS: test_legality_l2_gen1_native_exp_growth [normal]
+L2 compile: test_legality_l2_gen1_native_exp_growth [sanitizers] using g++
+L2 run: test_legality_l2_gen1_native_exp_growth [sanitizers]
+L2 Gen I EXP thresholds for all 151 species: 241451 PASS
+L2 PASS: test_legality_l2_gen1_native_exp_growth [sanitizers]
+L2 compile: test_legality_l2_gen1_original_stat_exp_battles [normal] using g++
+L2 run: test_legality_l2_gen1_original_stat_exp_battles [normal]
+Gen I original source-attested solo-battle StatExp: 137715 assertions PASS
+L2 PASS: test_legality_l2_gen1_original_stat_exp_battles [normal]
+L2 compile: test_legality_l2_gen1_original_stat_exp_battles [sanitizers] using g++
+L2 run: test_legality_l2_gen1_original_stat_exp_battles [sanitizers]
+Gen I original source-attested solo-battle StatExp: 137715 assertions PASS
+L2 PASS: test_legality_l2_gen1_original_stat_exp_battles [sanitizers]
+L2 compile: test_legality_l2_gen1_divided_battle_vitamins [normal] using g++
+L2 run: test_legality_l2_gen1_divided_battle_vitamins [normal]
+Gen I original divided battle and five vitamin sources: 163890 checks PASS
+L2 PASS: test_legality_l2_gen1_divided_battle_vitamins [normal]
+L2 compile: test_legality_l2_gen1_divided_battle_vitamins [sanitizers] using g++
+L2 run: test_legality_l2_gen1_divided_battle_vitamins [sanitizers]
+Gen I original divided battle and five vitamin sources: 163890 checks PASS
+L2 PASS: test_legality_l2_gen1_divided_battle_vitamins [sanitizers]
+L2 compile: test_legality_l2_gen1_stat_exp_alternative_routes [normal] using g++
+L2 run: test_legality_l2_gen1_stat_exp_alternative_routes [normal]
+Gen I original StatExp route-local alternatives: 393216 checks PASS
+L2 PASS: test_legality_l2_gen1_stat_exp_alternative_routes [normal]
+L2 compile: test_legality_l2_gen1_stat_exp_alternative_routes [sanitizers] using g++
+L2 run: test_legality_l2_gen1_stat_exp_alternative_routes [sanitizers]
+Gen I original StatExp route-local alternatives: 393216 checks PASS
+L2 PASS: test_legality_l2_gen1_stat_exp_alternative_routes [sanitizers]
+L2 compile: test_legality_l2_gen1_stat_exp_math_boundaries [normal] using g++
+L2 run: test_legality_l2_gen1_stat_exp_math_boundaries [normal]
+Gen I production battle-stat full-species/integer-root boundaries: 203569 assertions PASS
+L2 PASS: test_legality_l2_gen1_stat_exp_math_boundaries [normal]
+L2 compile: test_legality_l2_gen1_stat_exp_math_boundaries [sanitizers] using g++
+L2 run: test_legality_l2_gen1_stat_exp_math_boundaries [sanitizers]
+Gen I production battle-stat full-species/integer-root boundaries: 203569 assertions PASS
+L2 PASS: test_legality_l2_gen1_stat_exp_math_boundaries [sanitizers]
+L2 compile: test_legality_l2_dp_alternative_egg_histories [normal] using g++
+L2 run: test_legality_l2_dp_alternative_egg_histories [normal]
+L2 B18 bounded DP PID+IV candidate histories: 8232 positive/local negative/Unknown combinations PASS
+L2 PASS: test_legality_l2_dp_alternative_egg_histories [normal]
+L2 compile: test_legality_l2_dp_alternative_egg_histories [sanitizers] using g++
+L2 run: test_legality_l2_dp_alternative_egg_histories [sanitizers]
+L2 B18 bounded DP PID+IV candidate histories: 8232 positive/local negative/Unknown combinations PASS
+L2 PASS: test_legality_l2_dp_alternative_egg_histories [sanitizers]
+L2 compile: test_legality_l2_dp_move_stage [normal] using g++
+L2 run: test_legality_l2_dp_move_stage [normal]
+L2 DP 4-slot move + physical parent + creation-item source histories 8242 seeded scenarios PASS (not original retail captures)
+L2 PASS: test_legality_l2_dp_move_stage [normal]
+L2 compile: test_legality_l2_dp_move_stage [sanitizers] using g++
+L2 run: test_legality_l2_dp_move_stage [sanitizers]
+L2 DP 4-slot move + physical parent + creation-item source histories 8242 seeded scenarios PASS (not original retail captures)
+L2 PASS: test_legality_l2_dp_move_stage [sanitizers]
+L2 compile: test_legality_l2_dp_egg_iv [normal] using g++
+L2 run: test_legality_l2_dp_egg_iv [normal]
+L2 B12 original Diamond/Pearl assembly egg IV: 8202 positive + negative + Unknown controls PASS
+L2 PASS: test_legality_l2_dp_egg_iv [normal]
+L2 compile: test_legality_l2_dp_egg_iv [sanitizers] using g++
+L2 run: test_legality_l2_dp_egg_iv [sanitizers]
+L2 B12 original Diamond/Pearl assembly egg IV: 8202 positive + negative + Unknown controls PASS
+L2 PASS: test_legality_l2_dp_egg_iv [sanitizers]
+L2 compile: test_legality_l2_dp_egg_pid [normal] using g++
+L2 run: test_legality_l2_dp_egg_pid [normal]
+L2 B13 original Diamond/Pearl PID history: 13375 source-assembly controls PASS (conditional only)
+L2 PASS: test_legality_l2_dp_egg_pid [normal]
+L2 compile: test_legality_l2_dp_egg_pid [sanitizers] using g++
+L2 run: test_legality_l2_dp_egg_pid [sanitizers]
+L2 B13 original Diamond/Pearl PID history: 13375 source-assembly controls PASS (conditional only)
+L2 PASS: test_legality_l2_dp_egg_pid [sanitizers]
+L2 compile: test_legality_l2_dp_native_egg_history [normal] using g++
+L2 run: test_legality_l2_dp_native_egg_history [normal]
+L2 B12/B13 original Diamond/Pearl encrypted PK4 history PASS; positive, contradictory candidate and Unknown remain scoped
+L2 PASS: test_legality_l2_dp_native_egg_history [normal]
+L2 compile: test_legality_l2_dp_native_egg_history [sanitizers] using g++
+L2 run: test_legality_l2_dp_native_egg_history [sanitizers]
+L2 B12/B13 original Diamond/Pearl encrypted PK4 history PASS; positive, contradictory candidate and Unknown remain scoped
+L2 PASS: test_legality_l2_dp_native_egg_history [sanitizers]
+L2 compile: test_legality_l2_gen3_egg_pid_creation [normal] using g++
+L2 run: test_legality_l2_gen3_egg_pid_creation [normal]
+L2 B07 Gen III source-game egg PID/Everstone: 35903 seeded and fixed cases plus Unknown controls PASS
+L2 PASS: test_legality_l2_gen3_egg_pid_creation [normal]
+L2 compile: test_legality_l2_gen3_egg_pid_creation [sanitizers] using g++
+L2 run: test_legality_l2_gen3_egg_pid_creation [sanitizers]
+L2 B07 Gen III source-game egg PID/Everstone: 35903 seeded and fixed cases plus Unknown controls PASS
+L2 PASS: test_legality_l2_gen3_egg_pid_creation [sanitizers]
+L2 compile: test_legality_l2_gen3_iv_attested_alternatives [normal] using g++
+L2 run: test_legality_l2_gen3_iv_attested_alternatives [normal]
+L2 original Gen3 IV-stage historical alternatives: 20480 seeded x 5-game cases plus bounded negative and Unknown controls passed
+L2 PASS: test_legality_l2_gen3_iv_attested_alternatives [normal]
+L2 compile: test_legality_l2_gen3_iv_attested_alternatives [sanitizers] using g++
+L2 run: test_legality_l2_gen3_iv_attested_alternatives [sanitizers]
+L2 original Gen3 IV-stage historical alternatives: 20480 seeded x 5-game cases plus bounded negative and Unknown controls passed
+L2 PASS: test_legality_l2_gen3_iv_attested_alternatives [sanitizers]
+L2 compile: test_legality_l2_gen3_joint_egg_pid_iv [normal] using g++
+L2 run: test_legality_l2_gen3_joint_egg_pid_iv [normal]
+L2 B07 source game joint PID/IV: 5120 synthetic full histories and 50 additional Unknown/malformed controls PASS
+L2 PASS: test_legality_l2_gen3_joint_egg_pid_iv [normal]
+L2 compile: test_legality_l2_gen3_joint_egg_pid_iv [sanitizers] using g++
+L2 run: test_legality_l2_gen3_joint_egg_pid_iv [sanitizers]
+L2 B07 source game joint PID/IV: 5120 synthetic full histories and 50 additional Unknown/malformed controls PASS
+L2 PASS: test_legality_l2_gen3_joint_egg_pid_iv [sanitizers]
+L2 compile: test_legality_l2_gen3_joint_pid_iv_moves [normal] using g++
+L2 run: test_legality_l2_gen3_joint_pid_iv_moves [normal]
+L2 B08 triple-source Gen III egg witness: 2560 seeded parent-order histories + 76 independent provenance/role controls PASS
+L2 PASS: test_legality_l2_gen3_joint_pid_iv_moves [normal]
+L2 compile: test_legality_l2_gen3_joint_pid_iv_moves [sanitizers] using g++
+L2 run: test_legality_l2_gen3_joint_pid_iv_moves [sanitizers]
+L2 B08 triple-source Gen III egg witness: 2560 seeded parent-order histories + 76 independent provenance/role controls PASS
+L2 PASS: test_legality_l2_gen3_joint_pid_iv_moves [sanitizers]
+L2 compile: test_legality_l2_gen3_pid_iv_moves_alternatives [normal] using g++
+L2 run: test_legality_l2_gen3_pid_iv_moves_alternatives [normal]
+test_legality_l2_gen3_pid_iv_moves_alternatives-normal: REPO/tests/test_legality_l2_gen3_pid_iv_moves_alternatives.cpp:140: int main(): Assertion `A::evaluate(x).status==A::Status::DuplicateOrMissingRoute' failed.
+tests/test_legality_l2_run_all.sh: line 140: 1574461 Aborted                    (core dumped) "$dest"
+L2 FAIL runtime: test_legality_l2_gen3_pid_iv_moves_alternatives [normal]
+L2 compile: test_legality_l2_gen3_pid_iv_moves_alternatives [sanitizers] using g++
+L2 run: test_legality_l2_gen3_pid_iv_moves_alternatives [sanitizers]
+test_legality_l2_gen3_pid_iv_moves_alternatives-sanitizers: REPO/tests/test_legality_l2_gen3_pid_iv_moves_alternatives.cpp:140: int main(): Assertion `A::evaluate(x).status==A::Status::DuplicateOrMissingRoute' failed.
+tests/test_legality_l2_run_all.sh: line 140: 1574556 Aborted                    ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1 "$dest"
+L2 FAIL runtime: test_legality_l2_gen3_pid_iv_moves_alternatives [sanitizers]
+L2 compile: test_legality_l2_gen3_retail_daycare_pair [normal] using g++
+L2 run: test_legality_l2_gen3_retail_daycare_pair [normal]
+L2 source-backed Gen III original daycare parent witnesses: 215 compatibility/role/OT/PID integration controls PASS
+L2 PASS: test_legality_l2_gen3_retail_daycare_pair [normal]
+L2 compile: test_legality_l2_gen3_retail_daycare_pair [sanitizers] using g++
+L2 run: test_legality_l2_gen3_retail_daycare_pair [sanitizers]
+L2 source-backed Gen III original daycare parent witnesses: 215 compatibility/role/OT/PID integration controls PASS
+L2 PASS: test_legality_l2_gen3_retail_daycare_pair [sanitizers]
+L2 compile: test_legality_l2_gen4_pt_hgss_pid [normal] using g++
+L2 run: test_legality_l2_gen4_pt_hgss_pid [normal]
+L2 original Platinum/HGSS PID 6144 seeds + 78 fixed controls PASS (synthetic source stages)
+L2 PASS: test_legality_l2_gen4_pt_hgss_pid [normal]
+L2 compile: test_legality_l2_gen4_pt_hgss_pid [sanitizers] using g++
+L2 run: test_legality_l2_gen4_pt_hgss_pid [sanitizers]
+L2 original Platinum/HGSS PID 6144 seeds + 78 fixed controls PASS (synthetic source stages)
+L2 PASS: test_legality_l2_gen4_pt_hgss_pid [sanitizers]
+L2 compile: test_legality_l2_gen4_pt_hgss_joint [normal] using g++
+L2 run: test_legality_l2_gen4_pt_hgss_joint [normal]
+L2 Pt/HGSS same-route PID+IV Power-item hypotheses 49152 item/seed combinations and 42 controls PASS
+L2 PASS: test_legality_l2_gen4_pt_hgss_joint [normal]
+L2 compile: test_legality_l2_gen4_pt_hgss_joint [sanitizers] using g++
+L2 run: test_legality_l2_gen4_pt_hgss_joint [sanitizers]
+L2 Pt/HGSS same-route PID+IV Power-item hypotheses 49152 item/seed combinations and 42 controls PASS
+L2 PASS: test_legality_l2_gen4_pt_hgss_joint [sanitizers]
+L2 compile: test_legality_l2_gen4_pt_hgss_move_stage [normal] using g++
+L2 run: test_legality_l2_gen4_pt_hgss_move_stage [normal]
+L2 Pt/HGSS original four-move acquisition: 12360 seeded and source-order controls PASS
+L2 PASS: test_legality_l2_gen4_pt_hgss_move_stage [normal]
+L2 compile: test_legality_l2_gen4_pt_hgss_move_stage [sanitizers] using g++
+L2 run: test_legality_l2_gen4_pt_hgss_move_stage [sanitizers]
+L2 Pt/HGSS original four-move acquisition: 12360 seeded and source-order controls PASS
+L2 PASS: test_legality_l2_gen4_pt_hgss_move_stage [sanitizers]
+L2 compile: test_legality_l2_gen4_pt_hgss_full_moves [normal] using g++
+L2 run: test_legality_l2_gen4_pt_hgss_full_moves [normal]
+L2 original Pt/HGSS same-parent PID+IV+4-move histories: 12288 positive seeds and 135225 scoped negative controls PASS
+L2 PASS: test_legality_l2_gen4_pt_hgss_full_moves [normal]
+L2 compile: test_legality_l2_gen4_pt_hgss_full_moves [sanitizers] using g++
+L2 run: test_legality_l2_gen4_pt_hgss_full_moves [sanitizers]
+L2 original Pt/HGSS same-parent PID+IV+4-move histories: 12288 positive seeds and 135225 scoped negative controls PASS
+L2 PASS: test_legality_l2_gen4_pt_hgss_full_moves [sanitizers]
+L2 compile: test_legality_l2_gen4_iv_candidate_set [normal] using g++
+L2 run: test_legality_l2_gen4_iv_candidate_set [normal]
+L2 B16 attested Gen IV IV hypotheses: 12717 independently gated cases PASS (stage-only, no PK4 authenticity)
+L2 PASS: test_legality_l2_gen4_iv_candidate_set [normal]
+L2 compile: test_legality_l2_gen4_iv_candidate_set [sanitizers] using g++
+L2 run: test_legality_l2_gen4_iv_candidate_set [sanitizers]
+L2 B16 attested Gen IV IV hypotheses: 12717 independently gated cases PASS (stage-only, no PK4 authenticity)
+L2 PASS: test_legality_l2_gen4_iv_candidate_set [sanitizers]
+L2 compile: test_legality_l2_gen4_native_iv_history [normal] using g++
+L2 run: test_legality_l2_gen4_native_iv_history [normal]
+test_legality_l2_gen4_native_iv_history-normal: REPO/tests/test_legality_l2_gen4_native_iv_history.cpp:108: int main(): Assertion `N::evaluate(alternatives).histories.status== H::Status::MissingOrDuplicateRouteIdentity' failed.
+tests/test_legality_l2_run_all.sh: line 140: 1575245 Aborted                    (core dumped) "$dest"
+L2 FAIL runtime: test_legality_l2_gen4_native_iv_history [normal]
+L2 compile: test_legality_l2_gen4_native_iv_history [sanitizers] using g++
+L2 run: test_legality_l2_gen4_native_iv_history [sanitizers]
+test_legality_l2_gen4_native_iv_history-sanitizers: REPO/tests/test_legality_l2_gen4_native_iv_history.cpp:108: int main(): Assertion `N::evaluate(alternatives).histories.status== H::Status::MissingOrDuplicateRouteIdentity' failed.
+tests/test_legality_l2_run_all.sh: line 140: 1575600 Aborted                    ASAN_OPTIONS=halt_on_error=1:detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1 "$dest"
+L2 FAIL runtime: test_legality_l2_gen4_native_iv_history [sanitizers]
+L2 complete: 44/48 exact-checked-out-source standalone test executions passed.
+L2 FAILED EXECUTIONS: test_legality_l2_gen3_pid_iv_moves_alternatives:normal:runtime
+L2 FAILED EXECUTIONS: test_legality_l2_gen3_pid_iv_moves_alternatives:sanitizers:runtime
+L2 FAILED EXECUTIONS: test_legality_l2_gen4_native_iv_history:normal:runtime
+L2 FAILED EXECUTIONS: test_legality_l2_gen4_native_iv_history:sanitizers:runtime

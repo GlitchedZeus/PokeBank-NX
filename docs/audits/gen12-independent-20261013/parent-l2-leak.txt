@@ -1,0 +1,13 @@
+L2 exact checkout head: c2544ac6d278468f6d30826b9a0115b098e5913b
+L2 compile: test_legality_l2_gen1_native_exp_growth [normal] using g++
+L2 run: test_legality_l2_gen1_native_exp_growth [normal]
+L2 Gen I EXP thresholds for all 151 species: 241451 PASS
+L2 PASS: test_legality_l2_gen1_native_exp_growth [normal]
+L2 compile: test_legality_l2_gen1_native_exp_growth [sanitizers] using g++
+L2 run: test_legality_l2_gen1_native_exp_growth [sanitizers]
+==59==LeakSanitizer has encountered a fatal error.
+==59==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==59==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+L2 FAIL runtime: test_legality_l2_gen1_native_exp_growth [sanitizers]
+L2 complete: 1/2 exact-checked-out-source standalone test executions passed.
+L2 FAILED EXECUTIONS: test_legality_l2_gen1_native_exp_growth:sanitizers:runtime

@@ -7,7 +7,11 @@
 #include "Legality/GBLegality.h"
 
 #include <iostream>
+#include <algorithm>
+#include <cctype>
 #include <sstream>
+#include <stdexcept>
+#include <unordered_set>
 #include <string>
 #include <vector>
 
@@ -48,6 +52,9 @@ std::string decodeKorean(const std::vector<uint8_t>& data) {
 }
 
 std::vector<uint8_t> hex(const std::string& s) {
+    if (s.empty() || s.size() % 2 != 0 ||
+        !std::all_of(s.begin(), s.end(), [](unsigned char c) { return std::isxdigit(c) != 0; }))
+        throw std::invalid_argument("invalid hexadecimal field");
     std::vector<uint8_t> out;
     for (std::size_t i = 0; i + 1 < s.size(); i += 2)
         out.push_back(static_cast<uint8_t>(std::stoi(s.substr(i, 2), nullptr, 16)));
@@ -88,17 +95,32 @@ Legality::GB::Result checkPk2(const std::vector<uint8_t>& body, const std::vecto
     return GB::checkGen2(e);
 }
 
-int main() {
+int main() try {
     using namespace PokeVault::Integration::Gen1;
     namespace GB = Legality::GB;
     std::string line;
+    std::unordered_set<std::string> ids;
     while (std::getline(std::cin, line)) {
         std::istringstream in(line);
         std::string id, kind, jp, bodyHex, otHex, nickHex, eggFlag;
         if (!(in >> id >> kind >> jp >> bodyHex >> otHex >> nickHex))
-            continue;
+            throw std::invalid_argument("missing corpus field");
+        if (!ids.insert(id).second)
+            throw std::invalid_argument("duplicate corpus id");
         in >> eggFlag;
+        std::string extra;
+        if (in >> extra)
+            throw std::invalid_argument("extra corpus field");
         const auto body = hex(bodyHex), ot = hex(otHex), nick = hex(nickHex);
+        if (body.size() != 44 && body.size() != 48)
+            throw std::invalid_argument("body must be a 44-byte PK1 or 48-byte PK2 party record");
+        if (jp != "0" && jp != "1" && !(jp == "8" && body.size() == 48))
+            throw std::invalid_argument("unsupported language flag");
+        const std::size_t nameLength = jp == "1" ? 6 : 11;
+        if (ot.size() != nameLength || nick.size() != nameLength)
+            throw std::invalid_argument("wrong name-field length");
+        if (body.size() == 48 ? (eggFlag != "0" && eggFlag != "1") : !eggFlag.empty())
+            throw std::invalid_argument("wrong egg-flag field");
         if (body.size() == 48) {
             const GB::Result r = checkPk2(body, ot, nick, jp == "1", eggFlag == "1");
             std::cout << id << verdict(r.status) << GB::describe(r.origin)
@@ -136,4 +158,7 @@ int main() {
             std::cout << " | " << p.text;
         std::cout << '\n';
     }
+} catch (const std::exception& error) {
+    std::cerr << "Corpus integrity error: " << error.what() << '\n';
+    return 2;
 }

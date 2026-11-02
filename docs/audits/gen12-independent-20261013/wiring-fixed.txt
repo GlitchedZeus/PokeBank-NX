@@ -1,0 +1,19 @@
+{
+  "contracts": [
+    "native Gen II egg F5",
+    "PK3 original GBA",
+    "PK4 Pal Park",
+    "PK4 Platinum"
+  ],
+  "native_binary_executed": false,
+  "pkhex_whole_pokemon_parity_certified": false,
+  "schema": "POKEBANK_LEGALITY_PRODUCTION_CONNECTION_CONTRACT_V1",
+  "source_sha256": {
+    ".github/workflows/host-tests.yml": "9254a1570d18ba6294498333f8ff43cdfb0f687bcf3a94dc0ee7b6aa8f77fd0f",
+    "src/Legality/Legality.cpp": "b143445b72dee385280f405b354fcd6b3d9d2a61ef5b215d1e9370671d3c63ab",
+    "tests/fixtures/legality_l5_pk2_egg_stat_exp_analyzer_probe.cpp": "5c3db33ded1849bb64e2ce826f5ad46df17e735e7e7d581b0743ed0a736e887e",
+    "tests/fixtures/legality_l5_platinum_native_analyzer_probe.cpp": "e4311cd42e3be12fc4a99d9ca8f2fbe478e54de8c83068fbe95aecf0d2e27638"
+  },
+  "status": "PASS_STATIC_CONTRACT",
+  "test_status": "STATIC_WIRING_VERIFIED_ONLY"
+}

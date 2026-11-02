@@ -1,0 +1,400 @@
+[
+  {
+    "suite": "test_legality_l3_gen3_joint_core",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gen3_joint_core",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gen3_joint_native",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gen3_joint_native",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gen12_native_snapshots",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gen12_native_snapshots",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gen12_multistage",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gen12_multistage",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_original_source_digest",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_original_source_digest",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_original_source_fingerprints",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_original_source_fingerprints",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gen12_joint_chronology",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gen12_joint_chronology",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gba_original_full_tables",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gba_original_full_tables",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gba_original_machine_tables",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gba_original_machine_tables",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gba_full_machine_classification",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_gba_full_machine_classification",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_joint_evolution_machine",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_joint_evolution_machine",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_joint_evolution_retail",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_joint_evolution_retail",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_platinum_native_sources",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_platinum_native_sources",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_palpark_native_joint",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_palpark_native_joint",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_palpark_platinum_source_joint",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_palpark_platinum_source_joint",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_palpark_native_retail",
+    "mode": "normal",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_palpark_native_retail",
+    "mode": "sanitized",
+    "status": "PASS",
+    "basis": "unchanged runner reached next suite"
+  },
+  {
+    "suite": "test_legality_l3_move_chronology",
+    "mode": "normal",
+    "compile_exit": 1,
+    "output": "tests/test_legality_l3_move_chronology.cpp:250:50: error: static assertion failed\n  248 | static_assert([]{auto a=jointBulbasaur();\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~         \n  249 |     a.path.origin=Game::Ruby;a.path.species=133;\n      |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  \n  250 |     return J::evaluate(a).status==S::Unresolved;}());\n      |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~\n",
+    "status": "FAIL"
+  },
+  {
+    "suite": "test_legality_l3_move_chronology",
+    "mode": "sanitized",
+    "compile_exit": 1,
+    "output": "tests/test_legality_l3_move_chronology.cpp:250:50: error: static assertion failed\n  248 | static_assert([]{auto a=jointBulbasaur();\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~         \n  249 |     a.path.origin=Game::Ruby;a.path.species=133;\n      |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  \n  250 |     return J::evaluate(a).status==S::Unresolved;}());\n      |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~\n",
+    "status": "FAIL"
+  },
+  {
+    "suite": "test_legality_l3_gba_versioned_levelup",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "L3 pinned GBA ordered level-up four-slot replay: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gba_versioned_levelup",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "L3 pinned GBA ordered level-up four-slot replay: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gba_starter_evolution",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "L3 source-pinned five-game Kanto starter evolution histories: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gba_starter_evolution",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "L3 source-pinned five-game Kanto starter evolution histories: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_shedinja_copy",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "L3 source-ordered 15 Nincada evolutions, 15 sibling-copy Unknown, 5 later Shedinja stages: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_shedinja_copy",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "L3 source-ordered 15 Nincada evolutions, 15 sibling-copy Unknown, 5 later Shedinja stages: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_machine_methods",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "L3 pinned GBA machine-item method evidence: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_machine_methods",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "L3 pinned GBA machine-item method evidence: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gba_relearner",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "L3 pinned RS/E/FRLG Move Relearner exact-game menu+four-slot decisions: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gba_relearner",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "L3 pinned RS/E/FRLG Move Relearner exact-game menu+four-slot decisions: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_palpark_joint_stage",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "L3 all 25 GBA-to-GenIV source/destination Pal Park joints: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_palpark_joint_stage",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "L3 all 25 GBA-to-GenIV source/destination Pal Park joints: PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_rby_original_joint",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "L3 Gen I RBY/Y source-bound four-slot replay 48000 assertions PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_rby_original_joint",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "L3 Gen I RBY/Y source-bound four-slot replay 48000 assertions PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_retail_catalog",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "L3 all-151 original RBY/Y source: 11724 checked fields PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_retail_catalog",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "L3 all-151 original RBY/Y source: 11724 checked fields PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_all_species_joint",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "L3 all-151 candidate four-slot replay: 300980 assertions PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_all_species_joint",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "L3 all-151 candidate four-slot replay: 300980 assertions PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_original_all_machines",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "Original Gen I RBY/Yellow 151 species x 55 machines: 79176 candidate-compatibility assertions PASS; NOT trainer receipts\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_original_all_machines",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "Original Gen I RBY/Yellow 151 species x 55 machines: 79176 candidate-compatibility assertions PASS; NOT trainer receipts\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_all_species_machine_chronology",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "RBY all-151 four-slot machine witnesses: 9117 synthetic positive, 15798 unsupported, 54702 candidate negative/Unknown checks PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_l3_gen1_all_species_machine_chronology",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "RBY all-151 four-slot machine witnesses: 9117 synthetic positive, 15798 unsupported, 54702 candidate negative/Unknown checks PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_gen1_editor_original_machines_subset",
+    "mode": "normal",
+    "compile_exit": 0,
+    "output": "Gen I existing editor retains all 9,117 original RBY TM/HM allowances, 12 union-only move entries (4 species x 3 games, each with a level-up or level-1 source); 24,915 indexed checks PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  },
+  {
+    "suite": "test_legality_gen1_editor_original_machines_subset",
+    "mode": "sanitized",
+    "compile_exit": 0,
+    "output": "Gen I existing editor retains all 9,117 original RBY TM/HM allowances, 12 union-only move entries (4 species x 3 games, each with a level-up or level-1 source); 24,915 indexed checks PASS\n",
+    "run_exit": 0,
+    "status": "PASS"
+  }
+]

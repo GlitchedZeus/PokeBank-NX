@@ -1,0 +1,4 @@
+src/Pokemon/Pokemon3FRLG.cpp:196:25: error: unused function 'unownFormValue' [-Werror,-Wunused-function]
+  196 |         inline uint32_t unownFormValue(uint32_t p) noexcept {
+      |                         ^~~~~~~~~~~~~~
+1 error generated.

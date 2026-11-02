@@ -1,0 +1,503 @@
+{
+  "accepted_baseline_mismatch_samples": [
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-001",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-001",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-005",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-005",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-006",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-006",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-007",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-007",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-011",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-011",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-012",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-012",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-013",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-013",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-017",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-017",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-018",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-018",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-019",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-019",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-023",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-023",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-024",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-024",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-025",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-025",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-029",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-029",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-030",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-030",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-031",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-031",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-035",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-035",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-036",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "gender_invalid",
+      "id": "G1RBY-036",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-037",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-041",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-042",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-043",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-047",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-048",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-049",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-053",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-054",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-055",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-059",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-060",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-061",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-065",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-066",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-067",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "platinum_nds",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-071",
+      "oracle": false
+    },
+    {
+      "accepted_nx": true,
+      "context": "unknown_source",
+      "coordinator_nx": false,
+      "field": "ability_invalid",
+      "id": "G1RBY-072",
+      "oracle": false
+    }
+  ],
+  "accepted_baseline_non_native_false_invalid_counts": {
+    "ability_invalid": 36,
+    "gender_invalid": 18
+  },
+  "all_source_context_vector_counts_verified": true,
+  "coordinator_non_native_defect_disagreements": 0,
+  "defect_disagreements_by_source_context": {
+    "": {
+      "accepted_f3": 12,
+      "accepted_f4": 6,
+      "coordinator_f3": 0,
+      "coordinator_f4": 0,
+      "vectors": 12
+    },
+    "blue_gb": {
+      "accepted_f3": 0,
+      "accepted_f4": 0,
+      "coordinator_f3": 0,
+      "coordinator_f4": 0,
+      "vectors": 12
+    },
+    "platinum_nds": {
+      "accepted_f3": 12,
+      "accepted_f4": 6,
+      "coordinator_f3": 0,
+      "coordinator_f4": 0,
+      "vectors": 12
+    },
+    "red_gb": {
+      "accepted_f3": 0,
+      "accepted_f4": 0,
+      "coordinator_f3": 0,
+      "coordinator_f4": 0,
+      "vectors": 12
+    },
+    "unknown_source": {
+      "accepted_f3": 12,
+      "accepted_f4": 6,
+      "coordinator_f3": 0,
+      "coordinator_f4": 0,
+      "vectors": 12
+    },
+    "yellow_gb": {
+      "accepted_f3": 0,
+      "accepted_f4": 0,
+      "coordinator_f3": 0,
+      "coordinator_f4": 0,
+      "vectors": 12
+    }
+  },
+  "evidence": "DIRECT_PKHEX_CORE_AND_TWO_REAL_NATIVE_NX_EXECUTABLES",
+  "full_gen1_legal_parity_certified": false,
+  "gen1_dv_field_differential_disagreements": 0,
+  "gen1_stat_experience_differential_disagreements": 0,
+  "original_game_version_specific_parity": "NOT_TESTED_PK1_HAS_NO_NATIVE_RBY_ID",
+  "pkhex_commit": "6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "pkhex_global_legal_comparison": "NOT_CLAIMED_SYNTHETIC_CONTEXT_INCOMPLETE",
+  "release_gate": "BLOCKED",
+  "remaining_scope": "encounter/moves/gifts/trades/version-specific original histories",
+  "retail_original_witnesses": 0,
+  "schema": "L5_GEN1_REAL_PKHEX_NX_DIFF_V1",
+  "stat_experience_native_boundaries": [
+    0,
+    32768,
+    65535
+  ],
+  "vectors": 72
+}

@@ -19,6 +19,7 @@ different, deliberately uncertain, or differing (a failure).
 
 import argparse
 import collections
+import re
 
 # The only rules PokeBank NX reports as not definitive (Problem::definitive == false).
 UNCERTAIN_REASONS = (
@@ -31,24 +32,15 @@ UNCERTAIN_REASONS = (
     # Korean Gold/Silver: PKHeX allows no Crystal, Stadium 2 or Gen I content; Bulbapedia
     # documents Korean-Western cartridge trades that bring it in. PKHeX answers INVALID.
     "Needs a trade between Korean Gold/Silver and a Western game",
-    # Korean Gold/Silver with Crystal met data: Gold/Silver zero those bytes (pokegold), but
-    # the Korean ROM is not disassembled. PKHeX ignores them and may answer VALID.
+    # Korean Gold/Silver with Crystal met data: code initializes the unused bytes
+    # to zero, but matching Korean-build/retail behavior remains unverified here.
+    # A WIP Korean disassembly exists; PKHeX ignores these bytes and may answer VALID.
     "Korean Gold/Silver do not record met data",
     # A Korean trainer name with one-byte-page characters: PKHeX's G1CharOT, which has not
     # been checked against the Korean naming screen. PKHeX answers INVALID.
     "Korean trainer name has characters outside the Hangul pages",
 )
 
-
-# (PKHeX verdict, PokeBank NX verdict, text the PokeBank explanation must contain).
-DELIBERATE = (
-    # Japanese Crystal's GS Ball Celebi (Mobile System GB, 2001-2002): PKHeX models the
-    # Ilex Forest Celebi for Virtual Console only (Encounters2.CelebiVC).
-    ("INVALID", "VALID", "GS Ball Celebi in Japanese Crystal"),
-    # A level-100 Gen II Pokemon has exactly the level-100 EXP total (pokecrystal caps EXP
-    # in battle and Rare Candy sets it). PKHeX rejects EXP above it, not below it.
-    ("VALID", "INVALID", "A level-100 Pokemon has exactly"),
-)
 
 # Differences named by PKHeX's own result: (PKHeX verdict, PokeBank NX verdict, the result
 # codes that must be PKHeX's only complaints).
@@ -63,18 +55,60 @@ def deliberate_pkhex(a, b):
     """True when every PKHeX complaint is one of a DELIBERATE_PKHEX entry's codes."""
     codes = a[1].partition(";")[2].split()
     for pv, ov, allowed in DELIBERATE_PKHEX:
-        if a[0] == pv and b[0] == ov and codes and all(any(x in c for x in allowed) for c in codes):
+        if a[0] == pv and b[0] == ov and codes and all(
+                c.partition(":")[0] == "Nickname" and c.partition(":")[2] in allowed for c in codes):
             return True
     return False
 
 
-def load(path):
+def load(path, allowed):
     out = {}
-    for line in open(path, encoding="utf-8"):
-        head, _, rest = line.rstrip("\n").partition(" ")
-        verdict, _, detail = rest.partition(" ")
+    for number, line in enumerate(open(path, encoding="utf-8"), 1):
+        parts = line.rstrip("\n").split(" ", 2)
+        if len(parts) != 3 or not parts[0] or parts[1] not in allowed or not parts[2].strip():
+            raise ValueError(f"{path}:{number}: malformed verdict record")
+        head, verdict, detail = parts
+        if ";" not in detail or (verdict == "VALID" and detail.partition(";")[2].strip()):
+            raise ValueError(f"{path}:{number}: malformed explanation for {verdict}")
+        if head in out:
+            raise ValueError(f"{path}:{number}: duplicate record id {head}")
         out[head] = (verdict, detail)
     return out
+
+
+def corpus_record(parts):
+    if len(parts) not in (6, 7) or parts[2] not in ("0", "1", "8"):
+        raise ValueError("wrong corpus fields or language")
+    fields = parts[3:6]
+    if any(not re.fullmatch(r"(?:[0-9a-fA-F]{2})+", x) for x in fields):
+        raise ValueError("invalid hexadecimal corpus field")
+    body, ot, nick = map(bytes.fromhex, fields)
+    name_length = 6 if parts[2] == "1" else 11
+    if len(body) not in (44, 48) or len(ot) != name_length or len(nick) != name_length:
+        raise ValueError("wrong body or name length")
+    if len(body) == 48:
+        if len(parts) != 7 or parts[6] not in ("0", "1"):
+            raise ValueError("wrong PK2 egg flag")
+    elif len(parts) != 6 or parts[2] == "8":
+        raise ValueError("wrong PK1 fields")
+    return parts[2], body, parts[6] if len(parts) == 7 else "0"
+
+
+def deliberate_record(a, b, record):
+    """Require the actual record and sole complaint to fit a documented exception."""
+    language, body, egg = record
+    if len(body) != 48 or egg != "0":
+        return False
+    if a[0] == "INVALID" and b[0] == "VALID" and "GS Ball Celebi in Japanese Crystal" in b[1]:
+        caught = int.from_bytes(body[29:31], "big")
+        codes = a[1].partition(";")[2].split()
+        return (language == "1" and body[0] == 251 and body[31] >= 30 and
+                caught & 127 == 14 and (caught >> 8) & 63 == 30 and caught >> 14 in (1, 2, 3) and
+                bool(codes) and all(c in ("Encounter:EncInvalid", "Fateful:FatefulGiftMissing") for c in codes))
+    if a[0] == "VALID" and b[0] == "INVALID":
+        match = re.fullmatch(r"\s*\| A level-100 Pokemon has exactly (\d+) EXP", b[1].partition(";")[2])
+        return bool(match and body[31] == 100 and int.from_bytes(body[8:11], "big") < int(match[1]))
+    return False
 
 
 def main():
@@ -85,10 +119,19 @@ def main():
     ap.add_argument("--show", type=int, default=8)
     args = ap.parse_args()
     kinds = {}
-    for line in open(args.corpus):
+    records = {}
+    for number, line in enumerate(open(args.corpus), 1):
         parts = line.split()
+        if len(parts) not in (6, 7):
+            raise ValueError(f"{args.corpus}:{number}: malformed corpus record")
+        if parts[0] in kinds:
+            raise ValueError(f"{args.corpus}:{number}: duplicate corpus id {parts[0]}")
+        records[parts[0]] = corpus_record(parts)
         kinds[parts[0]] = parts[1]
-    pk, pb = load(args.pkhex), load(args.pokebank)
+    if not kinds:
+        raise ValueError("empty corpus cannot establish agreement")
+    pk = load(args.pkhex, {"VALID", "INVALID"})
+    pb = load(args.pokebank, {"VALID", "INVALID", "UNCERTAIN"})
     missing = [k for k in kinds if k not in pk or k not in pb]
     extra = sorted((set(pk) | set(pb)) - set(kinds))
     table = collections.defaultdict(collections.Counter)
@@ -100,11 +143,13 @@ def main():
             continue
         table[kind][(a[0], b[0])] += 1
         if b[0] == "UNCERTAIN":
-            known = any(k in b[1] for k in UNCERTAIN_REASONS)
+            # Every complaint must be explained. A known exception followed by an
+            # unrelated definitive problem must not hide that problem.
+            complaints = [p.strip() for p in b[1].partition(";")[2].split("|") if p.strip()]
+            known = bool(complaints) and all(any(k in p for k in UNCERTAIN_REASONS) for p in complaints)
             diffs[("uncertain", a[0]) if known else ("unexplained",)].append((key, kind, a[1], b[1]))
         elif a[0] != b[0]:
-            deliberate = (any(a[0] == pv and b[0] == ov and text in b[1] for pv, ov, text in DELIBERATE)
-                          or deliberate_pkhex(a, b))
+            deliberate = deliberate_record(a, b, records[key]) or deliberate_pkhex(a, b)
             if deliberate:
                 table[kind]["deliberate"] += 1
                 table[kind][(a[0], b[0])] -= 1
@@ -148,4 +193,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ValueError as exc:
+        raise SystemExit(f"Corpus integrity error: {exc}")

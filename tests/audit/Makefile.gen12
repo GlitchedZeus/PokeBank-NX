@@ -1,0 +1,15 @@
+# Invoke after Makefile.host. No production sources or shared registry edits.
+AUDIT_GRAPH := $(filter-out tests/test_gen3_legality_context.cpp,$(GEN3_LEGALITY_CONTEXT_SOURCES)) src/Integration/Gen1/Gen1ReadOnlySave.cpp
+$(HOST_BUILD)/audit_gen1_analyzer_guards: tests/audit/gen1_analyzer_guards.cpp $(AUDIT_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+$(HOST_BUILD)/audit_gen1_analyzer_guards_san: tests/audit/gen1_analyzer_guards.cpp $(AUDIT_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter -Iinclude $^ -o $@
+AUDIT_GB_GRAPH := src/Legality/GBLegality.cpp src/Legality/GBLegalityData.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Pokemon/Experience.cpp
+$(HOST_BUILD)/audit_gen12_verdict_integrity: tests/audit/gen12_verdict_integrity.cpp $(AUDIT_GB_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
+$(HOST_BUILD)/audit_gen12_verdict_integrity_san: tests/audit/gen12_verdict_integrity.cpp $(AUDIT_GB_GRAPH)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $^ -o $@

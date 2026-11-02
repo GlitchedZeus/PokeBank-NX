@@ -1,0 +1,109 @@
+L4 discovery/registration parity: 28/28 C++ suites
+L4 Ranger native storage field contract (196861 exhaustive cases)
+L4 Ranger native storage Ball: 196861 active-field and unknown-tag checks: PASS
+L4 new Gen I native provenance fixtures
+Gen I native catch/tradeback byte witnesses 65536 plus 4096 raw move/DV bounds: PASS
+L4 source-verified English R/B/Y NPC metadata: 65536 tag cases; 16 reachable + 4 unusable rows: PASS
+L4 Gen I individual digest/recipient identity: 4096 independent proof masks, 65536 candidate verdict pairs PASS
+L4 Gen I R/B/Y source-gift native: 524288 proof masks, event + NPC + raw-name + Time Capsule + catch-rate: PASS
+L4 Gen I raw PK1 party/box decode and name-source witness: 65536 name-pairs, 8192 bounded original-list probes PASS
+L4 C++ compile: test_legality_l4_archive_projection
+L4 247-row projection audit + original-source gates: PASS
+L4 C++ compile: test_legality_l4_unified_event_source
+L4 single-row attested event joint candidate: PASS
+L4 C++ compile: test_legality_l4_contest_history
+L4 V15 native Gen IV contest ranks + source history: PASS
+L4 C++ compile: test_legality_l4_event_text_history
+L4 V14 raw PCD OT/nickname transformed-source guards: PASS
+L4 C++ compile: test_legality_l4_gen3_raw_text
+L4 V13 PK3 raw nickname/OT source and encoding evidence: PASS
+L4 C++ compile: test_legality_l4_attestation_matrix
+L4 V07 exhaustive archive attestation: 10368 states; 2 strictly conditional; zero false promotions: PASS
+L4 C++ compile: test_legality_l4_gen1_3_event_sources
+L4 V01-V06 original Gen I-III event sources: 38400 candidate states, 18 strictly conditional: PASS
+L4 C++ compile: test_legality_l4_gen12_gift_history
+L4 Gen I/II gift history: 64009 crossing combinations, 38943 candidate-only contradictions: PASS
+L4 C++ compile: test_legality_l4_gen3_distribution_matrix
+L4 Gen III distribution matrix: 28160 source combinations, 77 conditional routes, 16 field negatives and mutable Unknown: PASS
+L4 C++ compile: test_legality_l4_gen4_pcd_pgt_container
+L4 Gen IV PCD/PGT: 15 delivery families, 62160 bitwise pair negatives, 448 provenance states, 32 conversion-proof states: PASS
+L4 C++ compile: test_legality_l4_gen4_mystery_gift_histories
+L4 Gen IV gift histories: 65536 source/game states, 11 field negatives, mutable Unknown: PASS
+L4 C++ compile: test_legality_l4_historical_event_path
+L4 Stage4 historical paths: 32767 field-mask negatives, 1 consistent, 120 action/field combinations: PASS
+L4 C++ compile: test_legality_l4_clock_receipt_history
+L4 Stage4 calendar: 118272 byte-date combinations, 93502 valid, 64 clock/receipt masks: PASS
+L4 C++ compile: test_legality_l4_historical_adversarial
+L4 Stage4 adversarial timeline: 90 conditional, 6 Unknown, 24 candidate-only contradictions: PASS
+L4 C++ compile: test_legality_l4_stage5_coordinator_join
+L4 Stage 5 source identity + per-candidate field/history joins: 34090 PASS
+L4 C++ compile: test_legality_l4_stage5_lane_reconciliation
+L4 Stage 5 G3/G4 family and cross-lane severity isolation: 65665 PASS
+L4 C++ native PK4 compile: test_legality_l4_native_pk4_projection
+L4 native encrypted PK4 final-field projection: PASS
+L4 C++ native PK4 compile: test_legality_l4_native_attested_event
+L4 immutable native PK4 + original-event candidate joint contract: PASS
+L4 C++ native PK4 compile: test_legality_l4_ranger_gift_history
+L4 V09 native encrypted Ranger Manaphy gift history: PASS
+L4 C++ native PK4 compile: test_legality_l4_event_date_history
+L4 V17 native PK4 egg/met dates and original clock history: PASS
+L4 C++ native PK4 compile: test_legality_l4_ball_history
+L4 V16 event, Pal Park and native PK4 ball history: PASS
+L4 C++ native PK4 compile: test_legality_l4_other_metadata
+L4 V18 original item/ability/form/PID-nature evidence: PASS
+L4 C++ native PK4 compile: test_legality_l4_trainer_identity
+L4 V12 native PK3/PK4 trainer original identity: PASS
+L4 C++ native PK4 compile: test_legality_l4_gen4_mystery_gift_native
+L4 PCD/PGT -> strict native encrypted PK4, Ranger guard + 64 PK4 native layouts: PASS
+L4 C++ native PK3 compile: test_legality_l4_native_pk3_text
+L4 native encrypted PK3: 24 block orders x stored/party, 48 conditional/negative/Unknown fixture sets: PASS
+L4 C++ native PK3 compile: test_legality_l4_gen3_distribution_native_pk3
+L4 Gen III native PK3: 48 encrypted layout+size fixtures, 768 native field negatives, 18432 one-bit ciphertext rejection cases: PASS
+L4 C++ native PK3 compile: test_legality_l4_gen3_palpark_metadata_bridge
+L4 Stage4 native encrypted PK3 Pal Park bridge: 48 layouts, 192 negatives: PASS
+L4 C++ native PK3 compile: test_legality_l4_stage5_native_pk3_join
+L4 Stage 5 strict native PK3->coordinator join: 48 real layouts / 288 boundary negatives PASS
+L4 Python frozen original-source projection integrity audit
+{"distinct_card_ids": 70, "original_archives_authenticated": 0, "projection_rows": 247, "reused_card_id_rows": 219, "source_projection_only": true}
+test_changed_generated_projection (test_legality_l4_projection_audit.L4AuditTests.test_changed_generated_projection) ... ok
+test_known_projection (test_legality_l4_projection_audit.L4AuditTests.test_known_projection) ... ok
+test_malformed_cpp_template (test_legality_l4_projection_audit.L4AuditTests.test_malformed_cpp_template) ... ok
+test_misordered_or_duplicate_projection_index (test_legality_l4_projection_audit.L4AuditTests.test_misordered_or_duplicate_projection_index) ... ok
+test_partial_dataset (test_legality_l4_projection_audit.L4AuditTests.test_partial_dataset) ... ok
+test_unverified_archive_cannot_be_promoted (test_legality_l4_projection_audit.L4AuditTests.test_unverified_archive_cannot_be_promoted) ... ok
+test_wrong_collision_count (test_legality_l4_projection_audit.L4AuditTests.test_wrong_collision_count) ... ok
+test_wrong_pid_is_not_a_same_card_match (test_legality_l4_projection_audit.L4AuditTests.test_wrong_pid_is_not_a_same_card_match) ... ok
+test_wrong_source_identity_same_reused_card_id (test_legality_l4_projection_audit.L4AuditTests.test_wrong_source_identity_same_reused_card_id) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.040s
+
+OK
+test_agreement (test_legality_l4_l5_q07_join.JoinTests.test_agreement) ... ok
+test_changed_language (test_legality_l4_l5_q07_join.JoinTests.test_changed_language) ... ok
+test_changed_trainer (test_legality_l4_l5_q07_join.JoinTests.test_changed_trainer) ... ok
+test_fabricated_original_digest (test_legality_l4_l5_q07_join.JoinTests.test_fabricated_original_digest) ... ok
+test_nonunique_or_altered_index (test_legality_l4_l5_q07_join.JoinTests.test_nonunique_or_altered_index) ... ok
+test_stale_template_blob (test_legality_l4_l5_q07_join.JoinTests.test_stale_template_blob) ... ok
+test_unverified_original_claim (test_legality_l4_l5_q07_join.JoinTests.test_unverified_original_claim) ... ok
+test_wrong_count (test_legality_l4_l5_q07_join.JoinTests.test_wrong_count) ... ok
+test_wrong_resource_pin (test_legality_l4_l5_q07_join.JoinTests.test_wrong_resource_pin) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.014s
+
+OK
+test_all_global_dispositions (test_legality_l4_stage5_source_rights.SourceRights.test_all_global_dispositions) ... ok
+test_cannot_promote_research_only (test_legality_l4_stage5_source_rights.SourceRights.test_cannot_promote_research_only) ... ok
+test_deleted_or_duplicate_source (test_legality_l4_stage5_source_rights.SourceRights.test_deleted_or_duplicate_source) ... ok
+test_every_source_every_permission (test_legality_l4_stage5_source_rights.SourceRights.test_every_source_every_permission) ... ok
+test_license_change (test_legality_l4_stage5_source_rights.SourceRights.test_license_change) ... ok
+test_original_rights_change (test_legality_l4_stage5_source_rights.SourceRights.test_original_rights_change) ... ok
+test_research_only (test_legality_l4_stage5_source_rights.SourceRights.test_research_only) ... ok
+test_schema_and_advice_gates (test_legality_l4_stage5_source_rights.SourceRights.test_schema_and_advice_gates) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.019s
+
+OK
+L4 all 28 source-compiled test programs: PASS (sanitizers=1)
