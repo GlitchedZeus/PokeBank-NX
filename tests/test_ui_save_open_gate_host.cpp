@@ -334,8 +334,17 @@ void retroArchAndForwarder(const Paths& p) {
     for (const char* game : {"red_gb", "yellow_gb", "gold_gbc", "crystal_gbc", "emerald_gba", "firered_gba"}) {
         const auto nav = focusOn(game, Kind::RetroArchFRLG);
         UI::SaveSelectScreen screen(legacy, bindings, &nav);
-        check(screen.navigationState().gameId != game,
-              std::string(game) + ": an invalid battery save produces no game card");
+        // Round 15 (owner decision 1, updated deliberately: "All generations should have the same
+        // Save Instances experience ... A missing save should open the save chooser, never an empty
+        // editable workspace"): every Gen I-III game now has a card even when its only battery file
+        // is invalid; that card has no save, and A opens the save chooser, never a workspace.
+        Driver d{screen, {}, {}};
+        d.frame();
+        check(screen.navigationState().gameId == game,
+              std::string(game) + ": the card exists although its only battery file is invalid");
+        d.press(HidNpadButton_A);
+        check(!screen.hasSelectedTitle() && !d.drawn("GAME WORKSPACE") && d.drawn("ASSIGN SAVE FILE"),
+              std::string(game) + ": an invalid battery save opens nothing; A opens the save chooser");
     }
     const auto nav = focusOn("firered_switch", Kind::SwitchTitle);
     UI::SaveSelectScreen screen(legacy, bindings, &nav);
