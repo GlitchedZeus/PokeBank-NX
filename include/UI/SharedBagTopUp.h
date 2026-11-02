@@ -103,7 +103,7 @@ inline void drawTopUpModal(PKSEFramebuffer& fb, Buttons& touchButtons, Ui& ui, i
         fb.drawFilledRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Panel);
         fb.drawRoundedRect(f.x, f.y, f.w, f.h, 18, Colors::Divider, 1);
         fb.drawText(f.x + l.rule.padX, f.y + 14, "Top Up / Add Missing", Colors::Text, TextStyle::Heading);
-        fb.drawText(f.x + l.rule.padX, f.y + 54, std::string(context) + "  |  Key Items and HMs are never changed",
+        fb.drawText(f.x + l.rule.padX, f.y + 54, std::string(context) + "  |  " + Model::kSetupCaption,
                     Colors::TextSecondary, TextStyle::Caption);
         for (int i = 0; i < Model::kRows; ++i) {
             const auto cell = MG::cellRect(l, i);

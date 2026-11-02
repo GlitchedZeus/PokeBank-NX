@@ -7,8 +7,13 @@
 // confirms the preview first.
 //
 // Rules, and where they differ from upstream d2ad323 on purpose:
-//   * Key Items, HMs and items the game allows only once are skipped by default. They can gate story
-//     events (gap matrix row d2ad323 / B-10). There is no key-item override.
+//   * Key Items are skipped: they can gate story events (gap matrix row d2ad323 / B-10). There is no
+//     key-item override.
+//   * TMs and HMs are ordinary native items of the game's TM/HM list and ARE planned (Round 12 owner
+//     H12: "can we add all of the tm/hm's instead of excluding them"). Gen III-V keep HMs in the
+//     TM/HM pocket; Gen II has one fixed TM/HM slot per machine; Gen I keeps them in the 20-slot Bag.
+//     Adding one sets no story flag (badges, not the item, gate field use). An HM is unique
+//     (quantityRule: maximum 1): it is added once, never topped up, never a second copy anywhere.
 //   * Mutually exclusive items (bikes, fossils: QuantityPolicy::exclusiveWith) are never added.
 //   * Per-item caps come from QuantityPolicy::quantityRule (RSE 99, not upstream's 999; Gen I Exp. All 99).
 //   * A count is never lowered; a stack already at or above the target is left as it is.
@@ -23,6 +28,10 @@
 //     whole list, whichever pockets are planned. A list that runs out of free slots is reported once
 //     in Plan::full (its slots, how many were free, how many did not fit), and each item that did
 //     not fit names the list's slot count, so the preview says WHY (Round 11 H04 / H34).
+//   * Every native list the plan adds into is reported in Plan::rooms (Round 12 owner H14: "it only
+//     selects like 20 items"): its native slots, how many were free, how many missing items were
+//     eligible, planned and did not fit, so the preview states the exact count and the native limit
+//     (a Ruby / Sapphire Items pocket really holds 20; that is the game's size, not a cap of ours).
 //   * PC Items is its own scope (Round 11 H34): bagPockets() never includes it, pcPockets() is only
 //     it. An ordinary item may natively sit in the Bag AND the PC, so each list is planned on its
 //     own; an item the game allows only once is never added while it is held (or added) anywhere.
@@ -70,7 +79,7 @@ struct Request {
 };
 
 enum class SkipReason : uint8_t {
-    KeyOrStoryItem,      // Key Item or HM
+    KeyOrStoryItem,      // Key Item (can gate story events)
     OnlyOnce,            // native maximum 1 (e.g. Gen V TMs): topping up cannot apply
     AlreadyAtTarget,     // existing stack >= target (never lowered)
     Exclusive,           // a mutually exclusive item is already held
@@ -98,17 +107,30 @@ struct FullList {
     bool sharedList = false;    // a slotGroup list (Gen I: one 20-slot Bag for every category)
 };
 
+// One native list the Add Missing step planned into (Round 12 H14): the exact count the preview shows.
+// planned == min(eligible, freeBefore); notFitted == eligible - planned (reported as PocketFull).
+struct ListRoom {
+    Pocket pocket;              // the first planned pocket of that list
+    std::size_t slots = 0;      // native slots of the list
+    std::size_t freeBefore = 0; // free slots before this plan
+    std::size_t eligible = 0;   // missing items that may be added (not excluded for another reason)
+    std::size_t planned = 0;    // new stacks planned
+    std::size_t notFitted = 0;  // eligible items with no free slot left
+    bool sharedList = false;    // a slotGroup list (Gen I: one 20-slot Bag for every category)
+};
+
 struct Plan {
     std::vector<TopUp> topUps;
     std::vector<Add> adds;
     std::vector<Skip> skipped;
     std::vector<FullList> full;
+    std::vector<ListRoom> rooms;   // every native list Add Missing planned into, in plan order
     [[nodiscard]] bool empty() const noexcept { return topUps.empty() && adds.empty(); }
 };
 
 [[nodiscard]] inline std::string_view skipReasonText(SkipReason r) noexcept {
     switch (r) {
-        case SkipReason::KeyOrStoryItem: return "Key Item or HM (excluded)";
+        case SkipReason::KeyOrStoryItem: return "Key Item (excluded: can gate story events)";
         case SkipReason::OnlyOnce: return "the game allows only one";
         case SkipReason::AlreadyAtTarget: return "already at or above the amount";
         case SkipReason::Exclusive: return "you already have its alternative";
@@ -127,8 +149,9 @@ struct Plan {
     return "pocket full (" + std::to_string(s.slots) + " slots)";
 }
 
+// Only Key Items gate story events. TMs and HMs are ordinary native TM/HM items (Round 12 H12).
 [[nodiscard]] inline bool storySensitive(const QuantityPolicy::ItemQuantityRule& rule) noexcept {
-    return rule.kind == ItemKind::KeyItem || rule.kind == ItemKind::HM;
+    return rule.kind == ItemKind::KeyItem;
 }
 
 // "Every pocket" of a Bag never includes the PC: the PC is storage, not the Bag the player carries.
@@ -212,6 +235,11 @@ struct Plan {
                                             [q](const PocketState& x) { return x.pocket == q; });
                 return shared && o != state.end() && o->slotGroup == p.slotGroup;
             };
+            auto roomAt = std::find_if(out.rooms.begin(), out.rooms.end(),
+                                       [&](const ListRoom& r) { return sameList(r.pocket); });
+            if (roomAt == out.rooms.end())
+                roomAt = out.rooms.insert(out.rooms.end(), ListRoom{p.pocket, p.slotCapacity, freeBefore, 0, 0, 0, shared});
+            const std::size_t room = static_cast<std::size_t>(roomAt - out.rooms.begin());
             std::vector<uint16_t> candidates(p.addableItems.begin(), p.addableItems.end());
             std::sort(candidates.begin(), candidates.end());
             candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
@@ -235,7 +263,9 @@ struct Plan {
                     out.skipped.push_back({p.pocket, id, SkipReason::OnlyOnce});
                     continue;
                 }
+                ++out.rooms[room].eligible;
                 if (freeSlots == 0) {
+                    ++out.rooms[room].notFitted;
                     out.skipped.push_back({p.pocket, id, SkipReason::PocketFull, p.slotCapacity, shared});
                     auto room = std::find_if(out.full.begin(), out.full.end(),
                                              [&](const FullList& f) { return sameList(f.pocket); });
@@ -246,6 +276,7 @@ struct Plan {
                 }
                 const uint16_t quantity = rule.unique ? 1 : std::min<uint16_t>(request.quantity, rule.maximum);
                 out.adds.push_back({p.pocket, id, quantity});
+                ++out.rooms[room].planned;
                 heldAnywhere.push_back(id);
                 --freeSlots;
             }

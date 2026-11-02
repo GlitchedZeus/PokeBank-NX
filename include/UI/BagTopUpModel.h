@@ -18,6 +18,12 @@
 //   change ("Potion 3 → 99", "+ Ultra Ball ×99") and every skip with its reason, scrollable, with
 //   totals. A stages it all through Inventory/BulkItemApply.h (all or nothing, read back); B goes
 //   back to SETUP with nothing staged. Nothing here writes: the surface owns the staged editor.
+//   Round 12 (owner H14: "it only selects like 20 items ... we need the all items in that slot"):
+//   the planner already fills every free native slot; the preview now opens with one line per native
+//   list that names its slot count and the exact numbers ("Items (20 slots): 20 free, 118 more did
+//   not fit", "Balls (16 slots): 16 free, all 11 missing added"), and a partial result names the full list and its native size,
+//   so a list the game itself limits (Ruby / Sapphire Items: 20) is never mistaken for a cap of ours.
+//   Round 12 (owner H12): TMs and HMs are planned; only Key Items are excluded (SETUP says so).
 
 #include "Inventory/BulkItemPlan.h"
 
@@ -37,6 +43,8 @@ enum class Scope : uint8_t { ThisPocket, AllBag, PcItems, BagAndPc };
 inline constexpr int kRows = 5;
 inline constexpr uint16_t kDefaultQuantity = 99;
 inline constexpr uint16_t kMaxQuantity = 999;   // highest native per-slot cap in Gen I-V (PKHeX bags)
+// SETUP's caption after the game line: what is excluded and that native slot counts bound the fill.
+inline constexpr const char* kSetupCaption = "Fills native free slots; Key Items are never changed";
 
 enum class Action : uint8_t { None, Close, PromptAmount, BuildPreview, Confirm };
 
@@ -219,13 +227,22 @@ template <class ItemName, class PocketName>
 [[nodiscard]] inline std::vector<Line> previewLines(const BI::Plan& plan, const std::vector<BI::Pocket>& pockets,
                                                     ItemName&& itemName, PocketName&& pocketName) {
     std::vector<Line> out;
+    const auto listName = [&](BI::Pocket pocket, std::size_t slots, bool shared) {
+        return shared ? std::string("Bag (every category shares ") + std::to_string(slots) + " slots)"
+                      : std::string(pocketName(pocket)) + " (" + std::to_string(slots) + " slots)";
+    };
     // A list that ran out of slots says so first, with its native size: the "pocket full" lines
     // below are the game's own limit, not a failure (Gen I: one 20-slot Bag for every category).
-    for (const auto& f : plan.full) {
-        const std::string where = f.sharedList ? std::string("Bag (every category shares ") + std::to_string(f.slots) + " slots)"
-                                               : std::string(pocketName(f.pocket)) + " (" + std::to_string(f.slots) + " slots)";
-        out.push_back({LineKind::Note, where + ": " + std::to_string(f.freeBefore) + " free, " +
-                                           std::to_string(f.notFitted) + " more did not fit"});
+    for (const auto& f : plan.full)
+        out.push_back({LineKind::Note, listName(f.pocket, f.slots, f.sharedList) + ": " + std::to_string(f.freeBefore) +
+                                           " free, " + std::to_string(f.notFitted) + " more did not fit"});
+    // Round 12 (H14): every other list Add Missing covered states its exact count against its native
+    // size, so "all of them fit" is visible as plainly as "the pocket is full".
+    for (const auto& r : plan.rooms) {
+        if (r.notFitted > 0) continue;
+        out.push_back({LineKind::Note, listName(r.pocket, r.slots, r.sharedList) + ": " + std::to_string(r.freeBefore) +
+                                           " free, " + (r.eligible == 0 ? std::string("nothing missing to add")
+                                                                         : "all " + std::to_string(r.planned) + " missing added")});
     }
     for (const auto pocket : pockets) {
         const auto first = out.size();
@@ -314,6 +331,28 @@ inline void showPreview(State& s, BI::Plan plan, const std::vector<BI::Pocket>& 
                              : "a pocket is full";
     return "Partly staged: " + std::to_string(toppedUp) + " topped up, " + std::to_string(added) + " added; " +
            std::to_string(missed) + " did not fit because " + why +
+           ". Nothing overflowed; source save unchanged (Review lists them)";
+}
+
+// Round 12 (H14): the same status, naming each full native list and its size ("Items (20 native
+// slots)"), so the player sees the game's own limit, not a vague "a pocket is full".
+template <class PocketName>
+[[nodiscard]] inline std::string appliedStatus(std::size_t toppedUp, std::size_t added, const BI::Plan& plan,
+                                               PocketName&& pocketName) {
+    const std::size_t missed = notFitted(plan);
+    // No full list, or only Gen I's one shared Bag: the Round 11 wording already names it exactly.
+    if (missed == 0 || std::all_of(plan.full.begin(), plan.full.end(), [](const BI::FullList& f) { return f.sharedList; }))
+        return appliedStatus(toppedUp, added, plan);
+    std::string lists;
+    for (std::size_t i = 0; i < plan.full.size(); ++i) {
+        const auto& f = plan.full[i];
+        if (i > 0) lists += i + 1 == plan.full.size() ? " and " : ", ";
+        lists += f.sharedList ? "the Bag (" + std::to_string(f.slots) + " slots shared by every category)"
+                              : std::string(pocketName(f.pocket)) + " (" + std::to_string(f.slots) + " native slots)";
+    }
+    const bool one = plan.full.size() == 1;
+    return "Partly staged: " + std::to_string(toppedUp) + " topped up, " + std::to_string(added) + " added; " +
+           std::to_string(missed) + " did not fit because " + lists + (one ? " is full" : " are full") +
            ". Nothing overflowed; source save unchanged (Review lists them)";
 }
 
