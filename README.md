@@ -23,12 +23,13 @@
 
 <p align="center">
   <a href="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/host-tests.yml"><img alt="Host Tests" src="https://img.shields.io/badge/Host%20Tests-active-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
-  <a href="docs/hardware/RETEST_3634d1e6.md"><img alt="Gen I-V Integrated Candidate" src="https://img.shields.io/badge/Gen%20I--V-integrated%20candidate-2563eb?style=flat-square&logo=githubactions&logoColor=white"></a>
+  <a href="docs/hardware/round13/OWNER_RESULTS_9c301c48.json"><img alt="Round 13 hardware: 15 PASS, 12 FAIL" src="https://img.shields.io/badge/Round%2013-15%20PASS%20%2F%2012%20FAIL-d97706?style=flat-square&logo=githubactions&logoColor=white"></a>
   <a href="https://github.com/GlitchedZeus/PokeBank-NX/pull/314"><img alt="Gen I-V Legality Development" src="https://img.shields.io/badge/Gen%20I--V%20legality-in%20development-f59e0b?style=flat-square&logo=githubactions&logoColor=white"></a>
 </p>
 
 <p align="center">
   <a href="#overview">Overview</a> •
+  <a href="#screenshots">Screenshots</a> •
   <a href="#project-status">Status</a> •
   <a href="#features">Features</a> •
   <a href="#supported-games">Games</a> •
@@ -41,7 +42,7 @@
 ---
 
 > [!IMPORTANT]
-> **Active alpha — no v1.0 release or complete Gen I–V hardware acceptance yet.** The combined Gen I–V application is now `main` (consolidated October 31, 2026 — see the [consolidation ledger](docs/MAIN_CONSOLIDATION_20261031.md)). The owner is testing the audited [Round 10 NRO `3634d1e6`](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/40775834570/artifacts/12854482976) (SHA-256 `b6cd0b89…8cd9`, [checklist](docs/hardware/RETEST_3634d1e6.md)); the latest *recorded* Switch result is [Round 6 `26186464`](docs/hardware/ROUND6_RESULTS_26186464.md) on October 26: **49 PASS / 9 FAIL / 1 NOT TESTED**. Rounds 7–9 were built (Rounds 8 and 9 passed the exact-file audit; Round 7's audit is not recorded); their owner results are not yet recorded. The Gen I–V legality engine stays separate and unmerged ([#314](https://github.com/GlitchedZeus/PokeBank-NX/pull/314), independent lanes [#327](https://github.com/GlitchedZeus/PokeBank-NX/pull/327) and [#328](https://github.com/GlitchedZeus/PokeBank-NX/pull/328)). Only the full [20-game, every-action, exact-NRO acceptance gate #313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313) can close the Gen I–V milestone. Gen VI–IX application work happens separately on `development/gen6-plus` and is not part of `main`.
+> **Active alpha, not v1.0 and not hardware accepted.** Latest owner-tested Gen I–V candidate is [Round 13 `9c301c48`](https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/nro/9c301c48): **15 PASS / 12 FAIL / 0 NOT TESTED** across 27 checks. [Owner results](docs/hardware/round13/OWNER_RESULTS_9c301c48.json). Gen VI–IX editor work remains experimental and hardware-failed; legality is on an independent development branch, not integrated into the NRO. Persistent Master Vault and complete cross-generation transfer are still missing. The detailed status table below contains historical Oct 31 notes pending the wider docs cleanup in [PR #334](https://github.com/GlitchedZeus/PokeBank-NX/pull/334).
 
 
 ## Overview
@@ -60,9 +61,31 @@ Current work centers on **finishing and hardware-accepting the combined Gen I–
 - **Make uncertainty visible** — a missing source, uncertain history or unsupported rule is reported, not guessed.
 - **Prove each build** — passing automation matters, but a hardware claim belongs to the exact NRO that was tested.
 
+## Screenshots
+
+Actual Nintendo Switch screenshots captured by the project owner on November 2, 2026. This is an alpha UI preview, not evidence of release acceptance. Round 13: **15 PASS / 12 FAIL**.
+
+| Pokémon Blue dashboard | Pokémon Ruby dashboard |
+| --- | --- |
+| ![Pokémon Blue dashboard](docs/screenshots/home-blue.jpg) | ![Pokémon Ruby dashboard](docs/screenshots/home-ruby.jpg) |
+
+| Quick Games | Game workspace |
+| --- | --- |
+| ![Quick Games](docs/screenshots/quick-games.jpg) | ![Game workspace](docs/screenshots/game-workspace-black.jpg) |
+
+| Pokémon editor | Trainer editor |
+| --- | --- |
+| ![Pokémon editor](docs/screenshots/pokemon-editor-pikachu.jpg) | ![Trainer editor](docs/screenshots/trainer-editor-black.jpg) |
+
+| Move chooser | Add Item chooser |
+| --- | --- |
+| ![Move chooser](docs/screenshots/move-chooser.jpg) | ![Add Item chooser](docs/screenshots/add-item-chooser.jpg) |
+
+[View all 18 screenshots](docs/screenshots.md), including controller help, party, boxes, pickers and an experimental Legends Z-A dashboard preview.
+
 ## Project status
 
-**Checked against live GitHub October 31, 2026.** ✅ implemented/previously owner-observed behavior; 🧪 active unmerged development or device retest; 🔬 research; ⏳ planned. A ✅ on a component is **not** approval of the entire generation or a v1.0 release.
+**Historical snapshot (October 31, 2026).** The current owner hardware outcome is Round 13: **15 PASS / 12 FAIL**, not accepted. The entries below predate that test and will be reconciled in the wider documentation cleanup. ✅ implemented/previously owner-observed behavior; 🧪 active unmerged development or device retest; 🔬 research; ⏳ planned. A ✅ on a component is **not** approval of the entire generation or a v1.0 release.
 
 | Area | Current implementation / development | Remaining |
 |---|---|---|
