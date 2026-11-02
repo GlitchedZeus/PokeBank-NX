@@ -113,6 +113,19 @@ MUTATIONS = [
     ("Oct 26 owner sheet changed (B04 recorded as PASS)", "docs/hardware/ROUND6_RESULTS_26186464.md",
      "| **B04** | **E05** | **FAIL** |", "| **B04** | **E05** | **PASS** |",
      "docs/hardware/ROUND6_RESULTS_26186464.md: Oct 26 B / C / D PASS rows"),
+    ("Round 11 H24: Discard no longer checked byte for byte (guard literal deleted)", "tests/test_gen3_edit_discard_r11.cpp",
+     'id + ": Discard restores the staged save byte for byte"', 'id + ": Discard ran"',
+     "H24: tests/test_gen3_edit_discard_r11.cpp no longer contains"),
+    ("Round 11 H08: Gen V Gender skips the strict PID re-verification", "src/UI/Gen5SharedReadOnlySurface.inc",
+     '} else if (const auto after = verifiedPidProbe(screen, probe)) {\n                const std::string note = std::string("Gender ")',
+     '} else if (const auto after = std::optional<Record>(*probe.current())) {\n                const std::string note = std::string("Gender ")',
+     "H08: CG92-gen5-shiny-inline fails"),
+    ("Round 11 worksheet changed (H12 recorded as PASS)", "docs/hardware/ROUND11_OWNER_WORKSHEET.md",
+     "### H12 — Recovery files cancellation\n- **Status:** FAIL", "### H12 — Recovery files cancellation\n- **Status:** PASS",
+     "docs/hardware/ROUND11_OWNER_WORKSHEET.md: 48 rows / 35 PASS"),
+    ("Round 11 intake list changed (H43 listed as PASS)", "docs/hardware/ROUND11_ENGINEERING_INTAKE.md",
+     "H35–H38, H44–H48)", "H35–H38, H43–H48)",
+     "docs/hardware/ROUND11_ENGINEERING_INTAKE.md: intake lists 34 PASS"),
 ]
 
 

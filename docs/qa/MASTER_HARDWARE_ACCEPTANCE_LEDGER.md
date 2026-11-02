@@ -9,8 +9,8 @@ Generated from the historical reconciliation of every Round 1–12 hardware reco
 | Status | Issues |
 |---|---|
 | Hardware Accepted | 143 (of which 94 need an R12 recheck) |
-| Fixed in Code — Awaiting Hardware | 72 |
-| Open Defect | 11 |
+| Fixed in Code — Awaiting Hardware | 73 |
+| Open Defect | 10 |
 | Missing Feature | 20 |
 | Intentionally Unsupported | 5 |
 | Needs Investigation | 25 |
@@ -459,7 +459,7 @@ Generated from the historical reconciliation of every Round 1–12 hardware reco
 | `PBX-OTH-021` | Lineage/breeding parents: never invent parents the save did not store (lineage states) | all | REQ docs/PRODUCT_DECISIONS.md §3 | n/a (REQ §3) | Missing Feature | — | — | none (not on any checklist) | Carry the rule into the Vault/lineage design when that work starts. |
 | `PBX-OTH-022` 🎯v1 | Vault-driven National Pokédex (v1 milestone) not implemented — Home Pokédex is a placeholder | all | REQ docs/POKEDEX_SPEC.md | n/a (REQ Minimum Pokédex v1 milestone) | Missing Feature | — | — | none (not on any checklist) | Keep blocked on Master Vault; state explicitly in V1_ROADMAP whether the Pokédex milestone is v1.0 or v1.x. |
 | `PBX-OTH-023` ⚠️ | Owner approval needed for merges, deletions and retargets; legality #314 stays unmerged | app | REQ docs/MAIN_CONSOLIDATION_20261031.md §1/§8 (rule first stated R1 7fea1797 OW… | n/a (REQ §1 / §8 Rules) | Fixed in Code — Awaiting Hardware | — | tests/test_ci_repository_safety_contract.py : repository safety contract | none (process) | Get explicit owner approval before merging #330/#332 or deleting branches/workflows. |
-| `PBX-OTH-024` | Round 11's 34 owner-PASS items are not frozen in the regression gate | all | R11 intake §1 note (3634d1e6) | n/a (REQ §1 note) | Open Defect | — | — | 066e1db9 R12 H18 (smoke only) | Add a GUARDS_ROUND11 block (34 IDs, count-checked against ROUND11_OWNER_WORKSHEET.md) to tests/test_hw_round1_regression_gate.py. |
+| `PBX-OTH-024` | Round 11's 34 owner-PASS items are not frozen in the regression gate | all | R11 intake §1 note (3634d1e6) | n/a (REQ §1 note) | Fixed in Code — Awaiting Hardware | a79d54e4 Guard the owner's 34 Round 11 PASS results in the regression gate | tests/test_hw_round1_regression_gate.py GUARDS_ROUND11 (34 items); tests/test_gen3_edit_discard_r11.cpp (H24) | 066e1db9 R12 H18 (smoke only) | None for Round 11. Add a Round 12 table for the owner's 066e1db9 PASS results. |
 | `PBX-OTH-025` | No developer / implementation wording in user-visible strings (CG04) - host contract only; Gen I edit status texts still say '... staged; source .srm unchanged' | I, II, III, IV, V | PRE GEN1_5_UI_AUDIT_MATRIX CG04 | PASS (PRE CG04) | Needs Investigation | 36a89388 ui: return Gen II Add directly to packed box selection (Gen II toast reworded); f2cf5954 Gen I-V: no toast after routine edits; Gen V Shiny toggles inline (H22, H29) | tests/test_qa_cross_gen_contract.py:882-888 CG04-no-developer-wording : no '(DV-derived)', 'commits to draft', game-group or raw-ID suffixes in user-visible literals; tests/test_hw_round1_regression_gate.py:210-213 : CG04 is part of the frozen guards for owner-PASSed picker items | none (not on any checklist) | Trace whether Gen I ux2CommitEdit success texts reach the screen on 066e1db9; if so, reword them and extend CG04 to reject 'source .srm unchanged'-style implementation wording. |
 
 ## Round 12 owner results → Round 13 repairs

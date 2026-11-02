@@ -2,7 +2,7 @@
  "meta": {
   "generated_from": "qa_recon/all_records.json + docs at wr11 6c7c8e99 (read-only)",
   "legend": "appearances 'Rn:ID'; '~' = matched by meaning, not by ID. R7, R8, R9 and R12 have no owner results. R10 owner results are the R11 worksheet. OCT24 results are on c60d4da0; R5 results are the owner's Oct 25 sheet (gate 'OCT25'); R6 results are the Oct 26 sheet (gate 'OCT26').",
-  "gate_coverage": "tests/test_hw_round1_regression_gate.py guards R1 (42), R2 (6), R3 (30 new), Oct 24 (27), Oct 25 (10 new), Oct 26 (19 B/C/D rows keyed by the R6 sheet row number, so 'B01'/'B02'/'B03'/'C02'... in GUARDS_ROUND7 are NOT the R1 IDs). It has no Round 11 table; R11 PASS items are unguarded by it.",
+  "gate_coverage": "tests/test_hw_round1_regression_gate.py guards R1 (42), R2 (6), R3 (30 new), Oct 24 (27), Oct 25 (10 new), Oct 26 (19 B/C/D rows keyed by the R6 sheet row number, so 'B01'/'B02'/'B03'/'C02'... in GUARDS_ROUND7 are NOT the R1 IDs) and Round 11 (all 34 owner PASS rows, GUARDS_ROUND11, keyed by the R11 worksheet IDs H01-H48, so its 'H..' IDs are not the R12 checklist's). It has no Round 12 table yet.",
   "pre_scope_note": "PRE template checklists (DEVICE_TEST_CHECKLIST*, GEN14, GEN15 gate, smoke docs; ~410 rows) were never filled row by row and were superseded wholesale by the R1 7fea1797 checklist; they are traced at section level. The ~300 ad-hoc PRE owner FAIL / NOT TESTED / request records from issues, PRs and session logs are not traced individually here (they predate any round checklist)."
  },
  "lineage": [
@@ -3870,135 +3870,135 @@
    "item": "R11 H08 Gen V Gender changes inline",
    "last_pass": "R11 (3634d1e6 inferred) H08 PASS",
    "guarded": true,
-   "guard": "by meaning only — E08 (GUARDS) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H08'] (Gen V Gender toggles inline: no Change PID dialog, the PID change is stated (R11 PASS)): host:tests/test_ui_editor_input_host.cpp; host:tests/test_ui_editor_input_host.cpp; host:tests/test_ui_editor_input_host.cpp"
   },
   {
    "item": "R11 H09 Gen V Trainer Gender and Pokédex",
    "last_pass": "R11 (3634d1e6 inferred) H09 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: P3-TRAINER / R2-BUG-003 by meaning (Gen II-IV / Gen V clutter), not the Gen V Gender edit; tests/test_hw_round1_regression_gate.py has no Round 11 table"
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H09'] (Gen V Trainer Gender reaches Review; Pokedex is a read-only list (R11 PASS)): host:tests/test_gen5_trainer.cpp; host:tests/test_gen5_trainer.cpp; host:tests/test_gen5_trainer.cpp"
   },
   {
    "item": "R11 H10 Gen I Play Time editable (to 255)",
    "last_pass": "R11 (3634d1e6 inferred) H10 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none (P3-TRAINER covers Gen II-IV); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H10'] (Gen I Play Time staged up to 255:00:00 and listed in Review (R11 PASS)): host:tests/test_gen1_trainer_edit.cpp; host:tests/test_gen1_trainer_edit.cpp; cg:CG47-classic-trainer-playtime-pokedex"
   },
   {
    "item": "R11 H18 D-pad and joystick parity",
    "last_pass": "R11 (3634d1e6 inferred) H18 PASS",
    "guarded": true,
-   "guard": "by meaning only — N01-N03 (GUARDS) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H18'] (D-pad and joystick reach the same controls through one repeat engine (R11 PASS)): host:tests/test_navigation_repeat.cpp; host:tests/test_gen3_hardware_surface_contract.cpp; cg:CG10-single-navigation-repeat-engine"
   },
   {
    "item": "R11 H19 B closes nested menus one layer at a time",
    "last_pass": "R11 (3634d1e6 inferred) H19 PASS",
    "guarded": true,
-   "guard": "by meaning only — C05 / NEW-01 by meaning (partial); tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H19'] (B closes nested menus one layer at a time, with no edit (R11 PASS)): host:tests/test_gen2_workspace_layers.cpp; host:tests/test_gen2_workspace_layers.cpp; host:tests/test_gen5_staged_slot_actions.cpp"
   },
   {
    "item": "R11 H20 Emulator/provider identification",
    "last_pass": "R11 (3634d1e6 inferred) H20 PASS",
    "guarded": true,
-   "guard": "by meaning only — AUD-03 (GUARDS_ROUND3) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H20'] (Emulator / provider names and distinct save instances (R11 PASS)): cg:CG26-trainer-provider-display-name; host:tests/test_session_provider_names.cpp; host:tests/test_home_card_providers.cpp"
   },
   {
    "item": "R11 H21 Gen I DV/EV, derived HP DV, Y shiny",
    "last_pass": "R11 (3634d1e6 inferred) H21 PASS",
    "guarded": true,
-   "guard": "by meaning only — R2-GOLD / E10 by meaning (partial); tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H21'] (Gen I DV/EV: HP DV derived and read-only, shiny from DVs (R11 PASS; routine reroll / Shiny toast removed by owner request R11 H22)): host:tests/test_gen1_cleanup3_staged_semantics.cpp; host:tests/test_gen1_pokemon_editor_ui_contract.cpp; host:tests/test_gen1_shiny.cpp"
   },
   {
    "item": "R11 H24 Gen III edit and discard",
    "last_pass": "R11 (3634d1e6 inferred) H24 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none specific; tests/test_hw_round1_regression_gate.py has no Round 11 table"
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H24'] (Gen III species / held item / move / IV edit: Review lists only those rows, Discard restores exactly (R11 PASS; new focused test)): host:tests/test_gen3_edit_discard_r11.cpp; host:tests/test_gen3_edit_discard_r11.cpp; host:tests/test_gen3_edit_discard_r11.cpp"
   },
   {
    "item": "R11 H26 Gen V legal move chooser list",
    "last_pass": "R11 (3634d1e6 inferred) H26 PASS",
    "guarded": true,
-   "guard": "by meaning only — M05 (GUARDS_ROUND6) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H26'] (Gen V move chooser is species-restricted, labelled with type and PP (R11 PASS)): host:tests/test_gen5_move_compatibility.cpp; host:tests/test_gen5_move_compatibility.cpp; host:tests/test_move_picker_presentation.cpp"
   },
   {
    "item": "R11 H30 Create, back out, keep",
    "last_pass": "R11 (3634d1e6 inferred) H30 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none specific; tests/test_hw_round1_regression_gate.py has no Round 11 table"
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H30'] (Create, back out (slot stays empty), Keep stages exactly one, source not written (R11 PASS)): host:tests/test_gen5_party_box_parity.cpp; qa:tests/test_qa_matrix_gen4.cpp; host:tests/test_gen3_shared_pokemon_session.cpp"
   },
   {
    "item": "R11 H33 Bag Remove confirmation and cancel",
    "last_pass": "R11 (3634d1e6 inferred) H33 PASS",
    "guarded": true,
-   "guard": "by meaning only — B07 (GUARDS) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H33'] (Bag Remove: cancel changes nothing, confirm removes only that stack, Discard restores (R11 PASS)): host:tests/test_gen5_bag_screen.cpp; host:tests/test_classic_inventory_ui_model.cpp; host:tests/test_gen4_bag_remove_pack.cpp"
   },
   {
    "item": "R11 H35 Held item and TM/HM details",
    "last_pass": "R11 (3634d1e6 inferred) H35 PASS",
    "guarded": true,
-   "guard": "by meaning only — R2-BUG-005 (GUARDS_ROUND3) by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H35'] (Held item chooser and TM/HM details: type, power, accuracy, PP; commit only on choose (R11 PASS)): host:tests/test_machine_moves_gen15.cpp; host:tests/test_machine_display.cpp; host:tests/test_held_item_input.cpp"
   },
   {
    "item": "R11 H36 Malformed Gen IV pocket safe refusal (optional)",
    "last_pass": "R11 (3634d1e6 inferred) H36 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none in this gate (Group A host tests only); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H36'] (Malformed Gen IV pocket: Add / Remove refused with a reason, no byte changes (R11 PASS, optional)): host:tests/test_gen4_bag_remove_pack.cpp; host:tests/test_gen4_bag_remove_pack.cpp"
   },
   {
    "item": "R11 H37 Gen V Bag read/navigation",
    "last_pass": "R11 (3634d1e6 inferred) H37 PASS",
    "guarded": true,
-   "guard": "by meaning only — NEW-17 / S02 by meaning (partial); tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H37'] (Gen V Bag: every stored stack decodes; pockets and rows wrap (R11 PASS)): host:tests/test_gen5_bag.cpp; host:tests/test_gen5_bag_screen.cpp; host:tests/test_gen5_bag_screen.cpp"
   },
   {
    "item": "R11 H38 Cross-generation import refusal",
    "last_pass": "R11 (3634d1e6 inferred) H38 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none (standalone-file import arrived in R9); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H38'] (Wrong-generation / oversized Pokemon file refused with a reason, nothing staged (R11 PASS)): host:tests/test_ui_pokemon_file_menus_host.cpp; host:tests/test_ui_pokemon_file_menus_host.cpp; host:tests/test_ui_pokemon_file_menus_host.cpp"
   },
   {
    "item": "R11 H44 Recovery display: latest prior generation protected",
    "last_pass": "R11 (3634d1e6 inferred) H44 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none in this gate; tests/test_hw_round1_regression_gate.py has no Round 11 table"
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H44'] (Recovery files: newest and Bank copies Protected; B keeps everything (R11 PASS)): host:tests/test_recovery_management_model.cpp; host:tests/test_recovery_management_model.cpp; host:tests/test_ui_recovery_files_host.cpp"
   },
   {
    "item": "R11 H46 Export Copy reload and compare (S06-like, optional)",
    "last_pass": "R11 (3634d1e6 inferred) H46 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none (S06 is in OWNER_NOT_PASS); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H46'] (Export Copy reparses with only the intended change (owner PASS, no game or comparison notes recorded; the automated guard covers export-copy verification only, not the owner's emulator reload)): qa:tests/test_qa_export_contracts.cpp; qa:tests/test_qa_export_contracts.cpp; host:tests/test_classic_verified_export.cpp"
   },
   {
    "item": "R11 H47 Touch and controls agreement",
    "last_pass": "R11 (3634d1e6 inferred) H47 PASS",
    "guarded": true,
-   "guard": "by meaning only — C06 / C10 by meaning; tests/test_hw_round1_regression_gate.py has no Round 11 table (last extended 9cbd9138 for Oct 26; only C14/R2-BUG-004 re-pinned for R11)"
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H47'] (Touch and controller agree: no layering, double activation or tap-through (R11 PASS)): cg:CG08-modal-footer-and-touch-layer; cg:CG78-tap-outside-dismisses-non-destructive; host:tests/test_popup_dismiss.cpp"
   },
   {
    "item": "R11 H48 Exit and relaunch after discard",
    "last_pass": "R11 (3634d1e6 inferred) H48 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: C16 by meaning (partial); tests/test_hw_round1_regression_gate.py has no Round 11 table"
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H48'] (Discard, exit and relaunch: saves load, discarded edits absent, no unsolicited write (R11 PASS)): host:tests/test_gen5_review_discard_export_trace.cpp; qa:tests/test_qa_matrix_gen3.cpp; qa:tests/test_qa_matrix_gen5.cpp"
   },
   {
    "item": "R11 H05 Export same Pokémon twice -> distinct ' (2)' file",
    "last_pass": "R11 (3634d1e6 inferred) H05 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none (standalone files arrived in R9); tests/test_hw_round1_regression_gate.py has no Round 11 table",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H05'] (Export the same Pokemon twice: new genN file, second gets \" (2)\", workspace unchanged (R11 PASS)): host:tests/test_ui_pokemon_file_menus_host.cpp; host:tests/test_ui_pokemon_file_menus_host.cpp; host:tests/test_ui_pokemon_file_menus_host.cpp",
    "note": "R12 H05/H06 re-check the X Export/Import entry and the '-' cancel, not the duplicate-name export or the Review/source checks."
   },
   {
    "item": "R11 H06 Import exported Pokémon into empty slot",
    "last_pass": "R11 (3634d1e6 inferred) H06 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none in this gate; tests/test_hw_round1_regression_gate.py has no Round 11 table",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H06'] (Import an exported Pokemon into an empty slot: staged, in Review, source unchanged, B navigates (R11 PASS)): host:tests/test_ui_pokemon_file_menus_host.cpp; host:tests/test_ui_pokemon_file_menus_host.cpp; host:tests/test_ui_pokemon_file_menus_host.cpp",
    "note": "R12 H05/H06 re-check the X Export/Import entry and the '-' cancel, not the duplicate-name export or the Review/source checks."
   },
   {
    "item": "R11 H13 Japanese Gen I/II read-only",
    "last_pass": "R11 (3634d1e6 inferred) H13 PASS",
-   "guarded": false,
-   "guard": "UNGUARDED: none; and the PASS is not evidence ('i didnt test a japenese save'); tests/test_hw_round1_regression_gate.py has no Round 11 table",
+   "guarded": true,
+   "guard": "tests/test_hw_round1_regression_gate.py GUARDS_ROUND11['H13'] (Japanese Gen I/II stay read-only (R11 PASS is not evidence: no Japanese save was opened; guard pins the read-only lock only)): host:tests/test_rby_readonly_bridge.cpp; host:tests/test_rby_readonly_bridge.cpp; host:tests/test_gsc_readonly_bridge.cpp",
    "note": "R12 H17 keeps an optional 'Japanese Gen I/II save (if you have one) stays read-only' sentence."
   }
  ],
@@ -4161,7 +4161,7 @@
   "dropped": 31,
   "dropped_still_needed": 21,
   "passed_then_unlisted": 134,
-  "passed_then_unlisted_unguarded": 12,
+  "passed_then_unlisted_unguarded": 0,
   "r12_omissions": 19
  }
 }

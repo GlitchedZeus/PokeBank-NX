@@ -45,8 +45,8 @@ Record counts include the same owner result repeated in several documents (resul
 | Historical unique defects (defect + safety issues) | 152 |
 | All unique issues (incl. requests, requirements, decisions) | 276 |
 | Hardware Accepted | 143 |
-| Fixed in Code — Awaiting Hardware | 72 |
-| Open Defect | 11 |
+| Fixed in Code — Awaiting Hardware | 73 |
+| Open Defect | 10 |
 | Missing Feature | 20 |
 | Intentionally Unsupported | 5 |
 | Needs Investigation | 25 |
@@ -129,20 +129,7 @@ Record counts include the same owner result repeated in several documents (resul
 
 ### 5b. Owner-accepted items that left the checklist with no permanent guard
 
-12 of 134 accepted items that are no longer on a checklist are not guarded by `tests/test_hw_round1_regression_gate.py` (it has no Round 11 table). See `PERMANENT_REGRESSION_MATRIX.md` §3.
-
-- R11 H09 Gen V Trainer Gender and Pokédex — last PASS R11 (3634d1e6 inferred) H09 PASS
-- R11 H10 Gen I Play Time editable (to 255) — last PASS R11 (3634d1e6 inferred) H10 PASS
-- R11 H24 Gen III edit and discard — last PASS R11 (3634d1e6 inferred) H24 PASS
-- R11 H30 Create, back out, keep — last PASS R11 (3634d1e6 inferred) H30 PASS
-- R11 H36 Malformed Gen IV pocket safe refusal (optional) — last PASS R11 (3634d1e6 inferred) H36 PASS
-- R11 H38 Cross-generation import refusal — last PASS R11 (3634d1e6 inferred) H38 PASS
-- R11 H44 Recovery display: latest prior generation protected — last PASS R11 (3634d1e6 inferred) H44 PASS
-- R11 H46 Export Copy reload and compare (S06-like, optional) — last PASS R11 (3634d1e6 inferred) H46 PASS
-- R11 H48 Exit and relaunch after discard — last PASS R11 (3634d1e6 inferred) H48 PASS
-- R11 H05 Export same Pokémon twice -> distinct ' (2)' file — last PASS R11 (3634d1e6 inferred) H05 PASS
-- R11 H06 Import exported Pokémon into empty slot — last PASS R11 (3634d1e6 inferred) H06 PASS
-- R11 H13 Japanese Gen I/II read-only — last PASS R11 (3634d1e6 inferred) H13 PASS
+0 of 134 accepted items that are no longer on a checklist are not guarded by `tests/test_hw_round1_regression_gate.py` (its Round 11 table, GUARDS_ROUND11, covers all 34 Round 11 PASS rows). See `PERMANENT_REGRESSION_MATRIX.md` §3.
 
 ## 6. Evidence record (every unique issue, every occurrence)
 
@@ -2320,11 +2307,13 @@ Owner words are verbatim. Occurrences list every historical record (round · can
 
 ### `PBX-OTH-024` Round 11's 34 owner-PASS items are not frozen in the regression gate
 
-- **Status:** Open Defect · **Gen:** all · **Area:** other · **Category:** defect
-- **Last owner result:** R11/3634d1e6: 34 PASS (unguarded)
-- **Basis:** docs/hardware/ROUND11_ENGINEERING_INTAKE.md:43 requires every repair to keep the 34 R11 PASS results (H01–H03, H05–H11, H13–H21, H23, H24, H26, H28, H30, H33, H35–H48 subset) and add regressions. tests/test_hw_round1_regression_gate.py has GUARDS for R1/R2/R3/Oct24/Oct25/Oct26 only (lines 45, 260, 302, 438, 547, 607; summary ends at Oct 26). There is no GUARDS_ROUND11 block, so the gate will not catch a regression of an R11 PASS. R11 is referenced only for reversals (C14 at :661, R2-BUG-004 at :350).
+- **Status:** Fixed in Code — Awaiting Hardware · **Gen:** all · **Area:** other · **Category:** defect
+- **Last owner result:** R11/3634d1e6: 34 PASS (guarded by GUARDS_ROUND11)
+- **Basis:** Fixed in code on r13/guards (tests and docs only): tests/test_hw_round1_regression_gate.py now has GUARDS_ROUND11, the owner's 34 Round 11 PASS rows keyed by the worksheet IDs (H01–H03, H05–H11, H13–H21, H23, H24, H26, H28, H30, H33, H35–H38, H44–H48), count-checked against docs/hardware/ROUND11_OWNER_WORKSHEET.md and the list at docs/hardware/ROUND11_ENGINEERING_INTAKE.md:43, every item with a guard that runs on every PR. H24 got a new focused host test (tests/test_gen3_edit_discard_r11.cpp). No hardware step is needed for the gate itself; the guarded behaviours keep their R11 owner PASS as the last hardware evidence. Original basis: the gate had GUARDS for R1/R2/R3/Oct24/Oct25/Oct26 only, so a regression of an R11 PASS was not caught.
+- **Repair commits:** a79d54e4 Guard the owner's 34 Round 11 PASS results in the regression gate
+- **Automated tests:** tests/test_hw_round1_regression_gate.py GUARDS_ROUND11 (34 items); tests/test_gen3_edit_discard_r11.cpp (H24)
 - **Hardware acceptance:** 066e1db9 R12 H18 (smoke only) · R12 item H18
-- **Next action:** Add a GUARDS_ROUND11 block (34 IDs, count-checked against ROUND11_OWNER_WORKSHEET.md) to tests/test_hw_round1_regression_gate.py.
+- **Next action:** None for Round 11. Add a Round 12 table for the owner's 066e1db9 PASS results.
 - **Occurrences (1):** REQ §1 note n/a [docs/hardware/ROUND11_ENGINEERING_INTAKE.md]
 
 ### `PBX-OTH-025` No developer / implementation wording in user-visible strings (CG04) - host contract only; Gen I edit status texts still say '... staged; source .srm unchanged'
