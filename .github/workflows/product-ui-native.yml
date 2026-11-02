@@ -39,7 +39,7 @@ on:
       - 'tools/fetch_product_art.py'
       - 'include/Utils/PokeBankPaths.h'
       - 'Makefile.host'
-      - 'Makefile.host.product-ui'
+      - 'build-system/host/Makefile.host.product-ui'
       - 'tests/test_app_shell_model.cpp'
       - 'tests/test_organization_preview_model.cpp'
       - 'tests/test_game_launch_model.cpp'
