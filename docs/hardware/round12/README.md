@@ -7,7 +7,7 @@ Owner hardware test of `PokeBank-NX-Gen1-5-Candidate-066e1db9.nro` (SHA-256
 | File | What it is |
 |---|---|
 | `OWNER_RESULTS_066e1db9.json` | The owner's results file, **byte-identical** to the upload (never edit it). |
-| `ROUND12_OWNER_HARDWARE_INTAKE.md` | Independent QA intake of those results: stable findings R12-001 … R12-012. |
+| `ROUND12_OWNER_HARDWARE_INTAKE.md` | Independent QA intake of those results: stable findings R12-001 … R12-012 (line-end whitespace normalised for `git diff --check`; text unchanged). |
 | `ISSUE_LEDGER.csv` | The same findings as CSV. |
 | `SCREENSHOT_INDEX.md` | The 16 owner screenshots: names, contents and SHA-256 (all 16 verified against the upload). |
 
