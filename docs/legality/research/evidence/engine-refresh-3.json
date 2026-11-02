@@ -1,0 +1,8 @@
+{
+  "retrieved_utc": "2026-10-12T00:12:38.691262+00:00",
+  "accepted": "fe3e3d054ef7d42c31df3e772e8370e2c7587c8a",
+  "active_draft_branch": "feature/legality-rng-move-input-hardening-20261011",
+  "active_draft_sha": "33d74ee0019d4c9fffb18403a980297b3f97190a",
+  "joint_egg_header_changed_since_previous_audit": false,
+  "scope": "Fetched refs and source diff; no fresh exact-head CI certification"
+}

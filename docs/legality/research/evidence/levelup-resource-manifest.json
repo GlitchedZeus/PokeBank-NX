@@ -1,0 +1,90 @@
+[
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_rb.pkl",
+    "sha256": "fcfcf0411505499294f35c4c395c7ce61a5f6c67587313555b276e57a67c3da0",
+    "bytes": 2494,
+    "entries": 152,
+    "level_move_pairs": 728,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_y.pkl",
+    "sha256": "1f653d3dbf2bba9f5eb67fdd7239853377c9b68a30b85475613943258a5177f0",
+    "bytes": 2575,
+    "entries": 152,
+    "level_move_pairs": 755,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_gs.pkl",
+    "sha256": "3dd255597704834c7f35b7644bdad9ed100284be4064e74938328d9a44acf61d",
+    "bytes": 7131,
+    "entries": 252,
+    "level_move_pairs": 2207,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_c.pkl",
+    "sha256": "ea01b9ad714f004640828a5ba30fbdfd1daa826cb182f4e70ea9be52d730e41a",
+    "bytes": 7155,
+    "entries": 252,
+    "level_move_pairs": 2215,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_rs.pkl",
+    "sha256": "fb06e51d0e3c5a90d638d77f7b880721ef5006b206203155ed5c2efd560150a0",
+    "bytes": 12624,
+    "entries": 387,
+    "level_move_pairs": 3948,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_e.pkl",
+    "sha256": "2b27c5365c46e08dbb168048fe2f13699a3a0ca70d061b25ecb596462d4504cc",
+    "bytes": 12624,
+    "entries": 387,
+    "level_move_pairs": 3948,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_fr.pkl",
+    "sha256": "cbe447147b45520f13b3133d81ff295fe91f3a3d0ece12ca73002952a52527bc",
+    "bytes": 12816,
+    "entries": 387,
+    "level_move_pairs": 4012,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_lg.pkl",
+    "sha256": "df1e6a4a8dea59b9174b15727fa11275ee40434552c10394840a5fff15d6ea34",
+    "bytes": 12822,
+    "entries": 387,
+    "level_move_pairs": 4014,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_dp.pkl",
+    "sha256": "845a5dbead1f30c7e7aae2600c49a089cbcbc613a9d42a2078516c5efdc1eaa0",
+    "bytes": 20799,
+    "entries": 501,
+    "level_move_pairs": 6597,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_pt.pkl",
+    "sha256": "25ffd0870a2fb2bac464922eb8b9a44914d63edd3eec7626a0f50a4fdadcc7c9",
+    "bytes": 21281,
+    "entries": 508,
+    "level_move_pairs": 6753,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  },
+  {
+    "path": "PKHeX.Core/Resources/byte/levelup/lvlmove_hgss.pkl",
+    "sha256": "30995524fba37198a6e19bad0c1cbaa4b3da03f2872ae81cdd7ccb8618f7ac70",
+    "bytes": 21314,
+    "entries": 508,
+    "level_move_pairs": 6764,
+    "license_status": "REFERENCE ONLY; LICENSE REVIEW REQUIRED"
+  }
+]

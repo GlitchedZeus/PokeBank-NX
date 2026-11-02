@@ -1,0 +1,8662 @@
+{
+  "scope": "synthetic inheritance stage; physical daycare slots; varied stub parent/initial IVs; no PID or native legitimacy assertion",
+  "summaries": [
+    {
+      "repository": "pret/pokeheartgold",
+      "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+      "path": "src/get_egg.c",
+      "source_sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+      "comparisons": 12691,
+      "known_branch_rewind_checks": 12691,
+      "draw_counts": {
+        "6": 259,
+        "4": 3108,
+        "5": 9324
+      },
+      "repeated_stat_cases": 0,
+      "case_digest_sha256": "1eb176fc93ccfe2f2e0acb29b2c77ea1ce036b20c9ee57733780ee27b4abfebf"
+    },
+    {
+      "repository": "pret/pokeplatinum",
+      "revision": "637bb186e11b5ce1ee578981311c057498e57126",
+      "path": "src/overlay005/daycare.c",
+      "source_sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+      "comparisons": 12691,
+      "known_branch_rewind_checks": 12691,
+      "draw_counts": {
+        "6": 12691
+      },
+      "repeated_stat_cases": 6125,
+      "case_digest_sha256": "647d3341a961503977d7f92b217938a0bfb99bf6952a1bff76cd0ce5a60d43e9"
+    }
+  ],
+  "item_to_stat": {
+    "0": null,
+    "294": 0,
+    "289": 1,
+    "290": 2,
+    "293": 3,
+    "291": 4,
+    "292": 5
+  },
+  "stat_order": [
+    "HP",
+    "Atk",
+    "Def",
+    "Spe",
+    "SpA",
+    "SpD"
+  ],
+  "fixtures": [
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        2
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        1,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        24,
+        6,
+        9,
+        27,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        1,
+        0,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        24,
+        6,
+        9,
+        27,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        2,
+        0,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        3,
+        9,
+        27,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        3,
+        0,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        6,
+        14,
+        27,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        4,
+        0,
+        3
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        6,
+        22,
+        25,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        5,
+        0,
+        3
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        6,
+        22,
+        12,
+        4
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        1,
+        4
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        24,
+        6,
+        9,
+        27,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        1,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        24,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        2,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        3,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        3,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        14,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        4,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        25,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        5,
+        4,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        27,
+        4
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        1,
+        0,
+        4
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        12,
+        6,
+        9,
+        27,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        1,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        24,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        2,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        3,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        3,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        14,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        4,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        25,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        5,
+        4,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        27,
+        4
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        2,
+        0,
+        4
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        17,
+        9,
+        27,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        1,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        24,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        2,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        3,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        3,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        14,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        4,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        25,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        5,
+        4,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        27,
+        4
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        3,
+        0,
+        4
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        6,
+        22,
+        27,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        1,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        24,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        2,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        3,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        3,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        14,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        4,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        25,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        5,
+        4,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        27,
+        4
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        4,
+        0,
+        3
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        6,
+        22,
+        27,
+        15
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        1,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        24,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        2,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        3,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        3,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        14,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        4,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        25,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        5,
+        4,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        27,
+        4
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        5,
+        0,
+        3
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "31B0DDE4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        13,
+        3,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        1,
+        5,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        24,
+        17,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        2,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        3,
+        9,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        3,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        14,
+        12,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        4,
+        5,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        25,
+        0
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        5,
+        4,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        0,
+        12,
+        6,
+        9,
+        27,
+        4
+      ],
+      "final_seed": "8E425287",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000001",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119,
+        31203,
+        46760
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        0,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        20,
+        4,
+        10,
+        10,
+        30,
+        16
+      ],
+      "final_seed": "B6A8FDE7",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000001",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        4,
+        2
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        20,
+        4,
+        10,
+        10,
+        30,
+        16
+      ],
+      "final_seed": "1FB75CF5",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000001",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        4,
+        2
+      ],
+      "donor_slots": [
+        0,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        10,
+        4,
+        10,
+        10,
+        30,
+        16
+      ],
+      "final_seed": "1FB75CF5",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000001",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119,
+        31203
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        1,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        1
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        20,
+        31,
+        7,
+        10,
+        0,
+        16
+      ],
+      "final_seed": "79E39AC4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000001",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119,
+        31203
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        1,
+        0,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        1
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        20,
+        31,
+        7,
+        10,
+        0,
+        16
+      ],
+      "final_seed": "79E39AC4",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000002",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517,
+        25988,
+        35461
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        4,
+        0,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        13,
+        6,
+        8,
+        11,
+        7,
+        17
+      ],
+      "final_seed": "8A8555E0",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000002",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        2,
+        5
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        27,
+        5,
+        23,
+        11,
+        14,
+        18
+      ],
+      "final_seed": "0DBDDC06",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000002",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        2,
+        5
+      ],
+      "donor_slots": [
+        0,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        13,
+        5,
+        23,
+        11,
+        14,
+        18
+      ],
+      "final_seed": "0DBDDC06",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000002",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517,
+        25988
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        1,
+        2
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        27,
+        6,
+        23,
+        11,
+        14,
+        17
+      ],
+      "final_seed": "6584E301",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "00000002",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517,
+        25988
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        1,
+        0,
+        2
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        27,
+        6,
+        23,
+        11,
+        14,
+        17
+      ],
+      "final_seed": "6584E301",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "12345678",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688,
+        9860,
+        38967
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        1,
+        2,
+        4
+      ],
+      "donor_slots": [
+        0,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        24,
+        20,
+        25,
+        1,
+        1,
+        7
+      ],
+      "final_seed": "983788A6",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "12345678",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        1,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        21,
+        27,
+        30,
+        30,
+        4,
+        8
+      ],
+      "final_seed": "F4E023DC",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "12345678",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        15,
+        27,
+        30,
+        30,
+        4,
+        8
+      ],
+      "final_seed": "F4E023DC",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "12345678",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688,
+        9860
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        2,
+        4
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        15,
+        27,
+        25,
+        1,
+        3,
+        7
+      ],
+      "final_seed": "2684AD1F",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "12345678",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688,
+        9860
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        2,
+        4
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        15,
+        27,
+        25,
+        1,
+        3,
+        7
+      ],
+      "final_seed": "2684AD1F",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322,
+        41633,
+        3824
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        3,
+        5
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        31,
+        2,
+        14,
+        7,
+        11,
+        29
+      ],
+      "final_seed": "0EF04DF5",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        4,
+        5
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        6,
+        2,
+        5,
+        8,
+        18,
+        29
+      ],
+      "final_seed": "43AA5ED3",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322
+      ],
+      "draw_count": 4,
+      "selected_stats": [
+        0,
+        4,
+        5
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        4,
+        2,
+        5,
+        8,
+        18,
+        29
+      ],
+      "final_seed": "43AA5ED3",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322,
+        41633
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        0,
+        3,
+        5
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        6,
+        2,
+        5,
+        19,
+        11,
+        29
+      ],
+      "final_seed": "A2A10A4A",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeheartgold",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322,
+        41633
+      ],
+      "draw_count": 5,
+      "selected_stats": [
+        1,
+        3,
+        5
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        31,
+        17,
+        5,
+        19,
+        11,
+        29
+      ],
+      "final_seed": "A2A10A4A",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        0,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        294,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        289,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        290,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        293,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        291,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        0
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        294
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        289
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        290
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        293
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        291
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000000",
+      "held_items": [
+        292,
+        292
+      ],
+      "draws": [
+        0,
+        59774,
+        21105,
+        12720,
+        36418,
+        58060
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        0,
+        5,
+        3
+      ],
+      "donor_slots": [
+        0,
+        0,
+        0
+      ],
+      "initial_ivs": [
+        0,
+        3,
+        6,
+        9,
+        12,
+        15
+      ],
+      "parents_slot_order": [
+        [
+          7,
+          12,
+          17,
+          22,
+          27,
+          0
+        ],
+        [
+          13,
+          24,
+          3,
+          14,
+          25,
+          4
+        ]
+      ],
+      "child_ivs": [
+        7,
+        3,
+        6,
+        22,
+        12,
+        0
+      ],
+      "final_seed": "E2CCA5EE",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000001",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119,
+        31203,
+        46760
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        1,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        1,
+        31,
+        10,
+        10,
+        30,
+        16
+      ],
+      "final_seed": "B6A8FDE7",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000001",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119,
+        31203,
+        46760
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        1,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        1,
+        31,
+        10,
+        10,
+        30,
+        16
+      ],
+      "final_seed": "B6A8FDE7",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000001",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119,
+        31203,
+        46760
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        1,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        1,
+        31,
+        10,
+        10,
+        30,
+        16
+      ],
+      "final_seed": "B6A8FDE7",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000001",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119,
+        31203,
+        46760
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        1,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        1,
+        31,
+        10,
+        10,
+        30,
+        16
+      ],
+      "final_seed": "B6A8FDE7",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000001",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        16838,
+        44065,
+        53998,
+        8119,
+        31203,
+        46760
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        1,
+        4
+      ],
+      "donor_slots": [
+        1,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        1,
+        4,
+        7,
+        10,
+        13,
+        16
+      ],
+      "parents_slot_order": [
+        [
+          10,
+          15,
+          20,
+          25,
+          30,
+          3
+        ],
+        [
+          20,
+          31,
+          10,
+          21,
+          0,
+          11
+        ]
+      ],
+      "child_ivs": [
+        1,
+        31,
+        10,
+        10,
+        30,
+        16
+      ],
+      "final_seed": "B6A8FDE7",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000002",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517,
+        25988,
+        35461
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        4,
+        1,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        2,
+        6,
+        8,
+        11,
+        7,
+        17
+      ],
+      "final_seed": "8A8555E0",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000002",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517,
+        25988,
+        35461
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        4,
+        1,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        2,
+        6,
+        8,
+        11,
+        7,
+        17
+      ],
+      "final_seed": "8A8555E0",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000002",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517,
+        25988,
+        35461
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        4,
+        1,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        2,
+        6,
+        8,
+        11,
+        7,
+        17
+      ],
+      "final_seed": "8A8555E0",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000002",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517,
+        25988,
+        35461
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        4,
+        1,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        2,
+        6,
+        8,
+        11,
+        7,
+        17
+      ],
+      "final_seed": "8A8555E0",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "00000002",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        33676,
+        28355,
+        21356,
+        3517,
+        25988,
+        35461
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        4,
+        1,
+        1
+      ],
+      "donor_slots": [
+        1,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        2,
+        5,
+        8,
+        11,
+        14,
+        17
+      ],
+      "parents_slot_order": [
+        [
+          13,
+          18,
+          23,
+          28,
+          1,
+          6
+        ],
+        [
+          27,
+          6,
+          17,
+          28,
+          7,
+          18
+        ]
+      ],
+      "child_ivs": [
+        2,
+        6,
+        8,
+        11,
+        7,
+        17
+      ],
+      "final_seed": "8A8555E0",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "12345678",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688,
+        9860,
+        38967
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        1,
+        2,
+        4
+      ],
+      "donor_slots": [
+        0,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        24,
+        20,
+        25,
+        1,
+        1,
+        7
+      ],
+      "final_seed": "983788A6",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "12345678",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688,
+        9860,
+        38967
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        1,
+        2,
+        4
+      ],
+      "donor_slots": [
+        0,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        24,
+        20,
+        25,
+        1,
+        1,
+        7
+      ],
+      "final_seed": "983788A6",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "12345678",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688,
+        9860,
+        38967
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        1,
+        2,
+        4
+      ],
+      "donor_slots": [
+        0,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        24,
+        20,
+        25,
+        1,
+        1,
+        7
+      ],
+      "final_seed": "983788A6",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "12345678",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688,
+        9860,
+        38967
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        1,
+        2,
+        4
+      ],
+      "donor_slots": [
+        0,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        24,
+        20,
+        25,
+        1,
+        1,
+        7
+      ],
+      "final_seed": "983788A6",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "12345678",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        2929,
+        34026,
+        55690,
+        62688,
+        9860,
+        38967
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        1,
+        2,
+        4
+      ],
+      "donor_slots": [
+        0,
+        0,
+        1
+      ],
+      "initial_ivs": [
+        24,
+        27,
+        30,
+        1,
+        4,
+        7
+      ],
+      "parents_slot_order": [
+        [
+          15,
+          20,
+          25,
+          30,
+          3,
+          8
+        ],
+        [
+          21,
+          0,
+          11,
+          22,
+          1,
+          12
+        ]
+      ],
+      "child_ivs": [
+        24,
+        20,
+        25,
+        1,
+        1,
+        7
+      ],
+      "final_seed": "983788A6",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        0,
+        0
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322,
+        41633,
+        3824
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        3,
+        5
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        31,
+        2,
+        14,
+        7,
+        11,
+        29
+      ],
+      "final_seed": "0EF04DF5",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        0,
+        294
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322,
+        41633,
+        3824
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        3,
+        5
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        31,
+        2,
+        14,
+        7,
+        11,
+        29
+      ],
+      "final_seed": "0EF04DF5",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        294,
+        0
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322,
+        41633,
+        3824
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        3,
+        5
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        31,
+        2,
+        14,
+        7,
+        11,
+        29
+      ],
+      "final_seed": "0EF04DF5",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        294,
+        294
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322,
+        41633,
+        3824
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        3,
+        5
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        31,
+        2,
+        14,
+        7,
+        11,
+        29
+      ],
+      "final_seed": "0EF04DF5",
+      "verified": "unchanged retail C vs independent Python"
+    },
+    {
+      "game": "pokeplatinum",
+      "entry_seed": "FFFFFFFF",
+      "held_items": [
+        294,
+        289
+      ],
+      "draws": [
+        48698,
+        9947,
+        53747,
+        17322,
+        41633,
+        3824
+      ],
+      "draw_count": 6,
+      "selected_stats": [
+        2,
+        3,
+        5
+      ],
+      "donor_slots": [
+        0,
+        1,
+        0
+      ],
+      "initial_ivs": [
+        31,
+        2,
+        5,
+        8,
+        11,
+        14
+      ],
+      "parents_slot_order": [
+        [
+          4,
+          9,
+          14,
+          19,
+          24,
+          29
+        ],
+        [
+          6,
+          17,
+          28,
+          7,
+          18,
+          29
+        ]
+      ],
+      "child_ivs": [
+        31,
+        2,
+        14,
+        7,
+        11,
+        29
+      ],
+      "final_seed": "0EF04DF5",
+      "verified": "unchanged retail C vs independent Python"
+    }
+  ]
+}
