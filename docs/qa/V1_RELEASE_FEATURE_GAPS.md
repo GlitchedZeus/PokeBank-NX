@@ -108,7 +108,6 @@
 - `PBX-OTH-012` 🎯v1 Full Gen I–V 20-release, every-action, exact-NRO owner acceptance gate (#313) not met; no v1.0 — After R12 clears its FAILs, schedule the full G01–G12 20-game acceptance round on one exact NRO.
 - `PBX-OTH-013` Hardware status records incomplete or stale: R7–R9 owner results never recorded; R10 row says 'owner testing now'; NRO archive missing R1/R2 (403) and R12; README stale — After #330 merges, run archive-candidate-nro.yml for R1, R2, R10 and 066e1db9 before Jan 2027 expiry. Update the R10 row and README to R11 results, and record that R7–R9 have no owner results.
 - `PBX-OTH-015` Owner's original reports and screenshots not stored verbatim in the repository (Round 6 both reports) — Ask the owner to re-upload both Round 6 reports and screenshots; store them unchanged next to ROUND6_RESULTS_26186464.md.
-- `PBX-OTH-024` Round 11's 34 owner-PASS items are not frozen in the regression gate — Add a GUARDS_ROUND11 block (34 IDs, count-checked against ROUND11_OWNER_WORKSHEET.md) to tests/test_hw_round1_regression_gate.py.
 - `PBX-SPC-008` 🎯v1 Species change Level: whether a species change keeps the Pokemon's current Level has NO SPECIFICATION; generations behave differently today — Ask the owner for a rule (keep current Level vs reset) for Create and for Edit; then align Gen I-III with Gen IV/V or vice versa and add an R12/R13 checklist step.
 - `PBX-VEW-009` View-only notice (L06 follow-up): A or a tap on a field in View must say why nothing changes - accepted for Gen III-V, never implemented for Gen I/II (silent dead taps); Gen IV lock rules lacked a harness fixture — Route Gen I and Gen II passive View A/tap through PokeBank::UIModel::ViewOnlyNotice (editHint/lockedHint) with host tests, then add a View-only notice item for Gen I/II to the next hardware checklist.
 
@@ -131,8 +130,8 @@ These come from the requirement extraction; each pair of documents states the re
 ## 6. Release blockers summary
 
 - Missing v1.0 features: **13**
-- Open defects: **11**; needs investigation: **25**
-- Fixed in code but awaiting hardware: **72**
+- Open defects: **10**; needs investigation: **25**
+- Fixed in code but awaiting hardware: **73**
 - Accepted behaviour changed since acceptance (R12 recheck): **94**
 - Safety-critical issues without hardware acceptance: **35**; untested safety-critical functions: **16**
 

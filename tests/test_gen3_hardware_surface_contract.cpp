@@ -114,6 +114,16 @@ int main() {
         assert(boxTap.find("selectedOccupied") == std::string::npos);
         assert(boxTap.find("beginCreate") == std::string::npos);
         assert(boxTap.find("screen.selectedItemIndex = previous;") != std::string::npos);
+        // Ported from PR #280 (5d47d6d9 / a64a4439): the tapped id is bounded to a real box cell
+        // before it becomes the selection and opens Actions, and a tap never performs the X
+        // shortcut itself (old X = Add; since Round 11 X = Import / Export to file).
+        const auto bound = boxTap.find("if (tapped >= 0 && tapped < slots) {");
+        assert(bound != std::string::npos);
+        assert(bound < boxTap.find("screen.selectedItemIndex = tapped;"));
+        assert(boxTap.find("screen.selectedItemIndex = tapped;") < boxTap.find("beginActions(screen);"));
+        assert(boxTap.find("PokemonFileMenus::") == std::string::npos);
+        assert(boxTap.find("beginImport") == std::string::npos);
+        assert(boxTap.find("exportPokemon") == std::string::npos);
     }
     const auto composite = read("src/UI/TrainerViewScreenCompositeOverlay.cpp");
     const auto move = read("src/UI/ClassicPackedMoveOverlay.inc");
