@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Point PKHEX_ROOT at a PKHeX checkout: dotnet build -p:PKHEX_ROOT=/path/to/PKHeX -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(PKHEX_ROOT)/PKHeX.Core/PKHeX.Core.csproj" />
+  </ItemGroup>
+</Project>
