@@ -1,3 +1,4 @@
+#include "Integration/Gen8/Gen8TeamIndexes.h"
 #include "Integration/Gen8/Gen8NativeSession.h"
 
 #include "Enums/Ball.h"
@@ -293,7 +294,7 @@ std::vector<Modern::TrainerFact> Gen8NativeSession::trainerFacts() const {
     facts.push_back({"Gender", t.gender == 0 ? "Male" : t.gender == 1 ? "Female" : "Unknown"});
     facts.push_back({"Language", Enums::getLanguageName(t.language)});
     const auto& teams = session_.source().teams();
-    facts.push_back({"Battle teams", teams ? std::to_string(teams->size()) + " box references" : "Unreadable (box changes refused)"});
+    facts.push_back({"Battle teams", Gen8::teamFactText(teams, session_.source().teamDiagnostic())});
     return facts;
 }
 

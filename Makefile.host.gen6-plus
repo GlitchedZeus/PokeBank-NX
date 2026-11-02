@@ -1,7 +1,7 @@
 # Gen VI-IX shared application layer (development/gen6-plus): the capability registry, the
 # generation-neutral Modern::NativeSession contract and its per-family adapters. Host tests only;
 # nothing here can write an original save.
-GEN6PLUS_TEST_NAMES := test_game_capability_registry test_gen6_native_session test_modern_sources test_modern_trainer_bridge test_modern_discovery_bounds test_modern_title_sweep test_modern_storage_integrity
+GEN6PLUS_TEST_NAMES := test_game_capability_registry test_gen6_native_session test_modern_sources test_modern_trainer_bridge test_modern_discovery_bounds test_modern_title_sweep test_modern_storage_integrity test_modern_team_indexes
 GEN6PLUS_TESTS := $(addprefix $(HOST_BUILD)/,$(GEN6PLUS_TEST_NAMES))
 GEN6PLUS_SANITIZE_TESTS := $(addsuffix _sanitize,$(GEN6PLUS_TESTS))
 
@@ -26,6 +26,7 @@ GEN6PLUS_MEME_test_modern_sources := yes
 GEN6PLUS_MEME_test_modern_discovery_bounds := yes
 GEN6PLUS_MEME_test_modern_title_sweep := yes
 GEN6PLUS_MEME_test_modern_storage_integrity := yes
+GEN6PLUS_MEME_test_modern_team_indexes := yes
 
 GEN6PLUS_SOURCES_test_game_capability_registry := tests/test_game_capability_registry.cpp src/Games/GameIdentity.cpp
 GEN6PLUS_SOURCES_test_gen6_native_session := tests/test_gen6_native_session.cpp \
@@ -55,6 +56,8 @@ GEN6PLUS_SOURCES_test_modern_discovery_bounds := tests/test_modern_discovery_bou
 GEN6PLUS_SOURCES_test_modern_title_sweep := tests/test_modern_title_sweep.cpp \
 	$(filter-out tests/test_modern_sources.cpp,$(GEN6PLUS_SOURCES_test_modern_sources))
 GEN6PLUS_SOURCES_test_modern_storage_integrity := tests/test_modern_storage_integrity.cpp \
+	$(filter-out tests/test_modern_sources.cpp,$(GEN6PLUS_SOURCES_test_modern_sources))
+GEN6PLUS_SOURCES_test_modern_team_indexes := tests/test_modern_team_indexes.cpp \
 	$(filter-out tests/test_modern_sources.cpp,$(GEN6PLUS_SOURCES_test_modern_sources))
 GEN6PLUS_SOURCES_test_modern_trainer_bridge := tests/test_modern_trainer_bridge.cpp src/Legacy/ModernReadOnlyTrainer.cpp \
 	$(GEN6PLUS_SESSION_SOURCES)

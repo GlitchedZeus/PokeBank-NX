@@ -78,6 +78,7 @@ public:
     [[nodiscard]] uint8_t partyCount() const noexcept { return partyCount_; }
     [[nodiscard]] Gen8::SlotRecord at(SlotRef slot) const;
     [[nodiscard]] const std::optional<std::vector<TeamSlot>>& teams() const noexcept { return teams_; }
+    [[nodiscard]] const std::string& teamDiagnostic() const noexcept { return teamDiagnostic_; }
     [[nodiscard]] const Swish::Block& myStatus() const noexcept { return blocks_[myStatus_]; }
     [[nodiscard]] size_t partyIndex() const noexcept { return party_; }
     [[nodiscard]] size_t boxIndex() const noexcept { return box_; }
@@ -92,6 +93,7 @@ private:
     uint8_t partyCount_ = 0;
     uint64_t revision_ = 0;
     std::optional<std::vector<TeamSlot>> teams_;
+    std::string teamDiagnostic_;   // why teams_ is unreadable
 };
 
 enum class ChangeKind : uint8_t { Edit, Clone, Remove };

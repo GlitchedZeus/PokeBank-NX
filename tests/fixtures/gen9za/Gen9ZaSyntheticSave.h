@@ -21,6 +21,10 @@ struct Options {
     uint8_t partyCount = 2;
     bool dlc = false;          // revision 1 + present flags (size 0x309FA6), else revision 0 (0x2F3284)
     bool includeTeams = true;
+    // Real-save block shapes PKHeX also reads by raw bytes (owner hardware G69-HW-007): the team index
+    // table as Array<Int16>, the lock flags as one Byte value instead of an Object.
+    bool teamIndexesInt16Array = false;
+    bool teamLocksByteValue = false;
 };
 
 inline std::vector<Swish::Block> makeBlocks(const Options& o = {}) {
@@ -58,8 +62,10 @@ inline std::vector<Swish::Block> makeBlocks(const Options& o = {}) {
     if (o.includeTeams) {
         std::vector<uint8_t> idx(72, 0xFF);
         PK8::write16(idx, 0, static_cast<uint16_t>((0 << 8) | 1));
-        object(L::KeyTeamIndexes, idx);
-        object(L::KeyTeamLocks, {0, 0, 0, 0});
+        if (o.teamIndexesInt16Array) blocks.push_back({L::KeyTeamIndexes, Swish::TypeCode::Array, Swish::TypeCode::Int16, idx});
+        else object(L::KeyTeamIndexes, idx);
+        if (o.teamLocksByteValue) blocks.push_back({L::KeyTeamLocks, Swish::TypeCode::Byte, Swish::TypeCode::None, {0}});
+        else object(L::KeyTeamLocks, {0, 0, 0, 0});
     }
     if (o.dlc) blocks.push_back({L::KeySaveRevision, Swish::TypeCode::UInt64, Swish::TypeCode::None, {1, 0, 0, 0, 0, 0, 0, 0}});
     size_t used = Swish::HashSize;

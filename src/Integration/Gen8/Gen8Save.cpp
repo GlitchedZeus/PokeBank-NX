@@ -1,4 +1,5 @@
 #include "Integration/Gen8/Gen8Save.h"
+#include "Integration/Gen8/Gen8TeamIndexes.h"
 
 namespace PokeVault::Integration::Gen8 {
 
@@ -63,24 +64,12 @@ std::optional<Gen8Save> Gen8Save::parse(std::span<const uint8_t> bytes, std::str
             else ++out.diagnostics_.invalidBoxRecords;
         }
 
-    // TeamIndexes8 + team lock flags; storage changes are refused without both.
-    const auto* indexes = out.find(Layout::KeyTeamIndexes);
-    const auto* locks = out.find(Layout::KeyTeamLocks);
-    if (indexes && locks && indexes->bytePayload() && locks->bytePayload() &&
-        indexes->data.size() >= Layout::TeamIndexesMinimum && !locks->data.empty()) {
-        std::vector<TeamSlot> teams;
-        bool valid = true;
-        for (size_t i = 0; i < Layout::TeamCount * 6; ++i) {
-            const auto raw = static_cast<int16_t>(PK8::read16(indexes->data, i * 2));
-            if (raw < 0) continue;
-            const size_t box = static_cast<size_t>(raw) >> 8;
-            const size_t slot = static_cast<size_t>(raw) & 0xFF;
-            if (box >= Layout::BoxCount || slot >= Layout::BoxSlots) { valid = false; break; }
-            const size_t team = i / 6;
-            teams.push_back({team, box, slot, ((locks->data[0] >> team) & 1) != 0});
-        }
-        if (valid) out.teams_ = std::move(teams);
-    }
+    // TeamIndexes8 + team lock flags (Gen8TeamIndexes.h: raw bytes like PKHeX); storage changes are
+    // refused while unreadable, and the reason is kept for the Trainer screen.
+    auto table = readTeamIndexes(out.find(Layout::KeyTeamIndexes), out.find(Layout::KeyTeamLocks),
+                                 Layout::BoxCount, Layout::BoxSlots);
+    out.teams_ = std::move(table.teams);
+    out.teamDiagnostic_ = std::move(table.diagnostic);
     if (error) error->clear();
     return out;
 }

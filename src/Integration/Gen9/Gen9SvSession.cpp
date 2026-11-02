@@ -1,3 +1,4 @@
+#include "Integration/Gen8/Gen8TeamIndexes.h"
 #include "Integration/Gen9/Gen9SvSession.h"
 
 #include "Enums/Ball.h"
@@ -78,18 +79,9 @@ std::optional<Gen9SvSave> Gen9SvSave::parse(std::span<const uint8_t> bytes, std:
         if (b.key == Layout::KeyTeamIndexes) indexes = &b;
         if (b.key == Layout::KeyTeamLocks) locks = &b;
     }
-    if (indexes && locks && indexes->bytePayload() && locks->bytePayload() && indexes->data.size() >= 72 && !locks->data.empty()) {
-        std::vector<TeamSlot> teams;
-        bool valid = true;
-        for (size_t i = 0; i < 36; ++i) {
-            const auto raw = static_cast<int16_t>(PK8::read16(indexes->data, 2 * i));
-            if (raw < 0) continue;
-            const size_t box = static_cast<size_t>(raw) >> 8, slot = static_cast<size_t>(raw) & 0xFF;
-            if (box >= Layout::BoxCount || slot >= Layout::BoxSlots) { valid = false; break; }
-            teams.push_back({i / 6, box, slot, ((locks->data[0] >> (i / 6)) & 1) != 0});
-        }
-        if (valid) out.teams_ = std::move(teams);
-    }
+    auto table = Gen8::readTeamIndexes(indexes, locks, Layout::BoxCount, Layout::BoxSlots);
+    out.teams_ = std::move(table.teams);
+    out.teamDiagnostic_ = std::move(table.diagnostic);
     if (error) error->clear();
     return out;
 }

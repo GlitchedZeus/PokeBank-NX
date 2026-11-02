@@ -1,3 +1,4 @@
+#include "Integration/Gen8/Gen8TeamIndexes.h"
 #include "Integration/Gen9/Gen9SvNativeSession.h"
 
 #include "Enums/GameVersion.h"
@@ -288,7 +289,7 @@ std::vector<Modern::TrainerFact> Gen9SvNativeSession::trainerFacts() const {
     facts.push_back({"TID16 / SID16", std::to_string(tid) + " / " + std::to_string(sid)});
     facts.push_back({"Gender", trainerGender() == 0 ? "Male" : "Female"});
     const auto& teams = session_.source().teams();
-    facts.push_back({"Battle teams", teams ? std::to_string(teams->size()) + " box references" : "Unreadable (box changes refused)"});
+    facts.push_back({"Battle teams", Gen8::teamFactText(teams, session_.source().teamDiagnostic())});
     return facts;
 }
 

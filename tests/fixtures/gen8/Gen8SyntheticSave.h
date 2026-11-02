@@ -63,6 +63,10 @@ struct Options {
     uint8_t partyCount = 2;
     size_t fileSize = L::SwordShieldSizes[0];
     bool includeTeams = true;
+    // Real-save block shapes PKHeX also reads by raw bytes (owner hardware G69-HW-007): the team index
+    // table as Array<Int16>, the lock flags as one Byte value instead of an Object.
+    bool teamIndexesInt16Array = false;
+    bool teamLocksByteValue = false;
     bool lockTeam0 = false;
 };
 
@@ -107,8 +111,10 @@ inline std::vector<Swish::Block> makeBlocks(const Options& o = {}) {
     if (o.includeTeams) {
         std::vector<uint8_t> idx(L::TeamIndexesMinimum, 0xFF);  // -1 = none
         PK8::write16(idx, 0, static_cast<uint16_t>((0 << 8) | 1));  // team 1 holds box 1 slot 2
-        object(L::KeyTeamIndexes, idx);
-        object(L::KeyTeamLocks, {static_cast<uint8_t>(o.lockTeam0 ? 1 : 0), 0, 0, 0});
+        if (o.teamIndexesInt16Array) blocks.push_back({L::KeyTeamIndexes, Swish::TypeCode::Array, Swish::TypeCode::Int16, idx});
+        else object(L::KeyTeamIndexes, idx);
+        if (o.teamLocksByteValue) blocks.push_back({L::KeyTeamLocks, Swish::TypeCode::Byte, Swish::TypeCode::None, {static_cast<uint8_t>(o.lockTeam0 ? 1 : 0)}});
+        else object(L::KeyTeamLocks, {static_cast<uint8_t>(o.lockTeam0 ? 1 : 0), 0, 0, 0});
     }
 
     // Filler Object so the encrypted file has an accepted SWSH size.

@@ -78,6 +78,7 @@ public:
     // Battle-team references. Empty optional when the TeamIndexes/TeamLocks blocks are
     // absent or malformed, in which case storage-changing operations must be refused.
     [[nodiscard]] const std::optional<std::vector<TeamSlot>>& teams() const noexcept { return teams_; }
+    [[nodiscard]] const std::string& teamDiagnostic() const noexcept { return teamDiagnostic_; }
 
     [[nodiscard]] const Swish::Block* find(uint32_t key) const noexcept;
     [[nodiscard]] std::optional<size_t> indexOf(uint32_t key) const noexcept;
@@ -98,6 +99,7 @@ private:
     uint8_t partyCount_ = 0;
     size_t myStatus_ = 0, party_ = 0, box_ = 0;
     std::optional<std::vector<TeamSlot>> teams_;
+    std::string teamDiagnostic_;   // why teams_ is unreadable
     ReadDiagnostics diagnostics_{};
 };
 
