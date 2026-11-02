@@ -483,4 +483,38 @@ Source: `docs/hardware/round12/ISSUE_LEDGER.csv` (QA intake of the owner's `066e
 | `R12-011` | P1 | Move to Vault / Deposit / Withdraw absent from release flow | Missing release feature | Missing Feature | not in build (v1.0 blocker) |
 | `R12-012` | P1 | Vault Pokémon search missing | Missing release feature | Missing Feature | not in build (v1.0 blocker) |
 
+## Round 13 owner results on `9c301c48` (15 PASS / 12 FAIL)
+
+Source: `docs/hardware/round13/OWNER_RESULTS_9c301c48.json` (owner export, unchanged). Checklist titles: `docs/hardware/RETEST_ROUND13_TEMPLATE.md`. A PASS is Hardware Accepted for `9c301c48` only. Every FAIL stays open until the owner tests a new NRO; the Round 14 candidate `d160aa42` is **NOT DEVICE TESTED**. The owner's comprehensive 2,806-check checklist remains the authoritative full acceptance record.
+
+| ID | Checklist title | Owner result | Owner note | Status now | Next hardware check |
+|---|---|---|---|---|---|
+| `H01` | Install · Install, open and SHA-256 | FAIL | gen 5 i dont have a save for white 2 on purpose, i shouldnt be able to open a game save or the editor thing if the save isnt selected first, like i dont have a… | Fixed in Code — Awaiting Hardware | d160aa42 H01 (shared save gate) |
+| `H02` | Gen V Boxes keys · Y is Move, + is Review, same as Gen I–IV | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `H03` | Quiet carry · No pop-up for pickup, place, multi-move, clone or cancel | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `H04` | Gen I/II packed clone · One cursor, lands in the box you choose | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `H05` | Met Location list · Verified catches first, everything else under "Other location (unveri… | FAIL | pikachu has werid met locations | Fixed in Code — Awaiting Hardware | d160aa42 H02 (Met list caption) |
+| `H06` | Met level · No verified catch above the Pokémon's level | FAIL |  | Fixed in Code — Awaiting Hardware | d160aa42 H03 (level-checked rows) |
+| `H07` | Top Up capacity · Preview names each list's native room | FAIL | again only adds some of the items see screen shots | Fixed in Code — Awaiting Hardware | d160aa42 H04 (Top Up capacity + result list) |
+| `H08` | Every TM/HM · Add Missing adds HMs; only Key Items are left out | FAIL |  | Fixed in Code — Awaiting Hardware | d160aa42 H05 (Gen I TM tab plans TMs) |
+| `H09` | Gen III language · PID and stats stay the same | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `H10` | Names by language · Gen III and Gen V names follow Language | FAIL | dont know how to test make it it very simple for next round explaing what to do | Needs Investigation | d160aa42 H06 (step-by-step test instructions; no code change) |
+| `H11` | Export message · Gone when you open something else | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `H12` | Safety · Review, Keep, Discard, Export Copy, occupied destinations | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `H13` | Earlier rounds · Smoke check of Round 11 and Round 12 PASS items | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `R01` | Controller · Disconnect and reconnect | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `R02` | Gen V new game · A freshly started save | FAIL | it shouldnt even go to that menu it should have the file menu pop up to assign a save since there is none | Fixed in Code — Awaiting Hardware | d160aa42 H01 (shared save gate) |
+| `R03` | Save discovery · Moved, missing and junk saves | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `R04` | Launch and return · Quick Games | FAIL | retroacrch games so gens 1-3 crash on quit in retroarch, would be nice if we could have the return feature that we had but im not 100 hopeful, drastic wil alwa… | Open Defect | outstanding: RetroArch Gen I–III quit crash (not in d160aa42) |
+| `R05` | Rerolls · Keep Shiny, Gender and Unown letter | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `R06` | Gen V event rows · Event and location rows look different | FAIL | all pokemon seem the have the same met location : mystery zone, link trade, PKMN Breedeer, other location, im pretty sure they all done have the same met locat… | Fixed in Code — Awaiting Hardware | d160aa42 H02 (Met list caption) |
+| `R07` | Trainer screen · Same layout Gen I–V; Review button never overlaps | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `R08` | Inventory Help · Wording and button pictures Gen I–V | FAIL | gen 4 footer says edit quanitty not edit amout or what gen 1-3 have for the A button,  gen 5 has almost none of the proper footers and im guessing controls | Fixed in Code — Awaiting Hardware | d160aa42 H07 (shared footers) |
+| `R09` | Gen II Unown · Create then Review is visible; one Review key per screen | FAIL | i didnt need to add a met location to ADD it to the box, which is wrong, met location should always be a part od the stuff before a pokemon is added, maybe thi… | Fixed in Code — Awaiting Hardware | d160aa42 H08 (Crystal Create Met Location) |
+| `R10` | Gen V export · Shows in Save Backups | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `R11` | Editor typography · Same text sizes Gen I–V | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `R12` | Popups · Tap outside closes ordinary popups | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `R13` | Gen I/II Origin & Legality · Panel opens and reads correctly | PASS |  | Hardware Accepted (9c301c48) | re-check in d160aa42 P01 |
+| `R14` | Keyboards · Japanese / Korean entry and the search language button | FAIL | the nicknames and the name at the topm left changes but thats it , no keyboard changes or anyhitng | Open Defect | partial: d160aa42 H09 name safety only; shared multilingual keyboard outstanding |
+
 Legend: ⚠️ safety-critical · 🎯v1 required for v1.0.

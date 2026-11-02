@@ -171,6 +171,63 @@ def round12_section():
         raise SystemExit(f"Round 12 ledger is missing {missing}")
     return out + [""]
 
+
+# Round 13 owner results on 9c301c48 (docs/hardware/round13/OWNER_RESULTS_9c301c48.json, byte-identical to the
+# owner's export) and their state. Hardware Accepted applies ONLY to the exact candidate the owner passed; a FAIL
+# stays open until the owner tests a new NRO (Round 14 candidate d160aa42 is NOT DEVICE TESTED).
+R13_FAIL_STATE = {
+    "H01": ("Fixed in Code — Awaiting Hardware", "d160aa42 H01 (shared save gate)"),
+    "R02": ("Fixed in Code — Awaiting Hardware", "d160aa42 H01 (shared save gate)"),
+    "H05": ("Fixed in Code — Awaiting Hardware", "d160aa42 H02 (Met list caption)"),
+    "R06": ("Fixed in Code — Awaiting Hardware", "d160aa42 H02 (Met list caption)"),
+    "H06": ("Fixed in Code — Awaiting Hardware", "d160aa42 H03 (level-checked rows)"),
+    "H07": ("Fixed in Code — Awaiting Hardware", "d160aa42 H04 (Top Up capacity + result list)"),
+    "H08": ("Fixed in Code — Awaiting Hardware", "d160aa42 H05 (Gen I TM tab plans TMs)"),
+    "H10": ("Needs Investigation", "d160aa42 H06 (step-by-step test instructions; no code change)"),
+    "R04": ("Open Defect", "outstanding: RetroArch Gen I–III quit crash (not in d160aa42)"),
+    "R08": ("Fixed in Code — Awaiting Hardware", "d160aa42 H07 (shared footers)"),
+    "R09": ("Fixed in Code — Awaiting Hardware", "d160aa42 H08 (Crystal Create Met Location)"),
+    "R14": ("Open Defect", "partial: d160aa42 H09 name safety only; shared multilingual keyboard outstanding"),
+}
+
+
+def round13_section():
+    import re
+    path = os.path.join(REPO, "docs", "hardware", "round13", "OWNER_RESULTS_9c301c48.json")
+    tmpl = os.path.join(REPO, "docs", "hardware", "RETEST_ROUND13_TEMPLATE.md")
+    if not os.path.isfile(path) or not os.path.isfile(tmpl):
+        return []
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    items = data.get("items", {})
+    titles = dict(re.findall(r"^### ([HR]\d\d) · (.*)$", open(tmpl, encoding="utf-8").read(), re.M))
+    out = ["## Round 13 owner results on `9c301c48` (15 PASS / 12 FAIL)", "",
+           "Source: `docs/hardware/round13/OWNER_RESULTS_9c301c48.json` (owner export, unchanged). Checklist titles: "
+           "`docs/hardware/RETEST_ROUND13_TEMPLATE.md`. A PASS is Hardware Accepted for `9c301c48` only. Every FAIL stays "
+           "open until the owner tests a new NRO; the Round 14 candidate `d160aa42` is **NOT DEVICE TESTED**. The owner's "
+           "comprehensive 2,806-check checklist remains the authoritative full acceptance record.", "",
+           "| ID | Checklist title | Owner result | Owner note | Status now | Next hardware check |",
+           "|---|---|---|---|---|---|"]
+    n_pass = n_fail = 0
+    for k in sorted(items, key=lambda x: (x[0] != "H", x)):
+        v = items[k] if isinstance(items[k], dict) else {}
+        st = (v.get("status") or "").lower()
+        note = v.get("note") or ""
+        if st == "pass":
+            n_pass += 1
+            status, nxt = "Hardware Accepted (9c301c48)", "re-check in d160aa42 P01"
+        else:
+            n_fail += 1
+            status, nxt = R13_FAIL_STATE.get(k, ("Open Defect", "needs triage"))
+        out.append("| " + " | ".join([f"`{k}`", cell(titles.get(k, ""), 90), st.upper() or "?", cell(note, 160),
+                                      status, nxt]) + " |")
+    if (n_pass, n_fail) != (15, 12):
+        raise SystemExit(f"Round 13 results changed: {n_pass} PASS / {n_fail} FAIL (expected 15 / 12)")
+    missing = sorted(set(R13_FAIL_STATE) - {k for k, v in items.items() if (v.get("status") or "").lower() != "pass"})
+    if missing:
+        raise SystemExit(f"Round 13 FAIL map names IDs the owner did not fail: {missing}")
+    return out + [""]
+
 def write_ledger(issues, C):
     by_area = collections.defaultdict(list)
     for i in issues:
@@ -212,6 +269,7 @@ def write_ledger(issues, C):
     for area in leftovers:
         out += [f"## {area}", ""] + [f"- `{i['id']}` {cell(i.get('title'))} — {i['status']}" for i in by_area[area]] + [""]
     out += round12_section()
+    out += round13_section()
     out += ["Legend: ⚠️ safety-critical · 🎯v1 required for v1.0.", ""]
     open(os.path.join(OUT, "MASTER_HARDWARE_ACCEPTANCE_LEDGER.md"), "w").write("\n".join(line.rstrip() for line in out).rstrip("\n") + "\n")
 
