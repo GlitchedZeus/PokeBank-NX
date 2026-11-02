@@ -32,7 +32,7 @@ on:
       - 'tools/fetch_product_art.py'
       - 'tests/test_gen4*'
       - 'Makefile'
-      - 'build-system/host/Makefile.host.gen4'
+      - 'build-system/host/build-system/host/Makefile.host.gen4'
       - '.github/workflows/gen4-shared-editor-candidate.yml'
   workflow_dispatch:
 
