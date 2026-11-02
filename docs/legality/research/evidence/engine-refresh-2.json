@@ -1,0 +1,71 @@
+{
+  "retrieved_utc": "2026-10-11T23:06:10.418714+00:00",
+  "accepted": "fe3e3d054ef7d42c31df3e772e8370e2c7587c8a",
+  "open_prs": [
+    {
+      "number": 270,
+      "title": "Gen I\u2013IV legality milestone: RNG-domain validation and coherent move-history evidence",
+      "sha": "1f7bde7972c92d881f36cea8b3aded74c4a7f80b",
+      "base": "feature/legality-engine-gen1-4-20260929",
+      "draft": true,
+      "included_in_accepted": false
+    },
+    {
+      "number": 252,
+      "title": "Research: source-pinned Gen I\u2013IV forensic legality audit and implementation handoff",
+      "sha": "8ddefb0109f4350447c43f75ba6efe2e47552411",
+      "base": "feature/legality-engine-gen1-4-20260929",
+      "draft": true,
+      "included_in_accepted": false
+    },
+    {
+      "number": 230,
+      "title": "Legality: exclude unhatched PK2\u2013PK4 from adult source-free move pools",
+      "sha": "95416a8f2d0a7922abee18953ce9e7d47a8de214",
+      "base": "feature/legality-sourcefree-pk12-move-compatibility-20261011",
+      "draft": true,
+      "included_in_accepted": false
+    },
+    {
+      "number": 229,
+      "title": "Legality: source-free native PK1/PK2 move compatibility across RBY/GSC",
+      "sha": "14baf42c03acd36915b90b5f70761a89055fbdd9",
+      "base": "feature/legality-sourcefree-pk4-palpark-move-history-20261011",
+      "draft": true,
+      "included_in_accepted": false
+    },
+    {
+      "number": 228,
+      "title": "Legality: Pal Park PK4 retained Gen III move compatibility with transfer guards",
+      "sha": "3df1de8316d14ab0e2b3405655e88880834092d4",
+      "base": "feature/legality-sourcefree-pk4-gen4-move-acquisition-20261011",
+      "draft": true,
+      "included_in_accepted": false
+    },
+    {
+      "number": 227,
+      "title": "Legality: source-free PK4 original-retail and cross-game move evidence",
+      "sha": "a1eea80bdd1bdd611cf1d528adb807524d8b6716",
+      "base": "feature/legality-sourcefree-pk3-move-acquisition-20261011",
+      "draft": true,
+      "included_in_accepted": false
+    },
+    {
+      "number": 144,
+      "title": "Legality: add Gen I-IV PKHeX parity ledger",
+      "sha": "b450bf25dbcd63047cfcfd85ab8a45d69b602498",
+      "base": "feature/legality-engine-gen1-4-20260929",
+      "draft": true,
+      "included_in_accepted": false
+    },
+    {
+      "number": 103,
+      "title": "Legality engine: Gen I-IV exact-game analysis foundation",
+      "sha": "fe3e3d054ef7d42c31df3e772e8370e2c7587c8a",
+      "base": "feature/gen4-full-editor-20260928",
+      "draft": true,
+      "included_in_accepted": true
+    }
+  ],
+  "scope": "Read-only GitHub refresh; no accepted/main branch movement by research"
+}

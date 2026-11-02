@@ -1,0 +1,31 @@
+{
+  "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+  "path": "PKHeX.Core/Resources/legality/mgdb/wc4.pkl",
+  "sha256": "14523c2356e2b8a33b4fa697c8d68a68a3a45fac4f7a9c39c3696a9d0f7f8d67",
+  "pcd_records": 590,
+  "pokemon_templates": 247,
+  "projected_fields": [
+    "species",
+    "tid",
+    "sid",
+    "pid",
+    "metLevel",
+    "metLocation",
+    "ball",
+    "form",
+    "gender",
+    "language",
+    "version",
+    "otGender",
+    "fateful",
+    "cardId"
+  ],
+  "omitted_families": [
+    "initial moves",
+    "OT and nickname raw text",
+    "ribbons",
+    "individual release evidence",
+    "original versus reconstructed status"
+  ],
+  "inference": "Projection-only; no global legality or archive authenticity proof"
+}

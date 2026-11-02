@@ -1,0 +1,228 @@
+{
+  "repository": "pret/pokeemerald",
+  "revision": "731ad5bfd6e6f265508d0efcca0ba42f9dcf5881",
+  "source_path": "src/daycare.c",
+  "source_sha256": "b20e1aef476abbd91b4882cca5dbe03002a0473c3a963bbadfce9dc7c8984964",
+  "eligibility_cases": 5832,
+  "additional_retail_checks": [
+    {
+      "repository": "pret/pokeheartgold",
+      "revision": "9d8b7591f09b65804da2fb2dfd56f320633e0d36",
+      "source_path": "src/get_egg.c",
+      "source_sha256": "65f7bc5bb30aedea2260cdbc6a80af99da4d5f34f0681828dfd355b4d8bd08b2",
+      "eligibility_cases": 5832,
+      "scope": "same abstract eligibility control-flow inputs; no role function executed"
+    },
+    {
+      "repository": "pret/pokeplatinum",
+      "revision": "637bb186e11b5ce1ee578981311c057498e57126",
+      "source_path": "src/overlay005/daycare.c",
+      "source_sha256": "88e0fac100a3b25f82208509dd01e98e84ffda945ab5e221d39a976e5aafaf0e",
+      "eligibility_cases": 5832,
+      "scope": "same abstract eligibility control-flow inputs; no role function executed"
+    }
+  ],
+  "total_eligibility_comparisons": 17496,
+  "scores": {
+    "0": 4488,
+    "50": 672,
+    "70": 28,
+    "20": 644
+  },
+  "ordered_case_digest_sha256": "a03a33d92a8a7db69c88c35b692532b5df385be324888c62e34dad5d0316e329",
+  "role_cases": [
+    {
+      "case": "female_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": false,
+      "baby_stub_label": 20,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "female_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": true,
+      "baby_stub_label": 20,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "female_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": false,
+      "baby_stub_label": 20,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "female_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": true,
+      "baby_stub_label": 20,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "male_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": false,
+      "baby_stub_label": 20,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "male_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": true,
+      "baby_stub_label": 20,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "male_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": false,
+      "baby_stub_label": 20,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "male_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": true,
+      "baby_stub_label": 20,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "genderless_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": false,
+      "baby_stub_label": 20,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "genderless_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": true,
+      "baby_stub_label": 20,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "genderless_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": false,
+      "baby_stub_label": 20,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "genderless_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": true,
+      "baby_stub_label": 20,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "ordinary_pair",
+      "reversed_deposit_order": false,
+      "pid_bit15": false,
+      "baby_stub_label": 20,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "ordinary_pair",
+      "reversed_deposit_order": false,
+      "pid_bit15": true,
+      "baby_stub_label": 20,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "ordinary_pair",
+      "reversed_deposit_order": true,
+      "pid_bit15": false,
+      "baby_stub_label": 20,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "ordinary_pair",
+      "reversed_deposit_order": true,
+      "pid_bit15": true,
+      "baby_stub_label": 20,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "nidoran_f_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": false,
+      "baby_stub_label": 41,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "nidoran_f_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": true,
+      "baby_stub_label": 42,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "nidoran_f_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": false,
+      "baby_stub_label": 41,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "nidoran_f_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": true,
+      "baby_stub_label": 42,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "illumise_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": false,
+      "baby_stub_label": 43,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "illumise_plus_ditto",
+      "reversed_deposit_order": false,
+      "pid_bit15": true,
+      "baby_stub_label": 44,
+      "move_mother_slot": 0,
+      "move_father_slot": 1
+    },
+    {
+      "case": "illumise_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": false,
+      "baby_stub_label": 43,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    },
+    {
+      "case": "illumise_plus_ditto",
+      "reversed_deposit_order": true,
+      "pid_bit15": true,
+      "baby_stub_label": 44,
+      "move_mother_slot": 1,
+      "move_father_slot": 0
+    }
+  ],
+  "scope": "Unchanged original retail functions vs independent model; accessor/gender/lineage stubs supplied explicitly. Abstract categories are not proven species/PID pairs. No native specimen or egg rate simulation."
+}

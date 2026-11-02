@@ -1,0 +1,118 @@
+{
+  "retrieved_utc": "2026-10-11T16:31:31.208316+00:00",
+  "accepted": "4d3026e0bbe90f2eb1505c107b1c74498c051549",
+  "main": "f79f005ce9c6d47a5ee2b0c4056f29b7e88e2598",
+  "pulls": [
+    {
+      "number": 249,
+      "title": "Legality: native PK4 egg move-family evidence from retained original game",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-gen4-egg-move-source-family-20261011",
+      "sha": "79a5bad43c56cc09643d41ab6d8972af4d640d1e",
+      "base": "feature/legality-engine-gen1-4-20260929",
+      "included_in_accepted": false
+    },
+    {
+      "number": 248,
+      "title": "Legality ledger: verified accepted #235\u2013242 and pending method-aware stack",
+      "state": "open",
+      "draft": true,
+      "head": "docs/legality-20261011-accepted-through-242",
+      "sha": "06eda48b4ea366dcd062cfd34602af8aee32c11c",
+      "base": "feature/legality-emerald-levelup-pinned-evidence-20261011",
+      "included_in_accepted": false
+    },
+    {
+      "number": 247,
+      "title": "Legality: pinned full Emerald level-up method and minimum-level evidence (386 species)",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-emerald-levelup-pinned-evidence-20261011",
+      "sha": "b12f4225ae6af9eeb4aa4db9766adc10d69bc51b",
+      "base": "feature/legality-pk3-gamecube-unanchored-moves-20261011",
+      "included_in_accepted": false
+    },
+    {
+      "number": 246,
+      "title": "Legality: detached GameCube-origin PK3 gets source-neutral four-move GBA compatibility bounds",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-pk3-gamecube-unanchored-moves-20261011",
+      "sha": "6c0259bff9780d5008abbf89ed5c11ffa46cbd1b",
+      "base": "feature/legality-pk2-timecapsule-invalid-move-reporting-20261011",
+      "included_in_accepted": false
+    },
+    {
+      "number": 245,
+      "title": "Legality: don't mistake out-of-domain native PK2 moves for Gen II Time Capsule learning",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-pk2-timecapsule-invalid-move-reporting-20261011",
+      "sha": "916e9931250476af4ffa1e5b6f08baacc5488a80",
+      "base": "feature/legality-pk2-conditional-timecapsule-stages-20261011",
+      "included_in_accepted": false
+    },
+    {
+      "number": 244,
+      "title": "Legality: bound conditional PK2 Time Capsule return-stage moves and evolutions",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-pk2-conditional-timecapsule-stages-20261011",
+      "sha": "12a6db6550ff22976683cdd867435c95c546c704",
+      "base": "feature/legality-sourcefree-pk2-timecapsule-ancestry-20261011",
+      "included_in_accepted": false
+    },
+    {
+      "number": 230,
+      "title": "Legality: exclude unhatched PK2\u2013PK4 from adult source-free move pools",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-sourcefree-egg-move-guard-20261011",
+      "sha": "95416a8f2d0a7922abee18953ce9e7d47a8de214",
+      "base": "feature/legality-sourcefree-pk12-move-compatibility-20261011",
+      "included_in_accepted": false
+    },
+    {
+      "number": 229,
+      "title": "Legality: source-free native PK1/PK2 move compatibility across RBY/GSC",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-sourcefree-pk12-move-compatibility-20261011",
+      "sha": "14baf42c03acd36915b90b5f70761a89055fbdd9",
+      "base": "feature/legality-sourcefree-pk4-palpark-move-history-20261011",
+      "included_in_accepted": false
+    },
+    {
+      "number": 228,
+      "title": "Legality: Pal Park PK4 retained Gen III move compatibility with transfer guards",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-sourcefree-pk4-palpark-move-history-20261011",
+      "sha": "3df1de8316d14ab0e2b3405655e88880834092d4",
+      "base": "feature/legality-sourcefree-pk4-gen4-move-acquisition-20261011",
+      "included_in_accepted": false
+    },
+    {
+      "number": 227,
+      "title": "Legality: source-free PK4 original-retail and cross-game move evidence",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-sourcefree-pk4-gen4-move-acquisition-20261011",
+      "sha": "a1eea80bdd1bdd611cf1d528adb807524d8b6716",
+      "base": "feature/legality-sourcefree-pk3-move-acquisition-20261011",
+      "included_in_accepted": false
+    },
+    {
+      "number": 103,
+      "title": "Legality engine: Gen I-IV exact-game analysis foundation",
+      "state": "open",
+      "draft": true,
+      "head": "feature/legality-engine-gen1-4-20260929",
+      "sha": "4d3026e0bbe90f2eb1505c107b1c74498c051549",
+      "base": "feature/gen4-full-editor-20260928",
+      "included_in_accepted": true
+    }
+  ],
+  "note": "Open PR API snapshot; ancestry, not open status, establishes inclusion. Prior closed PR snapshots retained separately."
+}

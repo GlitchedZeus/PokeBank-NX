@@ -1,0 +1,2442 @@
+[
+  {
+    "game_resource": "gs",
+    "species": 172,
+    "move": 84,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "gs",
+    "species": 172,
+    "move": 204,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "gs",
+    "species": 172,
+    "move": 39,
+    "level": 6,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "gs",
+    "species": 172,
+    "move": 86,
+    "level": 8,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "gs",
+    "species": 172,
+    "move": 186,
+    "level": 11,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "c",
+    "species": 172,
+    "move": 84,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "c",
+    "species": 172,
+    "move": 204,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "c",
+    "species": 172,
+    "move": 39,
+    "level": 6,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "c",
+    "species": 172,
+    "move": 86,
+    "level": 8,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "c",
+    "species": 172,
+    "move": 186,
+    "level": 11,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 172,
+    "move": 84,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 172,
+    "move": 204,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 172,
+    "move": 39,
+    "level": 6,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 172,
+    "move": 86,
+    "level": 8,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 172,
+    "move": 186,
+    "level": 11,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 206,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 189,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 232,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 290,
+    "move": 91,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 141,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 28,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 104,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 210,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 103,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 14,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 163,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 97,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 291,
+    "move": 226,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 180,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 109,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 247,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "rs",
+    "species": 292,
+    "move": 288,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 172,
+    "move": 84,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 172,
+    "move": 204,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 172,
+    "move": 39,
+    "level": 6,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 172,
+    "move": 86,
+    "level": 8,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 172,
+    "move": 186,
+    "level": 11,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 206,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 189,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 232,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 290,
+    "move": 91,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 141,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 28,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 104,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 210,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 103,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 14,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 163,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 97,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 291,
+    "move": 226,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 180,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 109,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 247,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "e",
+    "species": 292,
+    "move": 288,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 172,
+    "move": 84,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 172,
+    "move": 204,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 172,
+    "move": 39,
+    "level": 6,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 172,
+    "move": 86,
+    "level": 8,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 172,
+    "move": 186,
+    "level": 11,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 206,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 189,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 232,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 290,
+    "move": 91,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 141,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 28,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 104,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 210,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 103,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 14,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 163,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 97,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 291,
+    "move": 226,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 180,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 109,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 247,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "fr",
+    "species": 292,
+    "move": 288,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 172,
+    "move": 84,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 172,
+    "move": 204,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 172,
+    "move": 39,
+    "level": 6,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 172,
+    "move": 86,
+    "level": 8,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 172,
+    "move": 186,
+    "level": 11,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 206,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 189,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 232,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 290,
+    "move": 91,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 141,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 28,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 104,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 210,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 103,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 14,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 163,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 97,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 291,
+    "move": 226,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 180,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 109,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 247,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "lg",
+    "species": 292,
+    "move": 288,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 172,
+    "move": 84,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 172,
+    "move": 204,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 172,
+    "move": 39,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 172,
+    "move": 86,
+    "level": 10,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 172,
+    "move": 186,
+    "level": 13,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 172,
+    "move": 417,
+    "level": 18,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 206,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 189,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 232,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 290,
+    "move": 91,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 450,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 141,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 28,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 104,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 210,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 103,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 14,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 163,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 97,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 226,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 291,
+    "move": 404,
+    "level": 52,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 180,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 109,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 425,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 288,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 377,
+    "level": 52,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "dp",
+    "species": 292,
+    "move": 247,
+    "level": 59,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 172,
+    "move": 84,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 172,
+    "move": 204,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 172,
+    "move": 39,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 172,
+    "move": 86,
+    "level": 10,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 172,
+    "move": 186,
+    "level": 13,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 172,
+    "move": 417,
+    "level": 18,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 206,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 189,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 232,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 290,
+    "move": 91,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 450,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 141,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 28,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 104,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 210,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 103,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 14,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 163,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 97,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 226,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 291,
+    "move": 404,
+    "level": 52,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 180,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 109,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 425,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 288,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 377,
+    "level": 52,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "pt",
+    "species": 292,
+    "move": 247,
+    "level": 59,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 172,
+    "move": 84,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 172,
+    "move": 204,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 172,
+    "move": 39,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 172,
+    "move": 86,
+    "level": 10,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 172,
+    "move": 186,
+    "level": 13,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 172,
+    "move": 417,
+    "level": 18,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 206,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 189,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 232,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 290,
+    "move": 91,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 450,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 141,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 28,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 104,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 210,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 103,
+    "level": 20,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 14,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 163,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 97,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 226,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 291,
+    "move": 404,
+    "level": 52,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 10,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 106,
+    "level": 1,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 141,
+    "level": 5,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 28,
+    "level": 9,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 154,
+    "level": 14,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 170,
+    "level": 19,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 180,
+    "level": 25,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 109,
+    "level": 31,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 425,
+    "level": 38,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 288,
+    "level": 45,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 377,
+    "level": 52,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  },
+  {
+    "game_resource": "hgss",
+    "species": 292,
+    "move": 247,
+    "level": 59,
+    "source": "PKHeX@6501f0ab46e8f8ca048539dbaf8cae8cb104e722",
+    "scope": "reference fact; not specimen"
+  }
+]

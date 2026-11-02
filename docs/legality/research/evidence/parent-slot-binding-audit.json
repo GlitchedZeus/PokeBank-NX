@@ -1,0 +1,1689 @@
+{
+  "engine_revision": "fe3e3d054ef7d42c31df3e772e8370e2c7587c8a",
+  "cases": [
+    {
+      "game": "emerald_gba",
+      "seed": "00000000",
+      "final_seed": "E2CCA5EE",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        0,
+        0,
+        30,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "00000000",
+      "final_seed": "E2CCA5EE",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        0,
+        0,
+        30,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "00000001",
+      "final_seed": "B6A8FDE7",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        31,
+        31,
+        0,
+        30,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "00000001",
+      "final_seed": "B6A8FDE7",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        31,
+        31,
+        0,
+        30,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "00000002",
+      "final_seed": "8A8555E0",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        31,
+        0,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "00000002",
+      "final_seed": "8A8555E0",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        31,
+        0,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "00000003",
+      "final_seed": "5E61ADD9",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "00000003",
+      "final_seed": "5E61ADD9",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "0000002A",
+      "final_seed": "A4F314C8",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        0,
+        31,
+        31,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "0000002A",
+      "final_seed": "A4F314C8",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        0,
+        31,
+        31,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "0000FFFF",
+      "final_seed": "66E94DF5",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        31,
+        30,
+        0,
+        0,
+        31
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "0000FFFF",
+      "final_seed": "66E94DF5",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        31,
+        30,
+        0,
+        0,
+        31
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "12345678",
+      "final_seed": "983788A6",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "12345678",
+      "final_seed": "983788A6",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "FFFFFFFF",
+      "final_seed": "0EF04DF5",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        30,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "emerald_gba",
+      "seed": "FFFFFFFF",
+      "final_seed": "0EF04DF5",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        30,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "00000000",
+      "final_seed": "E2CCA5EE",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        0,
+        30,
+        0,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "00000000",
+      "final_seed": "E2CCA5EE",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        0,
+        30,
+        0,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "00000001",
+      "final_seed": "B6A8FDE7",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        31,
+        0,
+        31,
+        0,
+        30,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "00000001",
+      "final_seed": "B6A8FDE7",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        31,
+        0,
+        31,
+        0,
+        30,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "00000002",
+      "final_seed": "8A8555E0",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        31,
+        0,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "00000002",
+      "final_seed": "8A8555E0",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        31,
+        0,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "00000003",
+      "final_seed": "5E61ADD9",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "00000003",
+      "final_seed": "5E61ADD9",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "0000002A",
+      "final_seed": "A4F314C8",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        31,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "0000002A",
+      "final_seed": "A4F314C8",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        31,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "0000FFFF",
+      "final_seed": "66E94DF5",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        31,
+        30,
+        0,
+        0,
+        0,
+        31
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "0000FFFF",
+      "final_seed": "66E94DF5",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        31,
+        30,
+        0,
+        0,
+        0,
+        31
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "12345678",
+      "final_seed": "983788A6",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "12345678",
+      "final_seed": "983788A6",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "FFFFFFFF",
+      "final_seed": "0EF04DF5",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        30,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "ruby_gba",
+      "seed": "FFFFFFFF",
+      "final_seed": "0EF04DF5",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        30,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "firered_gba",
+      "seed": "00000000",
+      "final_seed": "E2CCA5EE",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        0,
+        30,
+        0,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "firered_gba",
+      "seed": "00000000",
+      "final_seed": "E2CCA5EE",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        0,
+        30,
+        0,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "firered_gba",
+      "seed": "00000001",
+      "final_seed": "B6A8FDE7",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        31,
+        0,
+        31,
+        0,
+        30,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "firered_gba",
+      "seed": "00000001",
+      "final_seed": "B6A8FDE7",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        31,
+        0,
+        31,
+        0,
+        30,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "firered_gba",
+      "seed": "00000002",
+      "final_seed": "8A8555E0",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        31,
+        0,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "firered_gba",
+      "seed": "00000002",
+      "final_seed": "8A8555E0",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        30,
+        31,
+        0,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "firered_gba",
+      "seed": "00000003",
+      "final_seed": "5E61ADD9",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "firered_gba",
+      "seed": "00000003",
+      "final_seed": "5E61ADD9",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "firered_gba",
+      "seed": "0000002A",
+      "final_seed": "A4F314C8",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        31,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "firered_gba",
+      "seed": "0000002A",
+      "final_seed": "A4F314C8",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        31,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "firered_gba",
+      "seed": "0000FFFF",
+      "final_seed": "66E94DF5",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        31,
+        30,
+        0,
+        0,
+        0,
+        31
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "firered_gba",
+      "seed": "0000FFFF",
+      "final_seed": "66E94DF5",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        31,
+        30,
+        0,
+        0,
+        0,
+        31
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "firered_gba",
+      "seed": "12345678",
+      "final_seed": "983788A6",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "firered_gba",
+      "seed": "12345678",
+      "final_seed": "983788A6",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        30,
+        30,
+        0,
+        31,
+        0
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    },
+    {
+      "game": "firered_gba",
+      "seed": "FFFFFFFF",
+      "final_seed": "0EF04DF5",
+      "father_daycare_slot": 0,
+      "mother_daycare_slot": 1,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        30,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": true,
+      "joint_iv_contradicted": false
+    },
+    {
+      "game": "firered_gba",
+      "seed": "FFFFFFFF",
+      "final_seed": "0EF04DF5",
+      "father_daycare_slot": 1,
+      "mother_daycare_slot": 0,
+      "slot0_ivs": [
+        30,
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "slot1_ivs": [
+        31,
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "observed_ivs": [
+        0,
+        0,
+        30,
+        31,
+        0,
+        30
+      ],
+      "scope": "conditional synthetic IV stage with caller-attested parent move hypothesis; not native specimen",
+      "stage_matches_retail": true,
+      "joint_consistent": false,
+      "joint_iv_contradicted": true
+    }
+  ],
+  "stage_agreements": 48,
+  "correct_joint_matches": 24,
+  "incorrect_candidate_rejections": 24,
+  "finding": "Joint helper always binds father to retail daycare slot 0; input contains no actual daycare-slot mapping. Candidate-local discrepancy, no global Invalid claim."
+}
