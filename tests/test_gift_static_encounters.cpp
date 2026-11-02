@@ -14,6 +14,11 @@
 //    whose times differ in level keeps one row per level, and the caught time written for a grouped
 //    row is the pending time when the row allows it, otherwise a STATED default; it round-trips
 //    through Add -> export -> strict reparse.
+// 4. Owner decision (Nov 2): "Do not label a Pokémon's complete acquisition history Verified simply
+//    because its encounter exists in the game's scripts." A ticket / event-Pokémon / other-game
+//    dependent encounter is listed as "encounter in the game" but is never a verified encounter, and
+//    its editor / Review note reads Incomplete; every row carries its source confidence, and a Gen IV
+//    / V (single-source) data row says so in its evidence note.
 #include "fixtures/gsc_pokemon_fixture.h"
 #include "Integration/Encounter/EncounterContext45.h"
 #include "Integration/Encounter/GiftStaticEncounters.h"
@@ -187,8 +192,7 @@ void gen45PickerRows() {
     gen45Verified(12, 487, 47, 117, "Static Lv. 47", "Platinum Giratina Distortion World");
     gen45Verified(10, 63, 1, 2001, "Trade Lv. 1+", "Diamond Abra in-game trade (2001)");
     gen45Verified(12, 138, 20, 94, "Fossil Lv. 20", "Platinum Omanyte fossil Oreburgh");
-    gen45Verified(21, 570, 10, 8, "Event Lv. 10", "Black Zorua Castelia City");
-    gen45Verified(20, 571, 25, 8, "Event Lv. 10 via Zorua", "White Zoroark via Zorua", false);
+    // (Black / White Zorua / Zoroark need an event Pokémon in the party: Incomplete, acquisitionTiers)
     gen45Verified(23, 133, 10, 8, "Gift Lv. 10", "Black 2 Eevee Castelia City");
     gen45Verified(22, 133, 10, 8, "Gift Lv. 10", "White 2 Eevee Castelia City");
     gen45Verified(23, 570, 25, 10, "Static Lv. 25", "Black 2 N's Zorua Driftveil City");
@@ -418,6 +422,105 @@ void crystalTimeRoundTrip() {
     }
 }
 
+// ---- Owner decision (Nov 2): script-backed encounter vs access prerequisite vs Incomplete ----
+void acquisitionTiers() {
+    std::size_t total = 0, prereqRows = 0;
+    for (const auto& r : GS::kRows) {
+        ++total;
+        if (r.prereq != GS::Prerequisite::None) {
+            ++prereqRows;
+            require(!GS::prerequisiteReason(r).empty(), "every prerequisite row names its reason");
+        }
+        const bool gen45 = r.game.find("_nds") != std::string_view::npos;
+        require(!gen45 || r.confidence == GS::Confidence::SingleSource,
+                "a Gen IV / V row is single source (PKHeX), never independently verified");
+        require(r.game == "crystal_gbc" || r.confidence != GS::Confidence::PretChecked,
+                "only Crystal rows are fully pret cross-checked");
+    }
+    require(total == 1332, "all 1332 rows preserved");
+    require(prereqRows > 0, "prerequisite rows present");
+    const auto prereq = [](std::string_view game, uint16_t species, uint16_t location, uint8_t level) {
+        const auto* r = row(game, species, location, level);
+        return r ? r->prereq : GS::Prerequisite::None;
+    };
+    require(prereq("emerald_gba", 249, 211, 70) == GS::Prerequisite::TicketOrItem, "Emerald Navel Rock: MysticTicket");
+    require(prereq("emerald_gba", 386, 200, 30) == GS::Prerequisite::TicketOrItem, "Emerald Birth Island: AuroraTicket");
+    require(prereq("emerald_gba", 151, 201, 30) == GS::Prerequisite::TicketOrItem, "Emerald Faraway Island: Old Sea Map");
+    require(prereq("emerald_gba", 380, 73, 50) == GS::Prerequisite::TicketOrItem, "Emerald Southern Island: Eon Ticket");
+    require(prereq("ruby_gba", 380, 73, 50) == GS::Prerequisite::TicketOrItem, "Ruby Southern Island: Eon Ticket");
+    require(prereq("firered_gba", 386, 187, 30) == GS::Prerequisite::TicketOrItem, "FireRed Birth Island: AuroraTicket");
+    require(prereq("platinum_nds", 492, 63, 30) == GS::Prerequisite::TicketOrItem, "Platinum Shaymin: Oak's Letter");
+    require(prereq("platinum_nds", 491, 79, 50) == GS::Prerequisite::TicketOrItem, "Platinum Darkrai: Member Card");
+    require(prereq("heartgold_nds", 483, 231, 1) == GS::Prerequisite::EventPokemon, "HeartGold Sinjoh Dialga: event Arceus");
+    require(prereq("soulsilver_nds", 380, 140, 40) == GS::Prerequisite::TicketOrItem, "SoulSilver Latias: Enigma Stone");
+    require(prereq("black_nds", 494, 62, 15) == GS::Prerequisite::TicketOrItem, "Black Victini: Liberty Pass");
+    require(prereq("white_nds", 570, 8, 10) == GS::Prerequisite::EventPokemon, "White Zorua: event Celebi");
+    require(prereq("crystal_gbc", 251, 14, 30) == GS::Prerequisite::TicketOrItem, "Crystal Celebi: GS Ball");
+    require(prereq("crystal_gbc", 133, 16, 20) == GS::Prerequisite::None, "Crystal Eevee: no prerequisite");
+    const auto* eevee = row("crystal_gbc", 133, 16, 20);
+    const auto* lapras = row("firered_gba", 131, 134, 25);
+    const auto* hitmonlee = row("firered_gba", 106, 98, 25);
+    require(eevee && eevee->confidence == GS::Confidence::PretChecked, "Crystal Eevee: pret cross-checked");
+    require(lapras && lapras->confidence == GS::Confidence::PretSpotChecked, "FireRed Lapras: pret spot-checked");
+    require(hitmonlee && hitmonlee->confidence == GS::Confidence::SingleSource, "FireRed Hitmonlee: single source");
+
+    // Gen IV / V: listed as the encounter, never verified; the note reads Incomplete.
+    const auto incomplete45 = [](uint8_t origin, uint16_t species, uint8_t level, uint16_t location,
+                                 const std::string& prerequisite, const std::string& what) {
+        const C45::Catalogue context(origin, species, 0, gen45Native(origin), {}, level);
+        const auto& choices = context.choices();
+        const auto detail = context.detail(location, [](uint16_t s) { return std::string(Names::getSpeciesName(s)); });
+        const auto note = C45::unverifiedMetNote45(origin, species, location, level);
+        require(std::find(choices.begin(), choices.end(), location) != choices.end() &&
+                !context.verifiedEncounter(location) && contains(detail, GS::kAccessUnverified) &&
+                contains(note, "Incomplete") && contains(note, prerequisite),
+                what + ": encounter listed, never verified (" + detail + " / " + note + ")");
+    };
+    incomplete45(12, 492, 30, 63, "ticket / distribution", "Platinum Shaymin (Oak's Letter)");
+    incomplete45(12, 491, 50, 79, "ticket / distribution", "Platinum Darkrai (Member Card)");
+    incomplete45(7, 483, 1, 231, "event Pokémon", "HeartGold Sinjoh Dialga");
+    incomplete45(21, 494, 15, 62, "ticket / distribution", "Black Victini (Liberty Pass)");
+    incomplete45(20, 570, 10, 8, "event Pokémon", "White Zorua (event Celebi)");
+    incomplete45(21, 571, 25, 72, "event Pokémon", "Black Zoroark (event beasts)");
+    incomplete45(10, 486, 70, 64, "another game", "Diamond Regigigas");
+    // A Gen IV / V verified data row says it is single source; a wild row keeps "" (unchanged).
+    require(C45::unverifiedMetNote45(7, 152, 126, 5) == "Encounter data: single source (PKHeX)",
+            "HeartGold Chikorita gift: verified, single source: " + C45::unverifiedMetNote45(7, 152, 126, 5));
+
+    // Gen III: in the default list as the encounter, not a verified catch; Incomplete origin line.
+    const auto incomplete3 = [](uint8_t origin, uint16_t species, uint8_t level, uint16_t location, const std::string& what) {
+        const auto choices = G3::templatesForOrigin(origin, species);
+        const auto rows = G3::defaultRows(choices, 0, origin, level);
+        bool listed = false;
+        for (const auto value : rows)
+            if (const auto* choice = G3::choiceAt(choices, value); choice && choice->encounter.location == location) {
+                const auto text = G3::rowText(choices, value, origin, 0, 0, level);
+                listed = !text.verifiedCatch && contains(text.detail, GS::kAccessUnverified);
+            }
+        require(listed && !G3::verifiedTemplate(choices, location, level, level) &&
+                contains(G3::encounterOriginText(choices, species, location, level, level), "Incomplete") &&
+                contains(G3::evidenceNote(choices, species, location, level, level), "Incomplete"),
+                what + ": listed as the encounter, never verified, Incomplete");
+    };
+    incomplete3(3, 249, 70, 211, "Emerald Lugia Navel Rock");
+    incomplete3(3, 151, 30, 201, "Emerald Mew Faraway Island");
+    incomplete3(2, 380, 50, 73, "Ruby Latias Southern Island");
+    incomplete3(4, 386, 30, 187, "FireRed Deoxys Birth Island");
+    const auto hitmonleeChoices = G3::templatesForOrigin(4, 106);
+    require(G3::evidenceNote(hitmonleeChoices, 106, 98, 25, 25) == "Encounter data: single source (PKHeX)",
+            "FireRed Hitmonlee gift: verified, single source");
+    const auto laprasChoices = G3::templatesForOrigin(4, 131);
+    require(G3::evidenceNote(laprasChoices, 131, 134, 25, 25).empty(), "FireRed Lapras gift: verified (pret spot-checked)");
+
+    // Crystal: Celebi (GS Ball) is listed as the encounter with "access unverified"; the note is Incomplete.
+    Picker::Model celebi;
+    celebi.openLocation("crystal_gbc", 251, 0, 0, 30);
+    require(crystalRow(celebi, 14, GS::kAccessUnverified) >= 0, "Crystal Celebi Ilex Forest: access unverified");
+    require(contains(Rows::crystalUnverifiedNote("crystal_gbc", 251, 14, 30, 30, 1), "Incomplete"),
+            "Crystal Celebi: Incomplete acquisition evidence");
+    require(Rows::crystalUnverifiedNote("crystal_gbc", 133, 16, 20, 20, 1).empty(), "Crystal Eevee gift: verified");
+}
+
 } // namespace
 
 int main() {
@@ -428,6 +531,7 @@ int main() {
     crystalTimeRows();
     crystalRowsFit();
     crystalTimeRoundTrip();
+    acquisitionTiers();
     if (failures) {
         std::cerr << failures << " failure(s)\n";
         return 1;

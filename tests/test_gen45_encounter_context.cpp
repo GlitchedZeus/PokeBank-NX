@@ -148,7 +148,8 @@ int main() {
     {
         const C::Catalogue turtwigGift(10, 387, 0, all, {}, 5);
         assert(turtwigGift.verifiedEncounter(76) && turtwigGift.detail(76, name) == "Gift Lv. 5");
-        assert(C::unverifiedMetNote45(21, 498, 4, 5).empty());   // Tepig, Nuvema Town gift Lv 5
+        // Tepig, Nuvema Town gift Lv 5: verified, and (owner decision, Nov 2) says it has one source.
+        assert(C::unverifiedMetNote45(21, 498, 4, 5) == "Encounter data: single source (PKHeX)");
         const C::Catalogue turtwig(10, 151, 0, all, {}, 5);
         assert(turtwig.verifiedCount() == 0 && turtwig.choices().back() == Policy::kUnverifiedListRow &&
                std::string(turtwig.scope(false)) == Policy::kMarkersOnlyScope);
