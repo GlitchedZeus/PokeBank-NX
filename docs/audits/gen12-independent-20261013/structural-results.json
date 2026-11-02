@@ -1,0 +1,288 @@
+{
+  "schema": "GB_INDEPENDENT_STRUCTURAL_RESULTS_V1",
+  "count": 28,
+  "pkhex_disagreements": 8,
+  "nx_disagreements": 24,
+  "cases": [
+    {
+      "id": "g1-control",
+      "generation": 1,
+      "expected": "VALID",
+      "reason": "Four distinct attainable moves with coherent level/EXP.",
+      "pkhex": "VALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-duplicate-0-1",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; Misc:G1CatchRateItem Move1:Duplicate",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-duplicate-0-2",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; Misc:G1CatchRateItem Move1:Duplicate",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-duplicate-0-3",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; Misc:G1CatchRateItem Move1:Duplicate",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-duplicate-1-2",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; Misc:G1CatchRateItem Move2:Duplicate",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-duplicate-1-3",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; Misc:G1CatchRateItem Move2:Duplicate",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-duplicate-2-3",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; Move3:Duplicate",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-level-5-exp-0",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterInvalid:1:RBY:0 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-level-50-exp-0",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterInvalid:1:RBY:0 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-level-50-exp-109923",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "VALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-level-50-exp-125126",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "VALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-level-99-exp-1059860",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "VALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-level-100-exp-1059859",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "VALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g1-level-100-exp-1059861",
+      "generation": 1,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; Level:LevelEXPTooHigh",
+      "nx_detail": "gift/static Bulbasaur in Red/Blue/Yellow (level 5) ;"
+    },
+    {
+      "id": "g2-control",
+      "generation": 2,
+      "expected": "VALID",
+      "reason": "Four distinct attainable moves with coherent level/EXP.",
+      "pkhex": "VALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "g2-duplicate-0-1",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterGift2:1:GS:5 ; Move1:Duplicate",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "g2-duplicate-0-2",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterGift2:1:GS:5 ; Move1:Duplicate",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "g2-duplicate-0-3",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterGift2:1:GS:5 ; Move1:Duplicate",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) ;"
+    },
+    {
+      "id": "g2-duplicate-1-2",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterGift2:1:GS:5 ; Move2:Duplicate",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "g2-duplicate-1-3",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterGift2:1:GS:5 ; Move2:Duplicate",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) ;"
+    },
+    {
+      "id": "g2-duplicate-2-3",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "A nonzero move occurs twice in an ordinary native record.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterGift2:1:GS:5 ; Move3:Duplicate",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) ;"
+    },
+    {
+      "id": "g2-level-5-exp-0",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterInvalid:1:GSC:0 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "g2-level-50-exp-0",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "INVALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterInvalid:1:GSC:0 ; Encounter:EncInvalid Fateful:FatefulGiftMissing",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "g2-level-50-exp-109923",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "VALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "g2-level-50-exp-125126",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "VALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "g2-level-99-exp-1059860",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "VALID",
+      "nx": "VALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ;"
+    },
+    {
+      "id": "g2-level-100-exp-1059859",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "VALID",
+      "nx": "INVALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; ",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ; | A level-100 Pokemon has exactly 1059860 EXP"
+    },
+    {
+      "id": "g2-level-100-exp-1059861",
+      "generation": 2,
+      "expected": "INVALID",
+      "reason": "Stored party level contradicts the original growth formula.",
+      "pkhex": "INVALID",
+      "nx": "INVALID",
+      "pkhex_detail": "EncounterStatic1:1:RBY:5 ; Level:LevelEXPTooHigh",
+      "nx_detail": "egg Bulbasaur in Gold/Silver (hatched at level 5) [time capsule] ; | A level-100 Pokemon has exactly 1059860 EXP"
+    }
+  ]
+}

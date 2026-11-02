@@ -1,0 +1,966 @@
+[
+  {
+    "binary": "build-host/test_game_identity_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_write_policy_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_action_sheet_model_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_theme_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_navigation_repeat_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_controller_model_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_sprite_layout_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_source_mutation_policy_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_pla_read_validation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_party_record_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_pksm_gen3_adapter_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_native_slice_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_retroarch_frlg_discovery_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_legacy_frlg_browse_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_legacy_source_bindings_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_rse_gen3_adapter_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_rse_gen3_native_slice_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_gen1_adapter_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_inventory_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_discovery_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_source_browser_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_readonly_bridge_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_classic_inventory_ui_model_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_inventory_ui_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_legality_context_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_legality_context_model_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_legality_legacy_move_context_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_egg_state_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_hatch_location_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_verified_nature_candidate_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_post_palpark_learning_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_emerald_palpark_joint_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_palpark_snapshot_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen14_candidate_set_coverage_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_emerald_levelup_timeline_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_joint_egg_candidate_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_hgss_pending_egg_pid_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_hgss_masuda_pid_transform_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_hgss_egg_pid_history_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_egg_iv_inheritance_stage_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_unified_event_candidate_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_event_ribbon_candidate_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_event_joint_move_history_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_same_parent_egg_history_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_egg_iv_inheritance_stage_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_egg_moves_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen14_candidate_move_history_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_wild_rng_correlation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_wild_encounter_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_static_encounter_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_form_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_origin_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_ability_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_trade_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_transfer_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_catch_rate_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_encounter_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen12_time_capsule_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_static_encounter_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_wild_encounter_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_trade_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_pid_iv_correlation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_bacd_pid_iv_correlation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_bacd_ra_event_template_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_mystry_mew_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_channel_pid_iv_correlation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_cxd_pid_iv_correlation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_xd_shadow_encounter_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_xd_shadow_team_lock_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_pid_iv_correlation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_pokewalker_pid_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_pokewalker_encounter_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_cute_charm_pid_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_chain_shiny_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_mystery_gift_pid_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_event_template_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_ranger_manaphy_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_event_ribbon_bits_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_egg_event_ribbons_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_pcny_event_template_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_pcjp_machine_event_template_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_wurmple_evolution_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_wurmple_wild_source_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_static_central_match_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_special_ball_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_pid_nature_rejection_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_multi_depth_central_reporting_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_evolved_special_ball_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_mixed_sync_depth_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_mixed_sync_source_reporting_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_mixed_sync_reverse_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_mixed_sync_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_lead_effect_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_lead_failure_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_sync_failure_reroll_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_sync_failure_history_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_static_magnet_lead_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_pressure_lead_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_lead_history_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_min31_reroll_frames_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_lead_reporting_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_language_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_language_analyzer_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_egg_ball_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_ball_domain_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_ball_domain_analyzer_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_multiretry_native_pk4_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_fixed_ball_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_fixed_ball_origin_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_safari_encounter_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_safari_origin_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_safari_methodh_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_gen2_adapter_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_inventory_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_gen2_personal_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_move_compatibility_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_discovery_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_source_browser_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_readonly_bridge_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_runtime_catalog_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_ui_rules_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_passive_pokemon_view_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_editor_surface_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_native_presentation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_export_transaction_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_evolved_wild_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_evolved_native_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_raw_save_pipeline_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_eevee_gift_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_starter_gift_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_dratini_gift_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_red_gyarados_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_tyrogue_gift_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_catch_rate_native_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gb_legality_gen1_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gb_legality_gen2_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_staged_editor_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_pokemon_editor_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_pokemon_editor_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_battle_stats_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_pokemon_editor_ui_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_pokemon_session_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_shared_editor_parity_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_exact_format_editor_provider_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_staged_pokemon_editor_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_shared_pokemon_session_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_hardware_surface_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_shell_render_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_move_compatibility_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_shiny_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_pokemon_editor_ux3_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_cleanup3_staged_semantics_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_pokemon_editor_foundation_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_summary_presentation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_radar_render_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_pokebank_paths_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_clean_install_runtime_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_runtime_dependency_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_shared_pokemon_editor_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_shared_editor_heading_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_pre_gen3_reuse_guard_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_workspace_render_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_move_picker_presentation_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_classic_picker_type_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_encounter_guardrails_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_storage_custody_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_bdsp_layout_guard_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_bank_format_policy_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_bank_recovery_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_durable_file_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_backup_workspace_durability_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_backup_namespace_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_storage_conversion_custody_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_move_transaction_journal_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_move_transaction_production_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_move_transaction_fault_matrix_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_pid_search_fail_closed_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_conversion_fidelity_golden_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_conversion_entity_golden_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_conversion_evidence_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_shared_species_picker_surface_contract_sanitize",
+    "status": "PASS",
+    "basis": "make host-sanitize reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_readonly_foundation_sanitize",
+    "status": "FAIL",
+    "basis": "view.ball() == 17 assertion"
+  },
+  {
+    "binary": "build-host/test_gen4_exact_format_editor_provider_sanitize",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Gen IV exact shared-editor provider contract PASS\n"
+  },
+  {
+    "binary": "build-host/test_gen4_mutable_pokemon_sanitize",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Gen IV mutable PK4 core PASS\n"
+  },
+  {
+    "binary": "build-host/test_gen4_staged_pokemon_editor_sanitize",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Gen IV staged boxed Pokemon editor PASS\n"
+  },
+  {
+    "binary": "build-host/test_gen4_hardware_surface_contract_sanitize",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Gen IV shared editor hardware surface contract PASS\n"
+  },
+  {
+    "binary": "build-host/test_save_instance_model_sanitize",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Provider-neutral SaveInstance model: dedupe/order/provider/profile/manual/read-only PASS\n"
+  },
+  {
+    "binary": "build-host/test_app_shell_model_sanitize",
+    "status": "PASS",
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "binary": "build-host/test_organization_preview_model_sanitize",
+    "status": "PASS",
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "binary": "build-host/test_game_launch_model_sanitize",
+    "status": "PASS",
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "binary": "build-host/test_machine_display_sanitize",
+    "status": "PASS",
+    "exit": 0,
+    "output": "machine display tests passed\n"
+  }
+]

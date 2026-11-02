@@ -1,0 +1,57 @@
+=================================================================
+==13==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x7bdf167e0031 at pc 0x55a8dad2a5bd bp 0x7ffc7c8cec20 sp 0x7ffc7c8cec10
+READ of size 1 at 0x7bdf167e0031 thread T0
+    #0 0x55a8dad2a5bc in main tools/pkhex_gb_diff/gb_diff.cpp:114
+    #1 0x7fbf17627780  (/usr/lib/libc.so.6+0x27780) (BuildId: d320029ad1a23be2f4bce117fd321cbd23a2014b)
+    #2 0x7fbf176278b8 in __libc_start_main (/usr/lib/libc.so.6+0x278b8) (BuildId: d320029ad1a23be2f4bce117fd321cbd23a2014b)
+    #3 0x55a8dad1e7a4 in _start (/tmp/gen12-gb-diff-sanitize+0x2937a4) (BuildId: 2e9679c3d369580314ed0938f15df991248ad654)
+
+0x7bdf167e0031 is located 0 bytes after 1-byte region [0x7bdf167e0030,0x7bdf167e0031)
+allocated by thread T0 here:
+    #0 0x7fbf1872d2a1 in operator new(unsigned long) (/usr/lib/libasan.so.8+0x12d2a1) (BuildId: b8a4241051a1621937fdc46e867ba7ecb56d96ea)
+    #1 0x55a8dad31a6c in std::__new_allocator<unsigned char>::allocate(unsigned long, void const*) /usr/include/c++/16/bits/new_allocator.h:162
+    #2 0x55a8dad31a6c in std::allocator<unsigned char>::allocate(unsigned long) /usr/include/c++/16/bits/allocator.h:206
+    #3 0x55a8dad31a6c in std::allocator_traits<std::allocator<unsigned char> >::allocate(std::allocator<unsigned char>&, unsigned long) /usr/include/c++/16/bits/alloc_traits.h:638
+    #4 0x55a8dad31a6c in std::_Vector_base<unsigned char, std::allocator<unsigned char> >::_M_allocate(unsigned long) /usr/include/c++/16/bits/stl_vector.h:389
+    #5 0x55a8dad31a6c in void std::vector<unsigned char, std::allocator<unsigned char> >::_M_realloc_append<unsigned char>(unsigned char&&) /usr/include/c++/16/bits/vector.tcc:580
+    #6 0x55a8dad26064 in unsigned char& std::vector<unsigned char, std::allocator<unsigned char> >::emplace_back<unsigned char>(unsigned char&&) /usr/include/c++/16/bits/vector.tcc:127
+    #7 0x55a8dad26064 in std::vector<unsigned char, std::allocator<unsigned char> >::push_back(unsigned char&&) /usr/include/c++/16/bits/stl_vector.h:1424
+    #8 0x55a8dad26064 in hex tools/pkhex_gb_diff/gb_diff.cpp:53
+    #9 0x55a8dad2883f in main tools/pkhex_gb_diff/gb_diff.cpp:101
+    #10 0x7fbf17627780  (/usr/lib/libc.so.6+0x27780) (BuildId: d320029ad1a23be2f4bce117fd321cbd23a2014b)
+    #11 0x7fbf176278b8 in __libc_start_main (/usr/lib/libc.so.6+0x278b8) (BuildId: d320029ad1a23be2f4bce117fd321cbd23a2014b)
+    #12 0x55a8dad1e7a4 in _start (/tmp/gen12-gb-diff-sanitize+0x2937a4) (BuildId: 2e9679c3d369580314ed0938f15df991248ad654)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow tools/pkhex_gb_diff/gb_diff.cpp:114 in main
+Shadow bytes around the buggy address:
+  0x7bdf167dfd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7bdf167dfe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7bdf167dfe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7bdf167dff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7bdf167dff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x7bdf167e0000: fa fa 01 fa fa fa[01]fa fa fa 01 fa fa fa fa fa
+  0x7bdf167e0080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7bdf167e0100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7bdf167e0180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7bdf167e0200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7bdf167e0280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==13==ABORTING

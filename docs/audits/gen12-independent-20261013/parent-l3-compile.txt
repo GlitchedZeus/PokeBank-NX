@@ -1,0 +1,4 @@
+tests/test_legality_l3_platinum_native_sources.cpp: In function ‘int main()’:
+tests/test_legality_l3_platinum_native_sources.cpp:27:19: error: inconsistent deduction for ‘auto’: ‘const int’ and then ‘const unsigned int’
+   27 |             const auto level=packed>>9,move=packed&511u;
+      |                   ^~~~

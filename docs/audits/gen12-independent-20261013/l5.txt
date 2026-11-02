@@ -1,0 +1,376 @@
+RUN tools/audit_legality_prod_wiring_contract.py --self-test --source-root .
+{
+  "status": "BLOCKED",
+  "error": "exact integration CI: mandatory execution guard missing: --expected-invalid 38"
+}
+EXIT=1
+RUN tools/audit_legality_l5_stage1_parity_gate.py --self-test
+L5 Stage1 parity gate: baseline + 17 adversarial mutations + 3 live-head controls PASS
+EXIT=0
+RUN tools/audit_legality_l5_stage1_parity_gate.py --verify-manifests --current-integration-head 49240a36dd5dad2608b2571145652a39c0aeefd5
+{
+  "blockers": [
+    "NO_AUTHENTICATED_ORIGINAL_METHOD_PAIRS",
+    "NO_EXECUTABLE_EXACT_GAME_PKHEX_FULL_PARITY",
+    "STALE_INTEGRATION_EVIDENCE"
+  ],
+  "counts": {
+    "authenticated_histories": 0,
+    "base_cells": 336,
+    "full_parity_certified": 0,
+    "integrated_cells": 336,
+    "matrix_cells": 336,
+    "not_native": 26,
+    "potentially_applicable": 310,
+    "sourcefree_defect_cells": 6
+  },
+  "current_integration_head": "49240a36dd5dad2608b2571145652a39c0aeefd5",
+  "failures": [],
+  "historical_integration_head": "c91b53e84ef75669049d159616894ec68cd4b0dd",
+  "manifest_integrity": "PASS",
+  "observed_scoreboard_blob": "ba31eece267abc10c5d75774d2d8adf3a36503f1",
+  "release_state": "BLOCKED",
+  "schema": "L5_STAGE1_336_CELL_FAIL_CLOSED_V1",
+  "scope": "Historical source/fixture evidence consistency only; not runtime PKHeX parity or release approval"
+}
+EXIT=0
+RUN tools/audit_legality_l5_invalid_site_gate.py --self-test
+L5 scanner self-test PASS: comments/literals excluded, dynamic severity trapped
+EXIT=0
+RUN tools/audit_legality_l5_invalid_site_gate.py --source src/Legality/Legality.cpp --expected-invalid 44 --require-f3-f4
+{
+  "errors": [],
+  "explicit_add_calls": 243,
+  "f3_native_ability_guard": true,
+  "f4_native_gender_guard": true,
+  "invalid_count": 44,
+  "invalid_lines": [
+    173,
+    182,
+    190,
+    200,
+    207,
+    256,
+    332,
+    787,
+    1177,
+    1193,
+    1297,
+    1349,
+    1360,
+    1365,
+    1386,
+    1442,
+    1450,
+    1528,
+    1741,
+    1763,
+    1772,
+    1782,
+    1784,
+    1826,
+    1832,
+    1840,
+    1852,
+    1872,
+    1880,
+    1892,
+    1896,
+    2587,
+    2602,
+    2617,
+    2619,
+    2626,
+    2988,
+    2996,
+    2998,
+    3003,
+    3005,
+    3007,
+    3009,
+    3016
+  ],
+  "nonexplicit_severity_lines": [],
+  "passed": true,
+  "sha256": "b143445b72dee385280f405b354fcd6b3d9d2a61ef5b215d1e9370671d3c63ab",
+  "total_add_calls": 243
+}
+EXIT=0
+RUN tools/audit_legality_l5_stage2_native.py --full --source-pin
+{
+  "authentic_original_retail_specimens": 0,
+  "full_pkhex_parity_certificates": 0,
+  "production_gate": "SATISFIED",
+  "runs": [
+    {
+      "compiled": true,
+      "executed": true,
+      "output": "L5 Stage2 native-format adversarial MODEL PASS 1057328 assertions (synthetic; no production codec or original retail)",
+      "program": "model-gcc-normal",
+      "sanitized": false
+    },
+    {
+      "compiled": true,
+      "executed": true,
+      "output": "L5 Stage2 native-format adversarial MODEL PASS 1057328 assertions (synthetic; no production codec or original retail)",
+      "program": "model-gcc-asan_ubsan",
+      "sanitized": true
+    },
+    {
+      "compiled": true,
+      "executed": true,
+      "output": "L5 Stage2 ACTUAL production PK3/PK4 codec PASS 203292 assertions, 83968 covered-ciphertext single-bit quarantine controls, 56 party-only checksum blind spots (expected) (synthetic; no original retail parity)",
+      "program": "prod-gcc-normal",
+      "sanitized": false
+    },
+    {
+      "compiled": true,
+      "executed": true,
+      "output": "L5 Stage2 ACTUAL production PK3/PK4 codec PASS 203292 assertions, 83968 covered-ciphertext single-bit quarantine controls, 56 party-only checksum blind spots (expected) (synthetic; no original retail parity)",
+      "program": "prod-gcc-asan_ubsan",
+      "sanitized": true
+    }
+  ],
+  "source_pin_checked": true,
+  "stage": "L5_STAGE_2_NATIVE_STORAGE",
+  "status": "PASS_FULL_NATIVE_SYNTHETIC",
+  "synthetic_only": true
+}
+EXIT=0
+RUN tools/audit_legality_l5_stage4_crosslane.py --self-test
+L5 Stage4 source-pinned runner self-test PASS (12 positive/negative checks)
+EXIT=0
+RUN tools/audit_legality_l5_stage4_crosslane.py --l1-root . --l2-root . --l3-root . --l4-root .
+{
+  "actual_helper_headers_compiled": true,
+  "authentic_retail_encounter_histories": 0,
+  "full_integration_analyzer_executed": false,
+  "global_invalid_conclusions": 0,
+  "normal_and_asan_ubsan_required": true,
+  "per_mode_total_assertions": 2676886,
+  "runs": [
+    {
+      "asan_ubsan": false,
+      "assertions": 635893,
+      "compiler": "g++",
+      "executed": true,
+      "lane": "L1",
+      "status": "PASS"
+    },
+    {
+      "asan_ubsan": true,
+      "assertions": 635893,
+      "compiler": "g++",
+      "executed": true,
+      "lane": "L1",
+      "status": "PASS"
+    },
+    {
+      "asan_ubsan": false,
+      "assertions": 327683,
+      "compiler": "g++",
+      "executed": true,
+      "lane": "L2",
+      "status": "PASS"
+    },
+    {
+      "asan_ubsan": true,
+      "assertions": 327683,
+      "compiler": "g++",
+      "executed": true,
+      "lane": "L2",
+      "status": "PASS"
+    },
+    {
+      "asan_ubsan": false,
+      "assertions": 885145,
+      "compiler": "g++",
+      "executed": true,
+      "lane": "L3",
+      "status": "PASS"
+    },
+    {
+      "asan_ubsan": true,
+      "assertions": 885145,
+      "compiler": "g++",
+      "executed": true,
+      "lane": "L3",
+      "status": "PASS"
+    },
+    {
+      "asan_ubsan": false,
+      "assertions": 828165,
+      "compiler": "g++",
+      "executed": true,
+      "lane": "L4",
+      "status": "PASS"
+    },
+    {
+      "asan_ubsan": true,
+      "assertions": 828165,
+      "compiler": "g++",
+      "executed": true,
+      "lane": "L4",
+      "status": "PASS"
+    }
+  ],
+  "sibling_sources_modified": false,
+  "source_github_blob_pins_verified": true,
+  "stage": "L5_STAGE4_ACTUAL_CROSSLANE",
+  "status": "PASS_SOURCE_PINNED_HELPERS"
+}
+EXIT=0
+RUN tools/audit_legality_l5_stage2.py --self-test
+L5 Stage2 runner 5 attestation controls PASS
+EXIT=0
+RUN tools/audit_legality_l5_stage2.py --timeout 600
+{
+  "actual_analyzer_binaries": [],
+  "actual_analyzer_executed": false,
+  "authenticated_original_retail_histories": 0,
+  "header_source_binaries": [
+    {
+      "checks": 1507328,
+      "compiler": "g++",
+      "evidence": "L5 Stage2 exact production Gen I/II Time Capsule helper: 1507328 PASS; source-capable species=162; conditional later-move=3088; malformed move inputs=15499 (not retail histories)",
+      "executed": true,
+      "sanitized": false,
+      "status": "PASS"
+    },
+    {
+      "checks": 1507328,
+      "compiler": "g++",
+      "evidence": "L5 Stage2 exact production Gen I/II Time Capsule helper: 1507328 PASS; source-capable species=162; conditional later-move=3088; malformed move inputs=15499 (not retail histories)",
+      "executed": true,
+      "sanitized": true,
+      "status": "PASS"
+    },
+    {
+      "checks": 1507328,
+      "compiler": "clang++",
+      "evidence": "L5 Stage2 exact production Gen I/II Time Capsule helper: 1507328 PASS; source-capable species=162; conditional later-move=3088; malformed move inputs=15499 (not retail histories)",
+      "executed": true,
+      "sanitized": false,
+      "status": "PASS"
+    },
+    {
+      "checks": 1507328,
+      "compiler": "clang++",
+      "evidence": "L5 Stage2 exact production Gen I/II Time Capsule helper: 1507328 PASS; source-capable species=162; conditional later-move=3088; malformed move inputs=15499 (not retail histories)",
+      "executed": true,
+      "sanitized": true,
+      "status": "PASS"
+    }
+  ],
+  "release_approved": false,
+  "schema": "L5_STAGE2_REAL_SOURCE_NATIVE_QA_V1",
+  "source_pins": {
+    "include/Legality/Gen12TimeCapsuleEvidence.h": "4be5eda0dac2f43e886024d2febc07d9639abc18",
+    "tests/fixtures/legality_l5_stage2_gen12_native_history_fuzz.cpp": "bf110896cbea4c0632f41ac11bd2247064c77e74"
+  },
+  "status": "HELPER_SCOPE_PASS_NATIVE_BLOCKED"
+}
+EXIT=0
+RUN tools/audit_legality_l5_stage3_native_fuzz.py --self-test
+L5 Stage3 native runner: 7 adversarial integrity/attestation controls PASS
+EXIT=0
+RUN tools/audit_legality_l5_stage3_native_fuzz.py --timeout 900
+{
+  "full_checkout_acceptance": "CRYPTO_ONLY",
+  "full_legality_analyzer_executed": false,
+  "isolated_dependency_shim": false,
+  "production_crypto_cpp_executed": true,
+  "production_entity_classes_executed": false,
+  "retail_original_receipts_authenticated": 0,
+  "runs": [
+    {
+      "checks": 255566,
+      "compiler": "g++",
+      "reported": "L5 Stage3 actual PK3/PK4 codec fuzz: 255566 PASS; specimens=14336 single-bit=16896 metadata=36864 lengths=301 (synthetic transport, not complete analyzer or retail proof)",
+      "sanitized": false,
+      "test_status": "PASS"
+    },
+    {
+      "checks": 255566,
+      "compiler": "g++",
+      "reported": "L5 Stage3 actual PK3/PK4 codec fuzz: 255566 PASS; specimens=14336 single-bit=16896 metadata=36864 lengths=301 (synthetic transport, not complete analyzer or retail proof)",
+      "sanitized": true,
+      "test_status": "PASS"
+    },
+    {
+      "checks": 255566,
+      "compiler": "clang++",
+      "reported": "L5 Stage3 actual PK3/PK4 codec fuzz: 255566 PASS; specimens=14336 single-bit=16896 metadata=36864 lengths=301 (synthetic transport, not complete analyzer or retail proof)",
+      "sanitized": false,
+      "test_status": "PASS"
+    },
+    {
+      "checks": 255566,
+      "compiler": "clang++",
+      "reported": "L5 Stage3 actual PK3/PK4 codec fuzz: 255566 PASS; specimens=14336 single-bit=16896 metadata=36864 lengths=301 (synthetic transport, not complete analyzer or retail proof)",
+      "sanitized": true,
+      "test_status": "PASS"
+    }
+  ],
+  "schema": "POKEBANK_NX_L5_STAGE3_EXACT_CODEC_FUZZ_V1",
+  "source_blobs": {
+    "include/Encryption/Encryption.h": "9eab685b76511d5ea08e0fffdff63529a5824fe6",
+    "include/Encryption/Encryption3FRLG.h": "2f6f550bd758fedf5626252c0b8617aa326f7044",
+    "include/Encryption/Encryption4.h": "e823d3fb2fdd2008047d79e15faea1c2a12f48a0",
+    "src/Encryption/Encryption3FRLG.cpp": "eec27b73a15d6652371ed2e066690ef0fa9fb7ef",
+    "src/Encryption/Encryption4.cpp": "406935761713db95ae738398b65ba0a37d4cf97b",
+    "tests/fixtures/legality_l5_stage3_native_crypto_fuzz.cpp": "15a0e2f6d7b37f93a7359ea9687c15180ceedf97"
+  }
+}
+EXIT=0
+RUN tools/audit_legality_l5_native_ev_vectors.py --source-root .
+{
+  "corrupted_rejected": 12,
+  "original_retail_pokemon_authenticated": 0,
+  "pk3_shuffle_coverage": 24,
+  "pk4_shuffle_coverage": 32,
+  "real_legality_analyzer_executed": false,
+  "schema": "L5_Q09_NATIVE_FORMAT_VERIFICATION_V1",
+  "scope": "synthetic native-format integrity only",
+  "source_pins": {
+    "source_files_with_exact_pinned_git_blobs": 5
+  },
+  "status": "PASS",
+  "valid_records": 336
+}
+
+EXIT=0
+RUN tools/audit_legality_l5_native_codec.py --source-pin
+{
+  "actual_legality_analyzer_executed": false,
+  "exact_sources_checked": true,
+  "expected_rejects": 12,
+  "input": "synthetic native PK3/PK4, no retail authenticity",
+  "malformed_input_cases_rejected": 8,
+  "message": "L5 production crypto: 348 PASS (336 native byte roundtrips, 12 corrupted checksum rejects, 251904 single-bit data corruptions rejected)",
+  "roundtrips": 336,
+  "sanitized": false,
+  "single_bit_ciphertext_mutations_rejected": 251904,
+  "status": "PASS",
+  "total": 348,
+  "true_production_crypto_code_executed": true
+}
+
+EXIT=0
+RUN tools/audit_legality_l5_native_codec.py --source-pin --sanitize
+{
+  "actual_legality_analyzer_executed": false,
+  "exact_sources_checked": true,
+  "expected_rejects": 12,
+  "input": "synthetic native PK3/PK4, no retail authenticity",
+  "malformed_input_cases_rejected": 8,
+  "message": "L5 production crypto: 348 PASS (336 native byte roundtrips, 12 corrupted checksum rejects, 251904 single-bit data corruptions rejected)",
+  "roundtrips": 336,
+  "sanitized": true,
+  "single_bit_ciphertext_mutations_rejected": 251904,
+  "status": "PASS",
+  "total": 348,
+  "true_production_crypto_code_executed": true
+}
+
+EXIT=0

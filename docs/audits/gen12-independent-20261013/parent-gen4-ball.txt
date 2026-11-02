@@ -1,0 +1,1 @@
+test_gen4_readonly_foundation: tests/test_gen4_readonly_foundation.cpp:274: void {anonymous}::testCryptoAndEntity(): Assertion `view.ball() == 17' failed.

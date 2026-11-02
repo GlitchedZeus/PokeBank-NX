@@ -1,0 +1,966 @@
+[
+  {
+    "binary": "build-host/test_game_identity",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_write_policy",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_action_sheet_model",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_theme",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_navigation_repeat",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_controller_model",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_sprite_layout",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_source_mutation_policy",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_pla_read_validation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_party_record",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_pksm_gen3_adapter",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_native_slice",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_retroarch_frlg_discovery",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_legacy_frlg_browse",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_legacy_source_bindings",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_rse_gen3_adapter",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_rse_gen3_native_slice",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_gen1_adapter",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_inventory",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_discovery",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_source_browser",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_readonly_bridge",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_classic_inventory_ui_model",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_inventory_ui_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_legality_context",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_legality_context_model",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_legality_legacy_move_context",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_egg_state",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_hatch_location_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_egg_moves",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen14_candidate_move_history",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_egg_iv_inheritance_stage",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_joint_egg_candidate",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_hgss_pending_egg_pid",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_hgss_masuda_pid_transform",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_hgss_egg_pid_history",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_egg_iv_inheritance_stage",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_emerald_levelup_timeline",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen14_candidate_set_coverage",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_palpark_snapshot",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_emerald_palpark_joint",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_post_palpark_learning",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_verified_nature_candidate",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_same_parent_egg_history",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_event_joint_move_history",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_event_ribbon_candidate",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_unified_event_candidate",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_wild_rng_correlation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_wild_encounter_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_static_encounter_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_form_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_origin_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_ability_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_trade_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_transfer_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_catch_rate_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_encounter_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen12_time_capsule_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_static_encounter_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_wild_encounter_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_trade_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_pid_iv_correlation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_bacd_pid_iv_correlation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_bacd_ra_event_template",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_mystry_mew_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_channel_pid_iv_correlation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_cxd_pid_iv_correlation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_xd_shadow_encounter",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_xd_shadow_team_lock",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_pid_iv_correlation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_pokewalker_pid",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_pokewalker_encounter_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_cute_charm_pid",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_chain_shiny",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_mystery_gift_pid",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_event_template",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_ranger_manaphy",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_event_ribbon_bits",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_egg_event_ribbons",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_pcny_event_template",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_pcjp_machine_event_template",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_wurmple_evolution",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_wurmple_wild_source",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_static_central_match",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_special_ball_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_pid_nature_rejection",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_multi_depth_central_reporting",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_evolved_special_ball_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_mixed_sync_depth",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_mixed_sync_source_reporting",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_mixed_sync_reverse",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_mixed_sync",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_lead_effect_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_lead_failure_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_sync_failure_reroll",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_sync_failure_history",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_static_magnet_lead_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_pressure_lead_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_lead_history_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_min31_reroll_frames",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_lead_reporting_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_language_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_language_analyzer",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_egg_ball_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_ball_domain_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen34_ball_domain_analyzer",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_bcc_multiretry_native_pk4",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_fixed_ball_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_fixed_ball_origin_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_safari_encounter",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_safari_origin_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_safari_methodh_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_gen2_adapter",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_inventory",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_gen2_personal",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_move_compatibility",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_discovery",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_source_browser",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_readonly_bridge",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_runtime_catalog",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_ui_rules",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_passive_pokemon_view_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_editor_surface_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_native_presentation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_export_transaction",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_evolved_wild",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_evolved_native",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_raw_save_pipeline",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_eevee_gift",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_starter_gift",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_dratini_gift",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_red_gyarados",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen2_crystal_tyrogue_gift",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_catch_rate_native",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gb_legality_gen1",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gb_legality_gen2",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_staged_editor",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_pokemon_editor",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_rby_pokemon_editor",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_battle_stats",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_pokemon_editor_ui_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_pokemon_session",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_shared_editor_parity",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_exact_format_editor_provider",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_staged_pokemon_editor",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_shared_pokemon_session",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_hardware_surface_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_shell_render",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_move_compatibility",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_shiny",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_pokemon_editor_ux3_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_cleanup3_staged_semantics",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_pokemon_editor_foundation_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_summary_presentation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen1_radar_render",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_pokebank_paths",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_clean_install_runtime",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_runtime_dependency_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_shared_pokemon_editor_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_shared_editor_heading_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_pre_gen3_reuse_guard",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gsc_workspace_render",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_move_picker_presentation",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_classic_picker_type_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_encounter_guardrails",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_storage_custody_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_bdsp_layout_guard",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_bank_format_policy",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_bank_recovery_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_durable_file",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_backup_workspace_durability",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_backup_namespace_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_storage_conversion_custody_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_move_transaction_journal",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_move_transaction_production",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_move_transaction_fault_matrix",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen3_pid_search_fail_closed",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_conversion_fidelity_golden",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_conversion_entity_golden",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_conversion_evidence",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_shared_species_picker_surface_contract",
+    "status": "PASS",
+    "basis": "make host-test reached following executable"
+  },
+  {
+    "binary": "build-host/test_gen4_readonly_foundation",
+    "status": "FAIL",
+    "basis": "view.ball() == 17 assertion"
+  },
+  {
+    "binary": "build-host/test_gen4_exact_format_editor_provider",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Gen IV exact shared-editor provider contract PASS\n"
+  },
+  {
+    "binary": "build-host/test_gen4_mutable_pokemon",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Gen IV mutable PK4 core PASS\n"
+  },
+  {
+    "binary": "build-host/test_gen4_staged_pokemon_editor",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Gen IV staged boxed Pokemon editor PASS\n"
+  },
+  {
+    "binary": "build-host/test_gen4_hardware_surface_contract",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Gen IV shared editor hardware surface contract PASS\n"
+  },
+  {
+    "binary": "build-host/test_save_instance_model",
+    "status": "PASS",
+    "exit": 0,
+    "output": "Provider-neutral SaveInstance model: dedupe/order/provider/profile/manual/read-only PASS\n"
+  },
+  {
+    "binary": "build-host/test_app_shell_model",
+    "status": "PASS",
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "binary": "build-host/test_organization_preview_model",
+    "status": "PASS",
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "binary": "build-host/test_game_launch_model",
+    "status": "PASS",
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "binary": "build-host/test_machine_display",
+    "status": "PASS",
+    "exit": 0,
+    "output": "machine display tests passed\n"
+  }
+]

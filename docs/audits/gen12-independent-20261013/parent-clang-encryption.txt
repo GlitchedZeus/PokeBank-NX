@@ -1,0 +1,7 @@
+src/Encryption/Encryption3FRLG.cpp:15:32: error: unknown warning group '-Wstringop-overflow', ignored [-Werror,-Wunknown-warning-option]
+   15 | #pragma GCC diagnostic ignored "-Wstringop-overflow"
+      |                                ^
+src/Encryption/Encryption3FRLG.cpp:16:32: error: unknown warning group '-Wrestrict', ignored [-Werror,-Wunknown-warning-option]
+   16 | #pragma GCC diagnostic ignored "-Wrestrict"
+      |                                ^
+2 errors generated.

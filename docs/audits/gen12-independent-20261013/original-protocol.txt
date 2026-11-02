@@ -1,0 +1,15 @@
+test_complete_synthetic_protocol_controls (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_complete_synthetic_protocol_controls) ... ok
+test_every_observation_field_tamper_is_rejected (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_every_observation_field_tamper_is_rejected) ... ok
+test_jsonl_variant_pin_retail_and_duplicate_key_guards (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_jsonl_variant_pin_retail_and_duplicate_key_guards) ... ok
+test_native_false_negatives_and_gen1_ev_misread_fail (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_native_false_negatives_and_gen1_ev_misread_fail) ... ok
+test_non_native_coordinator_f3_f4_regression_fails (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_non_native_coordinator_f3_f4_regression_fails) ... ok
+test_original_pkhex_must_really_complete (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_original_pkhex_must_really_complete) ... ok
+test_truncated_evidence_cannot_certify_parity (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_truncated_evidence_cannot_certify_parity) ... ok
+test_vector_cartesian_replacement_detected (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_vector_cartesian_replacement_detected) ... ok
+test_vector_json_duplicate_key_detected (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_vector_json_duplicate_key_detected) ... ok
+test_wrong_implementation_cannot_pose_as_coordinator (audit_legality_l5_gen1_rby_protocol_negative.IntegrityTests.test_wrong_implementation_cannot_pose_as_coordinator) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.308s
+
+OK

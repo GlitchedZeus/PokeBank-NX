@@ -1,0 +1,8 @@
+L2 exact checkout head: c2544ac6d278468f6d30826b9a0115b098e5913b
+L2 compile: test_legality_l2_gen3_pid_iv_moves_alternatives [normal] using g++
+L2 run: test_legality_l2_gen3_pid_iv_moves_alternatives [normal]
+test_legality_l2_gen3_pid_iv_moves_alternatives-normal: PARENT/tests/test_legality_l2_gen3_pid_iv_moves_alternatives.cpp:140: int main(): Assertion `A::evaluate(x).status==A::Status::DuplicateOrMissingRoute' failed.
+tests/test_legality_l2_run_all.sh: line 140:    37 Aborted                    (core dumped) "$dest"
+L2 FAIL runtime: test_legality_l2_gen3_pid_iv_moves_alternatives [normal]
+L2 complete: 0/1 exact-checked-out-source standalone test executions passed.
+L2 FAILED EXECUTIONS: test_legality_l2_gen3_pid_iv_moves_alternatives:normal:runtime

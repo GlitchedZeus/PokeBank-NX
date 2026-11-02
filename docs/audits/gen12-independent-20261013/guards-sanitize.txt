@@ -1,0 +1,4 @@
+Native PK1 guard FAIL: level=100 EXP=1059861 source= expected=0 observed=1
+Native PK1 guard FAIL: level=100 EXP=1059861 source=red_gb expected=0 observed=1
+Parsed Red save FAIL: EXP=1059861 expected=0 observed=1
+Native PK1 application guards: 30 checks, 3 FAIL
