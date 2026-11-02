@@ -1,0 +1,88 @@
+{
+  "title": "PokeBank NX · Round 12 Hardware QA",
+  "candidate": "PokeBank-NX-Gen1-5-Candidate-066e1db9",
+  "source_run": "https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/41273304655",
+  "date": "2026-11-02T01:47:43.012Z",
+  "items": {
+    "H01": {
+      "status": "pass"
+    },
+    "H02": {
+      "status": "pass"
+    },
+    "H03": {
+      "note": "gen 1 :pass, only 2 visual bugs i seen are when a pokemon is picked up we have a little boc pop up telling the controls we dont need that we have the footer for that, also when i a pokemon is placed it tell us that is placed using pack whatever we dont that pop either aswell as the when multiple pokemon are moved we dont nee that pop up menu either, only if the allowed space doesnt allow the amount of pokemon so like if a box has 5 slots lefts, we can move 7 pokemon in that box that when we should havve the pop up window, the only pop we need is \"there is no pokemon in this slot to move\"\n\ngen 2 pass, same bugs as gen 1\n\ngen 3 pass, has same pop up menus as gen 1 and 2 we need to get rid of \n\ngen4:pass, same bugs as gen 1/2/3\n\ngen 5: fails, doesnt have proper controls, Y is review in gen 5 and that is wrong that should be move, reivew should be what ever button gens 1-4 use, bring gen 5 up to date with the other gens.",
+      "status": "fail"
+    },
+    "H14": {
+      "note": "gen 3 met locations are wrong pikachu has like 87 met locaations we need just the legit ones for each pokemon, also in the top up feature doesnt work correctly it only selects like 20 items or something we need the all items in that slot not just 20, check this for every gen make suire it is good and fixed after",
+      "status": "fail"
+    },
+    "H04": {
+      "note": "gen 5 : pass, clone has a pop up menu thing on the botom about cloned pop dont need it, they are the same tyoe of pop ups as the H03\nMove carry controls problem\n\ngen 4: same as gen 5 bugs.\ngen 3: same as gen 4/5\ngen 2: clones to the next box cause of the stacked box gor gens 1/2, but its also has a secong cursor which allows me to move around which shouldnt happen.\ngen 1: sam bugs as gen 2",
+      "status": "fail"
+    },
+    "H05": {
+      "status": "pass"
+    },
+    "H06": {
+      "status": "pass"
+    },
+    "H07": {
+      "status": "pass"
+    },
+    "H08": {
+      "note": "pokemon crysal now has massive amounts for met lcoation for paokmon that arnt legit , should we just leave this for the leaglity engine to solve when its gets added ??? like wtf all gens 1-5 need proper met locations for all pokemon, evolved,traded gifted.",
+      "status": "fail"
+    },
+    "H09": {
+      "status": "pass"
+    },
+    "H10": {
+      "status": "pass"
+    },
+    "H11": {
+      "status": "pass"
+    },
+    "H12": {
+      "status": "pass",
+      "note": "can we add all of the tm/hm's instead of excluding them "
+    },
+    "H13": {
+      "status": "pass"
+    },
+    "H15": {
+      "status": "pass"
+    },
+    "H16": {
+      "status": "pass",
+      "note": "gen 5 still needs the footer and controls for review and move changed"
+    },
+    "H17": {
+      "status": "pass"
+    },
+    "H18": {
+      "status": "pass"
+    },
+    "H19": {
+      "note": "gen 5 doesnt have any language glypsh change, gen 4 does, infact gen 4 should be how all gens work, gen 3 doesn have any korean or japense glyphs and it changes the stats for japanese language for some reason",
+      "status": "pass"
+    },
+    "H20": {
+      "status": "pass"
+    },
+    "H21": {
+      "status": "pass"
+    },
+    "H22": {
+      "status": "pass"
+    },
+    "H23": {
+      "status": "pass"
+    },
+    "H24": {
+      "status": "pass"
+    }
+  },
+  "meta": {}
+}
