@@ -158,13 +158,18 @@ struct Session {
                 creating() ? History::Mode::Create : History::Mode::Edit, metLocationChosen, [&] {
                     const PokeVault::Integration::EncounterContext45::Catalogue context(
                         met->origin, value, met->location, {}, {});
+                    // Round 13 (owner decision 5): a chosen hatched-egg history stays only while the
+                    // new species (or a pre-evolution) hatches from a Day-Care egg here.
+                    if (hatchedEggHistory(group))
+                        return context.eggVerdict().verified();
                     return context.wildRow(met->location) != nullptr ||
                            !::Names::specialMetLocation(met->origin, met->location).empty();
                 });
             const bool hadPokerus = ok && working->pokerus() != 0;
             if (ok && decision.resetPokerus) ok = working->setPokerusMode(Pokemon::PokerusMode::None);
             if (ok && decision.resetMetLocation)
-                ok = working->setMetLocation(0) && working->setMetLevel(working->level());
+                ok = working->setMetLocation(0) && working->setMetLevel(working->level()) &&
+                     working->setEggLocation(0);
             encounterReset = ok && decision.resetMetLocation;
             pokerusCleared = ok && decision.resetPokerus && hadPokerus;
             if (encounterReset) metLocationChosen = false;
@@ -177,6 +182,17 @@ struct Session {
             metLocationChosen = chosenBefore;
         }
         return ok;
+    }
+
+    // Round 13: the draft carries the "Hatched from a Day-Care egg" fields (Met Level 0 and a
+    // bred-egg Egg Location 2000 / 2002, PKHeX Locations.IsEggLocationBred4).
+    bool hatchedEggHistory(Enums::GameVersion group) const {
+        if (!working || working->metLevel() != 0) return false;
+        const auto bytes = working->encryptedBytes();
+        const Pokemon::Pokemon4ReadOnly record(bytes, group);
+        if (!record.valid()) return false;
+        const uint16_t egg = Pokemon::Pokemon4ReadOnlyView(record).eggLocation();
+        return egg == 2000 || egg == 2002;
     }
 
     // The Met Location picker applied a location the user chose (Create only).

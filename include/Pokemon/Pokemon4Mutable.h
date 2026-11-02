@@ -95,6 +95,14 @@ public:
     bool setBall(uint8_t value) noexcept;
     bool setMetLevel(uint8_t value) noexcept;
     bool setMetLocation(uint16_t value) noexcept;
+    // Round 13 (owner decision 6): the bred-egg Egg Location markers 0 (none), 2000 (Day-Care
+    // Couple) and 2002 (link-traded egg), in PKHeX G4PKM.EggLocation's two-field encoding.
+    bool setEggLocation(uint16_t value) noexcept;
+    // "Hatched from a Day-Care egg" in one transaction: Met Location = the origin game's Day-Care
+    // hatch place (PKHeX Locations.HatchLocationDPPt 4 Solaceon Town / HatchLocationHGSS 182
+    // Route 34), Met Level 0, Egg Location 2000, and the egg date = the met date when none is
+    // recorded (PKHeX EncounterEgg4.ConvertToPKM). Byte-identical on failure.
+    bool setHatchedEggHistory() noexcept;
     bool setForm(uint8_t value) noexcept;
     [[nodiscard]] uint8_t formCount() const noexcept;
 

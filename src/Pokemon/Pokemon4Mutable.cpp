@@ -791,12 +791,19 @@ bool Pokemon4Mutable::setMetLocation(uint16_t value) noexcept {
     // Zero is the canonical unset value used by a fresh native Create draft.
     // It is intentionally not offered as an HG/SS map location in the picker,
     // but the serializer must still be able to encode an unset draft safely.
-    if (value != 0 && !Names::isGen4NativeMetLocation(origin, value)) return false;
+    // Round 13 (owner decision 6): the native trade markers 2001 (in-game trade, PKHeX
+    // LinkTrade4NPC) and 2002 (an egg traded before hatching, LinkTrade4) are Met Location values
+    // too. PKHeX G4PKM.MetLocation: outside the Pt/HGSS-only ranges, so the D/P field holds the id
+    // and the extended field holds it only for a Platinum / HG/SS origin.
+    const bool tradeMarker = value == 2001 || value == 2002;
+    if (value != 0 && !tradeMarker && !Names::isGen4NativeMetLocation(origin, value)) return false;
 
     uint16_t dpLocation = value;
     uint16_t extendedLocation = 0;
 
-    if (exactOrigin == Enums::GameVersion::Pt) {
+    if (tradeMarker) {
+        if (exactOrigin != Enums::GameVersion::D && exactOrigin != Enums::GameVersion::P) extendedLocation = value;
+    } else if (exactOrigin == Enums::GameVersion::Pt) {
         // Platinum mirrors common D/P locations into the extended field. Locations
         // introduced after D/P use Faraway Place in the legacy field.
         extendedLocation = value;
@@ -819,6 +826,51 @@ bool Pokemon4Mutable::setMetLocation(uint16_t value) noexcept {
     Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
     if (!verify.valid() || verify.metLocationDP() != dpLocation ||
         verify.metLocationExtended() != extendedLocation) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
+bool Pokemon4Mutable::setEggLocation(uint16_t value) noexcept {
+    if (!valid_) return false;
+    const uint8_t origin = byteAt(0x5F);
+    const auto exactOrigin = static_cast<Enums::GameVersion>(origin);
+    const auto originGroup = Enums::getGameGroup(exactOrigin);
+    if (originGroup != Enums::GameVersion::DP && originGroup != Enums::GameVersion::PT &&
+        originGroup != Enums::GameVersion::HGSS)
+        return false;
+    if (value != 0 && value != 2000 && value != 2002) return false;
+    // PKHeX G4PKM.EggLocation: 2000 / 2002 sit outside the Pt/HGSS-only ranges, so the D/P field
+    // (0x7E) holds the id and the extended field (0x44) holds it only for a Pt / HG/SS origin.
+    const bool ptHgss = originGroup != Enums::GameVersion::DP;
+    const auto backup = decrypted_;
+    write16(0x7E, value);
+    write16(0x44, ptHgss ? value : 0);
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid() || verify.eggLocationDP() != value || verify.eggLocationExtended() != (ptHgss ? value : 0)) {
+        decrypted_ = backup;
+        return false;
+    }
+    return true;
+}
+
+bool Pokemon4Mutable::setHatchedEggHistory() noexcept {
+    if (!valid_) return false;
+    const auto group = Enums::getGameGroup(static_cast<Enums::GameVersion>(byteAt(0x5F)));
+    const uint16_t hatchLocation = group == Enums::GameVersion::HGSS ? 182
+        : group == Enums::GameVersion::DP || group == Enums::GameVersion::PT ? 4 : 0;
+    if (hatchLocation == 0) return false;
+    const auto backup = decrypted_;
+    if (!setMetLocation(hatchLocation) || !setEggLocation(2000) || !setMetLevel(0)) {
+        decrypted_ = backup;
+        return false;
+    }
+    // Egg date 0x78..0x7A; met date 0x7B..0x7D. A hatched Pokémon records both.
+    if (byteAt(0x78) == 0 && byteAt(0x79) == 0 && byteAt(0x7A) == 0)
+        for (size_t i = 0; i < 3; ++i) write8(0x78 + i, byteAt(0x7B + i));
+    Pokemon4ReadOnly verify(encryptedBytes(), sourceGroup_);
+    if (!verify.valid()) {
         decrypted_ = backup;
         return false;
     }

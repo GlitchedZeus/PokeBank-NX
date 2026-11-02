@@ -47,7 +47,8 @@ namespace PokeVault::Integration::Gen5 {
     else if(const auto personal=personal5(p.species(),p.form(),b2w2))
         level=levelForExperience5(personal.info->growthRate,p.experience());
     return EncounterContext45::unverifiedMetNote45(static_cast<uint8_t>(p.originVersion()),
-        static_cast<uint16_t>(p.species()),static_cast<uint16_t>(p.metLocation()),level);
+        static_cast<uint16_t>(p.species()),static_cast<uint16_t>(p.metLocation()),level,
+        static_cast<uint16_t>(p.eggLocation()),static_cast<int>(p.metLevel()));
 }
 
 // Round 11 (owner H28, UI/SpeciesChangeMoves.h): the moves a Gen V Pokemon keeps when it becomes

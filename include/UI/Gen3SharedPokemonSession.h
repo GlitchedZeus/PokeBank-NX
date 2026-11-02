@@ -196,7 +196,12 @@ struct Session {
     // ancestry) in the record's own origin game -- the same list the Met Location picker offers as
     // verified catches (EncounterPicker::templatesForOrigin), never the save being edited.
     // Round 12 (R12-005): and the draft's level has reached that template's minimum level.
+    // Round 13 (owner decision 5): or a hatched-egg history (Met Level 0 at a place) of a species
+    // BreedingPolicy verifies hatches from a Day-Care egg in Gen III at this level.
     bool encounterStillValid() const {
+        if (working.metLevel == 0 && working.metLocation != 0 &&
+            !ExactGameMetLocations::gen3MarkerLocation(working.metLocation))
+            return Gen3EncounterPicker::eggVerdict(working.species, working.level).verified();
         return Gen3EncounterPicker::verifiedTemplate(
                    Gen3EncounterPicker::templatesForOrigin(working.originGame, working.species),
                    working.metLocation, working.metLevel, working.level) != nullptr;
@@ -229,8 +234,10 @@ struct Session {
         picker.choices = Gen3EncounterPicker::templatesForOrigin(working.originGame, working.species);
         picker.unverifiedList = unverifiedList;
         picker.rows = unverifiedList
-            ? Gen3EncounterPicker::unverifiedRows(picker.choices, working.metLocation, working.originGame, working.level)
-            : Gen3EncounterPicker::defaultRows(picker.choices, working.metLocation, working.originGame, working.level);
+            ? Gen3EncounterPicker::unverifiedRows(picker.choices, working.metLocation, working.originGame, working.level,
+                                                  working.species)
+            : Gen3EncounterPicker::defaultRows(picker.choices, working.metLocation, working.originGame, working.level,
+                                               working.species);
         return picker;
     }
 
@@ -244,7 +251,14 @@ struct Session {
         applied = nullptr;
         if (!editable() || row == Gen3EncounterPicker::kUnverifiedListRow ||
             std::find(picker.rows.begin(), picker.rows.end(), row) == picker.rows.end()) return false;
-        if (ExactGameMetLocations::isOtherNativeRow(row)) {
+        if (row == Gen3EncounterPicker::kHatchedEggRow) {
+            // Round 13 (owner decision 5): a hatched egg -- the game's Day-Care hatch place and Met
+            // Level 0 (the level stays: a verified row means it has reached the hatch level).
+            const uint16_t hatch = PokeVault::Integration::MetLocationPolicy::dayCareHatchLocation(working.originGame);
+            if (hatch == 0) return false;
+            working.metLocation = hatch;
+            working.metLevel = 0;
+        } else if (ExactGameMetLocations::isOtherNativeRow(row)) {
             // No template: the met level stays as entered (the Met Level row prompts 0-100).
             working.metLocation = ExactGameMetLocations::otherNativeRowLocation(row);
         } else if (row != Gen3EncounterPicker::kKeepStoredRow) {

@@ -1,5 +1,7 @@
 #pragma once
+#include "Integration/Encounter/BreedingPolicy.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
+#include "Integration/Encounter/InGameTrades4.h"
 #include "Integration/Encounter/MetLocationPolicy.h"
 #include "Names/SpecialMetLocationNotes.h"
 #include <array>
@@ -94,16 +96,43 @@ public:
                 row->levelReached = row->levelReached || reached;
             }
         }
+        // Round 13 (owner decisions 5 / 6): Gen IV's Day-Care / trade markers are judged per record.
+        const uint8_t gen = generation(origin);
+        egg_ = BreedingPolicy::eggHistory(gen, species, currentLevel);
+        std::vector<uint16_t> gen4Rows;   // the record's Gen IV marker rows, verified or not
+        if (gen == 4) {
+            for (uint16_t member = 1; member <= 493; ++member) {
+                const auto* trade = parents[member] ? InGameTrades4::find(origin, member) : nullptr;
+                if (!trade) continue;
+                const bool reached = Policy::levelReachesEncounter(trade->level, currentLevel);
+                // Prefer a trade the level reaches; among those, the species itself.
+                if (!trade_ || (reached && !tradeReached_) ||
+                    (reached == tradeReached_ && member == species && trade_->species != species)) {
+                    trade_ = trade;
+                    tradeReached_ = reached;
+                }
+            }
+            // An unhatched egg traded by link records 2002 as its Met Location (PKHeX
+            // EncounterVerifier.VerifyUnhatchedEgg); an egg is the species itself.
+            eggTraded_ = history.egg && BreedingPolicy::hatchable(4, species);
+            // An unhatched egg has not hatched: it gets no hatched-egg row.
+            gen4Rows = {InGameTrades4::kMetLocation, 2002};
+            if (!history.egg) gen4Rows.insert(gen4Rows.begin(), Policy::kHatchedEggRow);
+        }
         focused_.push_back(stored);
         for (const auto id : all) {
             if (id == stored) continue;
             const auto* wild = wildRow(id);
             if (wild && wild->levelReached) { focused_.push_back(id); ++verified_; }
         }
+        for (const auto id : gen4Rows)
+            if (id != stored && gen4RowVerified(id)) focused_.push_back(id);
         for (const auto id : all)
-            if (id != stored && Policy::gen45DefaultMarker(generation(origin), id)) focused_.push_back(id);
+            if (id != stored && Policy::gen45DefaultMarker(gen, id)) focused_.push_back(id);
         focused_.push_back(Policy::kUnverifiedListRow);
         native_.push_back(stored);
+        for (const auto id : gen4Rows)
+            if (id != stored && !gen4RowVerified(id)) native_.push_back(id);
         for (const auto id : all)
             if (id != stored && std::find(focused_.begin(), focused_.end(), id) == focused_.end())
                 native_.push_back(id);
@@ -120,6 +149,23 @@ public:
     static constexpr bool isUnverifiedListRow(uint16_t value) noexcept {
         return value == MetLocationPolicy::kUnverifiedListRow;
     }
+    // Round 13: "Hatched from a Day-Care egg" (Gen IV), a row that writes the hatched-egg fields.
+    static constexpr bool isHatchedEggRow(uint16_t value) noexcept {
+        return value == MetLocationPolicy::kHatchedEggRow;
+    }
+    // The breeding verdict for this record (BreedingPolicy::eggHistory).
+    const BreedingPolicy::EggVerdict& eggVerdict() const noexcept { return egg_; }
+    // Round 13 (owner decision 6): a Gen IV marker row is verified for this record -- the hatched
+    // row when the species / a pre-evolution hatches here at this level, 2001 when it (or a
+    // pre-evolution) is this exact game's in-game trade at or below its level, 2002 for a hatchable
+    // egg (traded before hatching).
+    bool gen4RowVerified(uint16_t value) const noexcept {
+        if (generation(origin_) != 4) return false;
+        if (value == MetLocationPolicy::kHatchedEggRow) return egg_.verified();
+        if (value == InGameTrades4::kMetLocation) return trade_ && tradeReached_;
+        if (value == 2002) return eggTraded_;
+        return false;
+    }
     const WildRow* wildRow(uint16_t location) const noexcept {
         const auto row = std::find_if(wild_.begin(), wild_.end(), [&](const auto& r) {
             return r.encounter.location == location;
@@ -130,7 +176,7 @@ public:
     // reaches (R12-005); a marker or any other row is not one.
     bool verifiedEncounter(uint16_t location) const noexcept {
         const auto* row = wildRow(location);
-        return row && row->levelReached;
+        return (row && row->levelReached) || (location == InGameTrades4::kMetLocation && gen4RowVerified(location));
     }
     const char* scope(bool otherHistories) const noexcept {
         // Row 1 of either list is always the stored location (focused_ / native_ start with it).
@@ -142,6 +188,24 @@ public:
         if (isUnverifiedListRow(location)) return MetLocationPolicy::kUnverifiedListRowDetail;
         const bool current = location == stored_;
         const auto tagged = [&](std::string text) { return current ? "Stored: " + text : text; };
+        const auto via = [&](uint16_t member) {
+            return member != 0 && member != species_ ? " via " + std::string(name(member)) : std::string();
+        };
+        // Round 13 (owner decisions 5 / 6): the Gen IV Day-Care / trade rows say whether this record's
+        // species and level verify them, and why not.
+        if (isHatchedEggRow(location))
+            return egg_.verified() ? MetLocationPolicy::kHatchedEggVerified + via(egg_.hatchedAs)
+                                   : std::string(MetLocationPolicy::kHatchedEggUnverified) + "; " +
+                                         BreedingPolicy::reasonText(egg_.reason);
+        if (generation(origin_) == 4 && location == InGameTrades4::kMetLocation && !(current && history_.egg)) {
+            if (gen4RowVerified(location))
+                return tagged("NPC trade Lv. " + std::to_string(trade_->level) + via(trade_->species));
+            if (trade_) return tagged("NPC trade Lv. " + std::to_string(trade_->level) + "+" + via(trade_->species) +
+                                      "; " + MetLocationPolicy::kLevelBelowEncounter);
+            return tagged("NPC trade; not this species here");
+        }
+        if (generation(origin_) == 4 && location == 2002 && !current)
+            return eggTraded_ ? "Egg traded before hatching" : "Link trade; only an unhatched egg";
         // Stored history takes priority over wild tables. No edit invents a matching history.
         if (current && history_.egg) return "Stored egg; hatch history unverified";
         if (current && history_.eggLocation) return "Stored egg/hatch history; unverified";
@@ -173,6 +237,9 @@ private:
     uint8_t currentLevel_ = 0;
     size_t verified_ = 0;
     History history_{};
+    BreedingPolicy::EggVerdict egg_{};
+    const InGameTrades4::Trade* trade_ = nullptr;
+    bool tradeReached_ = false, eggTraded_ = false;
     std::vector<uint16_t> native_, focused_;
     std::vector<WildRow> wild_;
 };
@@ -181,10 +248,25 @@ private:
 // Location. "" when it is a verified wild row of the species / its ancestry that the current level
 // reaches (or the origin is not a Gen IV / V game, or nothing is recorded); otherwise an honest
 // unverified label -- a marker or event names itself. Never "legal"; nothing is changed.
-inline std::string unverifiedMetNote45(uint8_t origin, uint16_t species, uint16_t location, uint8_t level) {
+// Round 13 (owner decision 5): a hatched Pokémon (Met Level 0, a bred-egg Egg Location: Gen IV
+// 2000 / 2002, Gen V 60002 / 30003 / 30002 -- PKHeX Locations.IsEggLocationBred4 / 5) reads as a
+// verified hatch only when BreedingPolicy verifies its species (or a pre-evolution) hatches from a
+// Day-Care egg in that generation; otherwise the note says why. The Met Location is the place it
+// hatched; any native place of the game is one.
+constexpr bool bredEggLocation45(uint8_t generation, uint16_t eggLocation) noexcept {
+    return generation == 4 ? eggLocation == 2000 || eggLocation == 2002
+         : generation == 5 ? eggLocation == 60002 || eggLocation == 30003 || eggLocation == 30002 : false;
+}
+inline std::string unverifiedMetNote45(uint8_t origin, uint16_t species, uint16_t location, uint8_t level,
+                                       uint16_t eggLocation = 0, int metLevel = -1) {
     if (gameId(origin).empty() || location == 0) return {};
     const Catalogue context(origin, species, location, {}, {}, level);
     if (context.verifiedEncounter(location)) return {};
+    if (metLevel == 0 && bredEggLocation45(generation(origin), eggLocation)) {
+        const auto& egg = context.eggVerdict();
+        if (egg.verified()) return {};
+        return std::string("Hatched-egg history; ") + BreedingPolicy::reasonText(egg.reason) + "; unverified";
+    }
     if (auto special = Names::specialMetLocation(origin, location); !special.empty())
         return special.row + "; unverified";
     if (context.wildRow(location)) return MetLocationPolicy::kLevelBelowEncounterFull;

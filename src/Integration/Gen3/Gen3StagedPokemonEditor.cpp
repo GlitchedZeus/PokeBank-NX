@@ -279,6 +279,11 @@ std::string metEvidenceNote(const Record& record) {
     namespace Picker = PokeBank::UIModel::Gen3EncounterPicker;
     const auto choices = Picker::templatesForOrigin(record.originGame, record.species);
     if (Picker::verifiedTemplate(choices, record.metLocation, record.metLevel, record.level)) return {};
+    // Round 13 (owner decision 5): a hatched egg (Met Level 0) BreedingPolicy verifies needs no note.
+    if (record.metLevel == 0 && record.metLocation != 0 &&
+        !PokeBank::UIModel::ExactGameMetLocations::gen3MarkerLocation(record.metLocation) &&
+        Picker::eggVerdict(record.species, record.level).verified())
+        return {};
     return Picker::encounterOriginText(choices, record.species, record.metLocation, record.metLevel, record.level);
 }
 

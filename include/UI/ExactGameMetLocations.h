@@ -21,6 +21,7 @@
 // stored row, the verified rows of the species AND its pre-evolutions whose level the Pokémon has
 // reached, the game's own markers and one "Other location (unverified)..." row; every other
 // native location (and each verified row above the Pokémon's level) is in the unverified list.
+#include "Integration/Encounter/BreedingPolicy.h"
 #include "Integration/Encounter/EncounterContext45.h"
 #include "Integration/Encounter/EncounterGuardrails.h"
 #include "Integration/Encounter/MetLocationPolicy.h"
@@ -44,10 +45,14 @@ inline constexpr uint16_t kUnverifiedListRowValue = PokeVault::Integration::MetL
 constexpr uint16_t otherNativeRow(uint16_t location) noexcept {
     return static_cast<uint16_t>(kOtherNativeRowFlag | (location & 0x7FFF));
 }
+// Round 13 (owner decision 5): "Hatched from a Day-Care egg" (MetLocationPolicy::kHatchedEggRow).
+inline constexpr uint16_t kHatchedEggRowValue = PokeVault::Integration::MetLocationPolicy::kHatchedEggRow;
 constexpr bool isOtherNativeRow(uint16_t row) noexcept {
-    return row != kKeepStoredRowValue && row != kUnverifiedListRowValue && (row & kOtherNativeRowFlag) != 0;
+    return row != kKeepStoredRowValue && row != kUnverifiedListRowValue && row != kHatchedEggRowValue &&
+           (row & kOtherNativeRowFlag) != 0;
 }
-static_assert(!isOtherNativeRow(kUnverifiedListRowValue) && !isOtherNativeRow(kKeepStoredRowValue));
+static_assert(!isOtherNativeRow(kUnverifiedListRowValue) && !isOtherNativeRow(kKeepStoredRowValue) &&
+              !isOtherNativeRow(kHatchedEggRowValue));
 constexpr uint16_t otherNativeRowLocation(uint16_t row) noexcept {
     return static_cast<uint16_t>(row & 0x7FFF);
 }
@@ -58,7 +63,7 @@ constexpr uint16_t otherNativeRowLocation(uint16_t row) noexcept {
 inline constexpr const char* kOtherPlaceDetail = "Not a listed catch; unverified";
 inline constexpr const char* kTradeMarkerDetail = "Trade marker; unverified";
 inline constexpr const char* kEventMarkerDetail = "Event marker; unverified";
-inline constexpr const char* kEggMarkerDetail = "Egg marker; unverified";
+inline constexpr const char* kEggMarkerDetail = "Gift-egg marker; unverified";
 inline constexpr const char* kGiftMarkerDetail = "Gift marker; unverified";
 
 // ---- Generation III (PK3 origin 1 Sapphire, 2 Ruby, 3 Emerald, 4 FireRed, 5 LeafGreen) ----
@@ -91,8 +96,14 @@ inline std::vector<uint16_t> gen3OfferedLocations(uint8_t origin) {
 }
 
 // The game's own history markers (Gen III gift egg 253, in-game trade 254, fateful encounter
-// 255): offered in the default list, labelled as markers.
+// 255), labelled as markers.
 constexpr bool gen3MarkerLocation(uint16_t location) noexcept { return location >= 253 && location <= 255; }
+// Round 13 (owner decision 5, "no generic egg histories presented as verified"): the DEFAULT list
+// offers only the trade / fateful markers. 253 is the Met Location of an UNHATCHED gift egg
+// (pokeemerald METLOC_SPECIAL_EGG; replaced by the hatch place when it hatches), never a bred
+// egg's: the verified gift-egg templates (Emerald Wynaut, FR/LG Togepi) are template rows, a bred
+// egg is the "Hatched from a Day-Care egg" row, and the bare marker is in the unverified list.
+constexpr bool gen3DefaultMarker(uint16_t location) noexcept { return location == 254 || location == 255; }
 
 constexpr const char* gen3OtherDetail(uint16_t location) noexcept {
     switch (location) {
