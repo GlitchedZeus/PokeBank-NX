@@ -513,6 +513,9 @@ public:
         r.friendship=70;
         r.heldItem=0;
         r.trainer=ot;
+        // Round 12 R12-009: an empty nickname is the un-nicknamed default (Gen IV's Create rule),
+        // so the shown name follows a later Language change; a given name stays a custom nickname.
+        r.defaultNickname=nickname.empty();
         r.nickname=std::string(nickname);
         r.encounter={CreateHistory5::CallerSuppliedNative,kSharedCreateMetLocation,r.level,
                      kSharedCreateBall,date.year,date.month,date.day};
@@ -680,7 +683,10 @@ public:
         ot.language=p->language();
         r.trainer=ot;
         const auto nickname=asciiName5(p->decodedBytes(),true);
-        r.nickname=nickname && *nickname!=oldDefaultName?*nickname:std::string(newDefaultName);
+        // An un-nicknamed draft stays un-nicknamed: the new species' default name in its language.
+        r.defaultNickname=(Crypto::read32(p->decodedBytes(),0x38)&0x80000000u)==0;
+        r.nickname=r.defaultNickname?std::string{}:
+            nickname && *nickname!=oldDefaultName?*nickname:std::string(newDefaultName);
         const auto met=p->metDate();
         const bool hadPokerus=p->pokerusMode()!=0;   // the rebuild never carries it
         namespace History=PokeBank::UIModel::SpeciesChangeHistoryPolicy;
