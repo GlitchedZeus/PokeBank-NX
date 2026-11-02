@@ -55,10 +55,15 @@ int main() {
     // static / trade, species or a pre-evolution). Lv. 5 is what Create starts at: 23 of 649.
     const std::size_t black[] = {verifiedSpecies(21, 5), verifiedSpecies(21, 30), verifiedSpecies(21, 50), verifiedSpecies(21, 100)};
     std::printf("  Black verified species at Lv. 5/30/50/100: %zu / %zu / %zu / %zu of 649\n", black[0], black[1], black[2], black[3]);
-    CHECK(black[0] == 23 && black[1] == 193 && black[2] == 310 && black[3] == 321);
+    // Owner Nov 2 (evidence tiers, r13/encdata 7a85a33b / 6d12e41e): access-prerequisite rows are never
+    // verified. Black loses Victini (Liberty Pass, Lv. 15), Zorua (event Celebi, Lv. 10) and Zoroark (event
+    // beasts, Lv. 25) from Lv. 30 and Landorus (needs Tornadus + Thundurus, Lv. 70) at Lv. 100: was
+    // 23 / 193 / 310 / 321 when this lane was written.
+    CHECK(black[0] == 23 && black[1] == 190 && black[2] == 307 && black[3] == 317);
     const std::size_t b2[] = {verifiedSpecies(23, 5), verifiedSpecies(23, 30), verifiedSpecies(23, 50), verifiedSpecies(23, 100)};
     std::printf("  Black 2 verified species at Lv. 5/30/50/100: %zu / %zu / %zu / %zu of 649\n", b2[0], b2[1], b2[2], b2[3]);
-    CHECK(b2[0] == 47 && b2[1] == 220 && b2[2] == 358 && b2[3] == 417);
+    // Black 2 loses the three Key System Regis and Regigigas (Lv. 65) at Lv. 100: was 47 / 220 / 358 / 417.
+    CHECK(b2[0] == 47 && b2[1] == 220 && b2[2] == 358 && b2[3] == 413);
 
     // 2 / 3. Black Pidove (519) Lv. 5: no verified row, two places need a higher level (Route 3 Lv. 8+
     // first). Before Round 14 the caption only said "No verified encounter here".
