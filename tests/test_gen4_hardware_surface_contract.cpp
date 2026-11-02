@@ -480,6 +480,17 @@ int main() {
         assert(boxTap.find("selectedOccupied") == std::string::npos);
         assert(boxTap.find("beginCreate") == std::string::npos);
         assert(boxTap.find("screen.selectedItemIndex = previous;") != std::string::npos);
+        // Ported from PR #280 (2f5cfa56 / e02995b2): valid-tap bounding through
+        // Gen4BoxTouchActions::selectsTappedBoxSlot happens inside the Boxes tap route, before the
+        // cell becomes the selection and opens Actions; a tap never performs the X shortcut
+        // itself (old X = Add; since Round 11 X = Import / Export to file).
+        const auto bound = boxTap.find("PokeBank::UIModel::Gen4BoxTouchActions::selectsTappedBoxSlot(tapped, slots)");
+        assert(bound != std::string::npos);
+        assert(bound < boxTap.find("screen.selectedItemIndex = tapped;"));
+        assert(boxTap.find("screen.selectedItemIndex = tapped;") < boxTap.find("beginActions(screen);"));
+        assert(boxTap.find("PokemonFileMenus::") == std::string::npos);
+        assert(boxTap.find("beginImport") == std::string::npos);
+        assert(boxTap.find("exportPokemon") == std::string::npos);
     }
     // A stale six-party hit target cannot pick an out-of-range party member.
     contains(surface, "tapped - 6200 < static_cast<int>(screen.trainer.getPartySize())");
