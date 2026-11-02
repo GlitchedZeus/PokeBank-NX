@@ -58,14 +58,16 @@ int main() {
         for (const auto& s : plan.skipped) full += s.reason == B::SkipReason::PocketFull;
         assert(plan.adds.size() + full == balls.size() - pocket.held.size());
     }
-    // Key Items and HMs are never topped up or added; TMs are.
+    // Key Items are never topped up or added; TMs are; HMs are added once (Round 12 owner H12: "can we
+    // add all of the tm/hm's instead of excluding them"), never topped up.
     {
         B::PocketState key{Pocket::KeyItems, {{0, 259, 1}}, 30, addable(C::ClassicGame::Emerald, C::ClassicPocket::KeyItems)};
         B::PocketState tmhm{Pocket::TMHM, {{0, 289, 1}, {1, 339, 1}}, 64, addable(C::ClassicGame::Emerald, C::ClassicPocket::TMHM)};
         std::vector<B::PocketState> bag{key, tmhm};
         const auto plan = B::plan(Game::Emerald, {B::Mode::Both, 99, {}}, bag);
-        for (const auto& a : plan.adds) assert(a.pocket != Pocket::KeyItems && !(a.itemId >= 339 && a.itemId <= 346));
-        assert(skipped(plan, 259, B::SkipReason::KeyOrStoryItem) && skipped(plan, 339, B::SkipReason::KeyOrStoryItem));
+        for (const auto& a : plan.adds) assert(a.pocket != Pocket::KeyItems);
+        assert(skipped(plan, 259, B::SkipReason::KeyOrStoryItem) && skipped(plan, 339, B::SkipReason::OnlyOnce));
+        for (uint16_t hm = 340; hm <= 346; ++hm) assert(add(plan, hm) && add(plan, hm)->quantity == 1);
         assert(skipped(plan, 272, B::SkipReason::KeyOrStoryItem));          // Acro Bike: a Key Item anyway
         assert(topUp(plan, 289) && topUp(plan, 289)->to == 99);             // TM01 (single-use in Gen III)
         assert(add(plan, 290) && add(plan, 290)->quantity == 99);
@@ -147,7 +149,7 @@ int main() {
         }
         assert(plan.full[0].notFitted == bagFull && plan.full[1].notFitted == pcFull && bagFull > 0 && pcFull > 0);
         assert(B::skipText({Pocket::Items, 1, B::SkipReason::PocketFull}) == "pocket full");
-        assert(B::skipText({Pocket::Items, 1, B::SkipReason::KeyOrStoryItem}) == "Key Item or HM (excluded)");
+        assert(B::skipText({Pocket::Items, 1, B::SkipReason::KeyOrStoryItem}) == "Key Item (excluded: can gate story events)");
         // The same ordinary item may be added to the Bag AND the PC (native: a Potion in each).
         const auto both = std::count_if(plan.adds.begin(), plan.adds.end(), [&](const B::Add& x) { return x.itemId == plan.adds[0].itemId; });
         assert(plan.adds[0].pocket == Pocket::Items && both == 2);

@@ -755,7 +755,12 @@ void handleTopUpInput(TrainerViewScreen& screen, uint64_t down, int touchId, con
             const auto visible = screen.visibleItemIndices();
             if (screen.selectedItemIndex >= static_cast<int>(visible.size()))
                 screen.selectedItemIndex = std::max(0, static_cast<int>(visible.size()) - 1);
-            screen.postStatus(Model::appliedStatus(result.toppedUp, result.added, applied), 420);
+            ClassicGame game{};
+            ClassicPocket pocket{};
+            const bool named = currentPocket(screen, game, pocket);
+            screen.postStatus(Model::appliedStatus(result.toppedUp, result.added, applied, [&](BI::Pocket p) {
+                return named ? topUpPocketName(game, p) : std::string("A pocket");
+            }), 420);
             return;
         }
     }

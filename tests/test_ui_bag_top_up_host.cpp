@@ -138,7 +138,8 @@ void flow(const std::string& game, UI::TrainerViewScreen& screen, const std::fun
     check(HostUi::footerBars >= 1 && footerShows("Close") && footerShows("OK") && !footerShows("Add Item"),
           game + ": SETUP draws its own footer over the Bag's");
     check(noOverlaps(), game + ": SETUP text never overlaps");
-    check(d.drawn("Key Items and HMs are never changed"), game + ": SETUP says story items are excluded");
+    // Round 12 owner H12: TMs / HMs are planned; only Key Items are excluded, and native slots bound the fill.
+    check(d.drawn("Fills native free slots; Key Items are never changed"), game + ": SETUP says Key Items are excluded");
     // Amount: A opens the numpad; 50 is the target (each item is then capped natively).
     d.press(HidNpadButton_Down);
     d.press(HidNpadButton_Down);

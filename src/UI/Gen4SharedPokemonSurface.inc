@@ -1845,7 +1845,8 @@ void handleGen4TopUp(TrainerViewScreen& screen,State& state,u64 down,const Touch
             const auto rows=screen.visibleItemIndices().size();
             if(screen.selectedItemIndex>=static_cast<int>(rows))
                 screen.selectedItemIndex=rows?static_cast<int>(rows)-1:0;
-            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again),400);   // again == the applied plan
+            screen.postStatus(Model::appliedStatus(result.toppedUp,result.added,again,
+                [](BI::Pocket p){return gen4TopUpPocketName(p);}),400);   // again == the applied plan
             return;
         }
     }

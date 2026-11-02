@@ -3,11 +3,11 @@
 // tests/fuzz_synthetic_saves.h; no real save, ROM or key is read).
 //
 // For every generation: the plan uses the Add picker's own item list; plan + apply reads back exactly
-// in the staged editor; Key Items and HMs are never touched; per-item native caps hold; a full
-// pocket is reported, never forced; a refused step leaves the editor byte-identical (edits staged
-// before included); the finalized / export candidate reparses strictly with the new counts; the
-// source bytes never change; Discard restores the source. Gen II tops up each of an item's two
-// stacks; Gen I / III report an item held in several stacks instead of merging it.
+// in the staged editor; Key Items are never touched (TMs / HMs are planned, Round 12 H12); per-item
+// native caps hold; a full pocket is reported, never forced; a refused step leaves the editor
+// byte-identical (edits staged before included); the finalized / export candidate reparses strictly
+// with the new counts; the source bytes never change; Discard restores the source. Gen II tops up
+// each of an item's two stacks; Gen I / III report an item held in several stacks instead of merging it.
 #include "Inventory/BulkItemAdaptersClassic.h"
 #include "Inventory/BulkItemAdaptersNds.h"
 #include "Integration/Gen3/Gen3SaveValidation.h"
@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <map>
 #include <set>
@@ -176,7 +177,9 @@ void run() {
     CHECK(skipped(plan, 20, B::SkipReason::SeveralStacks) && !topUp(plan, 20));   // never merges two stacks
     CHECK(topUp(plan, 4) && topUp(plan, 4)->from == 7 && topUp(plan, 4)->to == 99);  // 999 asked, native 99
     CHECK(topUp(plan, 201) && topUp(plan, 201)->to == 99);
-    CHECK(skipped(plan, 6, B::SkipReason::KeyOrStoryItem) && skipped(plan, 196, B::SkipReason::KeyOrStoryItem));
+    // Round 12 owner H12 ("can we add all of the tm/hm's instead of excluding them"): an HM is an
+    // ordinary unique TM/HM item now, so a held one is "only one" (never topped up), not excluded.
+    CHECK(skipped(plan, 6, B::SkipReason::KeyOrStoryItem) && skipped(plan, 196, B::SkipReason::OnlyOnce));
     CHECK(plan.adds.size() == 2);   // one 20-slot Bag shared by every category: 2 free slots in all
     std::size_t full = 0;
     for (const auto& s : plan.skipped) full += s.reason == B::SkipReason::PocketFull;
@@ -259,8 +262,12 @@ void pc() {
     CHECK(addsIn(pcPlan, B::Pocket::PCItems) == 46 && count(pcPlan, B::SkipReason::PocketFull, B::Pocket::PCItems) > 0);
     CHECK(topUp(pcPlan, 20) && topUp(pcPlan, 20)->from == 5 && topUp(pcPlan, 20)->to == 99);
     CHECK(topUp(pcPlan, 83) && topUp(pcPlan, 83)->to == 99);
-    CHECK(skipped(pcPlan, 6, B::SkipReason::KeyOrStoryItem) && skipped(pcPlan, 196, B::SkipReason::KeyOrStoryItem));
-    for (const uint16_t key : {5, 31, 197, 198, 199, 200}) CHECK(!added(pcPlan, B::Pocket::PCItems, key));
+    // Round 12 owner H12 ("can we add all of the tm/hm's instead of excluding them"): an HM is an
+    // ordinary unique TM/HM item now, so a held one is "only one" (never topped up), not excluded.
+    CHECK(skipped(pcPlan, 6, B::SkipReason::KeyOrStoryItem) && skipped(pcPlan, 196, B::SkipReason::OnlyOnce));
+    for (const uint16_t key : {5, 31}) CHECK(!added(pcPlan, B::Pocket::PCItems, key) && skipped(pcPlan, key, B::SkipReason::KeyOrStoryItem));
+    // HM02-05 are eligible; the 46 free PC slots take lower item ids first, so they did not fit.
+    for (const uint16_t hm : {197, 198, 199, 200}) CHECK(skipped(pcPlan, hm, B::SkipReason::PocketFull));
     CHECK(pcPlan.full.size() == 1 && !pcPlan.full[0].sharedList && pcPlan.full[0].slots == 50 && pcPlan.full[0].freeBefore == 46);
 
     const auto result = B::apply(*editor, pcPlan, B::Gen1Bag::Adapter(*editor));
@@ -442,7 +449,10 @@ void run() {
     planIsSafe(QP::Game::Crystal, all, state2);
     CHECK(addsIn(all, B::Pocket::Items) == 1 && count(all, B::SkipReason::PocketFull, B::Pocket::Items) > 0);
     CHECK(addsIn(all, B::Pocket::Balls) > 0 && addsIn(all, B::Pocket::Balls) <= 12);
-    CHECK(skipped(all, 7, B::SkipReason::KeyOrStoryItem) && skipped(all, 243, B::SkipReason::KeyOrStoryItem));
+    // Round 12 owner H12 ("can we add all of the tm/hm's instead of excluding them"): an HM is an
+    // ordinary unique TM/HM item now, so a held one is "only one" (never topped up), not excluded.
+    CHECK(skipped(all, 7, B::SkipReason::KeyOrStoryItem) && skipped(all, 243, B::SkipReason::OnlyOnce));
+    for (uint16_t hm = 244; hm <= 249; ++hm) CHECK(added(all, B::Pocket::TMHM, hm));   // HM02-07, one each
     CHECK(topUp(all, 191) && topUp(all, 191)->to == 99);   // TM01
     const auto staged1 = std::vector<uint8_t>(editor->stagedBytes().begin(), editor->stagedBytes().end());
     const auto changes1 = editor->pendingChanges().size();
@@ -506,7 +516,9 @@ void pc() {
     for (const auto& t : plan.topUps) CHECK(t.pocket == B::Pocket::PCItems);
     CHECK(topUp(plan, kPotionItemId, 0) && topUp(plan, kPotionItemId, 0)->from == 10);
     CHECK(topUp(plan, kPotionItemId, 1) && topUp(plan, kPotionItemId, 1)->from == 20);
-    CHECK(skipped(plan, 7, B::SkipReason::KeyOrStoryItem) && skipped(plan, 243, B::SkipReason::KeyOrStoryItem));
+    // Round 12 owner H12 ("can we add all of the tm/hm's instead of excluding them"): an HM is an
+    // ordinary unique TM/HM item now, so a held one is "only one" (never topped up), not excluded.
+    CHECK(skipped(plan, 7, B::SkipReason::KeyOrStoryItem) && skipped(plan, 243, B::SkipReason::OnlyOnce));
     for (const uint16_t key : {70, 115, 116, 129}) CHECK(!added(plan, B::Pocket::PCItems, key));
     CHECK(addsIn(plan, B::Pocket::PCItems) == 50 - pcList.size() && count(plan, B::SkipReason::PocketFull, B::Pocket::PCItems) > 0);
     CHECK(plan.full.size() == 1 && plan.full[0].pocket == B::Pocket::PCItems && plan.full[0].slots == 50);
@@ -548,9 +560,17 @@ struct Put { std::size_t pouchOffset; std::size_t slot; uint16_t id; uint16_t co
 // Ruby / Sapphire (no item key): Items 0x560 x20, Key 0x5B0, Balls 0x600, TM 0x640, Berries 0x740
 // (tests/test_gen3_staged_inventory.cpp layout; pret pokeemerald / PKHeX SAV3RS).
 // `frlg`: section 0 game code 1 (FireRed / LeafGreen, security key 0 at 0xF20; tests/test_gen3_staged_inventory.cpp).
-std::vector<uint8_t> fixture(const std::vector<Put>& puts, bool frlg = false) {
+enum class Family { RS, Emerald, FRLG };
+// Emerald: a nonzero security key at 0xAC and the 0xEE0 marker (tests/test_gen3_staged_inventory.cpp);
+// the key masks quantities, so put counts are raw for RS / FRLG (key 0) only.
+std::vector<uint8_t> fixture(const std::vector<Put>& puts, Family family) {
     LogicalSectors logical{};
-    write32(logical[0], 0xAC, frlg ? 1 : 0);
+    if (family == Family::Emerald) {
+        write32(logical[0], 0xAC, 0xA1B2C3D4);
+        logical[0][0xEE0] = 0x42;
+    } else {
+        write32(logical[0], 0xAC, family == Family::FRLG ? 1 : 0);
+    }
     for (const auto& p : puts) {
         write16(logical[1], p.pouchOffset + p.slot * 4, p.id);
         write16(logical[1], p.pouchOffset + p.slot * 4 + 2, p.count);
@@ -570,6 +590,9 @@ std::vector<uint8_t> fixture(const std::vector<Put>& puts, bool frlg = false) {
         }
     }
     return save;
+}
+std::vector<uint8_t> fixture(const std::vector<Put>& puts, bool frlg = false) {
+    return fixture(puts, frlg ? Family::FRLG : Family::RS);
 }
 void run() {
     std::vector<Put> puts{{0x560, 0, 13, 3}, {0x560, 1, 13, 4},   // Potion in two stacks
@@ -599,7 +622,10 @@ void run() {
     CHECK(skipped(plan, 13, B::SkipReason::SeveralStacks) && !topUp(plan, 13));
     CHECK(topUp(plan, 14) && topUp(plan, 14)->to == 99);   // R/S cap 99 even when 999 is asked
     CHECK(topUp(plan, 289) && topUp(plan, 289)->to == 99);
-    CHECK(skipped(plan, 259, B::SkipReason::KeyOrStoryItem) && skipped(plan, 339, B::SkipReason::KeyOrStoryItem));
+    // Round 12 owner H12 ("can we add all of the tm/hm's instead of excluding them"): an HM is an
+    // ordinary unique TM/HM item now, so a held one is "only one" (never topped up), not excluded.
+    CHECK(skipped(plan, 259, B::SkipReason::KeyOrStoryItem) && skipped(plan, 339, B::SkipReason::OnlyOnce));
+    for (uint16_t hm = 340; hm <= 346; ++hm) CHECK(added(plan, B::Pocket::TMHM, hm));   // HM02-08, one each
     CHECK(addsIn(plan, B::Pocket::Items) == 2 && count(plan, B::SkipReason::PocketFull, B::Pocket::Items) > 0);
     for (const auto& a : plan.adds) if (a.pocket == B::Pocket::Berries) CHECK(a.quantity == 999);  // Berry Pouch 999
 
@@ -662,7 +688,8 @@ void pcOne(SourceGame game, std::size_t pcOffset, std::size_t pcSlots, std::size
     CHECK(topUp(plan, 13) && topUp(plan, 13)->pocket == B::Pocket::PCItems && topUp(plan, 13)->to == 999);
     CHECK(topUp(plan, 14) && topUp(plan, 14)->from == 998 && topUp(plan, 14)->to == 999);
     if (game == SourceGame::RubyGBA)
-        CHECK(skipped(plan, 259, B::SkipReason::KeyOrStoryItem) && skipped(plan, 339, B::SkipReason::KeyOrStoryItem));
+        // Round 12 owner H12: a held HM is "only one" now, not excluded.
+        CHECK(skipped(plan, 259, B::SkipReason::KeyOrStoryItem) && skipped(plan, 339, B::SkipReason::OnlyOnce));
     CHECK(plan.full.size() == 1 && plan.full[0].slots == pcSlots && plan.full[0].freeBefore == 4);
     CHECK(Model::previewLines(plan, {B::Pocket::PCItems}, [](B::Pocket, uint16_t id) { return std::to_string(id); },
                               [](B::Pocket) { return std::string("PC Items"); })[0].text ==
@@ -743,7 +770,10 @@ void run() {
     planIsSafe(QP::Game::Platinum, plan, state);
     CHECK(topUp(plan, 17, 0) && topUp(plan, 17, 0)->to == 999 && topUp(plan, 17, 1) && topUp(plan, 17, 1)->from == 7);
     CHECK(topUp(plan, 328) && topUp(plan, 328)->to == 99);   // Gen IV TMs: native 99
-    CHECK(skipped(plan, 450, B::SkipReason::KeyOrStoryItem) && skipped(plan, 420, B::SkipReason::KeyOrStoryItem));
+    // Round 12 owner H12 ("can we add all of the tm/hm's instead of excluding them"): an HM is an
+    // ordinary unique TM/HM item now, so a held one is "only one" (never topped up), not excluded.
+    CHECK(skipped(plan, 450, B::SkipReason::KeyOrStoryItem) && skipped(plan, 420, B::SkipReason::OnlyOnce));
+    for (uint16_t hm = 421; hm <= 427; ++hm) CHECK(added(plan, B::Pocket::TMHM, hm));   // HM02-08, one each
     CHECK(addsIn(plan, B::Pocket::Balls) == 1 && count(plan, B::SkipReason::PocketFull, B::Pocket::Balls) == balls.size() - 4);
     for (const auto& t : plan.topUps) if (t.pocket == B::Pocket::Balls) CHECK(t.to == 999);   // every Poke Ball stack
 
@@ -840,6 +870,394 @@ void run() {
 }
 } // namespace gen5
 
+// ------------------------------------------------------------------- Round 12 R12-006 / R12-007 --
+// Owner H14 (Round 12): "in the top up feature doesnt work correctly it only selects like 20 items or
+// something we need the all items in that slot not just 20, check this for every gen". Owner H12:
+// "can we add all of the tm/hm's instead of excluding them".
+// Every generation, every scope, through the REAL adapters on synthetic saves: each list's slot count
+// is the native one; the plan adds exactly min(eligible missing items, free native slots) per native
+// list; every candidate the Add picker offers that is not held is either planned or listed with a
+// reason (nothing silently dropped); no list ever exceeds its native slots; and every TM and HM the
+// game's own TM/HM list defines is planned (Key Items stay excluded, with their reason).
+namespace coverage {
+using G1Game = PokeVault::Integration::Gen1::SourceGame;
+// No Key Item is ever planned (they gate story events); TMs and HMs may be.
+void noKeyItem(QP::Game game, const B::Plan& plan) {
+    for (const auto& a : plan.adds) CHECK(QP::quantityRule(game, a.pocket, a.itemId).kind != QP::ItemKind::KeyItem);
+    for (const auto& t : plan.topUps) CHECK(QP::quantityRule(game, t.pocket, t.itemId).kind != QP::ItemKind::KeyItem);
+}
+struct Native { B::Pocket pocket; std::size_t slots; };
+const char* scopeName(Model::Scope s) {
+    switch (s) {
+        case Model::Scope::ThisPocket: return "This pocket";
+        case Model::Scope::AllBag: return "All Bag";
+        case Model::Scope::PcItems: return "PC Items";
+        case Model::Scope::BagAndPc: return "Bag + PC";
+    }
+    return "?";
+}
+bool verbose() { const char* v = std::getenv("POKEBANK_TOPUP_VERBOSE"); return v && *v; }
+
+// One plan against the exact-count contract. Returns the number of adds in the TM/HM pocket.
+void exact(const std::string& label, const B::Request& req, const B::Plan& plan,
+           std::span<const B::PocketState> state, std::span<const Native> native) {
+    const auto requested = [&](B::Pocket p) { return std::find(req.pockets.begin(), req.pockets.end(), p) != req.pockets.end(); };
+    for (const auto& n : native) {
+        const auto p = std::find_if(state.begin(), state.end(), [&](const B::PocketState& s) { return s.pocket == n.pocket; });
+        CHECK(p != state.end() && p->slotCapacity == n.slots);
+        if (p != state.end() && p->slotCapacity != n.slots)
+            std::fprintf(stderr, "  %s: pocket %d has %zu slots, native %zu\n", label.c_str(), static_cast<int>(n.pocket), p->slotCapacity, n.slots);
+    }
+    for (const auto& a : plan.adds) CHECK(requested(a.pocket));
+    for (const auto& t : plan.topUps) CHECK(requested(t.pocket));
+    for (const auto& k : plan.skipped) CHECK(requested(k.pocket) && !B::skipText(k).empty());
+    // Per native list (a slotGroup is ONE list): eligible = planned adds + "pocket full" skips.
+    std::map<int, std::pair<std::size_t, std::size_t>> groupAddsEligible;
+    for (const auto& p : state) {
+        if (!requested(p.pocket)) continue;
+        std::vector<uint16_t> missing;
+        for (const uint16_t id : p.addableItems)
+            if (id != 0 && std::none_of(p.held.begin(), p.held.end(), [id](const B::HeldStack& h) { return h.itemId == id; }))
+                missing.push_back(id);
+        std::sort(missing.begin(), missing.end());
+        missing.erase(std::unique(missing.begin(), missing.end()), missing.end());
+        std::size_t adds = 0, fullSkips = 0;
+        if (req.mode != B::Mode::TopUpExisting) {
+            for (const uint16_t id : missing) {
+                const auto a = std::count_if(plan.adds.begin(), plan.adds.end(), [&](const B::Add& x) { return x.pocket == p.pocket && x.itemId == id; });
+                const auto k = std::count_if(plan.skipped.begin(), plan.skipped.end(), [&](const B::Skip& x) { return x.pocket == p.pocket && x.itemId == id; });
+                CHECK(a + k == 1);   // planned or listed with its reason; never silently dropped
+                if (a + k != 1) std::fprintf(stderr, "  %s: item %u in pocket %d planned %ld, listed %ld\n", label.c_str(), id, static_cast<int>(p.pocket), static_cast<long>(a), static_cast<long>(k));
+                adds += static_cast<std::size_t>(a);
+                fullSkips += static_cast<std::size_t>(std::count_if(plan.skipped.begin(), plan.skipped.end(), [&](const B::Skip& x) {
+                    return x.pocket == p.pocket && x.itemId == id && x.reason == B::SkipReason::PocketFull; }));
+            }
+        }
+        if (req.mode != B::Mode::AddMissing)
+            for (const auto& h : p.held) {
+                const bool planned = std::any_of(plan.topUps.begin(), plan.topUps.end(), [&](const B::TopUp& t) { return t.pocket == p.pocket && t.slot == h.slot; });
+                const bool listed = std::any_of(plan.skipped.begin(), plan.skipped.end(), [&](const B::Skip& k) { return k.pocket == p.pocket && k.itemId == h.itemId; });
+                CHECK(planned || listed);
+            }
+        const std::size_t eligible = adds + fullSkips;
+        if (p.slotGroup >= 0) {
+            groupAddsEligible[p.slotGroup].first += adds;
+            groupAddsEligible[p.slotGroup].second += eligible;
+        } else {
+            const std::size_t free = p.slotCapacity - p.held.size();
+            CHECK(adds == std::min(eligible, free));
+            CHECK(p.held.size() + adds <= p.slotCapacity);
+            if (req.mode != B::Mode::TopUpExisting) {
+                // The preview's exact count for this list (Plan::rooms) is the same arithmetic.
+                const auto room = std::find_if(plan.rooms.begin(), plan.rooms.end(), [&](const B::ListRoom& r) { return r.pocket == p.pocket; });
+                CHECK(room != plan.rooms.end());
+                if (room != plan.rooms.end())
+                    CHECK(room->slots == p.slotCapacity && room->freeBefore == free && room->eligible == eligible &&
+                          room->planned == adds && room->notFitted == eligible - adds && !room->sharedList);
+            }
+            if (adds != std::min(eligible, free))
+                std::fprintf(stderr, "  %s: pocket %d planned %zu, eligible %zu, free %zu\n", label.c_str(), static_cast<int>(p.pocket), adds, eligible, free);
+        }
+        if (verbose())
+            std::fprintf(stderr, "  %-28s pocket %d: slots %zu held %zu offered %zu missing %zu eligible %zu planned %zu\n",
+                         label.c_str(), static_cast<int>(p.pocket), p.slotCapacity, p.held.size(), p.addableItems.size(),
+                         missing.size(), eligible, adds);
+    }
+    for (const auto& [group, ae] : groupAddsEligible) {
+        std::size_t held = 0, cap = 0;
+        for (const auto& p : state) if (p.slotGroup == group) { held += p.held.size(); cap = p.slotCapacity; }
+        CHECK(ae.first == std::min(ae.second, cap - held));
+        CHECK(held + ae.first <= cap);
+        // One room for the whole shared list (Gen I Bag), whichever categories were planned.
+        CHECK(std::count_if(plan.rooms.begin(), plan.rooms.end(), [](const B::ListRoom& r) { return r.sharedList; }) == 1);
+        for (const auto& r : plan.rooms)
+            if (r.sharedList) CHECK(r.slots == cap && r.freeBefore == cap - held && r.planned == ae.first && r.eligible == ae.second);
+    }
+    // The preview opens with one capacity line per native list (full or not), before any item line.
+    if (req.mode != B::Mode::TopUpExisting) {
+        const auto lines = Model::previewLines(plan, req.pockets, [](B::Pocket, uint16_t id) { return std::to_string(id); },
+                                               [](B::Pocket p) { return "P" + std::to_string(static_cast<int>(p)); });
+        CHECK(lines.size() >= plan.rooms.size());
+        for (std::size_t i = 0; i < plan.rooms.size() && i < lines.size(); ++i)
+            CHECK(lines[i].kind == Model::LineKind::Note && lines[i].text.find(" slots") != std::string::npos);
+    }
+}
+
+// Every TM and HM of the game's own TM/HM list that is not held is planned (R12-007): no
+// "Key Item or HM (excluded)" skip in the TM/HM pocket. `fits` = the list has room for all of them.
+void allMachines(const std::string& label, const B::Plan& plan, std::span<const B::PocketState> state, bool fits) {
+    const auto tm = std::find_if(state.begin(), state.end(), [](const B::PocketState& p) { return p.pocket == B::Pocket::TMHM; });
+    CHECK(tm != state.end());
+    if (tm == state.end()) return;
+    for (const auto& k : plan.skipped)
+        if (k.pocket == B::Pocket::TMHM) CHECK(k.reason != B::SkipReason::KeyOrStoryItem && k.reason != B::SkipReason::NotInPocket);
+    std::size_t missing = 0;
+    for (const uint16_t id : tm->addableItems) {
+        if (std::any_of(tm->held.begin(), tm->held.end(), [id](const B::HeldStack& h) { return h.itemId == id; })) continue;
+        ++missing;
+        if (fits) {
+            CHECK(added(plan, B::Pocket::TMHM, id));
+            if (!added(plan, B::Pocket::TMHM, id)) std::fprintf(stderr, "  %s: machine %u not planned\n", label.c_str(), id);
+        }
+    }
+    if (fits) CHECK(addsIn(plan, B::Pocket::TMHM) == missing);
+}
+
+template <class Run>
+void everyScope(const std::string& game, std::span<const B::PocketState> state, B::Pocket current, Run&& run) {
+    std::vector<Model::Scope> scopes{Model::Scope::ThisPocket, Model::Scope::AllBag};
+    if (B::hasPcItems(state)) { scopes.push_back(Model::Scope::PcItems); scopes.push_back(Model::Scope::BagAndPc); }
+    for (const auto scope : scopes)
+        for (const auto mode : {B::Mode::AddMissing, B::Mode::Both}) {
+            const auto req = Model::request(scoped(scope, 999, mode), current, state);
+            run(game + " " + scopeName(scope) + (mode == B::Mode::Both ? " +top" : ""), req);
+        }
+}
+
+void g1() {
+    for (const auto& g : {std::pair{G1Game::Red, QP::Game::Red}, std::pair{G1Game::Yellow, QP::Game::Yellow}}) {
+        auto raw = gen1::fixture({});
+        if (g.first == G1Game::Yellow) {   // Yellow evidence: starter 0x54, Pikachu friendship (tests/test_bag_add_flow_gen15.cpp)
+            raw[0x29C3] = 0x54;
+            raw[0x271C] = 90;
+            qasynth::gen1::forge(raw);
+        }
+        auto parsed = PokeVault::Integration::Gen1::parse(raw, g.first);
+        CHECK(static_cast<bool>(parsed));
+        if (!parsed) continue;
+        std::string err;
+        auto editor = PokeVault::Integration::Gen1::StagedInventoryEditor::create(*parsed.save, err);
+        CHECK(editor != nullptr);
+        if (!editor) continue;
+        const auto state = B::Gen1Bag::pockets(*editor, err);
+        // pret pokered: one 20-slot Bag (every category a view of it), a 50-slot PC.
+        const std::vector<Native> native{{B::Pocket::Items, 20}, {B::Pocket::Medicine, 20}, {B::Pocket::Balls, 20},
+                                         {B::Pocket::KeyItems, 20}, {B::Pocket::TMHM, 20}, {B::Pocket::PCItems, 50}};
+        for (const auto current : {B::Pocket::Items, B::Pocket::TMHM, B::Pocket::PCItems})
+            everyScope(std::string("Gen I ") + (g.first == G1Game::Red ? "Red" : "Yellow"), state, current,
+                       [&](const std::string& label, const B::Request& req) {
+                const auto plan = B::plan(g.second, req, state);
+                exact(label, req, plan, state, native);
+                noKeyItem(g.second, plan);
+                if (req.pockets == std::vector<B::Pocket>{B::Pocket::TMHM}) {
+                    // 55 machines, 20 shared slots: 20 planned (HM01-05 first), 35 "Bag full", no exclusion.
+                    allMachines(label, plan, state, false);
+                    CHECK(addsIn(plan, B::Pocket::TMHM) == 20 && plan.full.size() == 1 && plan.full[0].sharedList);
+                    for (const uint16_t hm : {196, 197, 198, 199, 200}) CHECK(added(plan, B::Pocket::TMHM, hm));
+                }
+            });
+        // TM/HM alone, applied: HM01-05 and TM01-15 staged, exported, strictly reparsed.
+        const auto req = Model::request(scoped(Model::Scope::ThisPocket, 99, B::Mode::AddMissing), B::Pocket::TMHM, state);
+        const auto plan = B::plan(g.second, req, state);
+        CHECK(B::apply(*editor, plan, B::Gen1Bag::Adapter(*editor)).applied);
+        readsBack(*editor, plan, B::Gen1Bag::Adapter(*editor));
+        const auto out = editor->finalize(err);
+        auto reparsed = out.empty() ? decltype(parsed){} : PokeVault::Integration::Gen1::parse(out, g.first);
+        CHECK(static_cast<bool>(reparsed));
+        if (reparsed) {
+            auto check = PokeVault::Integration::Gen1::StagedInventoryEditor::create(*reparsed.save, err);
+            CHECK(check != nullptr);
+            if (check) {
+                readsBack(*check, plan, B::Gen1Bag::Adapter(*check));
+                CHECK(check->freeSlots(I::ClassicPocket::TMHM, err) == 0);
+            }
+        }
+        CHECK(std::equal(raw.begin(), raw.end(), editor->originalBytes().begin()));
+        CHECK(Model::appliedStatus(0, plan.adds.size(), plan).rfind("Partly staged: 0 topped up, 20 added; 35 did not fit", 0) == 0);
+    }
+}
+
+void g2() {
+    using namespace PokeVault::Integration::Gen2;
+    const auto raw = gen2::fixture(gen2::C, {});
+    auto parsed = parse(raw, SourceGame::Crystal);
+    CHECK(static_cast<bool>(parsed));
+    if (!parsed) return;
+    std::string err;
+    auto editor = StagedEditor::create(*parsed.save, err);
+    CHECK(editor != nullptr);
+    if (!editor) return;
+    const auto state = B::Gen2Bag::pockets(*editor, err);
+    // pret pokecrystal: Items 20, Balls 12, Key Items 25, TM/HM one fixed slot per machine (57), PC 50.
+    const std::vector<Native> native{{B::Pocket::Items, 20}, {B::Pocket::Balls, 12}, {B::Pocket::KeyItems, 25},
+                                     {B::Pocket::TMHM, 57}, {B::Pocket::PCItems, 50}};
+    for (const auto current : {B::Pocket::Items, B::Pocket::TMHM, B::Pocket::PCItems})
+        everyScope("Gen II Crystal", state, current, [&](const std::string& label, const B::Request& req) {
+            const auto plan = B::plan(QP::Game::Crystal, req, state);
+            exact(label, req, plan, state, native);
+            noKeyItem(QP::Game::Crystal, plan);
+            if (std::find(req.pockets.begin(), req.pockets.end(), B::Pocket::TMHM) != req.pockets.end())
+                allMachines(label, plan, state, true);
+        });
+    // All Bag pockets, applied: every TM and HM (HM02-07 added; TM01 / HM01 already held), the
+    // finalized save reparses strictly and reads back.
+    const auto req = Model::request(scoped(Model::Scope::AllBag, 99, B::Mode::Both), B::Pocket::TMHM, state);
+    const auto plan = B::plan(QP::Game::Crystal, req, state);
+    CHECK(addsIn(plan, B::Pocket::TMHM) == 55);
+    for (uint8_t hm = 244; hm <= 249; ++hm) CHECK(added(plan, B::Pocket::TMHM, hm));
+    CHECK(skipped(plan, 243, B::SkipReason::OnlyOnce));   // HM01 held: one only, nothing to top up
+    CHECK(skipped(plan, 7, B::SkipReason::KeyOrStoryItem));   // the Bicycle stays a Key Item
+    CHECK(B::apply(*editor, plan, B::Gen2Bag::Adapter{}).applied);
+    readsBack(*editor, plan, B::Gen2Bag::Adapter{});
+    const auto out = editor->finalizedBytes(err);
+    auto reopened = out.empty() ? ParseResult{} : parse(out, SourceGame::Crystal);
+    CHECK(static_cast<bool>(reopened));
+    if (reopened) {
+        auto again = StagedEditor::create(*reopened.save, err);
+        CHECK(again != nullptr);
+        if (again) {
+            readsBack(*again, plan, B::Gen2Bag::Adapter{});
+            for (uint8_t hm = 243; hm <= 249; ++hm) CHECK(again->stagedInventoryQuantity(InventoryPocket::TMHM, hm) == 1);
+        }
+    }
+    CHECK(raw == std::vector<uint8_t>(editor->originalBytes().begin(), editor->originalBytes().end()));
+}
+
+void g3() {
+    using namespace PokeVault::Integration::Gen3;
+    struct G { SourceGame source; QP::Game policy; const char* name; gen3::Family family; std::vector<Native> native; };
+    // Owner brief (pret pokeruby / pokeemerald / pokefirered): Items RS 20, E 30, FRLG 42; Balls 16/16/13;
+    // TM/HM 64/64/58; Berries 46/46/43; Key Items 20/30/30; PC 50/50/30.
+    const std::vector<G> games{
+        {SourceGame::RubyGBA, QP::Game::Ruby, "Ruby", gen3::Family::RS,
+         {{B::Pocket::Items, 20}, {B::Pocket::Balls, 16}, {B::Pocket::TMHM, 64}, {B::Pocket::Berries, 46}, {B::Pocket::KeyItems, 20}, {B::Pocket::PCItems, 50}}},
+        {SourceGame::EmeraldGBA, QP::Game::Emerald, "Emerald", gen3::Family::Emerald,
+         {{B::Pocket::Items, 30}, {B::Pocket::Balls, 16}, {B::Pocket::TMHM, 64}, {B::Pocket::Berries, 46}, {B::Pocket::KeyItems, 30}, {B::Pocket::PCItems, 50}}},
+        {SourceGame::FireRedGBA, QP::Game::FireRed, "FireRed", gen3::Family::FRLG,
+         {{B::Pocket::Items, 42}, {B::Pocket::Balls, 13}, {B::Pocket::TMHM, 58}, {B::Pocket::Berries, 43}, {B::Pocket::KeyItems, 30}, {B::Pocket::PCItems, 30}}},
+        {SourceGame::LeafGreenGBA, QP::Game::LeafGreen, "LeafGreen", gen3::Family::FRLG,
+         {{B::Pocket::Items, 42}, {B::Pocket::Balls, 13}, {B::Pocket::TMHM, 58}, {B::Pocket::Berries, 43}, {B::Pocket::KeyItems, 30}, {B::Pocket::PCItems, 30}}},
+    };
+    for (const auto& g : games) {
+        const auto raw = gen3::fixture({}, g.family);
+        std::string err;
+        auto editor = StagedInventoryEditor::create(raw, g.source, err);
+        CHECK(editor != nullptr);
+        if (!editor) { std::fprintf(stderr, "  Gen III %s: %s\n", g.name, err.c_str()); continue; }
+        const auto state = B::Gen3Bag::pockets(*editor, err);
+        CHECK(err.empty() && state.size() == 6);
+        for (const auto current : {B::Pocket::Items, B::Pocket::TMHM, B::Pocket::Berries, B::Pocket::PCItems})
+            everyScope(std::string("Gen III ") + g.name, state, current, [&](const std::string& label, const B::Request& req) {
+                const auto plan = B::plan(g.policy, req, state);
+                exact(label, req, plan, state, g.native);
+                noKeyItem(g.policy, plan);
+                if (std::find(req.pockets.begin(), req.pockets.end(), B::Pocket::TMHM) != req.pockets.end())
+                    allMachines(label, plan, state, true);
+            });
+        // The Items pouch: every native slot is filled (RS 20, E 30, FRLG 42), never a fixed 20.
+        const auto items = Model::request(scoped(Model::Scope::ThisPocket, 99, B::Mode::AddMissing), B::Pocket::Items, state);
+        const auto itemsPlan = B::plan(g.policy, items, state);
+        CHECK(addsIn(itemsPlan, B::Pocket::Items) == g.native[0].slots);
+        // Bag + PC, applied: every TM / HM, every Berry, a full Items pouch and PC, strict reparse.
+        const auto req = Model::request(scoped(Model::Scope::BagAndPc, 99, B::Mode::Both), B::Pocket::Items, state);
+        const auto plan = B::plan(g.policy, req, state);
+        CHECK(addsIn(plan, B::Pocket::TMHM) == 58);
+        for (uint16_t hm = 339; hm <= 346; ++hm) CHECK(added(plan, B::Pocket::TMHM, hm));
+        CHECK(addsIn(plan, B::Pocket::Berries) == 43 && addsIn(plan, B::Pocket::Items) == g.native[0].slots);
+        CHECK(addsIn(plan, B::Pocket::KeyItems) == 0);
+        CHECK(B::apply(*editor, plan, B::Gen3Bag::Adapter{}).applied);
+        readsBack(*editor, plan, B::Gen3Bag::Adapter{});
+        CHECK(editor->freeSlots(InventoryPouch::Items) == 0);
+        const auto out = editor->finalizedBytes(err);
+        CHECK(!out.empty());
+        auto again = out.empty() ? nullptr : StagedInventoryEditor::create(out, g.source, err);
+        CHECK(again != nullptr);
+        if (again) {
+            readsBack(*again, plan, B::Gen3Bag::Adapter{});
+            for (uint16_t hm = 339; hm <= 346; ++hm) CHECK(again->stagedInventoryQuantity(InventoryPouch::TMCase, hm) == 1);
+        }
+        CHECK(editor->originalBytes() == raw);
+    }
+}
+
+void g4() {
+    namespace G4 = PokeVault::Integration::Gen4;
+    struct G { qasynth::gen4::Kind kind; G4::Layout layout; const char* id; QP::Game policy; };
+    for (const auto& g : {G{qasynth::gen4::Kind::DiamondPearl, G4::Layout::DiamondPearl, "diamond_nds", QP::Game::Diamond},
+                          G{qasynth::gen4::Kind::Platinum, G4::Layout::Platinum, "platinum_nds", QP::Game::Platinum},
+                          G{qasynth::gen4::Kind::HeartGoldSoulSilver, G4::Layout::HeartGoldSoulSilver, "heartgold_nds", QP::Game::HeartGold}}) {
+        auto raw = qasynth::gen4::save(g.kind);
+        qasynth::gen4::forge(raw);
+        std::string err;
+        auto editor = G4::Gen4StagedPokemonEditor::create(raw, g.layout, g.id, &err);
+        CHECK(editor.has_value());
+        if (!editor) { std::fprintf(stderr, "  Gen IV %s: %s\n", g.id, err.c_str()); continue; }
+        const auto state = B::Gen4Bag::pockets(*editor, err);
+        CHECK(err.empty() && state.size() == G4::BagPocketCount);
+        const auto layout = G4::bagLayout(g.layout);
+        std::vector<Native> native;
+        for (std::size_t p = 0; p < state.size(); ++p) native.push_back({state[p].pocket, layout[p].slots});
+        for (const auto current : {B::Pocket::Items, B::Pocket::TMHM, B::Pocket::Medicine})
+            everyScope(std::string("Gen IV ") + g.id, state, current, [&](const std::string& label, const B::Request& req) {
+                const auto plan = B::plan(g.policy, req, state);
+                exact(label, req, plan, state, native);
+                noKeyItem(g.policy, plan);
+                if (std::find(req.pockets.begin(), req.pockets.end(), B::Pocket::TMHM) != req.pockets.end())
+                    allMachines(label, plan, state, true);
+            });
+        const auto req = Model::request(scoped(Model::Scope::AllBag, 999, B::Mode::Both), B::Pocket::TMHM, state);
+        const auto plan = B::plan(g.policy, req, state);
+        CHECK(addsIn(plan, B::Pocket::TMHM) == 100);   // TM01-92 and HM01-08
+        for (uint16_t hm = 420; hm <= 427; ++hm) CHECK(added(plan, B::Pocket::TMHM, hm));
+        CHECK(B::apply(*editor, plan, B::Gen4Bag::Adapter{}).applied);
+        readsBack(*editor, plan, B::Gen4Bag::Adapter{});
+        const auto out = editor->finalizedBytes(&err);
+        CHECK(!out.empty());
+        auto reopened = G4::Gen4StagedPokemonEditor::create(out, g.layout, g.id, &err);
+        CHECK(reopened.has_value());
+        if (reopened) readsBack(*reopened, plan, B::Gen4Bag::Adapter{});
+        CHECK(editor->originalBytes() == raw);
+    }
+}
+
+void g5() {
+    namespace G5 = PokeVault::Integration::Gen5;
+    using Family = G5::SaveFamily;
+    struct G { Family family; uint8_t version; const char* id; QP::Game policy; };
+    for (const auto& g : {G{Family::BlackWhite, 21, "black_nds", QP::Game::Black}, G{Family::Black2White2, 23, "black2_nds", QP::Game::Black2}}) {
+        auto raw = qasynth::gen5::save(g.family, g.version);
+        qasynth::gen5::forge(raw);
+        std::string err;
+        const auto parsed = G5::Gen5ReadOnlySave::parse(raw, g.id, &err, G5::SaveCopySelection::Primary);
+        CHECK(parsed.has_value());
+        if (!parsed) { std::fprintf(stderr, "  Gen V %s: %s\n", g.id, err.c_str()); continue; }
+        G5::Gen5StagedPokemonWorkspace ws(*parsed);
+        auto* bag = ws.stagedBag(&err);
+        CHECK(bag != nullptr);
+        if (!bag) continue;
+        const auto state = B::Gen5Bag::pockets(*bag);
+        std::vector<Native> native;
+        for (std::size_t p = 0; p < state.size(); ++p) native.push_back({state[p].pocket, G5::bagPocketLayout5(g.family, p).slots});
+        for (const auto current : {B::Pocket::Items, B::Pocket::TMHM, B::Pocket::Medicine})
+            everyScope(std::string("Gen V ") + g.id, state, current, [&](const std::string& label, const B::Request& req) {
+                const auto plan = B::plan(g.policy, req, state);
+                exact(label, req, plan, state, native);
+                noKeyItem(g.policy, plan);
+                if (std::find(req.pockets.begin(), req.pockets.end(), B::Pocket::TMHM) != req.pockets.end())
+                    allMachines(label, plan, state, true);
+            });
+        const auto req = Model::request(scoped(Model::Scope::AllBag, 999, B::Mode::Both), B::Pocket::TMHM, state);
+        const auto plan = B::plan(g.policy, req, state);
+        for (uint16_t hm = 420; hm <= 425; ++hm) CHECK(added(plan, B::Pocket::TMHM, hm));
+        for (const auto& a : plan.adds) if (a.pocket == B::Pocket::TMHM) CHECK(a.quantity == 1);   // Gen V machines: one each
+        CHECK(B::apply(*bag, plan, B::Gen5Bag::Adapter{}).applied);
+        readsBack(*bag, plan, B::Gen5Bag::Adapter{});
+        const auto candidate = G5::buildStagedSaveCandidate(ws, &err);
+        CHECK(candidate.has_value() && candidate && candidate->bagChanged);
+        if (candidate) {
+            const auto reparsed = G5::Gen5ReadOnlySave::parse(candidate->bytes, g.id, &err, G5::SaveCopySelection::Primary);
+            CHECK(reparsed.has_value());
+            if (reparsed) {
+                auto check = G5::Gen5StagedBag::create(*reparsed, &err);
+                CHECK(check.has_value());
+                if (check) readsBack(*check, plan, B::Gen5Bag::Adapter{});
+            }
+        }
+    }
+}
+void run() { g1(); g2(); g3(); g4(); g5(); }
+} // namespace coverage
+
 // The shared model: SETUP choices, request scope, the preview lines and B / A steps.
 void model() {
     Model::State s;
@@ -864,6 +1282,28 @@ void model() {
         B::Plan pocketFull;
         pocketFull.full.push_back({B::Pocket::Items, 30, 0, 4, false});
         CHECK(Model::appliedStatus(0, 0, pocketFull).find("4 did not fit because a pocket is full") != std::string::npos);
+        // Round 12 (owner H14): surfaces name the full list and its native size, never "a pocket".
+        const auto named = [](B::Pocket p) { return p == B::Pocket::Items ? std::string("Items") : std::string("PC Items"); };
+        CHECK(Model::appliedStatus(0, 20, pocketFull, named) ==
+              "Partly staged: 0 topped up, 20 added; 4 did not fit because Items (30 native slots) is full. "
+              "Nothing overflowed; source save unchanged (Review lists them)");
+        pocketFull.full.push_back({B::Pocket::PCItems, 50, 10, 6, false});
+        CHECK(Model::appliedStatus(1, 2, pocketFull, named).find(
+                  "10 did not fit because Items (30 native slots) and PC Items (50 native slots) are full.") != std::string::npos);
+        CHECK(Model::appliedStatus(0, 3, full, named) == Model::appliedStatus(0, 3, full));   // Gen I wording kept
+        CHECK(Model::appliedStatus(1, 2, B::Plan{}, named) == Model::appliedStatus(1, 2));
+        // Every list Add Missing covered gets a capacity line: full ones first, then the others.
+        B::Plan rooms;
+        rooms.full.push_back({B::Pocket::Items, 20, 20, 118, false});
+        rooms.adds = {{B::Pocket::Items, 13, 99}};
+        rooms.rooms = {{B::Pocket::Items, 20, 20, 138, 20, 118, false}, {B::Pocket::Balls, 16, 16, 11, 11, 0, false},
+                       {B::Pocket::KeyItems, 20, 20, 0, 0, 0, false}};
+        const auto roomLines = Model::previewLines(rooms, {B::Pocket::Items}, [](B::Pocket, uint16_t id) { return std::to_string(id); },
+                                                   [](B::Pocket p) { return p == B::Pocket::Items ? std::string("Items")
+                                                                          : p == B::Pocket::Balls ? std::string("Balls") : std::string("Key Items"); });
+        CHECK(roomLines.size() >= 3 && roomLines[0].text == "Items (20 slots): 20 free, 118 more did not fit" &&
+              roomLines[1].text == "Balls (16 slots): 16 free, all 11 missing added" &&
+              roomLines[2].text == "Key Items (20 slots): 20 free, nothing missing to add");
     }
     // Gen I-III (PC item storage): This pocket -> All Bag -> PC Items -> Bag + PC Items, both ways.
     CHECK((Model::scopes(s) == std::vector<Model::Scope>{Model::Scope::ThisPocket, Model::Scope::AllBag,
@@ -971,12 +1411,14 @@ int main() {
     gen3::pc();
     gen4::run();
     gen5::run();
+    coverage::run();
     if (failures) {
         std::cerr << failures << " Top Up / Add Missing adapter check(s) failed\n";
         return 1;
     }
     std::cout << "Top Up / Add Missing adapters Gen I-V (plan + apply over the real staged Bags, atomic, "
                  "story items untouched, native caps, pocket full, strict reparse, Discard; Gen I-III "
-                 "PC Items and Bag + PC Items scopes): PASS\n";
+                 "PC Items and Bag + PC Items scopes; Round 12: every Gen I-V game family and scope plans "
+                 "exactly min(eligible, native free slots) per list, nothing dropped, every TM / HM): PASS\n";
     return 0;
 }
