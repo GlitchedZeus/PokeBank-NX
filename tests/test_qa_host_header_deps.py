@@ -28,7 +28,7 @@ $(HOST_BUILD)/dep: tests/dep.cpp
 $(HOST_BUILD)/plain: tests/plain.cpp
 \t@mkdir -p $(HOST_BUILD)
 \t$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@
-include Makefile.host.deps
+include deps.mk
 """
 
 
@@ -60,7 +60,7 @@ def main() -> int:
         (root / "tools/qa").mkdir(parents=True)
         for name in ("cxx_with_deps.sh", "host_header_sweep.py"):
             shutil.copy2(ROOT / "tools/qa" / name, root / "tools/qa" / name)
-        shutil.copy2(ROOT / "Makefile.host.deps", root / "Makefile.host.deps")
+        shutil.copy2(ROOT / "build-system/host/deps.mk", root / "deps.mk")
         (root / "Makefile").write_text(MAKEFILE)
         (root / "include").mkdir()
         (root / "tests").mkdir()

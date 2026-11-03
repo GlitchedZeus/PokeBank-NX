@@ -1,3 +1,8 @@
+# PokeBank NX host test rules: core.mk
+# Consolidated from the original Makefile.host.* fragments in their EXACT include order.
+# Do not modify host-test recipes or weaken coverage while reorganizing infrastructure.
+
+# ---- BEGIN original Makefile.host.base ----
 CXX ?= g++
 CXXFLAGS ?= -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2
 SANITIZE_FLAGS := -fsanitize=address,undefined -fno-omit-frame-pointer -O1
@@ -525,3 +530,4 @@ $(HOST_BUILD)/test_sprite_layout_sanitize: tests/test_sprite_layout.cpp
 
 host-clean:
 	rm -rf $(HOST_BUILD)
+# ---- END original Makefile.host.base ----

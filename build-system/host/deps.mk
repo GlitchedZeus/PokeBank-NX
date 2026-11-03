@@ -1,3 +1,8 @@
+# PokeBank NX host test rules: deps.mk
+# Consolidated from the original Makefile.host.* fragments in their EXACT include order.
+# Do not modify host-test recipes or weaken coverage while reorganizing infrastructure.
+
+# ---- BEGIN original Makefile.host.deps ----
 # Header dependencies for every host build output (round 3 follow-up to the CI-only stale-binary red).
 #
 # Host rules list only their .cpp prerequisites, so a header-only change used to reuse a stale binary
@@ -16,3 +21,4 @@ ifneq ($(HOST_HEADER_SWEEP),)
 $(info $(HOST_HEADER_SWEEP))
 endif
 endif
+# ---- END original Makefile.host.deps ----

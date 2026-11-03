@@ -1,5 +1,7 @@
 # PokeBank NX engineering protocol (Claude and Codex)
 
+> **Binding 2026-11-02 owner directive:** [docs/PROJECT_RULES.md](PROJECT_RULES.md) overrides obsolete branch layout, feature sequencing and QA policies below. Branch names such as #307 and Gen VI–IX split lanes below describe historical work, not the intended future topology. Do not create new WIP branches by default. All original-save safety invariants remain mandatory.
+
 This one protocol applies to every agent (Claude, Codex) and every human contributor. `CLAUDE.md` and
 `AGENTS.md` at the repository root point here. If it conflicts with an older handoff, this file wins.
 
