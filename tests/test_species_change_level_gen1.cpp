@@ -154,6 +154,103 @@ void scenario(SourceGame game, bool party, uint16_t from, uint16_t to, uint8_t l
     require(back.species == to && back.level == level && back.experience == want, what + ": reparsed level / EXP");
 }
 
+
+// Round 15 (owner Round 14): "For Gen I, reconcile an inconsistent boxed-level byte only in the
+// staged edited record, never silently in an untouched original." Box 3 holds two Pikachu whose box
+// level byte (5) disagrees with EXP (216 = Lv 6); Party 1's box-level copy (body+3 = 9) disagrees
+// with its Party level (5). Only an edited record may change.
+constexpr size_t kSlotBody(size_t slot) { return kBoxBody + slot * 33; }
+std::vector<uint8_t> inconsistentFixture(SourceGame game) {
+    auto v = fixture(game, 5, 216);
+    v[kBox] = 2; v[kBox + 2] = 0x54; v[kBox + 3] = 0xFF;
+    std::copy_n(v.begin() + kBoxBody, 33, v.begin() + kSlotBody(1));
+    std::copy_n(v.begin() + kBox + 682, 11, v.begin() + kBox + 682 + 11);
+    std::copy_n(v.begin() + kBox + 902, 11, v.begin() + kBox + 902 + 11);
+    v[kPartyBody + 3] = 9;
+    std::copy_n(v.begin() + kBox, 0x462, v.begin() + bank(2));
+    checksums(v);
+    return v;
+}
+// Bytes of box 3 slot `slot` (body, OT, nickname) in the current box and its bank mirror.
+bool inSlot(size_t i, size_t slot) {
+    const auto in = [&](size_t a, size_t n) { return i >= a && i < a + n; };
+    for (const size_t base : {kBox, bank(2)}) {
+        const size_t offset = base - kBox;
+        if (in(kSlotBody(slot) + offset, 33) || in(kBox + 682 + slot * 11 + offset, 11) ||
+            in(kBox + 902 + slot * 11 + offset, 11)) return true;
+    }
+    return false;
+}
+bool isChecksum(size_t i) {
+    return i == 0x3523 || (i >= 0x4000 + 0x1A4C && i < 0x4000 + 0x1A53) || (i >= 0x6000 + 0x1A4C && i < 0x6000 + 0x1A53);
+}
+
+void untouchedOriginalsKeepTheirBytes(SourceGame game) {
+    const auto raw = inconsistentFixture(game);
+    const auto source = parse(raw, game);
+    require(static_cast<bool>(source), "inconsistent fixture parses");
+    std::string error;
+    {
+        // Nothing edited: the export is the source, byte for byte.
+        auto editor = StagedPokemonEditor::create(*source.save, error);
+        require(editor->boxedPokemon(2, 0, error)->level == 5, "slot 1 shows Lv 5");
+        const auto out = editor->finalizedBytes(error);
+        for (size_t i = 0; i < raw.size() && i < out.size(); ++i)
+            if (out[i] != raw[i]) std::cerr << "diff " << std::hex << i << " " << int(raw[i]) << "->" << int(out[i]) << std::dec << "\n";
+        require(out == raw, "no edit: the export equals the source byte for byte (" + std::to_string(out.size()) + " " + error + ")");
+        // Re-choosing the SAME species (the species picker's A on the current species) is no edit.
+        BoxPokemonEdit same; same.species = 25;
+        require(editor->stageEdit(2, 0, same, error), "same species: " + error);
+        require(editor->stagePartyPokemonEdit(0, same, error), "same species (Party): " + error);
+        require(!editor->hasPendingChanges() && editor->finalizedBytes(error) == raw,
+                "re-choosing the same species changes no byte of the untouched original");
+    }
+    {
+        // Slot 2 changes species: only slot 2 (and the checksums) may differ in the export; slot 1,
+        // its bank mirror, Party 1 and every other byte stay the source's exactly.
+        auto editor = StagedPokemonEditor::create(*source.save, error);
+        BoxPokemonEdit change; change.species = 35;   // Clefairy (Fast): keeps Lv 5 -> EXP 100
+        require(editor->stageEdit(2, 1, change, error), "slot 2 Pikachu -> Clefairy: " + error);
+        const auto edited = *editor->boxedPokemon(2, 1, error);
+        require(edited.level == 5 && edited.experience == 100 && edited.rawBody[3] == 5,
+                "edited record: kept Lv 5, EXP reconciled to 100 in the staged record only");
+        const auto out = editor->finalizedBytes(error);
+        require(!out.empty(), "export: " + error);
+        for (size_t i = 0; i < raw.size(); ++i)
+            if (out[i] != raw[i])
+                require(inSlot(i, 1) || isChecksum(i) || i == kBox + 2 || i == bank(2) + 2,
+                        "byte " + std::to_string(i) + " outside the edited record changed");
+        for (size_t i = 0; i < 33; ++i)
+            require(out[kSlotBody(0) + i] == raw[kSlotBody(0) + i] &&
+                        out[bank(2) + (kSlotBody(0) - kBox) + i] == raw[bank(2) + (kSlotBody(0) - kBox) + i],
+                    "untouched slot 1 keeps its inconsistent level byte and EXP");
+        for (size_t i = kParty; i < kBox; ++i) require(out[i] == raw[i], "untouched Party keeps its bytes");
+        const auto reread = parse(out, game);
+        require(static_cast<bool>(reread), "strict reparse");
+    }
+}
+
+// Round 15 (owner Round 14): "Show every actual change in Review, including species and EXP."
+// A species change from the source record lists Species and Experience; Level only if it changed.
+void reviewRows(SourceGame game) {
+    const auto source = parse(fixture(game), game);
+    std::string error;
+    for (const bool party : {false, true}) {
+        auto editor = StagedPokemonEditor::create(*source.save, error);
+        BoxPokemonEdit change; change.species = 129;   // Pikachu Lv 5 (125) -> Magikarp: Slow Lv 5 = 156
+        const bool ok = party ? editor->stagePartyPokemonEdit(0, change, error) : editor->stageEdit(2, 0, change, error);
+        require(ok, "Review case: " + error);
+        bool species = false, exp = false, level = false;
+        for (const auto& c : editor->pendingChanges()) {
+            species = species || (c.label.ends_with(": Species") && c.afterValue == "Magikarp");
+            exp = exp || (c.label.ends_with(": Experience") && c.beforeValue == "125" && c.afterValue == "156");
+            level = level || c.label.ends_with(": Level");
+        }
+        require(species && exp && !level, std::string(party ? "Party" : "Box") +
+                                              ": Review shows Species and Experience, no Level row");
+    }
+}
+
 } // namespace
 
 int main() {
@@ -214,6 +311,10 @@ int main() {
         }
         const auto added = *editor->boxedPokemon(2, *slot, error);
         require(added.level == 5 && added.experience == Pokemon::getExpForLevel(5, 5), "Create level unchanged");
+    }
+    for (const auto game : {SourceGame::Red, SourceGame::Blue, SourceGame::Yellow}) {
+        untouchedOriginalsKeepTheirBytes(game);
+        reviewRows(game);
     }
     std::cout << "test_species_change_level_gen1: OK\n";
     return 0;

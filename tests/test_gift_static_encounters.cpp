@@ -24,6 +24,7 @@
 #include "Integration/Encounter/GiftStaticEncounters.h"
 #include "Integration/Gen2/Gen2MoveCompatibility.h"
 #include "Integration/Gen5/Gen5EncounterLocations.h"
+#include "Integration/Gen5/Gen5KeySystem.h"
 #include "Names/LocationNames.h"
 #include "UI/Gen2PokemonPickerModel.h"
 #include "UI/Gen2PokemonSession.h"
@@ -487,13 +488,16 @@ void acquisitionTiers() {
     // Coordinator follow-up (owner rule "unknown ... prerequisites -> Incomplete"; conservative):
     // B2/W2 Key System Regis and Regigigas, HG/SS Embedded Tower Kyogre / Groudon, D/P/Pt Spiritomb.
     for (const uint8_t origin : {22, 23}) {
-        incomplete45(origin, 377, 65, 150, "link play", "B2/W2 Regirock (Key System)");
-        incomplete45(origin, 378, 65, 151, "link play", "B2/W2 Regice (Key System)");
-        incomplete45(origin, 379, 65, 152, "link play", "B2/W2 Registeel (Key System)");
+        // Round 14 owner facts: Regirock is in-game access in both versions (verified); the keyed
+        // chambers and Regigigas are Incomplete without the save's Key System evidence
+        // (round14KeySystem below).
+        gen45Verified(origin, 377, 65, 150, "Static Lv. 65", "B2/W2 Regirock (in-game access)");
+        incomplete45(origin, 378, 65, 151, origin == 22 ? "Key System key" : "link play", "B2/W2 Regice (Key System)");
+        incomplete45(origin, 379, 65, 152, origin == 23 ? "Key System key" : "link play", "B2/W2 Registeel (Key System)");
         incomplete45(origin, 486, 68, 38, "another game", "B2/W2 Regigigas (the three Regis)");
     }
-    incomplete45(7, 382, 50, 232, "not confirmed", "HeartGold Kyogre (Embedded Tower)");
-    incomplete45(8, 383, 50, 232, "not confirmed", "SoulSilver Groudon (Embedded Tower)");
+    incomplete45(7, 382, 50, 232, "story prerequisite", "HeartGold Kyogre (Embedded Tower, Blue Orb)");
+    incomplete45(8, 383, 50, 232, "story prerequisite", "SoulSilver Groudon (Embedded Tower, Red Orb)");
     for (const uint8_t origin : {10, 11, 12})
         incomplete45(origin, 442, 25, 24, "link play", "D/P/Pt Spiritomb (32 Underground players)");
     // Prerequisite-free statics stay verified (no blanket downgrade).
@@ -536,6 +540,88 @@ void acquisitionTiers() {
     require(Rows::crystalUnverifiedNote("crystal_gbc", 133, 16, 20, 20, 1).empty(), "Crystal Eevee gift: verified");
 }
 
+// ---- Round 14 owner facts: B2/W2 Key System evidence from the save; HG/SS orb reasons ----
+std::vector<uint8_t> b2w2Save(uint8_t version, uint32_t crypto, bool iron, bool iceberg) {
+    namespace L = PokeVault::Integration::Gen5::LayoutInfo;
+    namespace C = PokeVault::Integration::Gen5::Crypto;
+    namespace K = PokeVault::Integration::Gen5::KeySystem;
+    std::vector<uint8_t> sav(L::FullSaveSize, 0);
+    const std::size_t tr = 0x19400;
+    sav[tr + 4] = 'N'; sav[tr + 6] = 'X';
+    C::write16(sav, tr + 0x14, 12345);
+    C::write16(sav, tr + 0x16, 54321);
+    sav[tr + 0x1E] = 2;
+    sav[tr + 0x1F] = version;
+    const auto put32 = [&](std::size_t at, uint32_t v) {
+        for (int i = 0; i < 4; ++i) sav[at + static_cast<std::size_t>(i)] = static_cast<uint8_t>(v >> (8 * i));
+    };
+    put32(K::kBlockOffset + K::kCrypto, crypto);
+    if (iron) put32(K::kBlockOffset + K::kUnlockedIron, K::kMagicUnlockedIron ^ crypto);
+    if (iceberg) put32(K::kBlockOffset + K::kUnlockedIceberg, K::kMagicUnlockedIceberg ^ crypto);
+    auto partition = std::span<uint8_t>(sav).subspan(0, L::Black2White2CopySize);
+    for (const auto& b : L::Black2White2) {
+        const uint16_t crc = Utils::crc16ccitt(partition.data() + b.offset, b.length);
+        C::write16(partition, b.checksumOffset, crc);
+        C::write16(partition, b.mirrorOffset, crc);
+    }
+    return sav;
+}
+
+void round14KeySystem() {
+    namespace K = PokeVault::Integration::Gen5::KeySystem;
+    namespace Gen5 = PokeVault::Integration::Gen5;
+    // Block decode (PKHeX KeySystem5: unlocked word == magic ^ crypto; 0 = locked).
+    std::array<uint8_t, K::kBlockLength> block{};
+    const uint32_t crypto = 0x12345678;
+    const auto put = [&](std::size_t at, uint32_t v) {
+        for (int i = 0; i < 4; ++i) block[at + static_cast<std::size_t>(i)] = static_cast<uint8_t>(v >> (8 * i));
+    };
+    put(K::kCrypto, crypto);
+    put(K::kUnlockedIron, K::kMagicUnlockedIron ^ crypto);
+    put(K::kUnlockedIceberg, 0x0BADF00D);
+    const auto chambers = K::decodeBlock(block);
+    require(chambers.ironUnlocked && !chambers.icebergUnlocked, "Key System block: Iron unlocked, Iceberg not");
+
+    // A real (checksum-valid) Black 2 save: the evidence applies only to a Pokémon caught in it.
+    const auto bytes = b2w2Save(23, 0x0F0F1234, true, false);
+    std::string error;
+    const auto save = Gen5::Gen5ReadOnlySave::parse(bytes, {}, &error);
+    require(static_cast<bool>(save), "B2 fixture parses: " + error);
+    if (!save) return;
+    const auto own = K::evidenceFor(*save, 23, 12345, 54321);
+    require(own.b2w2IronChamberUnlocked && !own.b2w2IcebergChamberUnlocked, "own B2 Pokemon: Iron Chamber shown");
+    require(!K::evidenceFor(*save, 22, 12345, 54321).b2w2IronChamberUnlocked, "W2-origin Pokemon: not this save's evidence");
+    require(!K::evidenceFor(*save, 23, 1, 54321).b2w2IronChamberUnlocked, "another trainer's Pokemon: no evidence");
+
+    const auto name = [](uint16_t s) { return std::string(Names::getSpeciesName(s)); };
+    // Black 2 Registeel (native Iron Key): verified with the save's Iron Chamber, Incomplete without.
+    const C45::Catalogue registeel(23, 379, 0, gen45Native(23), {}, 65, own);
+    require(registeel.verifiedEncounter(152) && !contains(registeel.detail(152, name), "unverified"),
+            "B2 Registeel verified by this save's Key System");
+    const auto note = C45::metNote45(23, 379, 152, 65, own);
+    require(contains(note, "Key System") && !contains(note, "Incomplete"), "B2 Registeel note names the evidence: " + note);
+    require(contains(C45::unverifiedMetNote45(23, 379, 152, 65), "Incomplete"), "B2 Registeel without save evidence: Incomplete");
+    // Black 2 Regice (Iceberg Key via Unova Link): Incomplete unless the Iceberg Chamber is shown.
+    require(contains(C45::metNote45(23, 378, 151, 65, own), "Incomplete"), "B2 Regice with Iron only: Incomplete");
+    const auto both = K::evidenceFor(*Gen5::Gen5ReadOnlySave::parse(b2w2Save(23, 7, true, true), {}, &error), 23, 12345, 54321);
+    require(!contains(C45::metNote45(23, 378, 151, 65, both), "Incomplete"), "B2 Regice with the Iceberg Chamber shown");
+    // Regigigas: both chambers.
+    require(contains(C45::metNote45(23, 486, 38, 68, own), "Incomplete"), "B2 Regigigas with one chamber: Incomplete");
+    require(!contains(C45::metNote45(23, 486, 38, 68, both), "Incomplete"), "B2 Regigigas with both chambers shown");
+    // White 2: Iceberg is native; Iron via Unova Link.
+    const auto w2 = K::evidenceFor(*Gen5::Gen5ReadOnlySave::parse(b2w2Save(22, 99, false, true), {}, &error), 22, 12345, 54321);
+    require(!contains(C45::metNote45(22, 378, 151, 65, w2), "Incomplete"), "W2 Regice with its Iceberg Chamber shown");
+    require(contains(C45::metNote45(22, 379, 152, 65, w2), "Incomplete"), "W2 Registeel without Iron: Incomplete");
+
+    // HG/SS: precise orb reasons (owner facts); no save flags decoded, so Incomplete.
+    const auto* kyogre = row("heartgold_nds", 382, 232, 50);
+    const auto* groudon = row("soulsilver_nds", 383, 232, 50);
+    require(kyogre && kyogre->prereq == GS::Prerequisite::StoryProgress &&
+            contains(std::string(GS::prerequisiteReason(*kyogre)), "Blue Orb") &&
+            contains(std::string(GS::prerequisiteReason(*kyogre)), "defeating Red"), "HeartGold Kyogre: Blue Orb reason");
+    require(groudon && contains(std::string(GS::prerequisiteReason(*groudon)), "Red Orb"), "SoulSilver Groudon: Red Orb reason");
+}
+
 } // namespace
 
 int main() {
@@ -547,6 +633,7 @@ int main() {
     crystalRowsFit();
     crystalTimeRoundTrip();
     acquisitionTiers();
+    round14KeySystem();
     if (failures) {
         std::cerr << failures << " failure(s)\n";
         return 1;

@@ -43,4 +43,15 @@ if(!s.files.insert(fsid(p)).second){
 std::vector<std::string> retroArchGSCSaveRootsFromConfig(const std::string&cfg){std::vector<std::string>r;FILE*f=std::fopen(cfg.c_str(),"rb");if(!f)return r;char line[2048];while(std::fgets(line,sizeof(line),f)){std::string v(line);auto e=v.find('=');if(e==std::string::npos||trim(v.substr(0,e))!="savefile_directory")continue;v=trim(v.substr(e+1));if(v.size()>=2&&v.front()=='"'&&v.back()=='"')v=v.substr(1,v.size()-2);if(!v.empty()&&v!="default")r.push_back(absPath(v)?v:join(dir(cfg),v));break;}std::fclose(f);return r;}
 GSCDiscoveryResult discoverGSCSaves(std::span<const std::string> roots,GSCScanLimits lim){if(!lim.maxFiles)lim.maxFiles=1;State s{lim,{},{},{}};for(auto&r:roots){if(s.r.limitReached)break;if(isDir(r)){if(s.r.activeRoot.empty())s.r.activeRoot=norm(r);scan(r,0,s);}}return std::move(s.r);}
 GSCDiscoveryResult discoverConfiguredRetroArchGSCSaves(GSCScanLimits lim,const std::string&cfg,const std::string&fallback){auto roots=retroArchGSCSaveRootsFromConfig(cfg);std::vector<std::string>use;auto kind=GSCDiscoveryResult::RootKind::None;if(!roots.empty()&&isDir(roots.front())){use.push_back(roots.front());kind=GSCDiscoveryResult::RootKind::Configured;}else if(isDir(fallback)){use.push_back(fallback);kind=GSCDiscoveryResult::RootKind::ConventionalFallback;}auto r=discoverGSCSaves(use,lim);r.activeRootKind=kind;return r;}
+GSCSource inspectGSCSaveFile(const std::string&p,std::string_view exactGameId){
+    // An explicit manual assignment names the exact release, as a filename hint does in discovery;
+    // strict Gen II parsing (including the Gold/Silver vs Crystal family check) still decides.
+    const Hint h=exactGameId=="gold_gbc"?Hint::Gold:exactGameId=="silver_gbc"?Hint::Silver:
+        exactGameId=="crystal_gbc"?Hint::Crystal:Hint::None;
+    struct stat m{};
+    if(h==Hint::None||!statFile(p,&m)){GSCSource s;s.path=p;s.normalizedPath=norm(p);s.sourceIdentity=sid(p);
+        s.status=h==Hint::None?GSCSourceStatus::InvalidSave:GSCSourceStatus::ReadError;
+        s.detail=h==Hint::None?"not a Gold / Silver / Crystal game card":"the file could not be opened";return s;}
+    auto s=inspect(p,m,h);s.canonicalPath=fsid(p);return s;
+}
 } // namespace PokeVault::Legacy

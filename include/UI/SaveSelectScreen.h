@@ -263,7 +263,7 @@ namespace UI {
                              Gen4Candidates, Gen5Setup, Gen5UnassignConfirm,
                              Gen5Candidates, GameFilePicker, QuitConfirm,
                              EmulatorBackups, EmulatorBackupDeleteConfirm,
-                             RecoveryFiles, RecoveryConfirm };
+                             RecoveryFiles, RecoveryConfirm, SourceForgetConfirm };
         Overlay overlay = Overlay::None;
         Overlay helpReturnOverlay = Overlay::None;
         Overlay leaveReturnOverlay = Overlay::None; // where B Cancel (or A) returns from the leave decision
@@ -407,6 +407,8 @@ namespace UI {
         void rebuildUnassignedLegacySources();
         bool assignCurrentLegacySource();
         [[nodiscard]] std::string currentProfileIdentity() const;
+        [[nodiscard]] std::string assignmentOutcome(const char* route) const;
+        void showSessionOnlyNotice();
         [[nodiscard]] std::string currentSourceIdentity() const;
         [[nodiscard]] const PokeVault::Legacy::FRLGSaveInstance* currentLegacyInstance() const;
         bool refreshLegacySources(const std::string& gameId,
@@ -453,7 +455,9 @@ namespace UI {
         PokeBank::UIModel::SaveOpenGate::Decision saveGateForTitle(const TitleEntry& title);
         void openSaveChooserForTitle(const TitleEntry& title, const std::string& message);
         void openSaveFilePicker(const std::string& gameId, int generation, std::string notice);
+        bool assignLegacyManualPath(const std::string& path, std::string& failure);
         bool assignGen4ManualPath(const std::string& path, std::string& failure);
+        void mergeRememberedLegacyFiles();
         bool assignGen5ManualPath(const std::string& path, std::string& failure);
         void selectCurrentLegacyInstance();
         void openGen4Setup(const std::string& gameId, std::string notice = {},
@@ -468,6 +472,17 @@ namespace UI {
         void closeGen5Setup();
         bool assignGen5Candidate(const PokeVault::Source::SaveInstance& chosen);
         bool unassignCurrentGen5Game();
+        // Round 15 P0 (owner SAF-01/03/04/05: "UI for Assign/Change/Forget for every generation;
+        // Forget must not modify the source file"): ONE Forget for Gen I-V, reached with - from
+        // every Save Instances / source screen, confirmed with Y. It removes only this profile's
+        // record for this exact game (LegacySourceBindings::forgetGameAndSave).
+        std::string forgetGameId;
+        SelectedSourceKind forgetKind = SelectedSourceKind::None;
+        Overlay forgetReturnOverlay = Overlay::None;
+        void openForgetConfirm(const std::string& gameId, SelectedSourceKind kind, Overlay back);
+        bool forgetCurrentAssignment();
+        // This profile's assigned Gen I-III save on a card (-1 none, -2 ambiguous).
+        [[nodiscard]] int assignedLegacyIndex(const TitleEntry& title) const;
 
         const UserEntry* currentUser() const;
         int titleColumns() const;      // grid columns for the current user's title count (<= 5)

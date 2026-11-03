@@ -34,6 +34,13 @@ static void exercise(uint32_t version, bool backup, uint32_t species) {
     CHECK(created);
     std::vector<uint8_t> input(L::FullSaveSize,0);
     input[base+0x19400+0x1f]=static_cast<uint8_t>(version);
+    // This scenario exercises an established Trainer's Add/Import menu.
+    // A zeroed name and both IDs would instead be a pre-first-save placeholder,
+    // correctly handled by the separate no-trainer refusal regression.
+    input[base+0x19400+4]='T';
+    input[base+0x19400+6]='E';
+    C::write16(input,base+0x19400+0x14,100);
+    C::write16(input,base+0x19400+0x16,200);
     std::copy(created.encrypted.begin(),created.encrypted.end(),input.begin()+static_cast<std::ptrdiff_t>(base+L::BoxOffset));
     auto partition=std::span<uint8_t>(input).subspan(base,copySize);
     for (const auto& block:blocks) {

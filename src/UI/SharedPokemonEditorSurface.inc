@@ -207,13 +207,15 @@ inline void openPicker(TrainerViewScreen& screen, EditorState& state, PickerTarg
 
 inline void openContextualMetLocationPicker(TrainerViewScreen& screen, EditorState& state,
     uint8_t origin, uint16_t species, uint16_t current, std::vector<uint16_t> native,
-    PokeVault::Integration::EncounterContext45::History history, uint8_t currentLevel) {
+    PokeVault::Integration::EncounterContext45::History history, uint8_t currentLevel,
+    PokeVault::Integration::GiftStaticEncounters::AccessEvidence evidence = {}) {
     // EncounterGuardrails supplies source facts only; native histories are never rejected here.
     // Round 12 (R12-004 / R12-005): the picker opens on the DEFAULT list (stored, verified wild
     // rows the current level reaches, trade / egg markers, "Other location (unverified)...");
     // that last row (or X) shows the UNVERIFIED list (Integration/Encounter/MetLocationPolicy.h).
     PokeVault::Integration::EncounterContext45::Catalogue context(origin, species, current,
-                                                               std::move(native), history, currentLevel);
+                                                               std::move(native), history, currentLevel,
+                                                               evidence);   // Round 14: save evidence
     openPicker(screen, state, PickerTarget::MetLocation, context.choices(), current);
     // Round 14 (R06 / P1-9): the unverified list in the shared order (Integration/Encounter/
     // MetListScope.h): stored, then the "level too low" places, then every other native place.

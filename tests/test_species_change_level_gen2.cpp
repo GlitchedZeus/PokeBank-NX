@@ -102,12 +102,15 @@ void scenario(const L& layout, SourceGame game, std::string_view sourceId, bool 
                     after.speed == stats[3],
                 what + ": Party stats recomputed for the kept level");
     }
-    // Review compares with the source save (Pikachu Lv 15 / 3375 EXP).
-    bool row = false;
-    for (const auto& c : editor->pendingChanges())
-        if (c.label.ends_with("Level / Experience"))
-            row = c.afterValue == std::to_string(level) + " / " + std::to_string(want);
-    require(row || (level == 15 && want == 3375), what + ": Review Level / Experience row");
+    // Review compares with the source save (Pikachu Lv 15 / 3375 EXP). Round 15 (owner Round 14):
+    // Experience and Level are separate rows; each appears only when it actually changed.
+    bool expRow = false, levelOk = true;
+    for (const auto& c : editor->pendingChanges()) {
+        if (c.label.ends_with("Experience")) expRow = c.afterValue == std::to_string(want);
+        if (c.label.ends_with("Level")) levelOk = levelOk && c.afterValue == std::to_string(level) && level != 15;
+    }
+    require(expRow || want == 3375, what + ": Review Experience row");
+    require(levelOk, what + ": Review Level row only for a real level change");
 
     const auto exported = editor->finalizedBytes(error);
     require(!exported.empty(), what + ": export " + error);
@@ -120,7 +123,36 @@ void scenario(const L& layout, SourceGame game, std::string_view sourceId, bool 
             what + ": reparsed level / EXP / history");
 }
 
+
+// Round 15 (owner Round 14): "Show every actual change in Review, including species and EXP." A
+// species change of the source Pikachu (Lv 15, 3375 EXP) to Magikarp keeps Lv 15 and sets Slow's
+// Lv 15 minimum (4218): Review lists Species and Experience, and no Level row.
+void reviewRows(const L& layout, SourceGame game, std::string_view sourceId) {
+    for (const bool party : {false, true}) {
+        auto parsed = parse(fixture(layout, true), game);
+        std::string error;
+        auto editor = StagedEditor::create(*parsed.save, error);
+        Session s;
+        s.begin(*read(*editor, party), SessionMode::Edit);
+        s.working.moves = {33, 0, 0, 0};   // Tackle, which Magikarp can use
+        s.working.pp = {35, 0, 0, 0};
+        s.working.ppUps = {};
+        require(s.setSpecies(129, sourceId), "Pikachu -> Magikarp");
+        const bool kept = s.keep(*editor, 1, 0, error, party);
+        require(kept, "keep: " + error);
+        bool species = false, exp = false, level = false;
+        for (const auto& c : editor->pendingChanges()) {
+            species = species || (c.label.ends_with("Species") && c.afterValue == "Magikarp");
+            exp = exp || (c.label.ends_with("Experience") && c.beforeValue == "3375" && c.afterValue == "4218");
+            level = level || c.label.find("Level") != std::string::npos;
+        }
+        require(species && exp && !level, std::string(sourceId) + (party ? " Party" : " Box") +
+                                              ": Review shows Species and Experience, no Level row");
+    }
+}
+
 void run(const L& layout, SourceGame game, std::string_view sourceId) {
+    reviewRows(layout, game, sourceId);
     // Rattata Medium Fast (0), Snubbull Fast (4), Bulbasaur Medium Slow (3), Magikarp Slow (5).
     const uint16_t species[] = {19, 209, 1, 129};
     for (const bool party : {false, true})

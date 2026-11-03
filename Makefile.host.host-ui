@@ -313,4 +313,66 @@ $(HOST_UI_SAVE_GATE_TEST): $(HOST_UI_SAVE_GATE_INPUTS) $(HOST_UI_ARCHIVE)
 $(HOST_UI_SAVE_GATE_SANITIZE): $(HOST_UI_SAVE_GATE_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_save_open_gate_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+
+# Round 15 (owner decisions Nov 2): one Save Instances experience for Gen I-V (Gen I-III cards without
+# a save, manual SD browser assignment through the shared provider) and the initialized-save rule,
+# through the real SaveSelectScreen.
+HOST_UI_SAVE_INSTANCES_TEST := $(HOST_BUILD)/test_ui_save_instances_gen15_host
+HOST_UI_SAVE_INSTANCES_SANITIZE := $(HOST_BUILD)/test_ui_save_instances_gen15_host_sanitize
+HOST_UI_SAVE_INSTANCES_INPUTS := tests/test_ui_save_instances_gen15_host.cpp tests/host-ui/HostUi.h \
+	tests/fixtures/gsc_pokemon_fixture.h include/UI/SaveOpenGate.h include/Source/SaveInitialization.h \
+	tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_SAVE_INSTANCES_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_SAVE_INSTANCES_SANITIZE)
+host-test: $(HOST_UI_SAVE_INSTANCES_TEST)
+host-sanitize: $(HOST_UI_SAVE_INSTANCES_SANITIZE)
+$(HOST_UI_SAVE_INSTANCES_TEST): $(HOST_UI_SAVE_INSTANCES_INPUTS) $(HOST_UI_ARCHIVE) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_save_instances_gen15_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_SAVE_INSTANCES_SANITIZE): $(HOST_UI_SAVE_INSTANCES_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_save_instances_gen15_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Round 15 P0 (owner hardware results on d160aa42: SAF-01..05, SAF-09, HOME-07): one profile-scoped
+# source assignment for Gen I-V. Two scripted accounts x Red / Crystal / FireRed / Diamond / Black 2 /
+# White x {fresh, assign, change, forget, switch profile, stale} x {A, +, Items dock, Quick Games,
+# touch}, and the Black 2 Items dock repro, through the real SaveSelectScreen.
+HOST_UI_SOURCE_ASSIGN_TEST := $(HOST_BUILD)/test_ui_source_assignment_host
+HOST_UI_SOURCE_ASSIGN_SANITIZE := $(HOST_BUILD)/test_ui_source_assignment_host_sanitize
+HOST_UI_SOURCE_ASSIGN_INPUTS := tests/test_ui_source_assignment_host.cpp tests/host-ui/HostUi.h \
+	tests/fixtures/gsc_pokemon_fixture.h tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_SOURCE_ASSIGN_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_SOURCE_ASSIGN_SANITIZE)
+host-test: $(HOST_UI_SOURCE_ASSIGN_TEST)
+host-sanitize: $(HOST_UI_SOURCE_ASSIGN_SANITIZE)
+$(HOST_UI_SOURCE_ASSIGN_TEST): $(HOST_UI_SOURCE_ASSIGN_INPUTS) $(HOST_UI_ARCHIVE) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_source_assignment_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_SOURCE_ASSIGN_SANITIZE): $(HOST_UI_SOURCE_ASSIGN_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_source_assignment_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Round 16 P0 (hardware failure on 11ea9790): production layout -- real RetroArch Gambatte .srm
+# discovery, production config path with UIManager's session recovery, fresh SD / restart / torn
+# and damaged database, Save Instances and SD browser, profiles, Forget.
+HOST_UI_DEVICE_LAYOUT_TEST := $(HOST_BUILD)/test_ui_assignment_device_layout_host
+HOST_UI_DEVICE_LAYOUT_SANITIZE := $(HOST_BUILD)/test_ui_assignment_device_layout_host_sanitize
+HOST_UI_DEVICE_LAYOUT_INPUTS := tests/test_ui_assignment_device_layout_host.cpp tests/host-ui/HostUi.h \
+	tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_DEVICE_LAYOUT_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_DEVICE_LAYOUT_SANITIZE)
+host-test: $(HOST_UI_DEVICE_LAYOUT_TEST)
+host-sanitize: $(HOST_UI_DEVICE_LAYOUT_SANITIZE)
+$(HOST_UI_DEVICE_LAYOUT_TEST): $(HOST_UI_DEVICE_LAYOUT_INPUTS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests tests/test_ui_assignment_device_layout_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_DEVICE_LAYOUT_SANITIZE): $(HOST_UI_DEVICE_LAYOUT_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests tests/test_ui_assignment_device_layout_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Round 16 (owner: Gen V Ninjask shown as Ghost/Flying): Gen I-V type tables agree in the canonical
+# sprite id space, and the picker's classic round trip is the identity.
+HOST_UI_TYPE_CONSISTENCY_TEST := $(HOST_BUILD)/test_gen15_type_consistency
+HOST_TESTS += $(HOST_UI_TYPE_CONSISTENCY_TEST)
+host-test: $(HOST_UI_TYPE_CONSISTENCY_TEST)
+$(HOST_UI_TYPE_CONSISTENCY_TEST): tests/test_gen15_type_consistency.cpp include/Integration/Gen5/Gen5PersonalTypes.h include/UI/ClassicGameContext.h include/UI/SharedSpeciesPicker.h $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) tests/test_gen15_type_consistency.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
 endif

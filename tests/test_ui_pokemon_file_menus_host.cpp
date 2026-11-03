@@ -328,6 +328,9 @@ void run(Case& c) {
     writeFile(mons + "/big" + ext(c.generation), std::vector<uint8_t>(5000, 0x42));
     const int otherGeneration = c.generation == 4 ? 5 : 4;
     writeFile(mons + "/wrong" + ext(otherGeneration), pk45(otherGeneration));
+    // A mislabelled file: this generation's extension, another generation's record. Filtering by
+    // extension cannot hide it, so the importer must refuse it with its reason (R11 H38).
+    writeFile(mons + "/mislabelled" + ext(c.generation), pk45(otherGeneration));
     Utils::g_folderPreferences = {};
     check(Utils::g_folderPreferences.remember(Utils::FolderPreferences::Operation::ImportPokemonFile, mons),
           g + ": the scripted folder is the remembered import folder");
@@ -338,8 +341,12 @@ void run(Case& c) {
           g + ": the empty slot's Actions list Add Pokemon, then Import from file (rows: " + joined(sheetRows()) + ")");
     if (!chooseAction(d, "Import from file")) { check(false, g + ": Import from file row"); return; }
     check(dialogShown(c.generation) && drawn(mons), g + ": the file dialog opens on the remembered folder " + allTexts());
-    const std::vector<std::string> expected{"..", "ok/", "big" + ext(c.generation), "wrong" + ext(otherGeneration)};
-    check(dialogRows() == expected, g + ": the folder lists .., the sub-folder, then the files (" + joined(dialogRows()) + ")");
+    // Round 15 (PR #338, owner White 2 finding): the import dialog lists only this generation's
+    // Pokemon files, so the other generation's file is not shown at all (it used to be listed and
+    // refused after it was opened).
+    const std::vector<std::string> expected{"..", "ok/", "big" + ext(c.generation), "mislabelled" + ext(c.generation)};
+    check(dialogRows() == expected, g + ": the folder lists .., the sub-folder, then this generation's files (" + joined(dialogRows()) + ")");
+    check(!drawn("wrong" + ext(otherGeneration)), g + ": the other generation's file is not listed");
     // Round 11 H39: the B badge names what B does here (Close at the start folder, Up Folder deeper)
     // and '-' Cancel is always listed (deliberately replaces the old single "B Back" label).
     check(drawn("Open") && drawn("Favourite") && drawn("Favourites") && drawn("Close") && drawn("Cancel") &&
@@ -357,8 +364,8 @@ void run(Case& c) {
     check(c.snapshot() == staged0, g + ": nothing staged for the oversized file");
 
     d.press(HidNpadButton_Down);
-    d.press(HidNpadButton_A);   // wrong.pkM
-    check(Io::openedFileCount() == opened0 + 1, g + ": the other generation's file is read");
+    d.press(HidNpadButton_A);   // mislabelled.pkN (another generation's record)
+    check(Io::openedFileCount() == opened0 + 1, g + ": the mislabelled file is read");
     check(!d.screen.storageStatus.empty() && d.screen.storageStatus.rfind("Imported", 0) != 0 &&
               dialogShown(c.generation) && drawn(d.screen.storageStatus),
           g + ": another generation's file is refused with the editor's reason, shown in the dialog (" +
@@ -366,6 +373,7 @@ void run(Case& c) {
     check(c.snapshot() == staged0, g + ": nothing staged for the refused file");
 
     d.press(HidNpadButton_Up);
+
     d.press(HidNpadButton_Up);
     d.press(HidNpadButton_A);   // ok/
     check(drawn(mons + "/ok") && dialogRows().size() == 2 && dialogRows()[1] == fs::path(exported[0]).filename().string(),

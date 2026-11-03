@@ -63,7 +63,9 @@ int main() {
     const std::size_t b2[] = {verifiedSpecies(23, 5), verifiedSpecies(23, 30), verifiedSpecies(23, 50), verifiedSpecies(23, 100)};
     std::printf("  Black 2 verified species at Lv. 5/30/50/100: %zu / %zu / %zu / %zu of 649\n", b2[0], b2[1], b2[2], b2[3]);
     // Black 2 loses the three Key System Regis and Regigigas (Lv. 65) at Lv. 100: was 47 / 220 / 358 / 417.
-    CHECK(b2[0] == 47 && b2[1] == 220 && b2[2] == 358 && b2[3] == 413);
+    // Round 14 owner decision (updated deliberately, r15/prereq): "Both versions initially allow
+    // Regirock at Underground Ruins" -- Regirock is in-game access, verified again: 413 -> 414.
+    CHECK(b2[0] == 47 && b2[1] == 220 && b2[2] == 358 && b2[3] == 414);
 
     // 2 / 3. Black Pidove (519) Lv. 5: no verified row, two places need a higher level (Route 3 Lv. 8+
     // first). Before Round 14 the caption only said "No verified encounter here".

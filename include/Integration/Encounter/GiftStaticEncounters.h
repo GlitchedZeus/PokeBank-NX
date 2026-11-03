@@ -43,9 +43,15 @@ inline constexpr uint8_t kCaughtLevelUnrecorded = 4; // Crystal SetGiftMonCaught
 //  3. when that prerequisite cannot be known from a save, the acquisition evidence is INCOMPLETE:
 //     the row is listed as "encounter in the game" but never as a verified encounter, and the
 //     editor / Review note says Incomplete (incompleteNote()).
-// LinkOrDevice: link play / another device (Unova Link Key System, Underground players);
-// Unconfirmed: a special access condition the pinned sources do not let the generator confirm.
-enum class Prerequisite : uint8_t { None, TicketOrItem, EventPokemon, OtherGame, LinkOrDevice, Unconfirmed };
+// LinkOrDevice: link play / another device (Unova Link key, Underground players);
+// KeySystemKey: a B2/W2 Key System key the version unlocks in-game (Round 14 owner facts);
+// StoryProgress: an in-game story condition the save's flags are not decoded for (HG/SS orbs).
+enum class Prerequisite : uint8_t { None, TicketOrItem, EventPokemon, OtherGame, LinkOrDevice, KeySystemKey,
+                                    StoryProgress };
+// Save evidence that can satisfy a prerequisite (Round 14 owner decision: "Verify the game's stored
+// key/access flags where supported; otherwise mark access Incomplete"). Only read from the save the
+// Pokémon was caught in (Integration/Gen5/Gen5KeySystem.h), never inferred from the Pokémon record.
+enum class AccessKey : uint8_t { None, B2W2IronChamber, B2W2IcebergChamber, B2W2BothChambers };
 // Source confidence of a row: matched to a pret map script (every Crystal static / gift / prize /
 // trade row), one of the Gen III pret spot checks, or PKHeX alone (every Gen IV / V row and the
 // other Gen III / Crystal rows). A single-source row is never called independently verified.
@@ -63,6 +69,13 @@ struct Row {
     uint16_t eggLocation;
     Prerequisite prereq;
     Confidence confidence;
+    AccessKey accessKey;
+};
+
+// What the save the Pokémon was caught in shows (all false = nothing known: stays Incomplete).
+struct AccessEvidence {
+    bool b2w2IronChamberUnlocked = false;
+    bool b2w2IcebergChamberUnlocked = false;
 };
 
 struct PrerequisiteReason {
@@ -112,7 +125,8 @@ constexpr const char* prerequisiteLabel(Prerequisite prereq) noexcept {
         case Prerequisite::EventPokemon: return "event Pokémon";
         case Prerequisite::OtherGame: return "Pokémon from another game";
         case Prerequisite::LinkOrDevice: return "link play / another device";
-        case Prerequisite::Unconfirmed: return "access condition (not confirmed)";
+        case Prerequisite::KeySystemKey: return "Key System key";
+        case Prerequisite::StoryProgress: return "story prerequisite";
     }
     return "prerequisite";
 }
@@ -134,6 +148,22 @@ constexpr std::string_view prerequisiteReason(const Row& row) noexcept {
         if (r.game == row.game && r.species == row.species && r.location == row.location) return r.reason;
     return {};
 }
+
+// The save evidence proves this row's prerequisite (Key System chamber unlocked in that save).
+constexpr bool accessProven(const Row& row, const AccessEvidence& evidence) noexcept {
+    switch (row.accessKey) {
+        case AccessKey::None: return false;
+        case AccessKey::B2W2IronChamber: return evidence.b2w2IronChamberUnlocked;
+        case AccessKey::B2W2IcebergChamber: return evidence.b2w2IcebergChamberUnlocked;
+        case AccessKey::B2W2BothChambers:
+            return evidence.b2w2IronChamberUnlocked && evidence.b2w2IcebergChamberUnlocked;
+    }
+    return false;
+}
+constexpr bool accessKnown(const Row& row, const AccessEvidence& evidence) noexcept {
+    return fullyVerifiable(row) || accessProven(row, evidence);
+}
+inline constexpr const char* kKeySystemEvidence = "access shown by this save's Key System";
 
 // Short row suffix (fits the 620 / 640 px pickers) for an encounter whose access is unknown.
 inline constexpr const char* kAccessUnverified = "access unverified";

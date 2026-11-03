@@ -594,7 +594,9 @@ native_screen = read("include/Integration/Gen5/Gen5SharedScreenState.h")
 # test_gen5_staged_slot_actions / test_gen5_readonly_save).
 require(native_bridge,
         "workspace.emptyCloneDestination(slot.location.box,slot.location.slot)",
-        "caps.canAdd=live.validated && !live.occupied && box &&",
+        "caps.canAdd=hasEstablishedTrainer5(workspace) && live.validated && !live.occupied && box &&",
+        "caps.canImportFile=caps.canAdd;",
+        "newGameNoTrainer5(t.rawName.size(), t.tid, t.sid, t.playedHours,",
         "return Shared::actionsForSlot(live.occupied,caps,workspace.hasChanges());")
 require(native_screen,
         "ConfirmCreateBox",

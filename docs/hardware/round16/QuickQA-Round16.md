@@ -1,0 +1,150 @@
+# PokeBank NX Round 16 Recovery QuickQA
+
+**Status: NOT DEVICE TESTED.** Focused candidate retest. This is **not** the complete 20-game release acceptance required by [#313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313).
+
+| Identity | Value |
+| --- | --- |
+| NRO file | `PokeBank-NX-Gen1-5-Candidate-231e8497.nro` |
+| NRO SHA-256 | `e5ccb0110de68f539521b7e7569dfa479b921a5aec4dbd2142395e18597664a9` |
+| Source commit | `231e84976f86b8c07b0652221f2507481087fc0f` |
+| Source tree | `7314c5535a00f22391765afceb6c313dd9b4c18b` |
+| Build run / artifact | `41581848484 / 13206448035` |
+| NRO size | `177,282,737 bytes` |
+| Replaces | `11ea9790 (failed on hardware: Gen I-IV saves could not be opened)` |
+| Status | `NOT DEVICE TESTED` |
+
+Use the interactive HTML version (same items) to record results offline and export JSON. Mark each check PASS, FAIL or NOT TESTED; NOT TESTED is never a failure.
+
+## 1. Opening saves again (P0)
+
+### A01 · Save Instances opens your Yellow/Blue save (the Round 15 failure)
+- **Game:** Pokémon Yellow (or Blue) with its RetroArch save in sdmc:/retroarch/cores/savefiles/Gambatte
+- **Get there:** Product Home → Yellow card
+- **Do:** Do NOT delete anything in sdmc:/switch/PokeBank-NX first. Press A. In Save Instances pick your Yellow save with A.
+- **Expected:** The game opens (hub / Party / Boxes). Never 'Couldn't remember that exact save choice'. If Home later says 'Save choices are kept until PokeBank NX closes; they could not be stored [...]', the game still opened but the choice was not saved: copy the text in [...] into the comment.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A02 · SD browser opens the same .srm
+- **Game:** Pokémon Yellow
+- **Get there:** Yellow card → + → Source / Game File → − Forget → Y, then A → file browser
+- **Do:** In the browser open Gambatte and pick the Yellow .srm.
+- **Expected:** The game opens. Never 'The save assignment could not be stored safely'. Any failure now shows the reason in [...]: copy it into the comment.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A03 · Assignment survives a restart
+- **Game:** Pokémon Yellow and Blue
+- **Get there:** HOME menu
+- **Do:** Close PokeBank NX completely from the HOME menu. Start it again. Press A on Yellow, then B, then A on Blue.
+- **Expected:** Both open directly, no chooser. (If Home showed 'Save choices are kept until PokeBank NX closes', the chooser appearing again here is expected: say so.)
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A04 · Every route opens the same save
+- **Game:** Pokémon Yellow
+- **Get there:** Product Home → Yellow card
+- **Do:** Press A, then B. Press +, then B. Press Items on the HOME dock, then B. Open Yellow from Quick Games.
+- **Expected:** Every route opens your Yellow save. None shows a chooser or another save.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A05 · Gen II and Gen III open
+- **Game:** Pokémon Crystal (or Gold/Silver) and FireRed (or any Gen III)
+- **Get there:** Product Home
+- **Do:** For each card press A; if Save Instances appears, pick your save.
+- **Expected:** Both open. Restart PokeBank: both open directly.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A06 · Gen IV opens
+- **Game:** Pokémon Platinum (or any Gen IV you have)
+- **Get there:** Product Home → Gen IV card
+- **Do:** Press A. If the chooser appears, pick your save (Save Instances or file browser).
+- **Expected:** The game opens; after a restart it opens directly.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A07 · Gen V assignments kept
+- **Game:** Pokémon Black / White / Black 2 / White 2 you assigned before
+- **Get there:** Product Home
+- **Do:** Press A on each Gen V card you used before.
+- **Expected:** Each opens its previously assigned save without asking again (or, if never assigned, assigning works and opens).
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A08 · Profile B never opens Profile A's saves
+- **Game:** Pokémon Yellow
+- **Get there:** Tap the profile icon → switch to Profile B
+- **Do:** Press A on Yellow. Then switch back to Profile A and press A on Yellow.
+- **Expected:** Profile B: chooser or 'already linked to another profile', never Profile A's save. Profile A: opens directly.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A09 · Forget then reassign
+- **Game:** Pokémon Blue
+- **Get there:** Blue card → + → Source / Game File
+- **Do:** Press − (Forget), read the question, press Y. Back Home press A on Blue and pick the save again.
+- **Expected:** Forget removes only the app's link (the .srm keeps its size and date). Picking it again opens Blue.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A10 · Wrong game is refused
+- **Game:** Pokémon White and a White 2 save (or Red with a Crystal save)
+- **Get there:** White card → chooser → file browser
+- **Do:** Pick the other game's save file.
+- **Expected:** Refused with a reason; nothing opens; the file is unchanged.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### A11 · If anything above failed: diagnostics
+- **Game:** Any failing game
+- **Get there:** Settings → Enable Debug Logging (ON), then repeat the failing step
+- **Do:** After reproducing, copy sdmc:/switch/PokeBank-NX/logs/debug_*.log and list the files in sdmc:/switch/PokeBank-NX/config (names and sizes, including any legacy_source_bindings.cfg.corrupt-1).
+- **Expected:** The log has a line 'Assignment storage: bindings db=... load=... probe=...' and an 'Assignment (...)' line naming the failing step. Attach both. Never delete the config files.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+## 2. Gen V fixes
+
+### V01 · Ninjask shows Bug/Flying
+- **Game:** Pokémon Black (any Gen V)
+- **Get there:** A Ninjask (or Add Pokémon → Ninjask) → Edit
+- **Do:** Look at the type badges under the portrait. Also check Fearow (Normal/Flying), Arbok (Poison), Gengar (Ghost/Poison), Charizard (Fire/Flying).
+- **Expected:** Ninjask Bug/Flying (not Ghost/Flying). Fire, Water and the other types now show their badges too.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### V02 · Gender edit keeps shininess
+- **Game:** Pokémon Black or White 2
+- **Get there:** Edit a SHINY Pokémon with both genders (e.g. Shiny Pikachu) → Gender row
+- **Do:** Press A on Gender. Read the status line. Check the Shiny row and sprite. Press A on Gender again.
+- **Expected:** Gender changes, still Shiny, nature and ability unchanged, and the line says so. If it ever could not keep them, it says 'Gender not changed: it would also change ...' and nothing changes.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### V03 · Met Location for species not found in Black
+- **Game:** Pokémon Black
+- **Get there:** Add Pokémon → Ninjask (then Fearow, Arbok) Lv 5 → Met Location
+- **Do:** Read the default list, then open 'Unknown location' (the unverified list).
+- **Expected:** Default list: only None / Link Trade / Unknown location (none of these species is caught in the wild in Black). No wild route is presented as verified. Comment if you expected a specific place.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+### V04 · White 2 / Black 2 Add and Import unchanged
+- **Game:** Pokémon White 2 (after an in-game save) and Black 2
+- **Get there:** Boxes → empty slot
+- **Do:** Press A (Add Pokémon), B, then X (Import from file).
+- **Expected:** Add Pokémon is offered; Import lists only .pk5/.ek5. A first-boot White 2 (no in-game save) offers neither and says why.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**
+
+## 3. RetroArch quit (unresolved, evidence only)
+
+### R01 · RetroArch quit diagnostic
+- **Game:** Pokémon Red
+- **Get there:** Red card → launch the game
+- **Do:** Launch Red from PokeBank, then quit RetroArch. Note where you land and any error code. Copy sdmc:/switch/PokeBank-NX/runtime/last-launch.txt and any new file in sdmc:/atmosphere/crash_reports/.
+- **Expected:** Not fixed in this build. This only collects evidence: where you landed, the error code, how you start PokeBank (Homebrew Menu / Album / forwarder), and last-launch.txt.
+- **Result:** [ ] PASS  [ ] FAIL  [ ] NOT TESTED
+- **Comment:**

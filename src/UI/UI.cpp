@@ -37,6 +37,8 @@
 #include "Integration/Gen4/Gen4SourceDiscovery.h"
 #include "Integration/Gen4/Gen4SourceSnapshot.h"
 #include "Legacy/Gen5ReadOnlyTrainer.h"
+#include "Integration/Gen5/Gen5Trainer.h"
+#include "Source/SaveInitialization.h"
 #include "Integration/Gen5/Gen5AssignedSource.h"
 
 using namespace Utils;
@@ -203,8 +205,14 @@ namespace UI {
             PokeBank::Diagnostics::InputTrace::installTerminateRecorder();
             logInfoToFile("Input trace enabled", "logs/input-trace.log");
         }
+        // Round 16 P0: a damaged or unwritable assignment database must never lock a profile out
+        // of its saves. Validated choices are kept for the session when storing them fails; a torn
+        // committed file is quarantined byte-for-byte (see LegacySourceBindings.h).
+        legacySourceBindings.enableSessionRecovery();
         if (!legacySourceBindings.load())
-            logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
+            logErrorToFile("Legacy source bindings could not load",
+                           legacySourceBindings.lastError().c_str());
+        logInfoToFile("Assignment storage", legacySourceBindings.storageDiagnostics().c_str());
 
         // Discover only explicitly bounded emulator battery-save roots. RetroArch keeps its
         // configured/conventional root; mGBA is additive only when /mGBA/config.ini explicitly
@@ -736,6 +744,21 @@ namespace UI {
             error = "Emulator source has no stable game identity";
             return false;
         }
+        {
+            // Round 15 P0 (owner: "Hard exact-game save gate on all editor entry routes ... direct
+            // editor"): defense in depth behind Product Home. Only the save THIS profile assigned to
+            // THIS exact game opens; another profile's save or an unassigned one never does.
+            PokeVault::Source::SaveInstance assigned;
+            assigned.sourceIdentity = selected.sourceIdentity.empty()
+                ? (selected.canonicalPath.empty() ? selected.normalizedPath : selected.canonicalPath)
+                : selected.sourceIdentity;
+            assigned.sourceAliases = selected.sourceAliases;
+            assigned.gameId = gameId;
+            if (!legacySourceBindings.isPreferredGameSource(assigned, profileIdentity(userUid), gameId)) {
+                error = "This save is not assigned to this game on this profile; choose a save first";
+                return false;
+            }
+        }
 
         std::unique_ptr<Trainer::Trainer> trainer;
         if (selected.isGen1()) {
@@ -842,6 +865,17 @@ namespace UI {
                 : opened.diagnostic;
             return false;
         }
+        {
+            // Round 15 (defense in depth; Product Home already refuses): an emulator-created file
+            // whose trainer was never written is not an editable save.
+            namespace Init = PokeVault::Source::SaveInitialization;
+            const auto t = PokeVault::Integration::Gen5::decodeTrainer5(*opened.save);
+            if (!t || !Init::initialized(Init::dsFacts(t->rawName.size(), t->tid, t->sid,
+                                                       t->hours, t->minutes, t->seconds))) {
+                error = "This file is " + std::string(Init::kNotInitializedReason) + ".";
+                return false;
+            }
+        }
         auto trainer=PokeVault::Legacy::Gen5ReadOnlyTrainer::create(*opened.save,gameId,error);
         if (!trainer) {
             if (error.empty())error="Generation V read-only presentation failed";
@@ -904,6 +938,16 @@ namespace UI {
                 ? "Generation IV assigned source failed strict validation"
                 : opened.diagnostic;
             return false;
+        }
+        {
+            // Round 15 (defense in depth): never open an uninitialized (never saved) file.
+            namespace Init = PokeVault::Source::SaveInitialization;
+            const auto& t = opened.save->trainer();
+            if (!Init::initialized(Init::dsFacts(t.name.size(), t.tid, t.sid, t.playedHours,
+                                                 t.playedMinutes, t.playedSeconds))) {
+                error = "This file is " + std::string(Init::kNotInitializedReason) + ".";
+                return false;
+            }
         }
 
         auto trainer = PokeVault::Legacy::Gen4ReadOnlyTrainer::create(

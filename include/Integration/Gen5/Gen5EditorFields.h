@@ -232,6 +232,18 @@ inline constexpr uint16_t kMaxSpecies = 649;
     draft = std::move(probe);
     return true;
 }
+// Round 16: which PID-linked traits a coordinated PID change altered ("" when none). Used to keep
+// every "kept" message true: shininess, nature and ability slot compared on the actual records.
+[[nodiscard]] inline std::string traitsLostByPidChange(const Pokemon5ReadOnly& before,
+                                                       const Pokemon5ReadOnly& after, bool b2w2) {
+    (void)b2w2;
+    std::string lost;
+    const auto add = [&](const char* what) { if (!lost.empty()) lost += ", "; lost += what; };
+    if (before.shiny() != after.shiny()) add("shininess");
+    if (before.nature() != after.nature()) add("nature");
+    if (abilitySlot(before) != abilitySlot(after)) add("ability");
+    return lost;
+}
 [[nodiscard]] inline bool toggleGender(Draft& draft, std::string& error) {
     const auto p = draft.current();
     if (!p || p->gender() > 1) { error = "Gender is fixed for this Generation V species"; return false; }

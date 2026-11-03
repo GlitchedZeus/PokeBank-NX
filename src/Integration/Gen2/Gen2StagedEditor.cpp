@@ -1208,10 +1208,15 @@ bool StagedEditor::stageRecordEdit(bool party,std::size_t box,std::size_t slot,
     }
     if (before.nickname != verified->nickname)
         setChange(prefix + "nickname", labelPrefix + "Nickname", before.nickname, verified->nickname);
-    if (before.level != verified->level || before.experience != verified->experience)
-        setChange(prefix + "level_exp", labelPrefix + "Level / Experience",
-                  std::to_string(before.level) + " / " + std::to_string(before.experience),
-                  std::to_string(verified->level) + " / " + std::to_string(verified->experience));
+    // Round 15 (owner Round 14: "Show every actual change in Review, including species and EXP"):
+    // Level and Experience are separate rows, each only when it actually changed, so a species
+    // change that kept the level shows its EXP change and no level change.
+    if (before.level != verified->level)
+        setChange(prefix + "level", labelPrefix + "Level", std::to_string(before.level),
+                  std::to_string(verified->level));
+    if (before.experience != verified->experience)
+        setChange(prefix + "exp", labelPrefix + "Experience", std::to_string(before.experience),
+                  std::to_string(verified->experience));
     if (before.heldItem != verified->heldItem)
         setChange(prefix + "held", labelPrefix + "Held Item", std::string(gen2ItemName(before.heldItem)),
                   verified->heldItem == 0 ? "NONE" : std::string(gen2ItemName(verified->heldItem)));

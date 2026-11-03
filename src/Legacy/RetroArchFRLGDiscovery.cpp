@@ -5,6 +5,7 @@
 
 #include "Utils/SHA256.h"
 #include "Save/RtcFooter.h"
+#include "Source/SaveInitialization.h"
 
 #include <algorithm>
 #include <array>
@@ -216,6 +217,31 @@ namespace PokeVault::Legacy {
             return true;
         }
 
+        // Round 15 (owner: a file the emulator created is not an editable save): a strictly valid
+        // Gen I / II / III save whose trainer was never written is refused the same way
+        // everywhere (Source/SaveInitialization.h). Its typed save is dropped: never openable.
+        void requireInitialized(FRLGSource& source) {
+            if (!source.ready()) return;
+            namespace Init = Source::SaveInitialization;
+            bool initialized = true;
+            if (source.gen1Save) {
+                const auto& t = source.gen1Save->trainer();
+                initialized = Init::initialized(Init::classicFacts(t, t.trainerId));
+            } else if (source.gen2Save) {
+                const auto& t = source.gen2Save->trainer();
+                initialized = Init::initialized(Init::classicFacts(t, t.trainerId));
+            } else if (source.save) {
+                const auto& t = source.save->trainer();
+                initialized = Init::initialized(Init::classicFacts(t, t.tid16, t.sid16));
+            }
+            if (initialized) return;
+            source.status = LegacySourceStatus::InvalidSave;
+            source.detail = std::string(Init::kNotInitializedReason);
+            source.save.reset();
+            source.gen1Save.reset();
+            source.gen2Save.reset();
+        }
+
         FRLGSource inspectFile(const std::string& path, const struct stat& metadata,
                                IdentityHint hint) {
             FRLGSource source;
@@ -270,6 +296,7 @@ namespace PokeVault::Legacy {
             source.gameId = std::string(Integration::Gen3::sourceGameId(assumed));
             source.save = std::move(parsed.save);
             source.detail = "validated read-only RetroArch Generation III source";
+            requireInitialized(source);
             return source;
         }
 
@@ -368,6 +395,7 @@ namespace PokeVault::Legacy {
             output.gen1ParseError = input.parseError;
             output.detail = input.detail;
             output.gen1Save = input.save;
+            requireInitialized(output);
             return output;
         }
 
@@ -388,6 +416,7 @@ namespace PokeVault::Legacy {
             output.gen2ParseError = input.parseError;
             output.detail = input.detail;
             output.gen2Save = input.save;
+            requireInitialized(output);
             return output;
         }
 
@@ -660,5 +689,47 @@ namespace PokeVault::Legacy {
         }
 
         return result;
+    }
+
+    FRLGSource inspectLegacySaveFile(const std::string& path, std::string_view exactGameId,
+                                     std::string_view provider) {
+        // Manual Save Instance for one exact Gen I-III card: the user's choice of card is the
+        // identity hint (as a filename hint is in discovery); each generation's own strict parser
+        // and the shared initialization rule decide. Savestates are never accepted.
+        const std::string game(exactGameId);
+        FRLGSource out;
+        if (game == "red_gb" || game == "blue_gb" || game == "yellow_gb") {
+            out = importRBYSource(inspectRBYSaveFile(path, exactGameId), provider);
+        } else if (game == "gold_gbc" || game == "silver_gbc" || game == "crystal_gbc") {
+            out = importGSCSource(inspectGSCSaveFile(path, exactGameId), provider);
+        } else {
+            const IdentityHint hint = game == "ruby_gba" ? IdentityHint::Ruby
+                : game == "sapphire_gba" ? IdentityHint::Sapphire
+                : game == "emerald_gba" ? IdentityHint::Emerald
+                : game == "firered_gba" ? IdentityHint::FireRed
+                : game == "leafgreen_gba" ? IdentityHint::LeafGreen : IdentityHint::None;
+            struct stat metadata{};
+            if (hint == IdentityHint::None || !isRegularFile(path, &metadata)) {
+                out.path = path;
+                out.normalizedPath = normalizedPath(path);
+                out.sourceIdentity = sourceIdentity(path);
+                out.status = hint == IdentityHint::None ? LegacySourceStatus::InvalidSave
+                                                        : LegacySourceStatus::ReadError;
+                out.detail = hint == IdentityHint::None ? "not a Generation I-III game card"
+                                                        : "the file could not be opened";
+            } else {
+                out = inspectFile(path, metadata, hint);
+                out.canonicalPath = filesystemIdentity(path);
+            }
+            out.providerLabel = std::string(provider);
+        }
+        if (out.ready() && out.gameId != game) {
+            out.status = LegacySourceStatus::InvalidSave;
+            out.detail = "the save is not a " + game + " save";
+            out.save.reset();
+            out.gen1Save.reset();
+            out.gen2Save.reset();
+        }
+        return out;
     }
 }

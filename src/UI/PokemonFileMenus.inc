@@ -5,6 +5,7 @@
 #include "UI/PokemonFileDialog.h"
 #include "UI/PokemonFileIo.h"
 #include "Integration/Gen5/Gen5PokemonFile.h"
+#include "Integration/Gen5/Gen5SharedEditorBridge.h"
 
 namespace UI::PokemonFileMenus {
 namespace {
@@ -100,6 +101,10 @@ PokemonFileDialog::StageFn gen5Import(TrainerViewScreen& screen, int box, int sl
         }
         auto& trainer = Gen5SharedReadOnlySurface::nativeTrainer(screen);
         auto& workspace = trainer.stagedPokemon();
+        if (!PokeVault::Integration::Gen5::hasEstablishedTrainer5(workspace)) {
+            error = "New-game save: no trainer yet. Save in-game before Add / Import.";
+            return false;
+        }
         if (!PokeVault::Integration::Gen5::importPokemonFile5(workspace, file, static_cast<size_t>(box),
                                                              static_cast<size_t>(slot), &error))
             return false;
@@ -181,6 +186,12 @@ Exported exportBytes(TrainerViewScreen& screen, int generation, bool party, int 
 } // namespace
 
 bool beginImport(TrainerViewScreen& screen, int generation, int box, int slot) {
+    if (generation == 5 && Gen5SharedReadOnlySurface::isGen5Source(screen) &&
+        !PokeVault::Integration::Gen5::hasEstablishedTrainer5(
+            Gen5SharedReadOnlySurface::nativeTrainer(screen).stagedPokemon())) {
+        screen.postStatus("New-game save: no trainer yet. Save in-game before Add / Import.", 420);
+        return false;
+    }
     PokemonFileDialog::StageFn stage;
     switch (generation) {
         case 1: stage = gen1Import(screen, box); break;
