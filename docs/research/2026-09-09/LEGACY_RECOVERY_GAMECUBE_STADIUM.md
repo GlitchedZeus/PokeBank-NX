@@ -277,7 +277,7 @@ Roadmap interpretation: research now supports "known-but-needs-integration" rath
 Dedicated existing audit remains:
 
 ```text
-docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
+docs/research/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
 ```
 
 Best triangulation stack found so far:

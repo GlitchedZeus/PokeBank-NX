@@ -1,5 +1,8 @@
 # PokeBank NX Project Status
 
+> [!NOTE]
+> **Historical snapshot (October 2026).** The current project status is in [docs/STATUS.md](docs/STATUS.md); every build and its hardware result is in [docs/RELEASES.md](docs/RELEASES.md). This file is kept unchanged below for its record.
+
 ## CURRENT PRIORITY — October 17, 2026
 
 **PokeBank NX is an active alpha; no v1.0 release.** The release target remains **one safe, shared Gen I–V editor across 20 game releases**, not a five-editor fork or a separate Gen V wizard.
@@ -15,7 +18,7 @@ The material below is the **historical October 14 engineering snapshot**, retain
 
 ---
 
-**Last checked: October 14, 2026.** This is a milestone summary, not a fictitious completion percentage. [Current engineering state](CURRENT_STATUS.md) · [Full cross-lane snapshot](docs/ENGINEERING_SNAPSHOT_20261014.md).
+**Last checked: October 14, 2026.** This is a milestone summary, not a fictitious completion percentage. [Current engineering state](CURRENT_STATUS.md) · [Full cross-lane snapshot](docs/archive/sessions/ENGINEERING_SNAPSHOT_20261014.md).
 
 ## Product identity
 PokeBank NX is a native Nintendo Switch, offline, C++20, HOME-inspired Pokémon save manager/editor. Status: **active alpha**. Core principles: real generation-native data, shared staged editor, explicit profile/source identity, immutable original external saves and exact-NRO hardware testing. Default `main` is not the combined development release branch.

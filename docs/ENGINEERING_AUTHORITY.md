@@ -22,7 +22,7 @@ Original/external source saves remain immutable. Live writes to installed titles
 
 ## What other docs mean
 
-- `docs/AUDIT_REMEDIATION_MATRIX.md`: authoritative finding disposition for the current remediation phase.
+- `docs/archive/audits/AUDIT_REMEDIATION_MATRIX.md`: authoritative finding disposition for the current remediation phase.
 - `docs/NEXT_SESSION_PLAN.md`: dated planning snapshot; useful only after live GitHub re-fetch.
 - `CURRENT_STATUS.md` / `PROJECT_STATUS.md`: descriptive snapshots, not substitutes for live GitHub state.
 - `docs/PROJECT_RESOURCE_INDEX.md` / `docs/RESEARCH_CURRENT_INDEX.md`: navigation/reference maps only.

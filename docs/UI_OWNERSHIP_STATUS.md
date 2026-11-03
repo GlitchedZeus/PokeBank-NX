@@ -77,4 +77,4 @@ For Black, White, Black 2 and White 2, the active profile's X/Source menu now in
 
 Claude's [#306](https://github.com/GlitchedZeus/PokeBank-NX/pull/306) adds actual NRO-packaged asset validation and ROM cartridge-header exact-release checks. Older recovery packaging discarded regional backdrops/trainer portraits. Current code packages 10 region scenes, 20 trainer portraits and Gen I–IV cover art, and the newer exact-head native/Gen IV candidate gates have passed; full host verification and owner hardware testing are still required. Preserve the already accepted Quit & Return behavior.
 
-[October 14 engineering snapshot](ENGINEERING_SNAPSHOT_20261014.md) · [Game support matrix](GAME_SUPPORT_MATRIX.md)
+[October 14 engineering snapshot](archive/sessions/ENGINEERING_SNAPSHOT_20261014.md) · [Game support matrix](user/GAME_SUPPORT_MATRIX.md)

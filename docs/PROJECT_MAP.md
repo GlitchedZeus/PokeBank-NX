@@ -8,8 +8,8 @@ Current authority order:
 
 1. `CURRENT_STATUS.md`
 2. `docs/NEXT_SESSION_PLAN.md`
-3. `docs/FULL_PROJECT_AUDIT_2026-09-22.md`
-4. `docs/REFERENCE_INDEX.md`
+3. `docs/archive/audits/FULL_PROJECT_AUDIT_2026-09-22.md`
+4. `docs/research/REFERENCE_INDEX.md`
 5. `PROJECT_STATUS.md`
 6. issue #69 — full audit/safety backlog
 7. issue #29 — v1 roadmap
@@ -47,7 +47,7 @@ Last updated: 2026-09-06
 
 Current gate: **READY FOR DEVICE TEST / NOT DEVICE TESTED**, application `af2acf04`.
 See `BUILD_RECORD.md` for the exact binary and
-[`SESSION2_6_SAFETY_IMPLEMENTATION.md`](SESSION2_6_SAFETY_IMPLEMENTATION.md) for implemented
+[`SESSION2_6_SAFETY_IMPLEMENTATION.md`](archive/sessions/SESSION2_6_SAFETY_IMPLEMENTATION.md) for implemented
 source guards, persistence classification, PLA hardening and verification boundaries.
 
 Short navigation/index for verified state, active prompts, hardware reports, architecture, research and the full v1.0 plan.
@@ -56,20 +56,20 @@ Short navigation/index for verified state, active prompts, hardware reports, arc
 
 1. [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) — authoritative verified state
 2. [`V1_ROADMAP.md`](V1_ROADMAP.md) — full milestone checklist through v1.0
-3. [`GAME_SUPPORT_MATRIX.md`](GAME_SUPPORT_MATRIX.md) — current/planned game/source capability matrix
+3. [`GAME_SUPPORT_MATRIX.md`](user/GAME_SUPPORT_MATRIX.md) — current/planned game/source capability matrix
 4. [`NEXT_SESSION_PLAN.md`](NEXT_SESSION_PLAN.md) — current execution order
 5. [`BUILD_RECORD.md`](BUILD_RECORD.md) — source/artifact/device-test bookkeeping
-6. [`DEVICE_TEST_REPORT_2026-09-01.md`](DEVICE_TEST_REPORT_2026-09-01.md) — first physical Switch result
-7. [`DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md) — extended torture-test findings
-8. [`DEVICE_TEST_FOLLOWUP_2026-09-03.md`](DEVICE_TEST_FOLLOWUP_2026-09-03.md) — latest lifecycle/theme/Summary/safety clarification
-9. [`MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md`](MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md) — source-level mutation persistence trace
-10. [`DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md`](DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md) — prepared second-device acceptance sheet
-11. [`PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md`](PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md) — **HIGH**, current blocker session
-12. [`PROMPT_SESSION3_PKSM_CORE.md`](PROMPT_SESSION3_PKSM_CORE.md) — **MAX**, PKSM-Core after second hardware gate
+6. [`DEVICE_TEST_REPORT_2026-09-01.md`](archive/device-tests/DEVICE_TEST_REPORT_2026-09-01.md) — first physical Switch result
+7. [`DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](archive/device-tests/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md) — extended torture-test findings
+8. [`DEVICE_TEST_FOLLOWUP_2026-09-03.md`](archive/device-tests/DEVICE_TEST_FOLLOWUP_2026-09-03.md) — latest lifecycle/theme/Summary/safety clarification
+9. [`MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md`](archive/audits/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md) — source-level mutation persistence trace
+10. [`DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md`](archive/device-tests/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md) — prepared second-device acceptance sheet
+11. [`PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md`](archive/prompts/PROMPT_SESSION2_6_SAFETY_CRASH_FINISH.md) — **HIGH**, current blocker session
+12. [`PROMPT_SESSION3_PKSM_CORE.md`](archive/prompts/PROMPT_SESSION3_PKSM_CORE.md) — **MAX**, PKSM-Core after second hardware gate
 13. [`SESSION_RUNBOOK.md`](SESSION_RUNBOOK.md) — implementation/test/build/push discipline
-14. [`TRANSFER_MODEL.md`](TRANSFER_MODEL.md) — Copy / Move / Clone / conversion / active-location contract
-15. [`NRO_QUALITY_ROADMAP.md`](NRO_QUALITY_ROADMAP.md) — diagnostics/reliability/performance/QoL backlog
-16. [`ARCHITECTURE.md`](ARCHITECTURE.md) — module boundaries
+14. [`TRANSFER_MODEL.md`](roadmap/TRANSFER_MODEL.md) — Copy / Move / Clone / conversion / active-location contract
+15. [`NRO_QUALITY_ROADMAP.md`](roadmap/NRO_QUALITY_ROADMAP.md) — diagnostics/reliability/performance/QoL backlog
+16. [`ARCHITECTURE.md`](development/TARGET_ARCHITECTURE.md) — module boundaries
 
 Master v1.0 tracking issue: **#29**.
 
@@ -346,8 +346,8 @@ SAV2Stadium
 Visual/audio research:
 
 ```text
-docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
-docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
+docs/archive/audits/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
+docs/archive/audits/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
 #25 Pokémon visual support
 #35 Pokémon cries
 ```
@@ -356,40 +356,40 @@ docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
 
 # Core architecture / UX docs
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md)
-- [`CONTROLS.md`](CONTROLS.md)
+- [`ARCHITECTURE.md`](development/TARGET_ARCHITECTURE.md)
+- [`CONTROLS.md`](user/CONTROLS.md)
 - [`UI_FLOW.md`](UI_FLOW.md)
 - [`UI_STYLE_GUIDE.md`](UI_STYLE_GUIDE.md)
-- [`MASTER_VAULT_SPEC.md`](MASTER_VAULT_SPEC.md)
-- [`SAVE_SAFETY.md`](SAVE_SAFETY.md)
-- [`TRANSFER_MODEL.md`](TRANSFER_MODEL.md)
-- [`POKEDEX_SPEC.md`](POKEDEX_SPEC.md)
-- [`PKHEX_ORACLE.md`](PKHEX_ORACLE.md)
-- [`NRO_QUALITY_ROADMAP.md`](NRO_QUALITY_ROADMAP.md)
+- [`MASTER_VAULT_SPEC.md`](roadmap/MASTER_VAULT_SPEC.md)
+- [`SAVE_SAFETY.md`](user/SAVE_SAFETY.md)
+- [`TRANSFER_MODEL.md`](roadmap/TRANSFER_MODEL.md)
+- [`POKEDEX_SPEC.md`](roadmap/POKEDEX_SPEC.md)
+- [`PKHEX_ORACLE.md`](development/PKHEX_ORACLE.md)
+- [`NRO_QUALITY_ROADMAP.md`](roadmap/NRO_QUALITY_ROADMAP.md)
 - [`V1_ROADMAP.md`](V1_ROADMAP.md)
-- [`GAME_SUPPORT_MATRIX.md`](GAME_SUPPORT_MATRIX.md)
+- [`GAME_SUPPORT_MATRIX.md`](user/GAME_SUPPORT_MATRIX.md)
 
 ## Integration / research
 
 - [`PKSM_CORE_INTEGRATION.md`](PKSM_CORE_INTEGRATION.md)
-- [`PKHOUSE_REFERENCE.md`](PKHOUSE_REFERENCE.md)
+- [`PKHOUSE_REFERENCE.md`](research/PKHOUSE_REFERENCE.md)
 - [`UPSTREAM_AUDIT.md`](UPSTREAM_AUDIT.md)
-- [`BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`](BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md)
-- [`POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md`](POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md)
-- [`PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md`](PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md)
+- [`BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md`](research/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md)
+- [`POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md`](archive/audits/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md)
+- [`PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md`](archive/audits/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md)
 
 ## Testing / release
 
 - [`DEVICE_TEST_CHECKLIST.md`](DEVICE_TEST_CHECKLIST.md)
-- [`DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md`](DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md)
-- [`DEVICE_TEST_REPORT_2026-09-01.md`](DEVICE_TEST_REPORT_2026-09-01.md)
-- [`DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md)
-- [`DEVICE_TEST_FOLLOWUP_2026-09-03.md`](DEVICE_TEST_FOLLOWUP_2026-09-03.md)
-- [`MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md`](MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md)
-- [`DEVICE_BUILD_ASSET_GATE.md`](DEVICE_BUILD_ASSET_GATE.md)
-- [`DEVICE_ARTIFACT_PACKAGING.md`](DEVICE_ARTIFACT_PACKAGING.md)
+- [`DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md`](archive/device-tests/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md)
+- [`DEVICE_TEST_REPORT_2026-09-01.md`](archive/device-tests/DEVICE_TEST_REPORT_2026-09-01.md)
+- [`DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md`](archive/device-tests/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md)
+- [`DEVICE_TEST_FOLLOWUP_2026-09-03.md`](archive/device-tests/DEVICE_TEST_FOLLOWUP_2026-09-03.md)
+- [`MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md`](archive/audits/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md)
+- [`DEVICE_BUILD_ASSET_GATE.md`](development/DEVICE_BUILD_ASSET_GATE.md)
+- [`DEVICE_ARTIFACT_PACKAGING.md`](development/DEVICE_ARTIFACT_PACKAGING.md)
 - [`BUILD_RECORD.md`](BUILD_RECORD.md)
-- [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)
+- [`RELEASE_CHECKLIST.md`](development/RELEASE_CHECKLIST.md)
 - [`.github/workflows/host-tests.yml`](../.github/workflows/host-tests.yml)
 
 ---

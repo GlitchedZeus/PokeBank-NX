@@ -97,7 +97,7 @@ Switch safe file replacement
 
 Then open only the one note relevant to the active task.
 
-`docs/RESEARCH_REFERENCE_MATRIX.md` remains the classification/license-oriented master list of external projects. `docs/RESEARCH_INTAKE_2026-09-09.md` remains the earlier condensed intake. Do not read all three files automatically.
+`docs/research/RESEARCH_REFERENCE_MATRIX.md` remains the classification/license-oriented master list of external projects. `docs/research/RESEARCH_INTAKE_2026-09-09.md` remains the earlier condensed intake. Do not read all three files automatically.
 
 ## Session rules
 
@@ -105,7 +105,7 @@ Then open only the one note relevant to the active task.
 2. For a normal coding session, read `CURRENT_STATUS.md` before deciding what source/artifact state is current.
 3. Read and execute `docs/NEXT_CODEX_PROMPT.md` as the authoritative task prompt.
 4. Use `docs/PROJECT_RESOURCE_INDEX.md` to open only the relevant game-family/system chunks.
-5. Before independently rebuilding/researching a Pokémon format, transfer rule, event format, protocol, artwork pipeline or helper feature that may already have a mature reference, check `docs/RESEARCH_CURRENT_INDEX.md` and then the relevant dedicated note / `docs/RESEARCH_REFERENCE_MATRIX.md` classification entry.
+5. Before independently rebuilding/researching a Pokémon format, transfer rule, event format, protocol, artwork pipeline or helper feature that may already have a mature reference, check `docs/RESEARCH_CURRENT_INDEX.md` and then the relevant dedicated note / `docs/research/RESEARCH_REFERENCE_MATRIX.md` classification entry.
 6. Treat `README.md`, future vision/roadmap/backlog docs and product planning as context only unless `NEXT_CODEX_PROMPT.md` explicitly promotes something into the active milestone.
 7. Treat `docs/history/`, old `PROMPT_*` files, session logs, `PROJECT_MAP.md`, `NEXT_SESSION_PLAN.md`, old device reports and older `BUILD_RECORD.md` sections as historical/recovery evidence, not current state, unless the authoritative prompt points to them.
 8. Reuse completed verification and generated assets when the exact application source is unchanged and the authoritative prompt permits reuse. Do not rerun expensive work merely because a session restarted.
@@ -129,7 +129,7 @@ Older standalone recovery/session prompts remain in `docs/` for archaeology and 
 ## Short launcher for normal coding
 
 ```text
-Continue PokeBank NX from GitHub's current authoritative state. Use HIGH reasoning. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly. Re-fetch the active PR before editing and push only to the branch named by the authoritative prompt; never reset backward and never push custom code upstream. Use docs/PROJECT_RESOURCE_INDEX.md only for the relevant game/system chunk and docs/REFERENCE_INDEX.md / docs/RESEARCH_CURRENT_INDEX.md when external research is needed.
+Continue PokeBank NX from GitHub's current authoritative state. Use HIGH reasoning. Read CURRENT_STATUS.md and docs/CODEX_SESSION.md, then execute docs/NEXT_CODEX_PROMPT.md exactly. Re-fetch the active PR before editing and push only to the branch named by the authoritative prompt; never reset backward and never push custom code upstream. Use docs/PROJECT_RESOURCE_INDEX.md only for the relevant game/system chunk and docs/research/REFERENCE_INDEX.md / docs/RESEARCH_CURRENT_INDEX.md when external research is needed.
 ```
 
 ## Short launcher when the user says RECOVERY

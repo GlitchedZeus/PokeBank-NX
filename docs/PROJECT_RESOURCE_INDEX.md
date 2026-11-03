@@ -10,8 +10,8 @@ Current authority order:
 
 1. `CURRENT_STATUS.md`
 2. `docs/NEXT_SESSION_PLAN.md`
-3. `docs/FULL_PROJECT_AUDIT_2026-09-22.md`
-4. `docs/REFERENCE_INDEX.md`
+3. `docs/archive/audits/FULL_PROJECT_AUDIT_2026-09-22.md`
+4. `docs/research/REFERENCE_INDEX.md`
 5. `PROJECT_STATUS.md`
 6. issue #69 — full audit/safety backlog
 7. issue #29 — v1 roadmap
@@ -116,7 +116,7 @@ Never push custom PokeBank NX code upstream to PKSE.
 | Build / package / physical test | **Build + Test chunk** below |
 | Save/write safety / recovery | **Safety chunk** below |
 | Friends / Mailbox / connected features | **Connected chunk** below |
-| External project research | `docs/RESEARCH_REFERENCE_MATRIX.md` + relevant research intake/audit |
+| External project research | `docs/research/RESEARCH_REFERENCE_MATRIX.md` + relevant research intake/audit |
 
 If a task crosses two chunks, open two. Do not automatically open all of them.
 
@@ -130,22 +130,22 @@ Use for Ruby/Sapphire/Emerald and FireRed/LeafGreen GBA work.
 docs/PKSM_CORE_INTEGRATION.md
     Gen III engine integration / adapter decisions
 
-docs/PKHEX_ORACLE.md
+docs/development/PKHEX_ORACLE.md
     host-side correctness/oracle behavior
 
-docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
+docs/research/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
     secondary save-engine references
 
 docs/UPSTREAM_AUDIT.md
     inherited PKSE behavior worth reusing
 
-docs/GAME_SUPPORT_MATRIX.md
+docs/user/GAME_SUPPORT_MATRIX.md
     exact release/platform identity rules
 
-docs/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
     external conversion/save references already researched
 
-docs/RESEARCH_INTAKE_2026-09-09.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
     latest high-value research additions by subsystem
 ```
 
@@ -153,8 +153,8 @@ For FRLG physical/build work also use:
 
 ```text
 docs/DEVICE_TEST_CHECKLIST.md
-docs/DEVICE_BUILD_ASSET_GATE.md
-docs/DEVICE_ARTIFACT_PACKAGING.md
+docs/development/DEVICE_BUILD_ASSET_GATE.md
+docs/development/DEVICE_ARTIFACT_PACKAGING.md
 GitHub issue #6
 ```
 
@@ -167,19 +167,19 @@ Current GBA rule: `.sav` / `.srm` battery/in-game saves are the normal RetroArch
 Use for Red/Blue/Yellow and Gold/Silver/Crystal.
 
 ```text
-docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md
+docs/research/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md
     PHBankGBC and older bank/save behavior research
 
-docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
+docs/research/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
     pksav and portable save-engine references
 
 docs/PKSM_CORE_INTEGRATION.md
     PK1/PK2 / Sav1/Sav2 engine direction
 
-docs/PKHEX_ORACLE.md
+docs/development/PKHEX_ORACLE.md
     host-side correctness oracle
 
-docs/GAME_SUPPORT_MATRIX.md
+docs/user/GAME_SUPPORT_MATRIX.md
 ```
 
 Before implementing cross-generation GB/GBC transfer behavior, also open the **Transfer chunk**.
@@ -191,11 +191,11 @@ Before implementing cross-generation GB/GBC transfer behavior, also open the **T
 Use for Diamond/Pearl/Platinum, HGSS, BW and B2W2.
 
 ```text
-docs/PKHEX_ORACLE.md
-docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
-docs/RESEARCH_REFERENCE_MATRIX.md
-docs/RESEARCH_INTAKE_2026-09-09.md
-docs/GAME_SUPPORT_MATRIX.md
+docs/development/PKHEX_ORACLE.md
+docs/research/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
+docs/user/GAME_SUPPORT_MATRIX.md
 ```
 
 High-value starting references now include:
@@ -223,11 +223,11 @@ The research matrix also indexes useful DS-era references such as IR-GTS, battle
 Use for XY, ORAS, SM and USUM.
 
 ```text
-docs/PKHEX_ORACLE.md
-docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
-docs/RESEARCH_REFERENCE_MATRIX.md
-docs/RESEARCH_INTAKE_2026-09-09.md
-docs/GAME_SUPPORT_MATRIX.md
+docs/development/PKHEX_ORACLE.md
+docs/research/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
+docs/user/GAME_SUPPORT_MATRIX.md
 ```
 
 Primary direction is PKSM-Core + PKHeX with older XYSAV/KeySAV-family implementations as independent historical checks.
@@ -243,12 +243,12 @@ High-value references already indexed include Gen VI save/checksum research, Pok
 Use for LGPE, SwSh, BDSP, PLA, SV, Z-A and official Switch FR/LG work.
 
 ```text
-docs/PKHOUSE_REFERENCE.md
-docs/OPENHOME_SWITCH_PLATFORM_REFERENCE_AUDIT_2026-09-03.md
-docs/PKHEX_ORACLE.md
-docs/GAME_SUPPORT_MATRIX.md
-docs/RESEARCH_REFERENCE_MATRIX.md
-docs/RESEARCH_INTAKE_2026-09-09.md
+docs/research/PKHOUSE_REFERENCE.md
+docs/research/OPENHOME_SWITCH_PLATFORM_REFERENCE_AUDIT_2026-09-03.md
+docs/development/PKHEX_ORACLE.md
+docs/user/GAME_SUPPORT_MATRIX.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 Preferred research order before rebuilding modern save behavior from scratch:
@@ -283,10 +283,10 @@ leafgreen_gba != leafgreen_switch
 Future-only until explicitly promoted by `NEXT_CODEX_PROMPT.md`.
 
 ```text
-docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
-docs/RESEARCH_INTAKE_2026-09-09.md
-docs/PKHEX_ORACLE.md
-docs/GAME_SUPPORT_MATRIX.md
+docs/research/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
+docs/development/PKHEX_ORACLE.md
+docs/user/GAME_SUPPORT_MATRIX.md
 ```
 
 Primary reference stack:
@@ -307,11 +307,11 @@ Initial PokeBank support should be read-only. Do not let future GameCube writeba
 # 9. Vault / Banks / Pokédex chunk
 
 ```text
-docs/ARCHITECTURE.md
-docs/MASTER_VAULT_SPEC.md
-docs/POKEDEX_SPEC.md
-docs/PRODUCT_DECISIONS.md
-docs/RESEARCH_INTAKE_2026-09-09.md
+docs/development/TARGET_ARCHITECTURE.md
+docs/roadmap/MASTER_VAULT_SPEC.md
+docs/roadmap/POKEDEX_SPEC.md
+docs/development/PRODUCT_DECISIONS.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 Core ownership model:
@@ -332,12 +332,12 @@ Do not make Banks or the Pokédex a second independent ownership database.
 # 10. Transfer / conversion chunk
 
 ```text
-docs/TRANSFER_MODEL.md
-docs/ARCHITECTURE.md
-docs/PKHEX_ORACLE.md
+docs/roadmap/TRANSFER_MODEL.md
+docs/development/TARGET_ARCHITECTURE.md
+docs/development/PKHEX_ORACLE.md
 docs/HOME_BRIDGE_HISTORICAL_TRANSFER_RESEARCH.md
-docs/RESEARCH_REFERENCE_MATRIX.md
-docs/RESEARCH_INTAKE_2026-09-09.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 External references already researched include `Poke_Transporter_GB`, PCCS, `pk2pk`, current PKSE, PKHeX and HOME-format preservation work.
@@ -359,11 +359,11 @@ Destination compatibility and lossy/irreversible changes must be explicit.
 This is a permanent product pillar; do not let it disappear from the roadmap.
 
 ```text
-docs/CREATE_POKEMON_VISION.md
-docs/PKHEX_ORACLE.md
-docs/PRODUCT_DECISIONS.md
-docs/RESEARCH_REFERENCE_MATRIX.md
-docs/RESEARCH_INTAKE_2026-09-09.md
+docs/roadmap/CREATE_POKEMON_VISION.md
+docs/development/PKHEX_ORACLE.md
+docs/development/PRODUCT_DECISIONS.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 Product direction:
@@ -388,10 +388,10 @@ PKHeX / Auto Legality / CoreConsole are host-side research/oracle references unl
 # 12. Events / Mystery Gifts chunk
 
 ```text
-docs/PRODUCT_DECISIONS.md
-docs/FUTURE_PRODUCT_VISION.md
-docs/RESEARCH_REFERENCE_MATRIX.md
-docs/RESEARCH_INTAKE_2026-09-09.md
+docs/development/PRODUCT_DECISIONS.md
+docs/roadmap/FUTURE_PRODUCT_VISION.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 Already researched/indexed references include Project Pokémon EventsGallery, PKHeX event handling, Switch-Gift-Data-Manager, PKSM, `wc-beacon`, G6 Pokémon Link tooling and IR-GTS/Wonder Card behavior.
@@ -413,10 +413,10 @@ Never fabricate official server receipt, Nintendo-account history, HOME trackers
 ```text
 docs/UI_STYLE_GUIDE.md
 docs/UI_FLOW.md
-docs/CONTROLS.md
-docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
-docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
-docs/POKEMON_CRY_AUDIO_AUDIT_2026-09-02.md
+docs/user/CONTROLS.md
+docs/archive/audits/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
+docs/archive/audits/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
+docs/archive/audits/POKEMON_CRY_AUDIO_AUDIT_2026-09-02.md
 ```
 
 Project visual material:
@@ -437,12 +437,12 @@ Technical availability of Pokémon art/audio does not automatically grant redist
 # 14. Build / package / device-test chunk
 
 ```text
-docs/DEVICE_BUILD_ASSET_GATE.md
-docs/DEVICE_ARTIFACT_PACKAGING.md
-docs/RELEASE_CHECKLIST.md
+docs/development/DEVICE_BUILD_ASSET_GATE.md
+docs/development/DEVICE_ARTIFACT_PACKAGING.md
+docs/development/RELEASE_CHECKLIST.md
 docs/DEVICE_TEST_CHECKLIST.md
 docs/BUILD_RECORD.md
-docs/RESEARCH_INTAKE_2026-09-09.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 Use `BUILD_RECORD.md` for artifact history, **not** as current-state authority.
@@ -463,15 +463,15 @@ Physical acceptance applies only to the exact tested artifact/source identity.
 # 15. Save safety / writes / recovery chunk
 
 ```text
-docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
+docs/research/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
     immediate libnx/fsdev SD replacement research and LeafGreen relevance
 
-docs/SAVE_SAFETY.md
-docs/ARCHITECTURE.md
-docs/TRANSFER_MODEL.md
-docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
-docs/SESSION2_6_SAFETY_IMPLEMENTATION.md
-docs/RESEARCH_INTAKE_2026-09-09.md
+docs/user/SAVE_SAFETY.md
+docs/development/TARGET_ARCHITECTURE.md
+docs/roadmap/TRANSFER_MODEL.md
+docs/archive/audits/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
+docs/archive/sessions/SESSION2_6_SAFETY_IMPLEMENTATION.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 For ordinary SD-card/config/Vault files, keep a `SafeSdFileReplace` abstraction separate from mounted retail-title `SwitchSaveTransaction` semantics.
@@ -503,10 +503,10 @@ No global unsafe live-write switch.
 Future-only unless explicitly promoted by `NEXT_CODEX_PROMPT.md`.
 
 ```text
-docs/TRAINER_PLAZA_VISION.md
-docs/V2_PLATFORM_VISION.md
-docs/V2_ROADMAP.md
-docs/PRODUCT_DECISIONS.md
+docs/roadmap/TRAINER_PLAZA_VISION.md
+docs/roadmap/V2_PLATFORM_VISION.md
+docs/roadmap/V2_ROADMAP.md
+docs/development/PRODUCT_DECISIONS.md
 ```
 
 The local Vault remains primary. Online services must not become a mandatory cloud Vault.
@@ -518,20 +518,20 @@ The local Vault remains primary. Online services must not become a mandatory clo
 Before searching GitHub or implementing a Pokémon format/protocol/helper already likely solved elsewhere, open:
 
 ```text
-docs/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
 ```
 
 For the newest September 9 additions, then open only the relevant section of:
 
 ```text
-docs/RESEARCH_INTAKE_2026-09-09.md
+docs/research/RESEARCH_INTAKE_2026-09-09.md
 ```
 
 Dedicated deep dives currently include:
 
 ```text
-docs/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
-docs/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
+docs/research/SWITCH_FILESYSTEM_SAFE_REPLACE_RESEARCH_2026-09-09.md
+docs/research/GAMECUBE_REFERENCE_AUDIT_2026-09-09.md
 ```
 
 Research is classified conceptually as:
@@ -554,11 +554,11 @@ These describe destination, not today's coding scope:
 
 ```text
 docs/V1_ROADMAP.md
-docs/V2_ROADMAP.md
-docs/FUTURE_PRODUCT_VISION.md
-docs/FEATURE_FEASIBILITY_MATRIX.md
-docs/MODDED_SWITCH_FEATURE_BACKLOG.md
-docs/PRODUCT_DECISIONS.md
+docs/roadmap/V2_ROADMAP.md
+docs/roadmap/FUTURE_PRODUCT_VISION.md
+docs/roadmap/FEATURE_FEASIBILITY_MATRIX.md
+docs/roadmap/MODDED_SWITCH_FEATURE_BACKLOG.md
+docs/development/PRODUCT_DECISIONS.md
 ```
 
 `NEXT_CODEX_PROMPT.md` alone decides what gets implemented in the current session.

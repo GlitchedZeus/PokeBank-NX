@@ -64,16 +64,16 @@ CURRENT_STATUS.md
 docs/NEXT_CODEX_PROMPT.md
     exact active mission and STOP point
 
-docs/DEVICE_BUILD_ASSET_GATE.md
+docs/development/DEVICE_BUILD_ASSET_GATE.md
     required RomFS / sprite / font / type-icon / game-card checks
 
-docs/DEVICE_ARTIFACT_PACKAGING.md
+docs/development/DEVICE_ARTIFACT_PACKAGING.md
     exact-source packaging workflow and package_device_build.py behavior
 
 docs/BUILD_RECORD.md
     historical and current artifact identities / hashes / verification records
 
-docs/RELEASE_CHECKLIST.md
+docs/development/RELEASE_CHECKLIST.md
     build/device/prerelease/release evidence rules
 
 docs/DEVICE_TEST_CHECKLIST.md
@@ -104,19 +104,19 @@ Do not treat this index as a replacement for checking `CURRENT_STATUS.md` in a l
 Read only when the task changes app structure, adapters, services, storage, legality, transfer, or write safety:
 
 ```text
-docs/ARCHITECTURE.md
+docs/development/TARGET_ARCHITECTURE.md
     layer boundaries and dependency direction
 
-docs/SAVE_SAFETY.md
+docs/user/SAVE_SAFETY.md
     staged-write / backup / readback / rollback contract
 
-docs/TRANSFER_MODEL.md
+docs/roadmap/TRANSFER_MODEL.md
     COPY / MOVE / CLONE / conversion semantics
 
-docs/MASTER_VAULT_SPEC.md
+docs/roadmap/MASTER_VAULT_SPEC.md
     immutable Vault entities, hashes, provenance, transactions
 
-docs/GAME_SUPPORT_MATRIX.md
+docs/user/GAME_SUPPORT_MATRIX.md
     game/release/platform identity and planned support
 ```
 
@@ -147,16 +147,16 @@ docs/UI_STYLE_GUIDE.md
 docs/UI_FLOW.md
     controller-first navigation and action semantics
 
-docs/CONTROLS.md
+docs/user/CONTROLS.md
     controller behavior / normalization details
 
-docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
+docs/archive/audits/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
     external visual/artwork sources, rights notes, resolver recommendations
 
-docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
+docs/archive/audits/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
     inherited offline sprite generation/runtime pipeline
 
-docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md
+docs/archive/device-tests/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md
     physical feedback for Pokémon render motion/presentation
 ```
 
@@ -180,8 +180,8 @@ The generated runtime asset tree under `romfs/` is intentionally not equivalent 
 Before searching for or rebuilding Pokémon artwork infrastructure, consult:
 
 ```text
-docs/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
-docs/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
+docs/archive/audits/POKEMON_VISUAL_ASSET_AUDIT_2026-09-02.md
+docs/archive/audits/PKSE_SPRITE_PIPELINE_AUDIT_2026-09-02.md
 ```
 
 Already researched sources include:
@@ -210,7 +210,7 @@ Repository code licensing and Pokémon artwork/model rights may be different. Do
 For Pokémon cry/audio work:
 
 ```text
-docs/POKEMON_CRY_AUDIO_AUDIT_2026-09-02.md
+docs/archive/audits/POKEMON_CRY_AUDIO_AUDIT_2026-09-02.md
 ```
 
 Do not begin new audio-source research without checking that audit first.
@@ -223,14 +223,14 @@ Before writing a Pokémon/save parser or conversion engine from scratch, consult
 
 ```text
 docs/PKSM_CORE_INTEGRATION.md
-docs/PKHEX_ORACLE.md
-docs/PKHOUSE_REFERENCE.md
-docs/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
+docs/development/PKHEX_ORACLE.md
+docs/research/PKHOUSE_REFERENCE.md
+docs/research/SAVE_ENGINE_REFERENCE_AUDIT_2026-09-03.md
 docs/UPSTREAM_AUDIT.md
-docs/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md
-docs/OPENHOME_SWITCH_PLATFORM_REFERENCE_AUDIT_2026-09-03.md
-docs/UPR_ZX_REFERENCE_AUDIT_2026-09-03.md
-docs/RESEARCH_REFERENCE_MATRIX.md
+docs/research/BANK_PROJECT_REFERENCE_AUDIT_2026-09-02.md
+docs/research/OPENHOME_SWITCH_PLATFORM_REFERENCE_AUDIT_2026-09-03.md
+docs/research/UPR_ZX_REFERENCE_AUDIT_2026-09-03.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
 ```
 
 Primary roles:
@@ -253,7 +253,7 @@ Use triangulation where practical instead of trusting one implementation blindly
 The master external-project triage is:
 
 ```text
-docs/RESEARCH_REFERENCE_MATRIX.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
 ```
 
 Check it before searching GitHub or implementing a solved subproblem.
@@ -302,9 +302,9 @@ This feature is permanent and must not be accidentally dropped when other roadma
 Read:
 
 ```text
-docs/CREATE_POKEMON_VISION.md
-docs/PKHEX_ORACLE.md
-docs/PRODUCT_DECISIONS.md
+docs/roadmap/CREATE_POKEMON_VISION.md
+docs/development/PKHEX_ORACLE.md
+docs/development/PRODUCT_DECISIONS.md
 ```
 
 Product shorthand:
@@ -333,11 +333,11 @@ PKHeX is a host-side oracle/reference under the current architecture; the Switch
 Use:
 
 ```text
-docs/MASTER_VAULT_SPEC.md
-docs/POKEDEX_SPEC.md
-docs/TRANSFER_MODEL.md
-docs/MODDED_SWITCH_FEATURE_BACKLOG.md
-docs/FUTURE_PRODUCT_VISION.md
+docs/roadmap/MASTER_VAULT_SPEC.md
+docs/roadmap/POKEDEX_SPEC.md
+docs/roadmap/TRANSFER_MODEL.md
+docs/roadmap/MODDED_SWITCH_FEATURE_BACKLOG.md
+docs/roadmap/FUTURE_PRODUCT_VISION.md
 ```
 
 Concept boundary:
@@ -358,9 +358,9 @@ Do not make Banks own independent Pokémon payloads and do not make the Pokédex
 Use:
 
 ```text
-docs/FUTURE_PRODUCT_VISION.md
-docs/PRODUCT_DECISIONS.md
-docs/RESEARCH_REFERENCE_MATRIX.md
+docs/roadmap/FUTURE_PRODUCT_VISION.md
+docs/development/PRODUCT_DECISIONS.md
+docs/research/RESEARCH_REFERENCE_MATRIX.md
 ```
 
 Important external references already indexed include:
@@ -388,10 +388,10 @@ A locally restored/generated event must be labeled truthfully and must not fabri
 Future-only unless explicitly promoted into the active prompt:
 
 ```text
-docs/TRAINER_PLAZA_VISION.md
-docs/V2_PLATFORM_VISION.md
-docs/V2_ROADMAP.md
-docs/PRODUCT_DECISIONS.md
+docs/roadmap/TRAINER_PLAZA_VISION.md
+docs/roadmap/V2_PLATFORM_VISION.md
+docs/roadmap/V2_ROADMAP.md
+docs/development/PRODUCT_DECISIONS.md
 ```
 
 Current design direction:
@@ -419,12 +419,12 @@ The local Vault remains primary. Online infrastructure should not become a manda
 These are accepted product directions but **never automatically become the next coding task**:
 
 ```text
-docs/MODDED_SWITCH_FEATURE_BACKLOG.md
-docs/FUTURE_PRODUCT_VISION.md
-docs/FEATURE_FEASIBILITY_MATRIX.md
-docs/PRODUCT_DECISIONS.md
+docs/roadmap/MODDED_SWITCH_FEATURE_BACKLOG.md
+docs/roadmap/FUTURE_PRODUCT_VISION.md
+docs/roadmap/FEATURE_FEASIBILITY_MATRIX.md
+docs/development/PRODUCT_DECISIONS.md
 docs/V1_ROADMAP.md
-docs/V2_ROADMAP.md
+docs/roadmap/V2_ROADMAP.md
 ```
 
 The backlog includes Save Scanner, Rescue Mode, Save Time Machine, Pokémon Journey/provenance, Transfer Lab, compatibility map, offline legality, Living Dex intelligence, evolution planning, duplicate detection, EventDex, Ribbon Master, shiny-hunt tools, team building, bulk tools, cross-save search, Verified Breeding, Trainer Plaza, LAN/Internet exchange, companion apps, backup/disaster recovery, provider/plugin systems, and offline-first/no-lock-in guarantees.
@@ -438,13 +438,13 @@ Roadmap documents describe destination. `NEXT_CODEX_PROMPT.md` decides what Code
 Use only the exact report relevant to the artifact/source under investigation:
 
 ```text
-docs/DEVICE_TEST_REPORT_2026-09-01.md
-docs/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
-docs/DEVICE_TEST_FOLLOWUP_2026-09-03.md
-docs/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md
-docs/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md
-docs/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
-docs/SESSION2_6_SAFETY_IMPLEMENTATION.md
+docs/archive/device-tests/DEVICE_TEST_REPORT_2026-09-01.md
+docs/archive/device-tests/DEVICE_TEST_EXTENDED_REPORT_2026-09-02.md
+docs/archive/device-tests/DEVICE_TEST_FOLLOWUP_2026-09-03.md
+docs/archive/device-tests/DEVICE_TEST_SPRITE_MOTION_FEEDBACK_2026-09-05.md
+docs/archive/device-tests/DEVICE_TEST_CHECKLIST_SECOND_2026-09-02.md
+docs/archive/audits/MUTATION_SAFETY_STATIC_AUDIT_2026-09-02.md
+docs/archive/sessions/SESSION2_6_SAFETY_IMPLEMENTATION.md
 ```
 
 Never upgrade evidence terminology merely because a build succeeds:
@@ -465,8 +465,8 @@ These are retained deliberately and must not be deleted merely because newer sta
 ```text
 docs/SESSION_LOG_*.md
 docs/PROMPT_SESSION*.md
-docs/PROMPT_MONDAY_RECOVERY_SESSION2_6.md
-docs/FINAL_HANDOFF_2026-09-03.md
+docs/archive/prompts/PROMPT_MONDAY_RECOVERY_SESSION2_6.md
+docs/archive/sessions/FINAL_HANDOFF_2026-09-03.md
 docs/NEXT_SESSION_PLAN.md
 docs/PROJECT_MAP.md
 ```

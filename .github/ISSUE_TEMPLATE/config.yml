@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a save-safety or security problem privately
+    url: https://github.com/GlitchedZeus/PokeBank-NX/security/advisories/new
+    about: Anything that could change or damage an original save. Do not post details publicly.
+  - name: Project status and known gaps
+    url: https://github.com/GlitchedZeus/PokeBank-NX/blob/main/docs/STATUS.md
+    about: Check what works, what is in progress and what is planned for v1.0 before opening an issue.

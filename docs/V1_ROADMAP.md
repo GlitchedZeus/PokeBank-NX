@@ -21,7 +21,7 @@ The rest of this roadmap preserves historical development phases and longer-term
 
 Last updated: **2026-10-14**
 
-`CURRENT_STATUS.md` and the [October 14 development snapshot](ENGINEERING_SNAPSHOT_20261014.md) track exact live branch/CI evidence. This roadmap is the long-term product direction, not a claim of merged code or full PKHeX legality parity.
+`CURRENT_STATUS.md` and the [October 14 development snapshot](archive/sessions/ENGINEERING_SNAPSHOT_20261014.md) track exact live branch/CI evidence. This roadmap is the long-term product direction, not a claim of merged code or full PKHeX legality parity.
 
 ## v1 target
 
