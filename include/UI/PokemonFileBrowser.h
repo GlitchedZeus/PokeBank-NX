@@ -74,8 +74,24 @@ struct Listing {
     return Prefs::canonical(joined);
 }
 
+// Show only native record extensions appropriate for the active game, while still
+// allowing directory navigation. 0 preserves the all-generation listing for callers
+// without an active save.
+[[nodiscard]] inline bool matchesGeneration(std::string_view name, int generation) {
+    if (!PokeBank::PokemonFile::supportedFileName(name)) return false;
+    if (generation == 0) return true;
+    if (generation < 1 || generation > 5) return false;
+    const std::string file = lower(name);
+    const std::string number = std::to_string(generation);
+    const auto ends = [&](const std::string& suffix) {
+        return file.size() >= suffix.size() &&
+               file.compare(file.size() - suffix.size(), suffix.size(), suffix) == 0;
+    };
+    return ends(".pk" + number) || (generation >= 3 && ends(".ek" + number));
+}
+
 [[nodiscard]] inline Listing list(std::string_view folder, const std::vector<RawEntry>& raw,
-                                  const Prefs::Preferences& prefs) {
+                                  const Prefs::Preferences& prefs, int generation = 0) {
     Listing out;
     out.folder = Prefs::canonical(folder).value_or(std::string(Prefs::kRoot));
     out.favorite = prefs.isFavorite(out.folder);
@@ -84,7 +100,7 @@ struct Listing {
         if (r.name.empty() || r.name.front() == '.') continue;          // hidden / self / parent
         if (r.directory) {
             if (childOf(out.folder, r.name)) folders.push_back({Entry::Kind::Folder, r.name, 0, false});
-        } else if (PokeBank::PokemonFile::supportedFileName(r.name)) {
+        } else if (matchesGeneration(r.name, generation)) {
             files.push_back({Entry::Kind::File, r.name, r.size, r.size > kMaxFileBytes});
         }
     }
@@ -115,6 +131,36 @@ template <class Exists>
 // ---- Export naming ---------------------------------------------------------------------------
 [[nodiscard]] inline std::string exportFolder(int generation) {
     return PokeBank::Paths::root() + "/pokemon/gen" + std::to_string(generation);
+}
+
+// A remembered Gen I folder must not become the default for a Gen V import.
+// Keep legitimate custom folders and favourites, but skip another generation's
+// PokeBank export folder. Do not create folders just to browse.
+template <class Exists>
+[[nodiscard]] std::string startFolderForGeneration(const Prefs::Preferences& prefs, int generation,
+                                                   Exists&& exists) {
+    if (generation < 1 || generation > 5) return startFolder(prefs, exists);
+    const auto& last = prefs.last(Prefs::Operation::ImportPokemonFile);
+    const std::string remembered = lower(last);
+    bool otherGeneration = false;
+    for (int other = 1; other <= 5; ++other) {
+        if (other == generation) continue;
+        const std::string folder = lower(exportFolder(other));
+        if (remembered == folder ||
+            (remembered.size() > folder.size() &&
+             remembered.compare(0, folder.size(), folder) == 0 &&
+             remembered[folder.size()] == '/')) {
+            otherGeneration = true;
+            break;
+        }
+    }
+    if (!last.empty() && !otherGeneration &&
+        Prefs::status(last, exists) == Prefs::FolderStatus::Present) return last;
+    const std::string own = exportFolder(generation);
+    if (exists(own)) return own;
+    const std::string app = PokeBank::Paths::root() + "/pokemon";
+    if (exists(app)) return app;
+    return std::string(Prefs::kRoot);
 }
 
 // "<Species>_<id>" with only filename-safe ASCII; the id is the PID (Gen III-V) or the DV word

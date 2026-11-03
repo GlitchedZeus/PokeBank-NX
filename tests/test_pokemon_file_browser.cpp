@@ -35,6 +35,21 @@ int main() {
         if (e.name == "big.pk5") check(e.tooLarge, "an oversized file is flagged");
         else check(!e.tooLarge, "regular files are not flagged: " + e.name);
     check(!l.truncated && !l.favorite, "short, not a favourite");
+    // A Gen V picker can navigate folders but never offers .pk1/.pk4 to import.
+    const auto gen5 = B::list("sdmc:/pokemon", raw, prefs, 5);
+    std::vector<std::string> gen5Names;
+    for (const auto& e : gen5.entries) gen5Names.push_back(e.name);
+    check(gen5Names == std::vector<std::string>({"..", "Banks", "saves", "big.pk5", "mew.ek5"}),
+          "Gen V listing shows only pk5/ek5 and folders");
+    const auto gen1 = B::list("sdmc:/pokemon", raw, prefs, 1);
+    bool gen1Only = true;
+    for (const auto& e : gen1.entries)
+        if (e.kind == B::Entry::Kind::File && e.name != "red.pk1") gen1Only = false;
+    check(gen1Only, "Gen I listing excludes other-generation record files");
+    check(B::matchesGeneration("NEW.PK5", 5) && B::matchesGeneration("NEW.EK5", 5) &&
+          !B::matchesGeneration("NEW.PK1", 5) && !B::matchesGeneration("NEW.EK4", 5) &&
+          !B::matchesGeneration("NEW.EK1", 1), "case-insensitive, supported extension filter");
+
     // The SD root has no parent row.
     const auto root = B::list("sdmc:/", raw, prefs);
     check(!root.entries.empty() && root.entries.front().name != "..", "the root lists no parent");
@@ -65,6 +80,20 @@ int main() {
     check(B::startFolder(prefs, exists) == "sdmc:/switch/PokeBank-NX/pokemon", "a missing remembered folder is skipped");
     present.insert("sdmc:/my/mons");
     check(B::startFolder(prefs, exists) == "sdmc:/my/mons", "the remembered folder when present");
+    // The previously-used gen1 export folder must not hijack Gen V's picker.
+    const auto app = std::string("sdmc:/switch/PokeBank-NX/pokemon");
+    present.insert(app + "/gen1");
+    present.insert(app + "/gen5");
+    check(prefs.remember(P::Operation::ImportPokemonFile, app + "/gen1"), "remember Gen I folder");
+    check(B::startFolderForGeneration(prefs, 5, exists) == app + "/gen5",
+          "Gen V import prefers Gen V folder over remembered Gen I folder");
+    present.erase(app + "/gen5");
+    check(B::startFolderForGeneration(prefs, 5, exists) == app,
+          "Gen V import falls back to shared app folder if Gen V folder is missing");
+    check(prefs.remember(P::Operation::ImportPokemonFile, "sdmc:/my/mons"), "remember custom directory again");
+    check(B::startFolderForGeneration(prefs, 5, exists) == "sdmc:/my/mons",
+          "custom remembered import path remains available");
+
     present.clear();
     P::Preferences none;
     check(B::startFolder(none, exists) == "sdmc:/", "the root when nothing exists");

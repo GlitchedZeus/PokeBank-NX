@@ -71,7 +71,7 @@ bool showFolder(DialogState& s, const std::string& folder, const std::string& fo
         s.message = error;
         return false;
     }
-    Model::setListing(s.model, Browser::list(folder, raw, Utils::g_folderPreferences), focus);
+    Model::setListing(s.model, Browser::list(folder, raw, Utils::g_folderPreferences, s.generation), focus);
     s.scrollbar.reset();
     s.message.clear();
     if (s.model.listing.truncated)
@@ -120,6 +120,13 @@ bool run(TrainerViewScreen& screen, DialogState& s, const Model::Outcome& out) {
                 refuse(screen, s, error.empty() ? "The file is not a Pokemon file PokeBank NX can read" : error);
                 return true;
             }
+            // Files can change between listing and opening. Refuse a mismatched
+            // native record even if its extension appeared compatible.
+            if (decoded->generation != s.generation) {
+                refuse(screen, s, "This is a Generation " + std::to_string(decoded->generation) +
+                                  " Pokemon; only Generation " + std::to_string(s.generation) + " can be imported");
+                return true;
+            }
             std::string status;
             error.clear();
             if (!s.stage || !s.stage(*decoded, status, error)) {
@@ -147,7 +154,7 @@ void openImport(TrainerViewScreen& screen, int generation, StageFn stage) {
     s.generation = generation;
     s.stage = std::move(stage);
     s.active = true;
-    s.model.startFolder = Browser::startFolder(Utils::g_folderPreferences,
+    s.model.startFolder = Browser::startFolderForGeneration(Utils::g_folderPreferences, generation,
                                                [](const std::string& path) { return Io::folderExists(path); });
     if (!showFolder(s, s.model.startFolder)) {
         // The remembered / app folder vanished between the check and the listing: start at the root.

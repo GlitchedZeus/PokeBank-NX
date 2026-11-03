@@ -369,6 +369,47 @@ void exerciseCloneCarry(G::SaveFamily family, std::string_view game, uint8_t ver
     check(sav == pristine, tag + "original SAV5 bytes unchanged");
 }
 
+// Reproduce the White 2 first-boot image: a checksum-valid save with no
+// trainer name/IDs or playtime. The Add wizard already refused this; the
+// action sheet and X-import shortcut must refuse it before opening.
+void exerciseNoTrainerActions() {
+    const auto game = std::string_view("white2_nds");
+    auto sav = fixture(G::SaveFamily::Black2White2, 22);
+    const size_t tr = 0x19400;
+    sav[tr + 4] = 0;
+    sav[tr + 6] = 0;
+    C::write16(sav, tr + 0x14, 0);
+    C::write16(sav, tr + 0x16, 0);
+    const auto blocks = std::span<const L::SaveBlock>(L::Black2White2);
+    auto copy = std::span<uint8_t>(sav).subspan(0, L::Black2White2CopySize);
+    for (const auto& b : blocks) {
+        const auto crc = Utils::crc16ccitt(copy.data() + b.offset, b.length);
+        C::write16(copy, b.checksumOffset, crc);
+        C::write16(copy, b.mirrorOffset, crc);
+    }
+    const auto original = sav;
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(sav, game, &error, G::SaveCopySelection::Primary);
+    check(parsed.has_value(), "no-trainer White 2 fixture parses (" + error + ")");
+    if (!parsed) return;
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    check(!G::hasEstablishedTrainer5(ws), "new-game trainer identity is absent");
+    G::Gen5SharedScreenState ui;
+    const Slot empty{Region::Box, 0, 2};
+    check(ws.emptyCloneDestination(0, 2), "new-game test box slot is a verified empty native slot");
+    check(ui.openActions(ws, empty, error), "new-game empty-slot actions can open");
+    const auto offered = ui.availableActions(ws);
+    check(!has(offered, Action::Add) && !has(offered, Action::ImportFile),
+          "no trainer: Add and Import are absent from the action sheet");
+    check(!ui.activate(ws, Action::Add, error), "no trainer: Add cannot activate by direct action");
+    check(!ui.activate(ws, Action::ImportFile, error), "no trainer: Import cannot activate by direct action");
+    const auto caps = G::fileCapabilities(ws, G::selectedSlot(ws, empty));
+    check(!caps.canAdd && !caps.canImportFile,
+          "no trainer: empty-slot X Import and Add capabilities are disabled");
+    check(!ws.hasChanges() && sav == original,
+          "no trainer: denied actions never stage changes or mutate source bytes");
+}
+
 std::string read(const char* path) {
     std::ifstream in(path, std::ios::binary);
     return {std::istreambuf_iterator<char>(in), {}};
@@ -415,6 +456,7 @@ void sourceWiring() {
 
 int main() {
     sourceWiring();
+    exerciseNoTrainerActions();
     exercise(G::SaveFamily::BlackWhite, "black_nds", 21);
     exercise(G::SaveFamily::BlackWhite, "white_nds", 20);
     exercise(G::SaveFamily::Black2White2, "black2_nds", 23);
