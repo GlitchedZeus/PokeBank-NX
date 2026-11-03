@@ -126,6 +126,12 @@ bool handle(TrainerViewScreen& screen,uint64_t down,uint64_t held,int stickX,int
         PokemonFileMenus::exportPokemon(screen,gen,true,0,slot);
         return true;
     }
+    if(action==Action::CopyToVault) {   // Master Vault v1 (build flag): the save is unchanged
+        const int gen=generation(screen),slot=partySlot(screen);
+        close(screen);
+        PokemonFileMenus::copyToVault(screen,gen,true,0,slot);
+        return true;
+    }
     switch(generation(screen)) {
         case 1: {
             auto& s=Gen1PokemonEditor::ux2StateFor(screen);

@@ -40,7 +40,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	PokeBankNX
 BUILD		:=	build
-SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Common src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Integration/Gen4 src/Integration/Gen5 src/Inventory src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion src/PokemonFile nanovg
+SOURCES		:=	src src/Pokemon src/Encryption src/Enums src/Games src/Integration/Common src/Integration/Gen1 src/Integration/Gen2 src/Integration/Gen3 src/Integration/Gen4 src/Integration/Gen5 src/Inventory src/Legacy src/UI src/UI/Panels src/UI/Dialogs src/UI/Modals src/Trainer src/Names src/Utils src/Save src/Legality src/Conversion src/PokemonFile src/Vault nanovg
 DATA		:=	data
 INCLUDES	:=	include nanovg
 APP_TITLE   :=  PokeBank NX
@@ -82,6 +82,11 @@ ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 # already owns the STB_IMAGE_IMPLEMENTATION) — avoids duplicate symbols. Keeps fontstash for text.
 DEFINES	:=	-DNVG_NO_STB -DPKSE_VERSION='"$(APP_VERSION_FULL)"' \
 			-DPOKEVAULT_GIT_COMMIT='"$(GIT_COMMIT)"' -D_POSIX_C_SOURCE=200809L
+# Master Vault v1 (docs/roadmap/VAULT_V1_IMPLEMENTATION_PLAN.md) is OFF by default: no candidate
+# shows Copy to Vault / Withdraw from Vault until the owner validates it. Test builds: make POKEBANK_VAULT=1
+ifeq ($(POKEBANK_VAULT),1)
+DEFINES	+=	-DPOKEBANK_ENABLE_VAULT=1
+endif
 
 #---------------------------------------------------------------------------------
 # There is ONE build. SD-card logging is a runtime setting -- Settings -> "Enable Debug Logging",

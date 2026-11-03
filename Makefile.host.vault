@@ -1,0 +1,42 @@
+# Master Vault v1 storage core (docs/roadmap/VAULT_V1_IMPLEMENTATION_PLAN.md): create/open, exact
+# native Gen I-V deposit, read-back, withdraw-as-copy, persistence, search and fault injection, in a
+# private mkdtemp tree with the real DurableFile. Self-contained:
+#   make -f Makefile.host.base -f Makefile.host.vault HOST_BUILD=<dir> <dir>/test_vault_store
+VAULT_STORE_SOURCES := tests/test_vault_store.cpp src/Vault/VaultStore.cpp src/PokemonFile/NativePokemonFile.cpp \
+	src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp src/Utils/DurableFile.cpp src/Utils/SHA256.cpp
+VAULT_STORE_HEADERS := include/Vault/VaultStore.h include/Vault/VaultSearch.h include/Vault/VaultFeature.h \
+	include/PokemonFile/NativePokemonFile.h include/Utils/DurableFile.h
+VAULT_HOST_TESTS := $(HOST_BUILD)/test_vault_store
+VAULT_SANITIZE_TESTS := $(HOST_BUILD)/test_vault_store_sanitize
+HOST_TESTS += $(VAULT_HOST_TESTS)
+HOST_SANITIZE_TESTS += $(VAULT_SANITIZE_TESTS)
+host-test: $(VAULT_HOST_TESTS)
+host-sanitize: $(VAULT_SANITIZE_TESTS)
+$(HOST_BUILD)/test_vault_store: $(VAULT_STORE_SOURCES) $(VAULT_STORE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(VAULT_STORE_SOURCES) -o $@
+$(HOST_BUILD)/test_vault_store_sanitize: $(VAULT_STORE_SOURCES) $(VAULT_STORE_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(VAULT_STORE_SOURCES) -o $@
+
+# The shared Actions vocabulary with the Vault rows: the default build (flag OFF) and a Vault build.
+VAULT_ACTIONS_HEADERS := include/UI/SharedPokemonEditorContract.h include/UI/NarrowPokemonActionMenu.h \
+	include/UI/Gen1PokemonEditorUIContract.h include/Vault/VaultFeature.h
+VAULT_ACTIONS_TESTS := $(HOST_BUILD)/test_vault_actions_contract $(HOST_BUILD)/test_vault_actions_contract_on
+VAULT_ACTIONS_SANITIZE := $(HOST_BUILD)/test_vault_actions_contract_sanitize $(HOST_BUILD)/test_vault_actions_contract_on_sanitize
+HOST_TESTS += $(VAULT_ACTIONS_TESTS)
+HOST_SANITIZE_TESTS += $(VAULT_ACTIONS_SANITIZE)
+host-test: $(VAULT_ACTIONS_TESTS)
+host-sanitize: $(VAULT_ACTIONS_SANITIZE)
+$(HOST_BUILD)/test_vault_actions_contract: tests/test_vault_actions_contract.cpp $(VAULT_ACTIONS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude tests/test_vault_actions_contract.cpp -o $@
+$(HOST_BUILD)/test_vault_actions_contract_on: tests/test_vault_actions_contract.cpp $(VAULT_ACTIONS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -DPOKEBANK_ENABLE_VAULT=1 -Iinclude tests/test_vault_actions_contract.cpp -o $@
+$(HOST_BUILD)/test_vault_actions_contract_sanitize: tests/test_vault_actions_contract.cpp $(VAULT_ACTIONS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude tests/test_vault_actions_contract.cpp -o $@
+$(HOST_BUILD)/test_vault_actions_contract_on_sanitize: tests/test_vault_actions_contract.cpp $(VAULT_ACTIONS_HEADERS)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -DPOKEBANK_ENABLE_VAULT=1 -Iinclude tests/test_vault_actions_contract.cpp -o $@

@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "Vault/VaultFeature.h"
+
 namespace PokeBank::UIModel::SharedPokemonEditor {
 
 // Permanent product rule: PokeBank NX has one Pokemon editor shell. Generations
@@ -47,6 +49,13 @@ enum class Action : uint8_t {
     // existing action keeps its value.
     ImportFile, // empty box slot: stage one .pkN / .ekN file from the SD card (never writes there)
     ExportFile, // occupied slot: write a NEW .pkN under the app's pokemon folder (never the save)
+    // Master Vault v1 (docs/roadmap/VAULT_V1_IMPLEMENTATION_PLAN.md), appended likewise. Listed only
+    // when the build enables the Vault (Vault/VaultFeature.h, OFF by default) AND the slot has the
+    // same staged-editor file capability: Copy to Vault deposits exactly the record Export to file
+    // would write (the save is unchanged); Withdraw from Vault stages a COPY through the same import
+    // path as Import from file, so every capacity / occupied-slot refusal still applies.
+    CopyToVault,       // occupied slot
+    WithdrawFromVault, // empty slot
 };
 
 struct ActionCapabilities {
@@ -62,6 +71,9 @@ struct ActionCapabilities {
     // drops Add Pokemon where no Create can stage (Gen V invalid / party cells).
     bool canMove = false;
     bool canAdd = true;
+    // Master Vault v1: the build flag (OFF by default). The Vault rows also need canExportFile /
+    // canImportFile, so they never appear where the staged editor cannot export / import.
+    bool vault = PokeBank::Vault::kEnabled;
 };
 
 struct ActionSet {
@@ -83,6 +95,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     if (!occupied) {
         if (capabilities.canAdd) append(Action::Add);
         if (capabilities.canImportFile) append(Action::ImportFile);
+        if (capabilities.canImportFile && capabilities.vault) append(Action::WithdrawFromVault);
         if (hasPendingChanges) append(Action::Review);
         append(Action::Close);
         return result;
@@ -97,6 +110,7 @@ constexpr ActionSet actionsForSlot(bool occupied, ActionCapabilities capabilitie
     if (capabilities.canRemove) append(Action::Remove);
     if (capabilities.hasLegalityProvenance) append(Action::LegalityProvenance);
     if (capabilities.canExportFile) append(Action::ExportFile);
+    if (capabilities.canExportFile && capabilities.vault) append(Action::CopyToVault);
     if (hasPendingChanges) append(Action::Review);
     append(Action::Close);
     return result;
@@ -129,6 +143,8 @@ constexpr const char* actionLabel(Action action) noexcept {
         case Action::Move: return "Move Pokemon";
         case Action::ImportFile: return "Import from file";
         case Action::ExportFile: return "Export to file";
+        case Action::CopyToVault: return "Copy to Vault";
+        case Action::WithdrawFromVault: return "Withdraw from Vault";
     }
     return "";
 }
@@ -150,6 +166,8 @@ constexpr Surface surfaceForAction(Action action) noexcept {
         case Action::Move:
         case Action::ImportFile:
         case Action::ExportFile:
+        case Action::CopyToVault:
+        case Action::WithdrawFromVault:
         case Action::Remove:
         case Action::LegalityProvenance:
         case Action::Close:

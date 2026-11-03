@@ -1745,12 +1745,19 @@ bool handleInput(TrainerViewScreen& screen,u64 down,u64 held,
                     allowed[static_cast<size_t>(state.actionRow())] :
                     PokeBank::UIModel::SharedPokemonEditor::Action::None;
                 using FileAction=PokeBank::UIModel::SharedPokemonEditor::Action;
-                if(selected==FileAction::ImportFile || selected==FileAction::ExportFile) {
+                if(selected==FileAction::ImportFile || selected==FileAction::ExportFile ||
+                   selected==FileAction::CopyToVault || selected==FileAction::WithdrawFromVault) {
                     // Feature A: the shared file dialog / file export (UI/PokemonFileMenus.h).
+                    // Master Vault v1 (build flag): Copy to Vault / Withdraw from Vault share it.
                     const auto where=state.target();
                     (void)state.activate(staged,FileAction::Close,error);
                     if(selected==FileAction::ImportFile)
                         PokemonFileMenus::beginImport(screen,5,static_cast<int>(where.box),static_cast<int>(where.slot));
+                    else if(selected==FileAction::WithdrawFromVault)
+                        PokemonFileMenus::beginWithdraw(screen,5,static_cast<int>(where.box),static_cast<int>(where.slot));
+                    else if(selected==FileAction::CopyToVault)
+                        PokemonFileMenus::copyToVault(screen,5,where.region==Region::Party,
+                            static_cast<int>(where.box),static_cast<int>(where.slot));
                     else
                         PokemonFileMenus::exportPokemon(screen,5,where.region==Region::Party,
                             static_cast<int>(where.box),static_cast<int>(where.slot));
@@ -1990,6 +1997,8 @@ const char* narrowActionLabel5(PokeBank::UIModel::SharedPokemonEditor::Action ac
         case A::Add:return "Add Pokemon";
         case A::ImportFile:return PokeBank::UIModel::NarrowPokemonMenu::kImportFileLabel;
         case A::ExportFile:return PokeBank::UIModel::NarrowPokemonMenu::kExportFileLabel;
+        case A::CopyToVault:return PokeBank::UIModel::NarrowPokemonMenu::kCopyToVaultLabel;
+        case A::WithdrawFromVault:return PokeBank::UIModel::NarrowPokemonMenu::kWithdrawFromVaultLabel;
         case A::Review:return "Review Pending Changes";
         case A::Close:return "Cancel";
         default:return "";

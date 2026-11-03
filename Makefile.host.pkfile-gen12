@@ -11,10 +11,10 @@ POKEMON_FILE_GEN12_SOURCES := tests/test_pokemon_file_gen12.cpp $(sort \
 	src/Integration/Gen2/Gen2PersonalData.cpp \
 	src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
 	src/Pokemon/Experience.cpp src/Names/SpeciesNames.cpp src/Names/MoveNames.cpp src/Names/ItemNames.cpp \
-	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp)
+	src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp src/Vault/VaultStore.cpp src/Utils/DurableFile.cpp src/Utils/SHA256.cpp)
 POKEMON_FILE_GEN12_HEADERS := include/PokemonFile/NativePokemonFile.h \
 	include/Integration/Gen1/Gen1StagedPokemonEditor.h include/Integration/Gen2/Gen2StagedEditor.h \
-	src/Integration/Gen1/Gen1PersonalData.inc tests/fixtures/gsc_pokemon_fixture.h
+	src/Integration/Gen1/Gen1PersonalData.inc tests/fixtures/gsc_pokemon_fixture.h include/Vault/VaultStore.h tests/vault_roundtrip_support.h
 PKFILE_GEN12_HOST_TESTS := $(HOST_BUILD)/test_pokemon_file_gen12
 PKFILE_GEN12_SANITIZE_TESTS := $(HOST_BUILD)/test_pokemon_file_gen12_sanitize
 

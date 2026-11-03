@@ -74,6 +74,20 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
                 PokemonFileMenus::exportPokemon(screen, 1, false, box, slot);
                 break;
             }
+            case Action::CopyToVault: {   // Master Vault v1 (build flag): the save is unchanged
+                const int box = state.box, slot = state.slot;
+                ux2Close(state);
+                screen.controllerNavigation.reset();
+                PokemonFileMenus::copyToVault(screen, 1, false, box, slot);
+                break;
+            }
+            case Action::WithdrawFromVault: {   // a copy, staged into this box's first empty slot
+                const int box = state.box, slot = state.slot;
+                ux2Close(state);
+                screen.controllerNavigation.reset();
+                PokemonFileMenus::beginWithdraw(screen, 1, box, slot);
+                break;
+            }
             case Action::ReviewPendingChanges: state.mode = UX2Mode::Review; state.reviewRow = 0; break;
             case Action::Cancel: ux2Close(state); break;
         }
@@ -414,6 +428,23 @@ bool handleReleaseActionInput(TrainerViewScreen& screen, uint64_t down, uint64_t
             legacy.pokemonActions = false;
             screen.controllerNavigation.reset();
             PokemonFileMenus::exportPokemon(screen, 2, false, box, slot);
+            return true;
+        }
+        case Action::CopyToVault: {   // Master Vault v1 (build flag): the save is unchanged
+            if (!pokemon) return true;
+            const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;
+            legacy.active = false;
+            legacy.pokemonActions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::copyToVault(screen, 2, false, box, slot);
+            return true;
+        }
+        case Action::WithdrawFromVault: {
+            const int box = legacy.pokemonBox, slot = legacy.pokemonSlot;
+            legacy.active = false;
+            legacy.pokemonActions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginWithdraw(screen, 2, box, slot);
             return true;
         }
         case Action::Review:

@@ -8,6 +8,7 @@
 #include "Integration/Gen2/Gen2BattleStats.h"
 #include "Integration/Gen2/Gen2HeldItems.h"
 #include "PokemonFile/NativePokemonFile.h"
+#include "vault_roundtrip_support.h"
 
 #include <algorithm>
 #include <cassert>
@@ -224,6 +225,18 @@ void run(G1::SourceGame game) {
     }
     for (size_t i = 0; i < 20; ++i) { auto slot = e->appendSlot(5, error); assert(slot); assert(e->stageAdd(5, *slot, {}, error)); }
     refuse(*e, 5, 19, pk1, "full");
+    // Master Vault v1: Copy to Vault (the exported record) -> restart -> Withdraw from Vault stages a
+    // COPY through the same import with the same capacity refusal; a fresh editor takes it byte for byte.
+    {
+        const auto vaulted = VaultTest::depositReopenWithdraw(1, *file);
+        assert(vaulted.plain == pk1.plain);
+        refuse(*e, 5, 19, vaulted, "full");
+        auto fresh = G1::StagedPokemonEditor::create(*source.save, error);
+        assert(fresh && fresh->stageImport(0, 0, vaulted, error));
+        const auto placed = fresh->boxedPokemon(0, 0, error);
+        assert(placed && std::equal(placed->rawBody.begin(), placed->rawBody.begin() + 33, boxRecord.rawBody.begin()));
+        assert(fresh->exportBoxPokemonFile(0, 0, error) == *file);
+    }
     e->discard();
     // A carried (packed-move) Pokemon must be placed first.
     assert(e->beginPackedMove(2, 0, error));
@@ -377,6 +390,16 @@ void run(const L& l, SourceGame game) {
     refuse(*e, 14, 0, pk2, "outside the validated save");
     refuse(*e, 2, 20, pk2, "outside the validated save");
     refuse(*e, 3, 19, pk2, "full");
+    // Master Vault v1: the withdrawn copy meets the same occupied / full refusals and imports exactly.
+    {
+        const auto vaulted = VaultTest::depositReopenWithdraw(2, *file);
+        assert(vaulted.plain == pk2.plain);
+        refuse(*e, 3, 19, vaulted, "full");
+        refuse(*e, 0, 0, vaulted, "occupied");
+        auto fresh = StagedEditor::create(*source.save, error);
+        assert(fresh && fresh->stageImportBoxPokemon(2, 0, vaulted, error));
+        assert(fresh->exportBoxPokemonFile(2, 0, error) == *file);
+    }
     {
         F::Decoded bad = pk2; bad.plain[1] = bad.plain[3] = 252;            // hand-made: species past 251
         refuse(*e, 2, 0, bad, "not a valid Generation II box Pokemon");

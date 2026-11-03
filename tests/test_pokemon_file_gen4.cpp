@@ -10,6 +10,7 @@
 #include "Integration/Gen4/Gen4StagedPokemonEditor.h"
 #include "PokemonFile/NativePokemonFile.h"
 #include "fuzz_synthetic_saves.h"
+#include "vault_roundtrip_support.h"
 
 #include <algorithm>
 #include <cassert>
@@ -421,7 +422,28 @@ void testCrossGroupRoundTrip() {
 
 } // namespace
 
+// Master Vault v1: Copy to Vault (the exported PK4) -> restart -> Withdraw from Vault through the same
+// staged import: occupied / out-of-range refusals unchanged, an empty slot gets the exact record.
+void testVaultRoundTrip() {
+    for (const auto& g : kGames) {
+        const auto source = S::save(g.kind, g.rom);
+        auto editor = openEditor(source, g);
+        std::string error;
+        const auto box = editor.exportBoxPokemonFile(0, 0, &error);
+        const auto party = editor.exportPartyPokemonFile(0, &error);
+        assert(box && party);
+        const auto fromBox = VaultTest::depositReopenWithdraw(4, *box);
+        const auto fromParty = VaultTest::depositReopenWithdraw(4, *party);
+        assert(!editor.hasChanges() && editor.stagedBytes() == source);
+        refuse(editor, 0, 0, fromBox, "occupied");
+        assert(editor.stageImportBoxPokemon(2, 3, fromBox, &error) && error.empty());
+        assert(editor.stageImportBoxPokemon(2, 4, fromParty, &error) && error.empty());
+        assert(slotPlain(editor, 2, 3) == *box && slotPlain(editor, 2, 4) == *box);
+    }
+}
+
 int main() {
+    testVaultRoundTrip();
     testImportSuccessAllGames();
     testImportRefusals();
     testExportRoundTrip();

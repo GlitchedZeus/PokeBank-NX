@@ -1775,6 +1775,16 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             screen.controllerNavigation.reset();
             PokemonFileMenus::exportPokemon(screen, 3, false, state.box, state.slot);
             break;
+        case Shared::Action::CopyToVault:   // Master Vault v1 (build flag): the save is unchanged
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::copyToVault(screen, 3, false, state.box, state.slot);
+            break;
+        case Shared::Action::WithdrawFromVault:   // a copy, through the Import from file staging
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginWithdraw(screen, 3, state.box, state.slot);
+            break;
         case Shared::Action::LegalityProvenance:
             state.actions = false;
             state.legality = true;

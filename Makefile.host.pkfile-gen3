@@ -10,9 +10,10 @@ PKFILE_GEN3_SOURCES := tests/test_pokemon_file_gen3.cpp \
 	src/Pokemon/Experience.cpp src/Inventory/ClassicInventoryCatalog.cpp src/Inventory/ItemQuantityPolicy.cpp \
 	src/Integration/Gen2/Gen2ReadOnlyInventory.cpp src/Names/ItemNames.cpp src/Names/MoveNames.cpp \
 	src/Names/MoveInfo.cpp src/Names/SpeciesNames.cpp src/Names/NatureNames.cpp src/Names/AbilityNames.cpp \
-	src/Names/LocationNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
+	src/Names/LocationNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Vault/VaultStore.cpp src/Utils/DurableFile.cpp src/Utils/SHA256.cpp
 PKFILE_GEN3_HEADERS := include/Integration/Gen3/Gen3StagedPokemonEditor.h include/PokemonFile/NativePokemonFile.h \
-	tests/fuzz_synthetic_saves.h
+	tests/fuzz_synthetic_saves.h include/Vault/VaultStore.h tests/vault_roundtrip_support.h
 PKFILE_GEN3_HOST_TESTS := $(HOST_BUILD)/test_pokemon_file_gen3
 PKFILE_GEN3_SANITIZE_TESTS := $(HOST_BUILD)/test_pokemon_file_gen3_sanitize
 

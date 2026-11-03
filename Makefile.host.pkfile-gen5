@@ -2,8 +2,10 @@
 # Import into the staged workspace only, independent Review / export-candidate re-verification,
 # and non-mutating export. Included by Makefile.host after Makefile.host.pkse-october.
 
-PKFILE_GEN5_SOURCES := tests/test_pokemon_file_gen5.cpp src/PokemonFile/NativePokemonFile.cpp src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp
-PKFILE_GEN5_HEADERS := include/Integration/Gen5/Gen5PokemonFile.h include/Integration/Gen5/Gen5ImportRecord.h include/Integration/Gen5/Gen5StagedPokemonWorkspace.h include/Integration/Gen5/Gen5SharedReview.h include/Integration/Gen5/Gen5StagedSaveCandidate.h include/Integration/Gen5/Gen5StagedPokemonRecord.h include/Integration/Gen5/Gen5ReviewRows.h include/PokemonFile/NativePokemonFile.h
+PKFILE_GEN5_SOURCES := tests/test_pokemon_file_gen5.cpp src/PokemonFile/NativePokemonFile.cpp src/Encryption/Encryption3FRLG.cpp src/Encryption/Encryption4.cpp src/Names/SpeciesNames.cpp src/Utils/StringHelpers.cpp src/Utils/HelperUtilities.cpp \
+	src/Vault/VaultStore.cpp src/Utils/DurableFile.cpp src/Utils/SHA256.cpp
+PKFILE_GEN5_HEADERS := include/Integration/Gen5/Gen5PokemonFile.h include/Integration/Gen5/Gen5ImportRecord.h include/Integration/Gen5/Gen5StagedPokemonWorkspace.h include/Integration/Gen5/Gen5SharedReview.h include/Integration/Gen5/Gen5StagedSaveCandidate.h include/Integration/Gen5/Gen5StagedPokemonRecord.h include/Integration/Gen5/Gen5ReviewRows.h include/PokemonFile/NativePokemonFile.h \
+	include/Vault/VaultStore.h tests/vault_roundtrip_support.h
 PKFILE_GEN5_HOST_TESTS := $(HOST_BUILD)/test_pokemon_file_gen5
 PKFILE_GEN5_SANITIZE_TESTS := $(HOST_BUILD)/test_pokemon_file_gen5_sanitize
 
@@ -14,7 +16,7 @@ host-sanitize: $(PKFILE_GEN5_SANITIZE_TESTS)
 
 $(HOST_BUILD)/test_pokemon_file_gen5: $(PKFILE_GEN5_SOURCES) $(PKFILE_GEN5_HEADERS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) -Iinclude $(PKFILE_GEN5_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) -Iinclude -Itests $(PKFILE_GEN5_SOURCES) -o $@
 $(HOST_BUILD)/test_pokemon_file_gen5_sanitize: $(PKFILE_GEN5_SOURCES) $(PKFILE_GEN5_HEADERS)
 	@mkdir -p $(HOST_BUILD)
-	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(PKFILE_GEN5_SOURCES) -o $@
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude -Itests $(PKFILE_GEN5_SOURCES) -o $@

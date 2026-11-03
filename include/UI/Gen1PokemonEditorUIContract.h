@@ -7,6 +7,8 @@
 #include <cstdio>
 #include <string>
 
+#include "Vault/VaultFeature.h"
+
 namespace PokeBank::UIModel::Gen1Editor {
 
 enum class Action : uint8_t {
@@ -24,6 +26,9 @@ enum class Action : uint8_t {
     // Feature A (owner Oct 28): standalone .pk1 files (UI/PokemonFileDialog.h), appended likewise.
     ImportFile,
     ExportFile,
+    // Master Vault v1 (build flag, OFF by default; see UI/SharedPokemonEditorContract.h), appended.
+    CopyToVault,
+    WithdrawFromVault,
 };
 
 struct ActionSet {
@@ -37,8 +42,10 @@ struct ActionSet {
 // Storage pane and every other caller pass false and keep the sheet without Move.
 // `fileActions` (Feature A): the session has a staged editor, so an empty slot also offers
 // Import from file (after Add Pokemon) and an occupied one Export to file (after Origin & Legality).
+// `vault` (Master Vault v1): the build flag; the Vault rows also need `fileActions`.
 constexpr ActionSet actionsForSlot(bool occupied, bool hasPendingChanges = false,
-                                   bool boxMove = false, bool fileActions = false) noexcept {
+                                   bool boxMove = false, bool fileActions = false,
+                                   bool vault = PokeBank::Vault::kEnabled) noexcept {
     ActionSet result{};
     const auto append = [&result](Action action) constexpr { result.values[result.count++] = action; };
     if (occupied) {
@@ -49,9 +56,11 @@ constexpr ActionSet actionsForSlot(bool occupied, bool hasPendingChanges = false
         append(Action::Remove);
         append(Action::LegalityProvenance);
         if (fileActions) append(Action::ExportFile);
+        if (fileActions && vault) append(Action::CopyToVault);
     } else {
         append(Action::AddPokemon);
         if (fileActions) append(Action::ImportFile);
+        if (fileActions && vault) append(Action::WithdrawFromVault);
     }
     if (hasPendingChanges) append(Action::ReviewPendingChanges);
     append(Action::Cancel);

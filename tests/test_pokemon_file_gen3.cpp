@@ -11,6 +11,7 @@
 #include "PokemonFile/NativePokemonFile.h"
 #include "Pokemon/Pokemon3FRLG.h"
 #include "fuzz_synthetic_saves.h"
+#include "vault_roundtrip_support.h"
 
 #include <algorithm>
 #include <array>
@@ -514,8 +515,39 @@ void refusals(SourceGame game, Family family) {
     assert(editor->originalBytes() == source);
 }
 
+// Master Vault v1: Copy to Vault (exactly the Export to file record; the workspace is unchanged) ->
+// restart -> Withdraw from Vault stages a COPY through the same import, with the same refusals.
+void vaultRoundTrip(SourceGame game, Family family) {
+    const Bytes source = fixture(family, game);
+    std::string error;
+    auto editor = StagedPokemonEditor::create(source, game, error);
+    const Bytes staged = editor->stagedBytes();
+    const auto box = editor->exportBoxPokemonFile(0, 0, error);
+    const auto party = editor->exportPartyPokemonFile(0, error);
+    assert(box && party);
+    const auto fromBox = VaultTest::depositReopenWithdraw(3, *box);
+    const auto fromParty = VaultTest::depositReopenWithdraw(3, *party);
+    assert(!fromBox.party && fromParty.party);
+    assert(editor->stagedBytes() == staged && !editor->hasPendingChanges() && editor->originalBytes() == source);
+
+    const auto refused = [&](const F::Decoded& file, std::size_t b, std::size_t s, const char* needle) {
+        error.clear();
+        assert(!editor->stageImportBoxPokemon(b, s, file, error) && error.find(needle) != std::string::npos);
+        assert(editor->stagedBytes() == staged && !editor->hasPendingChanges());
+    };
+    refused(fromBox, 0, 0, "already holds a Pokemon");
+    refused(fromBox, 14, 0, "outside the native 14 x 30");
+    assert(editor->stageImportBoxPokemon(0, 2, fromBox, error) && error.empty());
+    assert(editor->boxedPokemon(0, 2, error)->encryptedBytes == editor->boxedPokemon(0, 0, error)->encryptedBytes);
+    assert(editor->stageImportBoxPokemon(0, 4, fromParty, error) && error.empty());
+    const auto back = editor->exportBoxPokemonFile(0, 4, error);
+    assert(back && std::equal(back->begin(), back->end(), party->begin()));
+    assert(editor->originalBytes() == source);   // the source save is never written
+}
+
 void runGame(SourceGame game, Family family) {
     successPaths(game, family);
+    vaultRoundTrip(game, family);
     exportRoundTrip(game, family);
     refusals(game, family);
 }

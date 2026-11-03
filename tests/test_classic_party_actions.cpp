@@ -100,6 +100,10 @@ bool exportPokemon(TrainerViewScreen&,int generation,bool party,int box,int slot
     exportCall={generation,party,box,slot,exportCall.count+1};return true;
 }
 bool beginImport(TrainerViewScreen&,int,int,int) {return false;}
+// Master Vault v1: the Party sheet's Copy to Vault row (listed only in a POKEBANK_ENABLE_VAULT build)
+// hands off to the same shared layer; in the default build it is never reached.
+int copyToVaultCalls=0;
+bool copyToVault(TrainerViewScreen&,int,bool,int,int) {++copyToVaultCalls;return true;}
 }
 
 int main() {
@@ -132,6 +136,7 @@ int main() {
             if(action==3)assert(PokemonFileMenus::exportCall.count==1 && PokemonFileMenus::exportCall.generation==gen &&
                 PokemonFileMenus::exportCall.party && PokemonFileMenus::exportCall.slot==0);
             else assert(PokemonFileMenus::exportCall.count==0);
+            assert(PokemonFileMenus::copyToVaultCalls==0);   // default build: no Vault row, never reached
             if(action==2)assert(gen==1?Gen1PokemonEditor::state.mode==Gen1PokemonEditor::UX2Mode::Provenance:
                 gen==2?Gen2PokemonEditor::shared.provenanceActive:Gen3SharedEditorSurface::state.legality);
         }

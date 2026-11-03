@@ -5,6 +5,12 @@
 #include "UI/PokemonFileDialog.h"
 #include "UI/PokemonFileIo.h"
 #include "Integration/Gen5/Gen5PokemonFile.h"
+#include "UI/VaultDialog.h"
+#include "Utils/StringHelpers.h"
+#include "Vault/VaultFeature.h"
+#include "Vault/VaultStore.h"
+
+#include <concepts>
 
 namespace UI::PokemonFileMenus {
 namespace {
@@ -118,7 +124,24 @@ PokemonFileDialog::StageFn gen5Import(TrainerViewScreen& screen, int box, int sl
 struct Exported {
     std::optional<std::vector<uint8_t>> bytes;
     uint16_t species = 0;
+    PokeBank::Vault::Summary summary;   // Master Vault display cache (not authoritative)
+    bool stagedEdits = false;           // the workspace had unsaved staged changes
 };
+
+// Fills the Vault's display cache from whatever the generation's record view offers (Gen I-III
+// records carry plain fields, Gen IV accessors); anything missing simply stays empty.
+template <class R>
+void fillSummary(const R& r, PokeBank::Vault::Summary& s) {
+    if constexpr (requires { { r.nickname } -> std::convertible_to<std::string>; }) s.nickname = r.nickname;
+    else if constexpr (requires { { r.nickname() } -> std::convertible_to<std::u16string>; })
+        s.nickname = Utils::utf16ToUtf8(r.nickname());
+    if constexpr (requires { { r.otName } -> std::convertible_to<std::string>; }) s.otName = r.otName;
+    else if constexpr (requires { { r.otName() } -> std::convertible_to<std::u16string>; })
+        s.otName = Utils::utf16ToUtf8(r.otName());
+    if constexpr (requires { { r.level } -> std::convertible_to<int>; }) s.level = static_cast<uint8_t>(r.level);
+    else if constexpr (requires { { r.level() } -> std::convertible_to<int>; }) s.level = static_cast<uint8_t>(r.level());
+    if constexpr (requires { { r.shiny } -> std::convertible_to<bool>; }) s.shiny = static_cast<bool>(r.shiny);
+}
 
 Exported exportBytes(TrainerViewScreen& screen, int generation, bool party, int box, int slot, std::string& error) {
     Exported out;
@@ -131,6 +154,8 @@ Exported exportBytes(TrainerViewScreen& screen, int generation, bool party, int 
             const auto record = party ? e->partyPokemon(s, error) : e->boxedPokemon(b, s, error);
             if (!record) return out;
             out.species = record->species;
+            fillSummary(*record, out.summary);
+            out.stagedEdits = !e->pendingChanges().empty();
             out.bytes = party ? e->exportPartyPokemonFile(s, error) : e->exportBoxPokemonFile(b, s, error);
             return out;
         }
@@ -140,6 +165,8 @@ Exported exportBytes(TrainerViewScreen& screen, int generation, bool party, int 
             const auto record = party ? e->partyPokemon(s, error) : e->boxedPokemon(b, s, error);
             if (!record) return out;
             out.species = record->species;
+            fillSummary(*record, out.summary);
+            out.stagedEdits = !e->pendingChanges().empty();
             out.bytes = party ? e->exportPartyPokemonFile(s, error) : e->exportBoxPokemonFile(b, s, error);
             return out;
         }
@@ -149,6 +176,8 @@ Exported exportBytes(TrainerViewScreen& screen, int generation, bool party, int 
             const auto record = party ? e->partyPokemon(s, error) : e->boxedPokemon(b, s, error);
             if (!record) return out;
             out.species = record->species;
+            fillSummary(*record, out.summary);
+            out.stagedEdits = e->hasPendingChanges();
             out.bytes = party ? e->exportPartyPokemonFile(s, error) : e->exportBoxPokemonFile(b, s, error);
             return out;
         }
@@ -158,6 +187,8 @@ Exported exportBytes(TrainerViewScreen& screen, int generation, bool party, int 
             const auto record = party ? e->partyPokemon(s, &error) : e->boxedPokemon(b, s, &error);
             if (!record) return out;
             out.species = record->species();
+            fillSummary(*record, out.summary);
+            out.stagedEdits = e->hasChanges();
             out.bytes = party ? e->exportPartyPokemonFile(s, &error) : e->exportBoxPokemonFile(b, s, &error);
             return out;
         }
@@ -170,6 +201,7 @@ Exported exportBytes(TrainerViewScreen& screen, int generation, bool party, int 
             out.bytes = PokeVault::Integration::Gen5::exportStagedPokemonFile5(workspace, where, &error);
             const auto record = party ? workspace.viewParty(s) : workspace.viewBox(b, s);
             if (out.bytes && record) out.species = record->species();
+            out.stagedEdits = workspace.hasChanges();
             return out;
         }
         default: break;
@@ -191,6 +223,67 @@ bool beginImport(TrainerViewScreen& screen, int generation, int box, int slot) {
         default: return false;
     }
     PokemonFileDialog::openImport(screen, generation, std::move(stage));
+    return true;
+}
+
+// ---- Master Vault v1 (build flag OFF by default: Vault/VaultFeature.h) --------------------------
+
+bool copyToVault(TrainerViewScreen& screen, int generation, bool party, int box, int slot) {
+    if (!PokeBank::Vault::kEnabled) return false;   // never reachable in a default build
+    std::string error;
+    const auto exported = exportBytes(screen, generation, party, box, slot, error);
+    if (!exported.bytes) {
+        screen.postStatus(error.empty() ? "This Pokemon could not be copied to the Vault" : error, 420);
+        return false;
+    }
+    auto* store = VaultDialog::sharedStore(error);
+    if (!store) {
+        screen.postStatus("The Vault could not be opened: " + error, 480);
+        return false;
+    }
+    PokeBank::Vault::DepositRequest request;
+    request.generation = generation;
+    request.raw = *exported.bytes;
+    request.summary = exported.summary;
+    request.summary.species = exported.species;
+    request.summary.speciesName = speciesName(exported.species);
+    request.provenance.sourceKind = "game_save";
+    request.provenance.sourceGame = screen.titleName.empty() ? "Generation " + std::to_string(generation)
+                                                             : screen.titleName;
+    request.provenance.sourceBox = party ? -1 : box;
+    request.provenance.sourceSlot = slot;
+    request.provenance.sourceParty = party;
+    request.provenance.stagedEdits = exported.stagedEdits;
+#ifdef PKSE_VERSION
+    request.provenance.appVersion = PKSE_VERSION;
+#endif
+    const auto id = store->deposit(request, error);
+    if (!id) {
+        screen.postStatus(error.empty() ? "Nothing was copied to the Vault" : error, 480);
+        return false;
+    }
+    // Copy, not Move: the save (and its staged workspace) is unchanged.
+    screen.postStatus("Copied " + request.summary.speciesName + " to the Vault; this save is unchanged", 600);
+    return true;
+}
+
+bool beginWithdraw(TrainerViewScreen& screen, int generation, int box, int slot) {
+    if (!PokeBank::Vault::kEnabled) return false;
+    std::string error;
+    if (!VaultDialog::sharedStore(error)) {
+        screen.postStatus("The Vault could not be opened: " + error, 480);
+        return false;
+    }
+    PokemonFileDialog::StageFn stage;
+    switch (generation) {   // the SAME staging callbacks as Import from file: same refusals
+        case 1: stage = gen1Import(screen, box); break;
+        case 2: stage = gen2Import(screen, box); break;
+        case 3: stage = gen3Import(screen, box, slot); break;
+        case 4: stage = gen4Import(screen, box, slot); break;
+        case 5: stage = gen5Import(screen, box, slot); break;
+        default: return false;
+    }
+    VaultDialog::openWithdraw(screen, generation, std::move(stage));
     return true;
 }
 

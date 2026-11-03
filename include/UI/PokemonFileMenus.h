@@ -24,5 +24,13 @@ bool beginImport(TrainerViewScreen& screen, int generation, int box, int slot);
 // workspace holds it. Posts "Exported to <path>" or the reason.
 bool exportPokemon(TrainerViewScreen& screen, int generation, bool party, int box, int slot);
 
+// Master Vault v1 (build flag OFF by default: Vault/VaultFeature.h; both return false when off).
+// Copy to Vault deposits exactly the record exportPokemon would write, under a new Vault ID; the save
+// and its staged workspace are unchanged. Withdraw from Vault opens the Vault browser
+// (UI/VaultDialog.h) for this generation; the picked record is staged as a COPY through the same
+// callback Import from file uses, so occupied / capacity refusals are identical.
+bool copyToVault(TrainerViewScreen& screen, int generation, bool party, int box, int slot);
+bool beginWithdraw(TrainerViewScreen& screen, int generation, int box, int slot);
+
 }  // namespace PokemonFileMenus
 }  // namespace UI

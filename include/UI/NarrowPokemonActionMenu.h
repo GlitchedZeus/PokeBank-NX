@@ -93,6 +93,10 @@ struct Geometry {
 inline constexpr const char* kOriginLegalityLabel = "Origin & Legality";
 inline constexpr const char* kImportFileLabel = "Import from file";   // Feature A (owner Oct 28)
 inline constexpr const char* kExportFileLabel = "Export to file";
+// Master Vault v1 (build flag, OFF by default): Copy to Vault follows Export to file, Withdraw from
+// Vault follows Import from file. One label each, shared by every generation's sheet.
+inline constexpr const char* kCopyToVaultLabel = "Copy to Vault";
+inline constexpr const char* kWithdrawFromVaultLabel = "Withdraw from Vault";
 
 [[nodiscard]] constexpr const char* sharedActionLabel(SharedPokemonEditor::Action action) noexcept {
     using A = SharedPokemonEditor::Action;
@@ -106,6 +110,8 @@ inline constexpr const char* kExportFileLabel = "Export to file";
         case A::Add: return "Add Pokemon";
         case A::ImportFile: return kImportFileLabel;
         case A::ExportFile: return kExportFileLabel;
+        case A::CopyToVault: return kCopyToVaultLabel;
+        case A::WithdrawFromVault: return kWithdrawFromVaultLabel;
         case A::Review: return "Review Pending Changes";
         case A::Close: return "Cancel";
         case A::None: return nullptr;
@@ -119,24 +125,26 @@ inline constexpr const char* kExportFileLabel = "Export to file";
     switch (action) {
         case A::Add: return 0;
         case A::ImportFile: return 1;
-        case A::View: return 2;
-        case A::Edit: return 3;
-        case A::Clone: return 4;
-        case A::Move: return 5;
-        case A::Remove: return 6;
-        case A::LegalityProvenance: return 7;
-        case A::ExportFile: return 8;
-        case A::Review: return 9;
-        case A::Close: return 10;
-        case A::None: return 11;
+        case A::WithdrawFromVault: return 2;
+        case A::View: return 3;
+        case A::Edit: return 4;
+        case A::Clone: return 5;
+        case A::Move: return 6;
+        case A::Remove: return 7;
+        case A::LegalityProvenance: return 8;
+        case A::ExportFile: return 9;
+        case A::CopyToVault: return 10;
+        case A::Review: return 11;
+        case A::Close: return 12;
+        case A::None: return 13;
     }
-    return 11;
+    return 13;
 }
 
 [[nodiscard]] constexpr Model classic(
     const SharedPokemonEditor::ActionSet& native, bool /*occupied*/ = true) noexcept {
     Model result{};
-    for (int rank = 0; rank < 11; ++rank)
+    for (int rank = 0; rank < 13; ++rank)
         for (int i = 0; i < static_cast<int>(native.count); ++i) {
             const auto action = native[static_cast<std::size_t>(i)];
             if (sharedActionRank(action) != rank) continue;
@@ -157,6 +165,8 @@ inline constexpr const char* kExportFileLabel = "Export to file";
         case A::AddPokemon: return "Add Pokemon";
         case A::ImportFile: return kImportFileLabel;
         case A::ExportFile: return kExportFileLabel;
+        case A::CopyToVault: return kCopyToVaultLabel;
+        case A::WithdrawFromVault: return kWithdrawFromVaultLabel;
         case A::ReviewPendingChanges: return "Review Pending Changes";
         case A::Cancel: return "Cancel";
         default: return nullptr;
@@ -195,6 +205,7 @@ namespace detail {
 constexpr bool onlySharedLabels(const Model& m) noexcept {
     constexpr const char* allowed[] = {"View", "Edit", "Clone", "Move", "Release", kOriginLegalityLabel,
                                        "Add Pokemon", kImportFileLabel, kExportFileLabel,
+                                       kCopyToVaultLabel, kWithdrawFromVaultLabel,
                                        "Review Pending Changes", "Cancel"};
     for (int i = 0; i < m.count; ++i) {
         bool ok = false;
@@ -216,16 +227,18 @@ static_assert(classic(SharedPokemonEditor::actionsForSlot(false), false).count =
 static_assert(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true}, true)).visualIndex(-1) == -1);
 static_assert(gen1(Gen1Editor::actionsForSlot(true), true).visualIndex(-1) == -1);
 // Feature A: the file actions join the same sheet in the shared order, within the box-menu geometry.
-static_assert(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true, true, true}, true)).count == 8);
-static_assert(classic(SharedPokemonEditor::actionsForSlot(false, {true, true, true, true, true}, true)).count == 4);
+// (The pins below describe the sheet WITHOUT the Master Vault rows, so they hold in a Vault test build
+// too: `vault` is forced off where the file capabilities are on. The Vault rows are pinned below.)
+static_assert(classic(SharedPokemonEditor::actionsForSlot(true, {true, true, true, true, true, false, true, false}, true)).count == 8);
+static_assert(classic(SharedPokemonEditor::actionsForSlot(false, {true, true, true, true, true, false, true, false}, true)).count == 4);
 static_assert(detail::hasLabel(classic(SharedPokemonEditor::actionsForSlot(false, {true, true, true, true, true})),
                                kImportFileLabel));
 static_assert(detail::hasLabel(gen1(Gen1Editor::actionsForSlot(true, true, true, true)), kExportFileLabel));
-static_assert(gen1(Gen1Editor::actionsForSlot(true, true, true, true)).count == 9);
+static_assert(gen1(Gen1Editor::actionsForSlot(true, true, true, true, false)).count == 9);
 static_assert(detail::onlySharedLabels(gen1(Gen1Editor::actionsForSlot(true, true, true, true))));
 // Round 11 ACTIONS: the full shared sheet (Move included) is the 9-row owner order and fits.
 static_assert(classic(SharedPokemonEditor::actionsForSlot(
-    true, SharedPokemonEditor::ActionCapabilities{true, true, true, true, true, true}, true)).count == 9);
+    true, SharedPokemonEditor::ActionCapabilities{true, true, true, true, true, true, true, false}, true)).count == 9);
 static_assert(detail::onlySharedLabels(classic(SharedPokemonEditor::actionsForSlot(
     true, SharedPokemonEditor::ActionCapabilities{true, true, true, true, true, true}, true))));
 static_assert(geometry(9).height <= 720 - 56);
@@ -233,5 +246,28 @@ static_assert(geometry(12).height <= 720 - 56);
 static_assert(geometry(9).rowHeight == 46 && geometry(8).height == 78 + 8 * 46 + 34,
               "box menu: compact shared rows, content-driven height");
 static_assert(geometry(2).width == 440);
+// Master Vault v1: with the flag forced on, the full occupied sheet (10 native actions) and the
+// empty sheet carry exactly one Vault row each, in the shared order, and still fit the box menu.
+namespace detail {
+constexpr SharedPokemonEditor::ActionCapabilities vaultCaps(bool on) noexcept {
+    SharedPokemonEditor::ActionCapabilities c{true, true, true, true, true, true};
+    c.vault = on;
+    return c;
+}
+} // namespace detail
+static_assert(classic(SharedPokemonEditor::actionsForSlot(true, detail::vaultCaps(true), true)).count == 10);
+static_assert(classic(SharedPokemonEditor::actionsForSlot(true, detail::vaultCaps(true), true)).rows[6].label == kExportFileLabel);
+static_assert(classic(SharedPokemonEditor::actionsForSlot(true, detail::vaultCaps(true), true)).rows[7].label == kCopyToVaultLabel);
+static_assert(classic(SharedPokemonEditor::actionsForSlot(false, detail::vaultCaps(true), true)).count == 5);
+static_assert(detail::hasLabel(classic(SharedPokemonEditor::actionsForSlot(false, detail::vaultCaps(true))),
+                               kWithdrawFromVaultLabel));
+static_assert(!detail::hasLabel(classic(SharedPokemonEditor::actionsForSlot(true, detail::vaultCaps(false), true)),
+                                kCopyToVaultLabel));
+static_assert(detail::onlySharedLabels(classic(SharedPokemonEditor::actionsForSlot(true, detail::vaultCaps(true), true))));
+static_assert(detail::hasLabel(gen1(Gen1Editor::actionsForSlot(true, true, true, true, true)), kCopyToVaultLabel));
+static_assert(gen1(Gen1Editor::actionsForSlot(true, true, true, true, true)).count == 10);
+static_assert(detail::hasLabel(gen1(Gen1Editor::actionsForSlot(false, true, false, true, true)), kWithdrawFromVaultLabel));
+static_assert(!detail::hasLabel(gen1(Gen1Editor::actionsForSlot(true, true, true, true, false)), kCopyToVaultLabel));
+static_assert(geometry(10).height <= 720 - 56);
 
 } // namespace PokeBank::UIModel::NarrowPokemonMenu

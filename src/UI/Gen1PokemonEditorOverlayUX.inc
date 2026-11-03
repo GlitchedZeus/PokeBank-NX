@@ -806,7 +806,9 @@ void handleActiveInput(TrainerViewScreen& screen, uint64_t down) {
             case UX::Action::Cancel: closeOverlay(state); break;
             case UX::Action::Move: break; // not offered by this legacy sheet (boxMove = false)
             case UX::Action::ImportFile:
-            case UX::Action::ExportFile: break; // not offered by this legacy sheet (fileActions = false)
+            case UX::Action::ExportFile:
+            case UX::Action::CopyToVault:
+            case UX::Action::WithdrawFromVault: break; // not offered by this legacy sheet (fileActions = false)
         }
         return;
     }

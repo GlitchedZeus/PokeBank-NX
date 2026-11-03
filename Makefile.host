@@ -43,6 +43,7 @@ include Makefile.host.recheck
 include Makefile.host.encdata
 include Makefile.host.topupmet
 include Makefile.host.textsafety
+include Makefile.host.vault
 
 include Makefile.host.machine
 

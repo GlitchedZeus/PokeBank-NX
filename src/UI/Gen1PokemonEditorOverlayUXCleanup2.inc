@@ -678,7 +678,9 @@ void ux2HandleActiveInput(TrainerViewScreen& screen, uint64_t down) {
             case UX::Action::Remove: state.mode = UX2Mode::RemoveConfirm; break;
             case UX::Action::LegalityProvenance: state.mode = UX2Mode::Provenance; break;
             case UX::Action::ImportFile:
-            case UX::Action::ExportFile: break; // not offered by this layer (fileActions = false); ClassicReleaseActionFix.inc owns the live sheet
+            case UX::Action::ExportFile:
+            case UX::Action::CopyToVault:
+            case UX::Action::WithdrawFromVault: break; // not offered by this layer (fileActions = false); ClassicReleaseActionFix.inc owns the live sheet
             case UX::Action::AddPokemon: ux2BeginAdd(screen); break;
             case UX::Action::ReviewPendingChanges:
                 state.reviewScroll.reset();

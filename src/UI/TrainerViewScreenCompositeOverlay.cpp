@@ -6,6 +6,7 @@
 #include "UI/ClassicJapaneseNames.h"
 #include "UI/PokemonFileDialog.h"   // Feature A: Import from file / Export to file (every Gen I-V sheet)
 #include "UI/PokemonFileMenus.h"
+#include "UI/VaultDialog.h"       // Master Vault v1 (build flag OFF by default): Withdraw from Vault
 #include "UI/EditFeedback.h"   // Round 11 H22: the Gen I-V routine-edit toast rule
 
 // Pre-include every dependency used by the preserved GSC source before the narrow rename macros.
@@ -390,6 +391,8 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
 
     // Feature A: the Import from file dialog is modal over every Gen I-V surface.
     if (PokemonFileDialog::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
+    // Master Vault v1: the Vault browser is modal the same way (never open in a default build).
+    if (VaultDialog::handleInput(*this, down, held, stick.x, stick.y, touch)) return;
     // Gen V source isolation precedes all inherited touch and save handlers.
     if (Gen5SharedReadOnlySurface::handleInput(*this, down, held, stick.x, stick.y, touch))
         return;
@@ -485,7 +488,10 @@ void TrainerViewScreen::draw(PKSEFramebuffer& fb) {
     // status guard, so it is destroyed (paints) first and the status line still lands on top.
     struct FileDialogOnTop {
         TrainerViewScreen& screen; PKSEFramebuffer& fb;
-        ~FileDialogOnTop() { PokemonFileDialog::drawDialog(screen, fb); }
+        ~FileDialogOnTop() {
+            PokemonFileDialog::drawDialog(screen, fb);
+            VaultDialog::drawDialog(screen, fb);   // Master Vault v1 (build flag)
+        }
     } fileDialogOnTop{*this, fb};
     // Touch input is consumed before draw, so each rendered frame must publish fresh geometry.
     // Clear both screen-owned targets and visible controller-glyph buttons here because the

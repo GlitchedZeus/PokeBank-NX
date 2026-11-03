@@ -7,6 +7,7 @@
 #include "Integration/Gen5/Gen5ReviewRows.h"
 #include "Integration/Gen5/Gen5StagedSaveCandidate.h"
 #include "PokemonFile/NativePokemonFile.h"
+#include "vault_roundtrip_support.h"
 
 #include <algorithm>
 #include <array>
@@ -521,6 +522,30 @@ void exportRoundTrip(const Game& g) {
     assert(std::equal(input.begin(), input.end(), parsed->sourceBytes().begin()));
 }
 
+// Master Vault v1: Copy to Vault (the exported PK5) -> restart -> Withdraw from Vault through the same
+// staged import (importPokemonFile5): occupied refused, an empty verified slot gets the exact record.
+void vaultRoundTrip(const Game& g) {
+    const auto input = save(g);
+    std::string error;
+    const auto parsed = G::Gen5ReadOnlySave::parse(input, g.id, &error, selection(g));
+    assert(parsed);
+    const auto boxed = G::exportPokemonFile5(*parsed, {Region::Box, 0, 0}, &error);
+    const auto party = G::exportPokemonFile5(*parsed, {Region::Party, 0, 0}, &error);
+    assert(boxed && party);
+    const auto fromBox = VaultTest::depositReopenWithdraw(5, *boxed);
+    const auto fromParty = VaultTest::depositReopenWithdraw(5, *party);
+    G::Gen5StagedPokemonWorkspace ws(*parsed);
+    assert(!G::importPokemonFile5(ws, fromBox, 0, 0, &error) && contains(error, "occupied") && !ws.hasChanges());
+    assert(G::importPokemonFile5(ws, fromBox, 0, 1, &error));
+    assert(G::importPokemonFile5(ws, fromParty, 0, 2, &error));
+    const auto out = G::buildStagedSaveCandidate(ws, &error);
+    assert(out);
+    const auto reparsed = G::Gen5ReadOnlySave::parse(out->bytes, g.id, &error, selection(g));
+    assert(reparsed);
+    assert(G::exportPokemonFile5(*reparsed, {Region::Box, 0, 1}, &error) == boxed);
+    assert(std::equal(input.begin(), input.end(), parsed->sourceBytes().begin()));   // source untouched
+}
+
 }  // namespace
 
 int main() {
@@ -535,6 +560,7 @@ int main() {
         refusals(g);
         tamperedReview(g);
         exportRoundTrip(g);
+        vaultRoundTrip(g);
     }
     std::cout << "Gen V standalone Pokemon files (.pk5/.ek5): BW/B2W2 primary+backup import to staged "
                  "box, refusals, Review re-verification, candidate reparse, export round trip PASS\n";

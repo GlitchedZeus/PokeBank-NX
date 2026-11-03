@@ -82,7 +82,8 @@ enum class TargetKind : uint8_t { Box, Party };
 enum class MenuAction : uint8_t {
     View, AddMasterVault, AddBank, TransferGame, Edit, MovePokemon, Clone,
     Legality, Release, Add, Review, Close,
-    ImportFile, ExportFile   // Feature A (owner Oct 28): standalone .pk4 files
+    ImportFile, ExportFile,  // Feature A (owner Oct 28): standalone .pk4 files
+    CopyToVault, WithdrawFromVault   // Master Vault v1 (build flag OFF by default: Vault/VaultFeature.h)
 };
 struct MenuActionEntry {
     MenuAction action = MenuAction::Close;
@@ -972,6 +973,9 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
         // Feature A: listed only where the staged editor can stage it (never greyed placeholders).
         if (state.target == TargetKind::Box && stagedAvailable)
             add(MenuAction::ImportFile, PokeBank::UIModel::NarrowPokemonMenu::kImportFileLabel, true);
+        // Master Vault v1: same condition as Import from file (it stages through the same path).
+        if (state.target == TargetKind::Box && stagedAvailable && PokeBank::Vault::kEnabled)
+            add(MenuAction::WithdrawFromVault, PokeBank::UIModel::NarrowPokemonMenu::kWithdrawFromVaultLabel, true);
         if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
         add(MenuAction::Close, "Cancel", true);
         return result;
@@ -991,6 +995,9 @@ MenuActionSet gen4Actions(const State& state, bool occupied, bool stagedAvailabl
     add(MenuAction::Legality, PokeBank::UIModel::NarrowPokemonMenu::kOriginLegalityLabel, true);
     if (stagedAvailable)
         add(MenuAction::ExportFile, PokeBank::UIModel::NarrowPokemonMenu::kExportFileLabel, true);
+    // Master Vault v1: same condition as Export to file (it deposits exactly that record).
+    if (stagedAvailable && PokeBank::Vault::kEnabled)
+        add(MenuAction::CopyToVault, PokeBank::UIModel::NarrowPokemonMenu::kCopyToVaultLabel, true);
     if (hasPendingChanges) add(MenuAction::Review, "Review Pending Changes", true);
     add(MenuAction::Close, "Cancel", true);
     return result;
@@ -1108,6 +1115,16 @@ bool handleActions(TrainerViewScreen& screen, State& state, u64 down, const Touc
             state.actions = false;
             screen.controllerNavigation.reset();
             PokemonFileMenus::exportPokemon(screen, 4, state.target == TargetKind::Party, state.box, state.slot);
+            break;
+        case MenuAction::CopyToVault:   // Master Vault v1: the save is unchanged
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::copyToVault(screen, 4, state.target == TargetKind::Party, state.box, state.slot);
+            break;
+        case MenuAction::WithdrawFromVault:
+            state.actions = false;
+            screen.controllerNavigation.reset();
+            PokemonFileMenus::beginWithdraw(screen, 4, state.box, state.slot);
             break;
         case MenuAction::Review:
             state.actions = false;

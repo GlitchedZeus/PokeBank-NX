@@ -45,6 +45,8 @@ inline std::string configRoot() { return root() + "/config"; }
 inline std::string logsRoot() { return root() + "/logs"; }
 inline std::string banksRoot() { return root() + "/banks"; }
 inline std::string legacyBankRoot() { return banksRoot() + "/legacy-pkse"; }
+// Master Vault v1 (include/Vault/VaultStore.h): app-owned, never inside a game save folder.
+inline std::string vaultRoot() { return root() + "/vault"; }
 inline std::string settingsFile() { return configRoot() + "/settings.cfg"; }
 inline std::string legacySourceBindingsFile() { return configRoot() + "/legacy_source_bindings.cfg"; }
 inline std::string gameLaunchBindingsFile() { return configRoot() + "/game_launch_bindings.cfg"; }
