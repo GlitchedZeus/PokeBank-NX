@@ -361,6 +361,18 @@ bool StagedPokemonEditor::stageRecordEdit(bool party,size_t b,size_t s,const Box
     auto p=party?partyPokemon(s,error):boxedPokemon(b,s,error);
     if(!p) {if(error.empty())error="Pokemon slot is empty";return false;}
     const auto& l=layout();
+    // Round 15 (owner Round 14): an edit that asks for nothing new (e.g. re-choosing the current
+    // species) stages nothing, so an untouched original keeps every byte -- including a box level
+    // byte that disagrees with its EXP. Level / EXP requests always count as edits.
+    const std::array<uint8_t,4> storedDvs{p->dvs[1],p->dvs[2],p->dvs[3],p->dvs[4]};
+    if((!e.species || *e.species==p->species) && !e.level && !e.experience &&
+       (!e.nickname || *e.nickname==p->nickname) && (!e.otName || *e.otName==p->originalTrainer) &&
+       (!e.trainerId || *e.trainerId==p->trainerId) && (!e.moves || *e.moves==p->moves) &&
+       (!e.pp || *e.pp==p->pp) && (!e.ppUps || *e.ppUps==p->ppUps) && (!e.dvs || *e.dvs==storedDvs) &&
+       (!e.statExperience || *e.statExperience==p->statExperience)) {
+        error.clear();
+        return true;
+    }
     auto next=*p;
     if(e.species) {if(*e.species<1 || *e.species>151){error="Gen I species must be 1..151";return false;} next.species=*e.species;}
     const auto growth=growthRate(next.species);
@@ -654,7 +666,11 @@ std::vector<uint8_t> StagedPokemonEditor::finalizedBytes(std::string& error,std:
     for(size_t b=0;b<l.boxCount;++b) for(size_t s=0;s<l.capacity;++s) {
         const auto& p=check.save->boxes()[b].slots[s]; const auto& expected=view_->boxes()[b].slots[s];
         if(bool(p)!=bool(expected) || (p && !sameRecord(*p,*expected))) {error="Export Pokemon round trip failed";return {};}
-        if(p && !validPokemon(*p,error)) return {};
+        // Round 15 (owner Round 14): an untouched original record (byte-identical to the source's
+        // record in this slot) is exported exactly as found, even when its box level byte disagrees
+        // with its EXP; only a staged/edited record must be a valid Gen I combination.
+        const auto& source=original_->boxes()[b].slots[s];
+        if(p && !(source && sameRecord(*p,*source)) && !validPokemon(*p,error)) return {};
     }
     if(check.save->party().size()!=view_->party().size()) {error="Export Party count changed";return {};}
     for(size_t s=0;s<view_->party().size();++s)

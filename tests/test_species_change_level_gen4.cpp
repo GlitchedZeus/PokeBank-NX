@@ -268,7 +268,42 @@ void scenario(Layout layout, uint8_t romCode, const char* id, bool party, uint16
     if (party) require(back.partyLevel() == level, what + ": reparsed Party level byte");
 }
 
+
+// Round 15 (owner Round 14): "Show every actual change in Review, including species and EXP." The
+// fixture Pikachu (10000 EXP, Lv 21) -> Magikarp keeps Lv 21 at Slow's Lv 21 minimum (11576):
+// Review lists Species and Experience, and no Level row. Box and Party.
+void reviewRows(Layout layout, uint8_t romCode, const char* id) {
+    for (const bool party : {false, true}) {
+        auto source = makeSave(layout, romCode);
+        std::string error;
+        auto editor = Gen4StagedPokemonEditor::create(source, layout, id, &error);
+        const auto group = editor->sourceGroup();
+        auto mon = *read(*editor, party);
+        require(mon.setMove(0, 33), "Tackle");   // a move Magikarp can use
+        Session s;
+        std::string beginError;
+        require(s.begin(Pokemon::Pokemon4ReadOnly(mon.encryptedBytes(), group), group, Mode::Edit, beginError), "begin");
+        s.baselineMoves = mon.moves();
+        require(s.working->level() == 21 && s.working->experience() == 10000, "fixture Lv 21 / 10000");
+        bool reset = false;
+        require(s.changeSpecies(129, mon.shiny(), id, group, reset), "Pikachu -> Magikarp");
+        const bool kept = party ? s.keepParty(*editor, 0, error) : s.keep(*editor, 0, 0, error);
+        require(kept, std::string(id) + " keep: " + error);
+        bool species = false, exp = false, level = false;
+        for (const auto& [label, value] : PokeVault::Integration::Gen4::describeStagedReviewChanges(*editor)) {
+            species = species || (label.ends_with("/ Species") && value == "Pikachu -> Magikarp");
+            exp = exp || (label.ends_with("/ Experience") && value == "10000 -> 11576");
+            // The Party fixture's level cache (20) disagrees with its EXP (Lv 21); Gen IV shows the
+            // EXP level, and the edited record's cache is rewritten to it -- a real change, shown.
+            level = level || (label.ends_with("/ Level") && !(party && value == "20 -> 21"));
+        }
+        require(species && exp && !level, std::string(id) + (party ? " Party" : " Box") +
+                                              ": Review shows Species and Experience, no Level row");
+    }
+}
+
 void run(Layout layout, uint8_t romCode, const char* id) {
+    reviewRows(layout, romCode, id);
     // Rattata Medium Fast, Volbeat Erratic, Makuhita Fluctuating, Bulbasaur Medium Slow, Snubbull
     // Fast, Magikarp Slow.
     const uint16_t species[] = {19, 313, 296, 1, 209, 129};
