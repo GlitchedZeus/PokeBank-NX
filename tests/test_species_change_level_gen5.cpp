@@ -239,17 +239,20 @@ void run(G::SaveFamily family, std::string_view game, uint8_t version) {
             const bool kept = ui.keep(ws, error);
             require(kept, std::string(game) + " keep: " + error);
         }
-        bool expRow = false, levelRow = false;
+        bool expRow = false, levelRow = false, speciesRow = false;
         for (const auto& change : ws.pendingReview()) {
             const auto verified = G::verifyStagedReview(change, &error);
             require(verified.has_value(), std::string(game) + " Review replays: " + error);
             for (const auto& row : verified->fields) {
                 expRow = expRow || (row.field == Field::Experience && row.after == 117360u);
+                speciesRow = speciesRow || (row.field == Field::Species && row.before == 25 && row.after == 16);
                 levelRow = levelRow || (row.field == Field::Level && row.before == 50 && row.after == 1);
             }
         }
         // Kept level: one Experience row, no Level row. Edited back to 0 EXP: the level really
         // changed (Lv 50 -> 1), which is a Level row.
+        // Round 15 (owner Round 14): "Show every actual change in Review, including species and EXP."
+        require(speciesRow, std::string(game) + ": Review shows the Species row");
         require(editBack ? (levelRow && !expRow) : (expRow && !levelRow),
                 std::string(game) + ": Review shows the kept level's EXP row, or the real level change");
         require(ws.viewParty(0)->partyLevel() == (editBack ? 1 : 50), "staged Party level byte");

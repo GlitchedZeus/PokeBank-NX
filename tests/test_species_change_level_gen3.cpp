@@ -236,7 +236,37 @@ void scenario(SourceGame game, Family family, bool party, uint16_t from, uint16_
             what + ": reparsed level / EXP / history");
 }
 
+
+// Round 15 (owner Round 14): "Show every actual change in Review, including species and EXP." The
+// source Pikachu (Lv 20, 8000 EXP) -> Magikarp keeps Lv 20 at Slow's Lv 20 minimum (10000): Review
+// lists Species and Experience, and no Level row. Box and Party.
+void reviewRows(SourceGame game, Family family) {
+    const std::string id = sourceId(game);
+    for (const bool party : {false, true}) {
+        std::string error;
+        auto editor = StagedPokemonEditor::create(withParty(fixture(family, game), game), game, error);
+        Session s;
+        s.begin(*read(*editor, party), Mode::Edit);
+        require(s.working.level == 20 && s.working.experience == 8000, "fixture Lv 20 / 8000");
+        s.working.moves = {33, 0, 0, 0};   // Tackle, which Magikarp can use
+        s.working.pp = {35, 0, 0, 0};
+        s.working.ppUps = {};
+        require(s.setSpecies(129, id), "Pikachu -> Magikarp");
+        const bool kept = s.keep(*editor, 0, 0, error, party);
+        require(kept, id + " keep: " + error);
+        bool species = false, exp = false, level = false;
+        for (const auto& c : editor->pendingChanges()) {
+            species = species || (c.label.ends_with(" Species") && c.afterValue == "Magikarp");
+            exp = exp || (c.label.ends_with(" Experience") && c.beforeValue == "8000" && c.afterValue == "10000");
+            level = level || c.label.ends_with(" Level");
+        }
+        require(species && exp && !level, id + (party ? " Party" : " Box") +
+                                              ": Review shows Species and Experience, no Level row");
+    }
+}
+
 void run(SourceGame game, Family family) {
+    reviewRows(game, family);
     // Rattata Medium Fast, Volbeat Erratic, Makuhita Fluctuating, Bulbasaur Medium Slow, Snubbull
     // Fast, Magikarp Slow.
     const uint16_t species[] = {19, 313, 296, 1, 209, 129};
