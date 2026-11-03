@@ -167,22 +167,40 @@ PREREQS = [
     # Coordinator follow-up (owner rule: unknown ticket / distribution / regional / event
     # prerequisites -> Incomplete; when in doubt, be conservative). Full sweep of every static / gift
     # row: docs/data/GIFT_STATIC_ENCOUNTER_COVERAGE.md "Prerequisite sweep".
-    (("black2_nds", "white2_nds"), 377, 150, "LinkOrDevice",
-     "Key System chamber (Rock Peak): a key may come from the other version via Unova Link"),
-    (("black2_nds", "white2_nds"), 378, 151, "LinkOrDevice",
-     "Key System chamber (Iceberg): a key may come from the other version via Unova Link"),
-    (("black2_nds", "white2_nds"), 379, 152, "LinkOrDevice",
-     "Key System chamber (Iron): a key may come from the other version via Unova Link"),
+    # Round 14 owner decisions (authoritative facts). B2/W2: "Both versions initially allow Regirock
+    # at Underground Ruins. After capturing it, Black 2 unlocks the Iron Key for Registeel; White 2
+    # unlocks the Iceberg Key for Regice. The opposite key can be received through Unova Link."
+    # Regirock: in-game access (no prerequisite row). The keyed chambers stay Incomplete unless the
+    # save's Key System block (PKHeX KeySystem5, B2W2 block 69) shows the key unlocked -- see the
+    # access key column (ACCESS_KEYS) and Integration/Gen5/Gen5KeySystem.h.
+    (("black2_nds",), 379, 152, "KeySystemKey",
+     "Iron Key (Black 2: unlocked after capturing Regirock) for the Iron Chamber"),
+    (("white2_nds",), 378, 151, "KeySystemKey",
+     "Iceberg Key (White 2: unlocked after capturing Regirock) for the Iceberg Chamber"),
+    (("black2_nds",), 378, 151, "LinkOrDevice", "Iceberg Key received from White 2 through Unova Link"),
+    (("white2_nds",), 379, 152, "LinkOrDevice", "Iron Key received from Black 2 through Unova Link"),
     (("black2_nds", "white2_nds"), 486, 38, "OtherGame",
-     "Regirock, Regice and Registeel in the party (Key System Regis)"),
-    (("heartgold_nds",), 382, 232, "Unconfirmed",
-     "Embedded Tower: Blue Orb / Kyogre access condition not confirmed by the pinned sources"),
-    (("soulsilver_nds",), 383, 232, "Unconfirmed",
-     "Embedded Tower: Red Orb / Groudon access condition not confirmed by the pinned sources"),
+     "Regirock, Regice and Registeel in the party (needs both the Iron and Iceberg Chambers)"),
+    # HG/SS: "HeartGold: Blue Orb -> Kyogre. SoulSilver: Red Orb -> Groudon. Prerequisites include
+    # defeating Red and receiving the Kanto starter from Oak, after which Mr. Pokemon supplies the
+    # version-specific orb. Encounter location is Embedded Tower." The orb / Red event flags are not
+    # decoded from HG/SS saves here (no source-verified flag-to-save mapping), so these stay Incomplete.
+    (("heartgold_nds",), 382, 232, "StoryProgress",
+     "Blue Orb from Mr. Pokemon after defeating Red and receiving the Kanto starter from Oak"),
+    (("soulsilver_nds",), 383, 232, "StoryProgress",
+     "Red Orb from Mr. Pokemon after defeating Red and receiving the Kanto starter from Oak"),
     (("diamond_nds", "pearl_nds", "platinum_nds"), 442, 24, "LinkOrDevice",
      "Odd Keystone after talking to 32 people in the Underground (link play)"),
 ]
-PREREQ_KINDS = ["None", "TicketOrItem", "EventPokemon", "OtherGame", "LinkOrDevice", "Unconfirmed"]
+PREREQ_KINDS = ["None", "TicketOrItem", "EventPokemon", "OtherGame", "LinkOrDevice", "KeySystemKey",
+                "StoryProgress"]
+# Save evidence that can satisfy a prerequisite (read from the save the Pokemon was caught in):
+# (game, species, location) -> AccessKey (GiftStaticEncounters.h).
+ACCESS_KEYS = {
+    ("black2_nds", 379, 152): "B2W2IronChamber", ("white2_nds", 379, 152): "B2W2IronChamber",
+    ("black2_nds", 378, 151): "B2W2IcebergChamber", ("white2_nds", 378, 151): "B2W2IcebergChamber",
+    ("black2_nds", 486, 38): "B2W2BothChambers", ("white2_nds", 486, 38): "B2W2BothChambers",
+}
 CONFIDENCE = ["PretChecked", "PretSpotChecked", "SingleSource"]
 
 
@@ -644,6 +662,7 @@ def build():
     checks = gen3_checks(rows)
     for r in rows:
         r["prereq"], r["reason"] = "None", ""
+        r["access"] = ACCESS_KEYS.get((r["game"], r["species"], r["location"]), "None")
         for games, sp, loc, kind, reason in PREREQS:
             if r["game"] in games and r["species"] == sp and r["location"] == loc and r["kind"] != "EggGift":
                 r["prereq"], r["reason"] = kind, reason
@@ -651,6 +670,10 @@ def build():
         # gift / prize / trade row; the Gen III spot checks); every other row is PKHeX alone.
         r["confidence"] = ("PretChecked" if r["pret"] and r["game"] == "crystal_gbc" else
                            "PretSpotChecked" if r["pret"] else "SingleSource")
+    for (g, sp, loc), key in ACCESS_KEYS.items():
+        if not any(r["game"] == g and r["species"] == sp and r["location"] == loc and r["prereq"] != "None"
+                   for r in rows):
+            fail(f"access key {key} on {g} {sp} @ {loc} without a prerequisite row")
     for games, sp, loc, kind, reason in PREREQS:
         for g in games:
             if not any(r["game"] == g and r["species"] == sp and r["location"] == loc for r in rows):
@@ -671,13 +694,13 @@ def render(rows) -> str:
         "// Files and sha256: docs/data/gift-static-encounter-sources.json. Coverage and gaps:",
         "// docs/data/GIFT_STATIC_ENCOUNTER_COVERAGE.md. Event distributions are NOT here (no data).",
         "// {game, species, met location, min level, max level, kind, flags, form, egg location,",
-        "//  access prerequisite, source confidence}",
+        "//  access prerequisite, source confidence, save evidence that can satisfy the prerequisite}",
         "inline constexpr Row kRows[] = {",
     ]
     for r in rows:
-        lines.append('    {"%s", %d, %d, %d, %d, Kind::%s, %d, %d, %d, Prerequisite::%s, Confidence::%s},' % (
+        lines.append('    {"%s", %d, %d, %d, %d, Kind::%s, %d, %d, %d, Prerequisite::%s, Confidence::%s, AccessKey::%s},' % (
             r["game"], r["species"], r["location"], r["minLevel"], r["maxLevel"], r["kind"],
-            r["flags"], r["form"], r["egg"], r["prereq"], r["confidence"]))
+            r["flags"], r["form"], r["egg"], r["prereq"], r["confidence"], r["access"]))
     lines.append("};")
     lines.append("// Why each prerequisite row's acquisition evidence is Incomplete (same order as kRows).")
     lines.append("inline constexpr PrerequisiteReason kPrerequisiteReasons[] = {")

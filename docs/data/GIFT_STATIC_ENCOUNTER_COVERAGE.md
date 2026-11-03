@@ -83,7 +83,8 @@ in the game's scripts." Every row carries two more fields (generator, `.inc`, JS
 2. **Access prerequisite** — `prereq`: `TicketOrItem` (ticket / key item distribution), `EventPokemon`
    (an event-distributed Pokémon in the party), `OtherGame` (a Pokémon only another game provides),
    `LinkOrDevice` (link play / another device: Unova Link Key System, Underground players),
-   `Unconfirmed` (a special access condition the pinned sources do not let the generator confirm),
+   `KeySystemKey` (a Black 2 / White 2 Key System key the version unlocks in-game), `StoryProgress`
+   (an in-game story condition whose save flags are not decoded),
    with the reason in `kPrerequisiteReasons`.
 3. **Incomplete** — a prerequisite the save cannot show. Design: the row STAYS in the default list,
    because the encounter is in the game ("Navel Rock — Event Lv. 70; access unverified"), but it is
@@ -104,9 +105,10 @@ in the game's scripts." Every row carries two more fields (generator, `.inc`, JS
 | Black / White Victini (Liberty Pass) | TicketOrItem |
 | Black / White Zorua (event Celebi), Zoroark (event shiny beasts) | EventPokemon |
 | HeartGold / SoulSilver Dialga / Palkia / Giratina, Sinjoh Ruins (event Arceus); Spiky-eared Pichu (event Pichu) | EventPokemon |
-| Black 2 / White 2 Regirock / Regice / Registeel (Key System chambers; a key may come from the other version via Unova Link) ; Diamond / Pearl / Platinum Spiritomb (Odd Keystone after talking to 32 people in the Underground) | LinkOrDevice |
-| HeartGold Kyogre / SoulSilver Groudon, Embedded Tower (orb access condition not confirmed by the pinned sources) | Unconfirmed |
-| Black 2 / White 2 Regigigas (the three Key System Regis) | OtherGame |
+| Black 2 Registeel (Iron Key, unlocked after capturing Regirock); White 2 Regice (Iceberg Key, likewise) | KeySystemKey — verified when the save's Key System shows the chamber unlocked |
+| Black 2 Regice (Iceberg Key from White 2 through Unova Link); White 2 Registeel (Iron Key from Black 2 through Unova Link); Diamond / Pearl / Platinum Spiritomb (Odd Keystone after talking to 32 people in the Underground) | LinkOrDevice (B2/W2 rows: verified when the save's Key System shows the chamber unlocked) |
+| HeartGold Kyogre (Blue Orb) / SoulSilver Groudon (Red Orb), Embedded Tower: the orb from Mr. Pokémon after defeating Red and receiving the Kanto starter from Oak | StoryProgress — always Incomplete (flags not decoded) |
+| Black 2 / White 2 Regigigas (Regirock, Regice and Registeel; needs both the Iron and Iceberg Chambers) | OtherGame — verified when the save shows both chambers unlocked |
 | HeartGold / SoulSilver Rayquaza (Kyogre + Groudon); Black / White Landorus (Tornadus + Thundurus); Diamond / Pearl / Platinum Regigigas (the three Regis); Platinum Regirock / Regice / Registeel (Regigigas) | OtherGame |
 
 Arceus (Spear Pillar / Hall of Origin, Azure Flute), the HG/SS GS Ball Celebi and other pure
@@ -127,17 +129,34 @@ obtained by event first. Rulings (rows not named are reachable by in-game progre
   flagged (32 Underground players need link play). Heatran, the lake trio, Dialga / Palkia,
   Giratina, Rotom in-game.
 - HeartGold / SoulSilver: Sinjoh trio, Spiky-eared Pichu, Enigma Stone Latios / Latias, Rayquaza
-  flagged; Kyogre (HG) / Groudon (SS) flagged Unconfirmed (orb condition not in the pinned sources).
+  flagged; Kyogre (HG, Blue Orb) / Groudon (SS, Red Orb) flagged StoryProgress (Round 14 owner facts:
+  the orb from Mr. Pokémon after defeating Red and receiving the Kanto starter from Oak).
   Lugia / Ho-Oh, Suicune, Mewtwo, Kanto birds in-game.
 - Black / White: Victini, Zorua, Zoroark, Landorus flagged. Musharna (Friday), Swords of Justice,
   Volcarona, Kyurem in-game.
-- Black 2 / White 2: Regirock / Regice / Registeel flagged LinkOrDevice for BOTH versions (which
-  chamber each version opens natively is not confirmed by the pinned sources, and the Key System
-  state is not part of the Pokémon's record, so none is save-verifiable from its history);
-  Regigigas flagged (needs the three). Latios / Latias, lake trio, Heatran, Cresselia, Swords of
+- Black 2 / White 2 (Round 14 owner facts): Regirock (Underground Ruins) is in-game access in both
+  versions and is an ordinary verified row; Black 2 Registeel / White 2 Regice need the version's own
+  key (KeySystemKey); the opposite Regi needs the other version's key through Unova Link
+  (LinkOrDevice); Regigigas needs the three Regis (both chambers). Latios / Latias, lake trio, Heatran, Cresselia, Swords of
   Justice, Kyurem, Zekrom / Reshiram, N's Pokémon, day-of-week statics, Floccesy Gible / Dratini
   in-game. Hidden Grottoes and Dream Radar are not in this table.
 - In-game trades were not flagged: each wanted Pokémon is obtainable in the same game.
+
+### Save evidence (Round 14 owner decision: "Verify the game's stored key/access flags where supported")
+
+- **Black 2 / White 2 Key System — supported.** The save stores it in its own checksummed block
+  (PKHeX `SaveBlockAccessor5B2W2` block 69, 0x25800 / 0x60 per save copy; `KeySystem5.cs`: an
+  "unlocked" word equals the key's magic number XOR the crypto word at 0x5C — Iron 0x48 / 0xAB031,
+  Iceberg 0x4C / 0xB3818). `Integration/Gen5/Gen5KeySystem.h` reads it (read-only) from the selected
+  save copy, and the evidence is used ONLY for a Pokémon caught in that save: the save is Black 2 /
+  White 2, the Pokémon's origin game is the save's own and its OT TID / SID are the save trainer's.
+  Anything else stays Incomplete — never inferred from the Pokémon record alone. Note: an unlocked
+  chamber proves the access prerequisite in that save; it does not by itself prove the individual
+  Pokémon came from that chamber (the encounter row's level and location still apply).
+- **HeartGold / SoulSilver — not supported.** pret/pokeheartgold e1d5a460 `include/constants/flags.h`
+  names FLAG_CAUGHT_KYOGRE (0x17A) / FLAG_CAUGHT_GROUDON (0x179), but no orb-received or
+  Red-defeated flag was identified and the flag-to-save-offset mapping is not source-verified here,
+  so these encounters stay Incomplete.
 
 ## Gaps (explicit; nothing invented)
 
@@ -198,8 +217,12 @@ day; unverified". Gift / trade rows at LANDMARK_GIFT write level 0 and time 0 as
    Encounter origin and Review read "Incomplete: encounter in game script; ticket / distribution not
    verifiable from the save". Crystal Celebi Lv 30 → Ilex Forest row "; access unverified", Met evidence
    Incomplete. HeartGold Chikorita gift → Met evidence "Encounter data: single source (PKHeX)".
-10. Black 2: Regirock Lv 65 → "Rock Peak Chamber — Static Lv. 65; access unverified", Met evidence
-    "Incomplete: … link play / another device not verifiable from the save". Diamond Spiritomb Lv 25
-    and HeartGold Kyogre Lv 50 read the same way; Black 2 Cresselia Lv 68 stays a verified row.
+10. Black 2: Regirock Lv 65 → a verified row (in-game access). Registeel Lv 65 caught in this save
+    with the Iron Key unlocked in the Key System → verified, Met evidence "Encounter data: single
+    source (PKHeX); access shown by this save's Key System"; a Registeel from another trainer or a
+    save without the Iron Chamber unlocked → "…; access unverified" and "Incomplete: … Key System key
+    not verifiable from the save". Black 2 Regice needs the Iceberg Chamber (Unova Link) the same way.
+    Diamond Spiritomb Lv 25 and HeartGold Kyogre Lv 50 read Incomplete; Black 2 Cresselia Lv 68 stays a
+    verified row.
 11. Any game: a species with no gift / trade data (e.g. FireRed Pikachu) still shows the trade /
    event markers labelled "marker; unverified".
