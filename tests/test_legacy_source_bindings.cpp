@@ -1,4 +1,5 @@
 #include "Legacy/LegacySourceBindings.h"
+#include "Utils/PokeBankPaths.h"
 #include <cassert>
 #include <cerrno>
 #include <cstdio>
@@ -142,6 +143,29 @@ int main() {
         assert(recovered.size() == 2);
         assert(!recovered.save());
     }
+    // Hardware regression: first launch can have /switch/PokeBank-NX but NO config/
+    // because Settings::loadSettings only reads and does not create directories.
+    // Simulate libnx's pre-mounted sdmc: with a temporary working directory.
+    {
+        const fs::path originalWorkingDir = fs::current_path();
+        fs::current_path(root);
+        fs::create_directories("sdmc:/switch/PokeBank-NX");
+        assert(!fs::exists(PokeBank::Paths::configRoot()));
+        const std::string productionPath = PokeBank::Paths::legacySourceBindingsFile();
+        LegacySourceBindings firstAssignment(productionPath);
+        assert(firstAssignment.load() && firstAssignment.size() == 0);
+        assert(firstAssignment.assignAndSave("retroarch:yellow", "account-1", "yellow_gb"));
+        assert(fs::is_directory(PokeBank::Paths::configRoot()));
+        LegacySourceBindings reloaded(productionPath);
+        assert(reloaded.load());
+        assert(reloaded.assignedProfile("retroarch:yellow") == "account-1");
+        assert(reloaded.assignedGame("retroarch:yellow") == "yellow_gb");
+        assert(reloaded.assignAndSave("retroarch:blue", "account-1", "blue_gb"));
+        LegacySourceBindings secondReload(productionPath);
+        assert(secondReload.load() && secondReload.size() == 2);
+        fs::current_path(originalWorkingDir);
+    }
+
     // First-save failure never claims a binding, even after restart.
     const fs::path firstDb = root / "first.cfg";
     LegacySourceBindings first(firstDb.string(), ops);

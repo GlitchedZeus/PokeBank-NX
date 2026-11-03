@@ -1465,8 +1465,9 @@ namespace UI {
         // opens exactly this save for this profile (a bare claim alone no longer opens anything).
         if (!legacyBindings->claimInstanceAndSave(entry.instance, profile) ||
             !legacyBindings->preferGameSourceAndSave(entry.instance, profile, entry.gameId)) {
-            logErrorToFile("Legacy binding assignment failed", legacyBindings->lastError().c_str());
-            legacyNotice = "Assignment could not be saved; source remains unassigned.";
+            const std::string diagnostic = legacyBindings->lastError();
+            logErrorToFile("Legacy binding assignment failed", diagnostic.c_str());
+            legacyNotice = "Assignment failed: " + diagnostic;
             return false;
         }
         loadLegacySources(*legacyCatalog);
@@ -3133,9 +3134,11 @@ namespace UI {
         binding.expectedRawFamily = identity->dataGeneration == 1 ? "GB"
                                   : identity->dataGeneration == 2 ? "GBC" : "GBA";
         if (!legacyBindings->assignClassicFileAndSave(source.sourceIdentity, binding)) {
-            failure = legacyBindings->lastError().find("conflict") != std::string::npos
-                ? "That save is already linked to another profile or game."
-                : "The save assignment could not be stored safely.";
+            const std::string diagnostic = legacyBindings->lastError();
+            logErrorToFile("Classic manual assignment refused", diagnostic.c_str());
+            failure = diagnostic.find("conflict") != std::string::npos
+                ? "That save is already linked to another profile or game (" + diagnostic + ")."
+                : "Save assignment failed: " + diagnostic;
             return false;
         }
         const auto physical = [](const PokeVault::Legacy::FRLGSource& s) -> const std::string& {
@@ -3500,7 +3503,10 @@ namespace UI {
         }
         if (!legacyBindings || !legacyBindings->preferGameSourceAndSave(
                 shownInstance, currentProfileIdentity(), title.gameId)) {
-            legacyNotice = "Couldn't remember that exact save choice. Nothing was opened.";
+            const std::string diagnostic = legacyBindings
+                ? legacyBindings->lastError() : "assignment service unavailable";
+            logErrorToFile("Classic Save Instance assignment refused", diagnostic.c_str());
+            legacyNotice = "Couldn't save assignment: " + diagnostic;
             overlay = Overlay::LegacyInstances;
             return;
         }

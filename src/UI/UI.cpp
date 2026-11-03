@@ -206,7 +206,8 @@ namespace UI {
             logInfoToFile("Input trace enabled", "logs/input-trace.log");
         }
         if (!legacySourceBindings.load())
-            logErrorToFile("Legacy source bindings contain malformed or unreadable rows");
+            logErrorToFile("Legacy source bindings could not load",
+                           legacySourceBindings.lastError().c_str());
 
         // Discover only explicitly bounded emulator battery-save roots. RetroArch keeps its
         // configured/conventional root; mGBA is additive only when /mGBA/config.ini explicitly

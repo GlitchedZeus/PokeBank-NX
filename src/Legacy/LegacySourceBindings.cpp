@@ -1,5 +1,6 @@
 #include "Legacy/LegacySourceBindings.h"
 #include "Integration/Gen5/Gen5SourcePathIdentity.h"
+#include "Utils/PokeBankPaths.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -218,6 +219,16 @@ namespace PokeVault::Legacy {
     bool LegacySourceBindings::save() const {
         lastError_.clear();
         if (storagePath_.empty()) { errno = EINVAL; return fail("save-path"); }
+        // On an SD card with no prior PokeBank NX settings, nothing guarantees /config
+        // exists. Both discovered Save Instances and the manual SD picker hit this
+        // writer, so omitting this step blocks EVERY classic game's first assignment.
+        // Only provision the app-owned production location; test/custom paths retain
+        // their existing no-implicit-directory-creation and failure semantics.
+        if (storagePath_ == PokeBank::Paths::legacySourceBindingsFile()) {
+            std::string directoryError;
+            if (!PokeBank::Paths::ensureConfigRoot(&directoryError))
+                return fail("ensure-config-root");
+        }
         const auto renameFile = ops_.renameFile ? ops_.renameFile : std::rename;
         const std::string tmp = storagePath_ + ".tmp";
         const std::string bak = storagePath_ + ".bak";
