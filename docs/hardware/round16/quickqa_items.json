@@ -1,11 +1,12 @@
 {
   "title": "PokeBank NX Round 16 Recovery QuickQA",
   "identity": {
-    "NRO file": "@NRO_FILE@",
-    "NRO SHA-256": "@NRO_SHA256@",
-    "Source commit": "@CODE_SHA@",
-    "Source tree": "@TREE_SHA@",
-    "Build run / artifact": "@RUN@ / @ARTIFACT@",
+    "NRO file": "PokeBank-NX-Gen1-5-Candidate-231e8497.nro",
+    "NRO SHA-256": "e5ccb0110de68f539521b7e7569dfa479b921a5aec4dbd2142395e18597664a9",
+    "Source commit": "231e84976f86b8c07b0652221f2507481087fc0f",
+    "Source tree": "7314c5535a00f22391765afceb6c313dd9b4c18b",
+    "Build run / artifact": "41581848484 / 13206448035",
+    "NRO size": "177,282,737 bytes",
     "Replaces": "11ea9790 (failed on hardware: Gen I-IV saves could not be opened)",
     "Status": "NOT DEVICE TESTED"
   },
