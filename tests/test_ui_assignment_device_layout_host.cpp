@@ -244,6 +244,26 @@ int main() {
         check(openWithA("damaged Yellow", kProfileA, "yellow_gb", true, nullptr, &notice) == yellow,
               "damaged database: picking Yellow opens it for this session");
         check(bytesOf(db) == damaged, "damaged database: kept byte-for-byte, never reset to empty");
+        // Home is rebuilt after the editor: the session-only state is shown with its reason.
+        Launch again;
+        again.bindings.enableSessionRecovery();
+        auto& shared = again.bindings;
+        const auto blueCard = focus(kProfileA, "blue_gb");
+        {
+            // Same store object as the running app: make one session-only choice, then rebuild Home.
+            UI::SaveSelectScreen first(again.catalog, shared, &blueCard);
+            Driver d1{first, {}, {}};
+            d1.frame();
+            d1.press(HidNpadButton_A);
+            d1.press(HidNpadButton_A);
+            check(first.hasSelectedTitle(), "damaged database: Blue opens for this session");
+        }
+        check(shared.hasUnsavedSessionChanges(), "damaged database: the store knows the choice is session-only");
+        UI::SaveSelectScreen home(again.catalog, shared, &blueCard);
+        Driver d2{home, {}, {}};
+        d2.frame();
+        d2.dump("home after session-only choice");
+        check(d2.drawn("kept until PokeBank NX closes"), "Home tells the user the choice is session-only");
     }
     // 6. SD browser (Failure B) on the damaged database: the same .srm opens through the manual route.
     {

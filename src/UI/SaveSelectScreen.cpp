@@ -903,6 +903,15 @@ namespace UI {
             if (classicGamesActive) scrollClassicSelectionIntoView();
         }
         refreshHubPreview(false);
+        showSessionOnlyNotice();
+    }
+
+    // Round 16 P0: Home is rebuilt (or resumed) after every editor visit; keep telling the user
+    // while save choices are held only for this session (storing them failed), with the reason.
+    void SaveSelectScreen::showSessionOnlyNotice() {
+        if (legacyBindings && legacyBindings->hasUnsavedSessionChanges())
+            hubNotice = "Save choices are kept until PokeBank NX closes; they could not be stored [" +
+                legacyBindings->unsavedReason() + "]. Save files are unchanged.";
     }
 
     void SaveSelectScreen::resumeAfterEditor() {
@@ -922,6 +931,7 @@ namespace UI {
         appExitRequested = false;
         requestedMainMenuDestination = MainMenuDestination::None;
         hubNotice.clear();
+        showSessionOnlyNotice();
 
         // Preserve the existing catalog, focus and sort state. Refresh only what the Main Card
         // displays; do not re-enumerate users/saves/providers just because an editor closed.

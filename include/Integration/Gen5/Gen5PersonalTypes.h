@@ -138,5 +138,9 @@ constexpr std::array<uint8_t,2> personalTypes5(uint32_t species,uint32_t form,bo
 }
 static_assert(personalTypes5(1,0,false)[0]==11 && personalTypes5(1,0,false)[1]==3); // Bulbasaur Grass/Poison
 static_assert(personalTypes5(25,0,true)[0]==12 && personalTypes5(25,0,true)[1]==12); // Pikachu Electric
+// Round 16 owner report: Ninjask is Bug/Flying, Shedinja Bug/Ghost (canonical ids: Bug 6, Flying 2, Ghost 7).
+static_assert(personalTypes5(291,0,false)[0]==6 && personalTypes5(291,0,false)[1]==2);
+static_assert(personalTypes5(291,0,true)[0]==6 && personalTypes5(291,0,true)[1]==2);
+static_assert(personalTypes5(292,0,false)[0]==6 && personalTypes5(292,0,false)[1]==7);
 } // namespace PokeVault::Integration::Gen5
 #endif

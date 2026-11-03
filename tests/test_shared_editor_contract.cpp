@@ -268,7 +268,19 @@ void gen5FieldContracts() {
     assert(draft.stage(NF::Nature, 0, 17, error) && draft.current()->pid() == pid);
     assert(F::toggleShiny(draft, error) && draft.current()->shiny());
     const uint8_t gender = draft.current()->gender();
+    const auto beforeGender = *draft.current();
     assert(F::toggleGender(draft, error) && draft.current()->gender() != gender && draft.current()->shiny());
+    // Round 16: the "(nature, shininess and ability kept)" line is checked on the real records.
+    assert(F::traitsLostByPidChange(beforeGender, *draft.current(), true).empty());
+    assert(draft.current()->nature() == beforeGender.nature());
+    // Toggling back restores the gender and still keeps shiny, nature and ability.
+    const auto beforeBack = *draft.current();
+    assert(F::toggleGender(draft, error) && draft.current()->gender() == gender && draft.current()->shiny());
+    assert(F::traitsLostByPidChange(beforeBack, *draft.current(), true).empty());
+    // A detector that misses a real change would make the message lie: prove it reports one.
+    auto unshiny = draft;
+    assert(F::toggleShiny(unshiny, error) && !unshiny.current()->shiny());
+    assert(F::traitsLostByPidChange(*draft.current(), *unshiny.current(), true) == "shininess");
     const auto abilities = F::abilityChoices(*draft.current(), true);
     assert(!abilities.empty() && abilities.front() == 0);
     for (const auto slot : abilities) {

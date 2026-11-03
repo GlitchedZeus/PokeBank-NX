@@ -257,7 +257,7 @@ namespace PokeVault::Legacy {
     }
 
     bool LegacySourceBindings::commit(Owners&& before) {
-        if (save()) { unsaved_ = false; return true; }
+        if (save()) { unsaved_ = false; unsavedReason_.clear(); return true; }
         const bool persistence = lastResult_ == BindingResult::MetadataDirUnavailable ||
             lastResult_ == BindingResult::MetadataWriteFailed ||
             lastResult_ == BindingResult::MetadataValidationFailed ||
@@ -266,6 +266,7 @@ namespace PokeVault::Legacy {
             // The on-disk generation is untouched (save() keeps/rolls back to it). The validated
             // choice stays in memory so every route agrees for this session.
             unsaved_ = true;
+            unsavedReason_ = lastError_;
             lastResult_ = BindingResult::KeptForSession;
             return true;
         }

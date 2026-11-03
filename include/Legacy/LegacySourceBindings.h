@@ -119,6 +119,8 @@ namespace PokeVault::Legacy {
         // Ownership/validation refusals are NEVER kept. Off by default (tests keep strict mode).
         void enableSessionRecovery(bool enabled = true) noexcept { sessionRecovery_ = enabled; }
         [[nodiscard]] bool hasUnsavedSessionChanges() const noexcept { return unsaved_; }
+        // Why the session choices are not stored (the diagnostic of the last persistence failure).
+        [[nodiscard]] const std::string& unsavedReason() const noexcept { return unsavedReason_; }
         [[nodiscard]] const std::string& quarantinedPath() const noexcept { return quarantined_; }
         // One log line: database/.bak/.tmp sizes, load state, and a write/fsync/rename/read-back
         // probe in the config directory (a separate probe file; never the database itself).
@@ -141,6 +143,7 @@ namespace PokeVault::Legacy {
         bool sessionRecovery_ = false;
         bool trusted_ = false;   // owners_ came from a valid committed generation (or none existed)
         bool unsaved_ = false;
+        std::string unsavedReason_;
         mutable std::string quarantined_;
         std::string loadState_ = "not loaded";
         bool commit(std::unordered_map<std::string, BindingRecord>&& before);

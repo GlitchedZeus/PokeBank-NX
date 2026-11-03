@@ -632,11 +632,18 @@ struct Gen5Editor {
             if (!Fields::toggleGender(probe, error)) {
                 screen.postStatus(error, 300);
             } else if (const auto after = verifiedPidProbe(screen, probe)) {
-                const std::string note = std::string("Gender ") + EditorSurface::genderText(p.gender()) + " -> " +
-                    EditorSurface::genderText(after->gender()) + "  |  PID " + pidHex5(p.pid()) + " -> " +
-                    pidHex5(after->pid()) + " (nature, shininess and ability kept)";
-                d = std::move(probe);
-                screen.postStatus(note, 420);
+                // Round 16 (owner: a Gen V gender edit lost shininess while this line said it was
+                // kept): the claim is checked on the actual result, never assumed. A gender change
+                // that would alter shininess, nature or the ability slot is refused unstaged.
+                if (const std::string lost = Fields::traitsLostByPidChange(p, *after, b2w2(screen)); !lost.empty()) {
+                    screen.postStatus("Gender not changed: it would also change " + lost + ". Nothing was staged.", 420);
+                } else {
+                    const std::string note = std::string("Gender ") + EditorSurface::genderText(p.gender()) + " -> " +
+                        EditorSurface::genderText(after->gender()) + "  |  PID " + pidHex5(p.pid()) + " -> " +
+                        pidHex5(after->pid()) + " (nature, shininess and ability kept)";
+                    d = std::move(probe);
+                    screen.postStatus(note, 420);
+                }
             }
         } else if (row == Fields::ShinyRow) {
             // Round 11 H29 (owner: "inline like every other gen (1-4)"): Shiny cycles in place like
@@ -914,8 +921,11 @@ struct Gen5Editor {
             : "Box " + std::to_string(target.box + 1) + " / Slot " + std::to_string(target.slot + 1);
         return info;
     }
+    // Round 16 (owner: Gen V Ninjask shown as Ghost/Flying): the shared editor portrait draws
+    // SpriteManager::getTypeSprite(), which takes CANONICAL type ids (Bug 6, Ghost 7), like Gen III
+    // and Gen IV pass. Only the species picker preview (ClassicTypeBadges) takes classic ids.
     static std::array<uint8_t,2> portraitTypes(const TrainerViewScreen& screen, const Record& p) {
-        return classicTypes5(p.species(), p.form(), b2w2(screen));
+        return PokeVault::Integration::Gen5::personalTypes5(p.species(), p.form(), b2w2(screen));
     }
     // Short rows only, so nothing runs into the stats graph beside them.
     static std::vector<EditorSurface::DataRow> dataRows(TrainerViewScreen& screen,
