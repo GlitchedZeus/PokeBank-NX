@@ -351,4 +351,3 @@ $(HOST_UI_SOURCE_ASSIGN_SANITIZE): $(HOST_UI_SOURCE_ASSIGN_INPUTS) $(HOST_UI_SAN
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_source_assignment_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif
-
