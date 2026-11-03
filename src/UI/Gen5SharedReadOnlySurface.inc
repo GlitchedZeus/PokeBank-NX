@@ -14,6 +14,7 @@
 #include "Integration/Gen5/Gen5BoxTouchNavigation.h"
 #include "UI/ReviewEntry.h"
 #include "Integration/Gen5/Gen5SharedReview.h"
+#include "Integration/Gen5/Gen5KeySystem.h"
 #include "UI/ClassicStagedExit.h"
 #include "UI/ClassicTrainerSession.h"
 #include "UI/SharedTrainerPanel.h"
@@ -69,6 +70,13 @@ constexpr int kGen5PartyTouchBase=77400;
 
 PokeVault::Legacy::Gen5ReadOnlyTrainer& nativeTrainer(TrainerViewScreen& screen) {
     return static_cast<PokeVault::Legacy::Gen5ReadOnlyTrainer&>(screen.trainer);
+}
+// Round 14 (owner, B2/W2 Regis): the Key System evidence of this save for a Pokemon caught in it
+// (origin game and OT TID / SID must be the save's own; Gen5KeySystem.h). {} otherwise.
+PokeVault::Integration::GiftStaticEncounters::AccessEvidence keySystemEvidence(TrainerViewScreen& screen,
+                                                                               const PokeVault::Integration::Gen5::Pokemon5ReadOnly& p) {
+    return PokeVault::Integration::Gen5::KeySystem::evidenceFor(nativeTrainer(screen).sourceSave(),
+        static_cast<uint8_t>(p.originVersion()), static_cast<uint16_t>(p.tid()), static_cast<uint16_t>(p.sid()));
 }
 const char* gen5GameName(std::string_view id) noexcept {
     return id=="black_nds"?"Black":id=="white_nds"?"White":
@@ -521,7 +529,7 @@ struct Gen5Editor {
                 EditorSurface::openContextualMetLocationPicker(screen, state, p.originVersion(),
                     p.species(), p.metLocation(), Fields::metLocationChoices(),
                     {p.eggLocation(), p.egg(), p.fatefulEncounter()},
-                    static_cast<uint8_t>(Fields::level(p, b2w2(screen))));
+                    static_cast<uint8_t>(Fields::level(p, b2w2(screen))), keySystemEvidence(screen, p));
                 return true;
             case Pokerus: {
                 // Inline toggle: None -> Infected -> Cured -> None (Gen V modes 0 / 2 / 1).
@@ -939,7 +947,7 @@ struct Gen5Editor {
         if (const auto caution = History::joined(backend(screen).historyFlags()); !caution.empty())
             rows.insert(rows.begin() + 6, {History::kCautionLabel, caution});
         // Round 12 (R12-004 / R12-005): an unverified Met Location stays labelled, under "Met".
-        if (auto note = PokeVault::Integration::Gen5::metEvidence5(p, b2w2(screen)); !note.empty())
+        if (auto note = PokeVault::Integration::Gen5::metEvidence5(p, b2w2(screen), keySystemEvidence(screen, p)); !note.empty())
             rows.insert(rows.begin() + 5, {"Met evidence", std::move(note)});
         return rows;
     }
@@ -2140,7 +2148,8 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
                 rows.push_back({loc+" / "+name,value});
                 // Round 12 (R12-004 / R12-005): an unverified Met Location stays labelled in Review.
                 if(v.field==F::MetLocation)
-                    if(const auto note=G::metEvidence5(after,nativeTrainer(screen).sharedScreen().black2White2());
+                    if(const auto note=G::metEvidence5(after,nativeTrainer(screen).sharedScreen().black2White2(),
+                       keySystemEvidence(screen,after));
                        !note.empty())rows.push_back({loc+" / Met evidence",note});
             }
             constexpr std::array<const char*,6> statLabels{{"HP","Atk","Def","Spe","SpA","SpD"}};
@@ -2168,7 +2177,8 @@ PokeBank::UIModel::SharedReview::Rows sharedReviewRows(TrainerViewScreen& screen
             // Round 12 (R12-004 / R12-005): an unverified Met Location stays labelled in Review.
             if((field.field==F::MetLocation || field.field==F::MetLevel) && !metEvidenceShown) {
                 metEvidenceShown=true;
-                if(const auto note=G::metEvidence5(after,nativeTrainer(screen).sharedScreen().black2White2());
+                if(const auto note=G::metEvidence5(after,nativeTrainer(screen).sharedScreen().black2White2(),
+                       keySystemEvidence(screen,after));
                    !note.empty())rows.push_back({location(c.location),"Met evidence: "+note});
             }
         }

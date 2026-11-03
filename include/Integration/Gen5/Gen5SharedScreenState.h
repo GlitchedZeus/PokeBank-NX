@@ -41,13 +41,16 @@ namespace PokeVault::Integration::Gen5 {
 }
 
 // Round 12 (R12-004 / R12-005): the editor / Review "Met evidence" line ("" when verified).
-[[nodiscard]] inline std::string metEvidence5(const Pokemon5ReadOnly& p, bool b2w2) {
+// Round 14 (owner, B2/W2 Regis): `evidence` is the Key System of the save the Pokemon was caught
+// in (Gen5KeySystem.h evidenceFor); {} = none, so a keyed encounter stays Incomplete.
+[[nodiscard]] inline std::string metEvidence5(const Pokemon5ReadOnly& p, bool b2w2,
+                                              GiftStaticEncounters::AccessEvidence evidence = {}) {
     uint8_t level=1;
     if(p.partyRecord())level=p.partyLevel();
     else if(const auto personal=personal5(p.species(),p.form(),b2w2))
         level=levelForExperience5(personal.info->growthRate,p.experience());
-    return EncounterContext45::unverifiedMetNote45(static_cast<uint8_t>(p.originVersion()),
-        static_cast<uint16_t>(p.species()),static_cast<uint16_t>(p.metLocation()),level,
+    return EncounterContext45::metNote45(static_cast<uint8_t>(p.originVersion()),
+        static_cast<uint16_t>(p.species()),static_cast<uint16_t>(p.metLocation()),level,evidence,
         static_cast<uint16_t>(p.eggLocation()),static_cast<int>(p.metLevel()));
 }
 

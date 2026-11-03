@@ -83,7 +83,8 @@ class Catalogue {
 public:
     Catalogue() = default;
     Catalogue(uint8_t origin, uint16_t species, uint16_t stored,
-              std::vector<uint16_t> native, History history, uint8_t currentLevel = 0)
+              std::vector<uint16_t> native, History history, uint8_t currentLevel = 0,
+              GiftStaticEncounters::AccessEvidence evidence = {})
         : origin_(origin), species_(species), stored_(stored), currentLevel_(currentLevel), history_(history) {
         namespace Policy = MetLocationPolicy;
         // Preserve the stored value even if it is unusual or absent from today's name table.
@@ -106,7 +107,8 @@ public:
         for (const auto& entry : encounters) {
             const bool reached = Policy::levelReachesEncounter(entry.minLevel, currentLevel);
             const auto* gift = GiftStaticEncounters::rowOf(entry);
-            const bool known = reached && (!gift || GiftStaticEncounters::fullyVerifiable(*gift));
+            // (Round 14: a prerequisite the save the Pokémon was caught in proves counts as known)
+            const bool known = reached && (!gift || GiftStaticEncounters::accessKnown(*gift, evidence));
             auto row = std::find_if(wild_.begin(), wild_.end(), [&](const auto& r) {
                 return r.encounter.location == entry.location;
             });
@@ -312,15 +314,21 @@ constexpr bool bredEggLocation45(uint8_t generation, uint16_t eggLocation) noexc
     return generation == 4 ? eggLocation == 2000 || eggLocation == 2002
          : generation == 5 ? eggLocation == 60002 || eggLocation == 30003 || eggLocation == 30002 : false;
 }
-inline std::string unverifiedMetNote45(uint8_t origin, uint16_t species, uint16_t location, uint8_t level,
-                                       uint16_t eggLocation = 0, int metLevel = -1) {
+// Round 14: `evidence` is what the save the Pokémon was caught in shows (B2/W2 Key System).
+inline std::string metNote45(uint8_t origin, uint16_t species, uint16_t location, uint8_t level,
+                             GiftStaticEncounters::AccessEvidence evidence,
+                             uint16_t eggLocation = 0, int metLevel = -1) {
     if (gameId(origin).empty() || location == 0) return {};
-    const Catalogue context(origin, species, location, {}, {}, level);
+    const Catalogue context(origin, species, location, {}, {}, level, evidence);
     // Owner decision (Nov 2): a verified data row says it has a single source (PKHeX); a wild slot
     // keeps "" as before. An encounter whose access prerequisite is unknown reads Incomplete.
     if (context.verifiedEncounter(location)) {
         const auto* gift = dataRow(*context.wildRow(location));
-        return gift ? GiftStaticEncounters::singleSourceNote(*gift) : std::string();
+        if (!gift) return {};
+        auto note = GiftStaticEncounters::singleSourceNote(*gift);
+        if (GiftStaticEncounters::accessProven(*gift, evidence))
+            note += std::string(note.empty() ? "" : "; ") + GiftStaticEncounters::kKeySystemEvidence;
+        return note;
     }
     if (context.incompleteEncounter(location))
         if (const auto* gift = dataRow(*context.wildRow(location))) return GiftStaticEncounters::incompleteNote(*gift);
@@ -333,5 +341,9 @@ inline std::string unverifiedMetNote45(uint8_t origin, uint16_t species, uint16_
         return special.row + "; unverified";
     if (context.wildRow(location)) return MetLocationPolicy::kLevelBelowEncounterFull;
     return "Not a listed encounter; unverified";
+}
+inline std::string unverifiedMetNote45(uint8_t origin, uint16_t species, uint16_t location, uint8_t level,
+                                       uint16_t eggLocation = 0, int metLevel = -1) {
+    return metNote45(origin, species, location, level, {}, eggLocation, metLevel);
 }
 } // namespace PokeVault::Integration::EncounterContext45
