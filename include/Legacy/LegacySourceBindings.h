@@ -61,6 +61,11 @@ namespace PokeVault::Legacy {
         [[nodiscard]] bool assignFileAndSave(std::string_view sourceIdentity, BindingRecord binding);
         [[nodiscard]] bool replaceFileAssignmentAndSave(std::string_view sourceIdentity,
                                                         BindingRecord binding);
+        // Round 15: a manually chosen Gen I-III battery file for one exact profile/game card.
+        // Same validation as replaceFileAssignmentAndSave; other discovered saves this profile
+        // claimed stay claimed (only the old catalog preference for this game is cleared).
+        [[nodiscard]] bool assignClassicFileAndSave(std::string_view sourceIdentity,
+                                                    BindingRecord binding);
         [[nodiscard]] bool unassignGameAndSave(std::string_view profileIdentity,
                                                std::string_view gameIdentity);
         // Rechecks only explicitly bound paths. Never scans or substitutes another save.
@@ -93,6 +98,8 @@ namespace PokeVault::Legacy {
         mutable std::string lastError_;
         bool checkpoint(const char* stage) const;
         bool fail(const char* stage) const;
+        bool replaceFileAssignment(std::string_view sourceIdentity, BindingRecord binding,
+                                   bool keepCatalogClaims);
         std::unordered_map<std::string, BindingRecord> owners_;
     };
 }

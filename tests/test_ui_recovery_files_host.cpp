@@ -182,7 +182,13 @@ void recoveryFiles() {
 
     PokeVault::Legacy::FRLGDiscoveryResult legacy;
     PokeVault::Legacy::LegacySourceBindings bindings;
-    UI::SaveSelectScreen screen(legacy, bindings);
+    // Round 15 (owner decision 1, updated deliberately): every Gen I-III game now has its own card,
+    // and they sort before Diamond, so the test focuses its opening game (Diamond) explicitly.
+    UI::SaveSelectScreen::NavigationState diamond;
+    diamond.profileIdentity = kProfile;
+    diamond.gameId = "diamond_nds";
+    diamond.sourceKind = UI::SaveSelectScreen::SelectedSourceKind::Gen4AssignedFile;
+    UI::SaveSelectScreen screen(legacy, bindings, &diamond);
     Driver d{screen, {}, {}};
     d.frames(3);
     d.dump("home");

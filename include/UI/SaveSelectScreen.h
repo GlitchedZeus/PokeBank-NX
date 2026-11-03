@@ -453,7 +453,9 @@ namespace UI {
         PokeBank::UIModel::SaveOpenGate::Decision saveGateForTitle(const TitleEntry& title);
         void openSaveChooserForTitle(const TitleEntry& title, const std::string& message);
         void openSaveFilePicker(const std::string& gameId, int generation, std::string notice);
+        bool assignLegacyManualPath(const std::string& path, std::string& failure);
         bool assignGen4ManualPath(const std::string& path, std::string& failure);
+        void mergeRememberedLegacyFiles();
         bool assignGen5ManualPath(const std::string& path, std::string& failure);
         void selectCurrentLegacyInstance();
         void openGen4Setup(const std::string& gameId, std::string notice = {},

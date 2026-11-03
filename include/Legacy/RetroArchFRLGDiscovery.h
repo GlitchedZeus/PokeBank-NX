@@ -10,6 +10,7 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace PokeVault::Legacy {
@@ -99,6 +100,13 @@ namespace PokeVault::Legacy {
         const std::string& retroArchConventionalRoot = "sdmc:/retroarch/cores/savefiles",
         const std::string& mGBAConfigPath = "sdmc:/mGBA/config.ini",
         const std::string& ticoSaveBase = "sdmc:/tico/saves");
+
+    // Round 15 (owner: "All generations should have the same Save Instances experience ...
+    // manual assignment and safe file browsing"): one explicitly chosen battery file for an exact
+    // Gen I-III card. Strict per-generation parsing and the shared initialization rule
+    // (Source/SaveInitialization.h) decide; ready() only for a valid initialized save of that game.
+    [[nodiscard]] FRLGSource inspectLegacySaveFile(const std::string& path, std::string_view exactGameId,
+                                                   std::string_view provider = "Manual");
 }
 
 #endif

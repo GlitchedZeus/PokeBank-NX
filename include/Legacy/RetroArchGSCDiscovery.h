@@ -8,6 +8,7 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace PokeVault::Legacy {
@@ -65,6 +66,8 @@ struct GSCDiscoveryResult {
     const std::string& configPath = "sdmc:/retroarch/retroarch.cfg",
     const std::string& conventionalRoot = "sdmc:/retroarch/cores/savefiles");
 
+// One explicitly chosen battery file for an exact Gold / Silver / Crystal card (manual Save Instance).
+[[nodiscard]] GSCSource inspectGSCSaveFile(const std::string& path, std::string_view exactGameId);
 } // namespace PokeVault::Legacy
 
 #endif
