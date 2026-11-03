@@ -162,9 +162,11 @@ Only `gen12-packed-multimove-focused.yml` builds this test, and only on PRs that
 
 Recommendation: consolidate only after round 11/12 and Gen VI+ have merged.
 
-## 5. Branch prune script (owner-run)
+## 5. Branch prune script (owner-run) — SUPERSEDED
 
-`tools/qa/maintenance/prune_branches.sh` carries out Phase 2 of the cleanup in [REPO_CLEANUP_AUDIT_2026-11-02.md](REPO_CLEANUP_AUDIT_2026-11-02.md), using [branch_audit_2026-11-02.json](branch_audit_2026-11-02.json). Its behavior and safety rules are in its header. Restore procedures are in [RECOVERY.md](RECOVERY.md). Its actions are logged in [BRANCH_DELETION_LOG.md](BRANCH_DELETION_LOG.md). Repository description and topics are in [REPO_METADATA.md](REPO_METADATA.md).
+> The owner completed the branch cleanup separately ([`BRANCH_CLEANUP_STATE_2026-11-02.md`](BRANCH_CLEANUP_STATE_2026-11-02.md)). The script described below is archived and disabled in [`archive/superseded-2026-11-02-phase2-plan/`](archive/superseded-2026-11-02-phase2-plan/). Its links now point there.
+
+`tools/qa/maintenance/prune_branches.sh` carries out Phase 2 of the cleanup in [REPO_CLEANUP_AUDIT_2026-11-02.md](archive/superseded-2026-11-02-phase2-plan/REPO_CLEANUP_AUDIT_2026-11-02.md), using [branch_audit_2026-11-02.json](archive/superseded-2026-11-02-phase2-plan/branch_audit_2026-11-02.json). Its behavior and safety rules are in its header. Restore procedures are in [RECOVERY.md](RECOVERY.md). Its actions are logged in [BRANCH_DELETION_LOG.md](archive/superseded-2026-11-02-phase2-plan/BRANCH_DELETION_LOG.md). Repository description and topics are in [REPO_METADATA.md](REPO_METADATA.md).
 
 ### Dry run on 2026-11-02 (this session cannot delete refs or push tags)
 

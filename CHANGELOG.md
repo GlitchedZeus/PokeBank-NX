@@ -9,7 +9,14 @@ Dates are the candidate commit dates.
 
 ## Unreleased
 
-- Round 13 fixes on `fix/round12-gen15-repairs` (draft PR #333), not yet on `main`.
+- Round 15 repairs on `fix/round15-gen15-repairs` (PR #338 merged in; save assignment and profile isolation), not yet on `main`.
+
+## Round 14 — `d160aa42` (2026-11-02) — alpha candidate, owner quick check: 7 PASS / 11 FAIL, not accepted
+
+- NRO SHA-256 `8ee2a4d3a6a69f864dff8c2a9cc93fb513fde9155107932529811c9a8e85cb3c`, build run 41508608360, pre-release `nro/d160aa42`.
+- Addresses the Round 13 failures: the shared save gate, Met Location captions, Top Up capacity, shared footers, Crystal
+  Create Met Location, and name safety. Owner blockers on #313: source unassignment, profile isolation, Black 2 Items
+  dock routing.
 - Repository documentation reorganised: `docs/README.md` index, `docs/STATUS.md`, this changelog,
   contributor guide and security policy.
 

@@ -6,10 +6,12 @@ branch protection. Each item says where to make the change. Tick items off as yo
 
 ## 1. Branch pruning
 
-- [ ] Run `tools/qa/maintenance/prune_branches.sh` in dry-run mode, then with `--execute`. The script, its checks and
-      the exact commands are described in [`RECOVERY.md`](RECOVERY.md) and at the top of the script.
-- [ ] Keep the bundle the script creates (`pokebank-nx-full-<date>.bundle` plus its manifest and SHA-256) outside
-      the repository, for example on a second drive.
+- [x] **Done by the owner on November 2, 2026:** 331 → 88 branches, with all 15 identified unique-history tips
+      restored. Record: [`BRANCH_CLEANUP_STATE_2026-11-02.md`](BRANCH_CLEANUP_STATE_2026-11-02.md). The verified
+      pre-prune bundle is in the `maintenance/pre-branch-prune-20261102-bbc9dd69` release.
+- [ ] Do **not** run the earlier session's plan. It is archived and disabled in
+      [`archive/superseded-2026-11-02-phase2-plan/`](archive/superseded-2026-11-02-phase2-plan/). Any future cleanup starts from a fresh live inventory, following
+      `PROJECT_RULES.md` §1.
 
 ## 2. Branch protection
 
@@ -60,8 +62,7 @@ GitHub → Issues → Milestones → New milestone.
 - [ ] `Legality integration`
 
 The issue-to-milestone assignment table is in [`MILESTONE_PLAN.md`](MILESTONE_PLAN.md).
-`tools/qa/maintenance/prune_branches.sh --with-metadata` creates the milestones and applies the table when `gh` is
-logged in.
+Create the milestones by hand, or with `gh api` from your account, and assign them from the table.
 
 - [ ] Labels: the 12 labels exist (bug, enhancement, hardware-qa, legality, vault, gen-i-v, gen-vi-ix,
       documentation, blocked, priority:p0, priority:p1, priority:p2). The new ones have GitHub's default grey colour
@@ -78,10 +79,11 @@ The archive workflow (`.github/workflows/archive-candidate-nro.yml`) published R
 (`7fea1797`) and 2 (`e10f307f`) failed twice with `HTTP 403: Resource not accessible by integration` when creating
 the release. Their artifacts expire on **2027-01-14** and **2027-01-16**.
 
-- [ ] Publish them from your account before then. `tools/qa/maintenance/prune_branches.sh --archive-nro-fallback`
-      does this with `gh`. It downloads each original artifact (`gh run download`), checks the SHA-256 against
-      `docs/hardware/NRO_ARCHIVE.md`, creates the pre-release `nro/<sha8>` on the exact commit, re-downloads the
-      asset and checks the hash again.
+- [ ] Publish them from your account before then: download each original artifact (`gh run download <run> -n
+      PokeBank-NX-Gen1-5-Candidate-<sha8>`), check its SHA-256 against the table below, create the pre-release
+      `nro/<sha8>` on the exact commit (`gh release create … --prerelease --latest=false`), then download the asset
+      again and re-check the hash. The disabled archive script in
+      [`archive/superseded-2026-11-02-phase2-plan/`](archive/superseded-2026-11-02-phase2-plan/) shows the exact checks (read-only reference).
 
 | Round | Commit | NRO SHA-256 | Run / artifact |
 | --- | --- | --- | --- |

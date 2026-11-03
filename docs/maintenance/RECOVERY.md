@@ -1,11 +1,17 @@
 # Recovering deleted branches and archived history
 
+> **Superseded for the November 2 cleanup.** The owner ran the branch cleanup separately (331 → 88). Its actual
+> record, recovery bundle and restored tips are in [`BRANCH_CLEANUP_STATE_2026-11-02.md`](BRANCH_CLEANUP_STATE_2026-11-02.md).
+> This page describes the disabled `prune_branches.sh` plan (archived in
+> [`archive/superseded-2026-11-02-phase2-plan/`](archive/superseded-2026-11-02-phase2-plan/)). Its git recovery
+> commands, `git push origin <sha>:refs/heads/<name>` and restoring from a bundle, still apply to any branch.
+
 This page explains how to restore anything that `tools/qa/maintenance/prune_branches.sh` (repository cleanup, Phase 2) removed from GitHub. Nothing that script deletes is lost. Every deleted branch tip stays available through at least two of these:
 
 1. **The full backup bundle** made at the start of every run, which includes every branch and tag on the remote.
 2. **An archive tag** `archive/branches/<branch name>` at the exact tip, for the groups that get tags: `equivalent-archive` and `unique-archive`.
 3. **A preserved ref that contains the tip.** These are the no-tag groups: `contained`, `paused-contained`, `consolidation` and `legality-base`. The log names the ref and the SHA it had when the containment was checked.
-4. **The deletion log**, [BRANCH_DELETION_LOG.md](BRANCH_DELETION_LOG.md) and the matching `.tsv`. It records each branch, its tip SHA, what preserves it, the tag, the batch and the UTC time.
+4. **The deletion log**, [BRANCH_DELETION_LOG.md](archive/superseded-2026-11-02-phase2-plan/BRANCH_DELETION_LOG.md) and the matching `.tsv`. It records each branch, its tip SHA, what preserves it, the tag, the batch and the UTC time.
 
 You need write access to the repository for every `git push` below.
 

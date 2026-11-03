@@ -58,7 +58,7 @@ The legality engine is developed separately and is **not** part of the app (paus
 
 ## Maintenance
 
-- [Repository cleanup audit, 2026-11-02](maintenance/REPO_CLEANUP_AUDIT_2026-11-02.md) and [branch archive manifest](maintenance/BRANCH_ARCHIVE_MANIFEST.md).
+- [Branch cleanup record, 2026-11-02](maintenance/BRANCH_CLEANUP_STATE_2026-11-02.md) (331 → 88 branches; authoritative). The earlier session's audit and plan are archived and disabled in [maintenance/archive/superseded-2026-11-02-phase2-plan/](maintenance/archive/superseded-2026-11-02-phase2-plan/).
 - [Main consolidation ledger, 2026-10-31](MAIN_CONSOLIDATION_20261031.md) and [three-branch consolidation plan](maintenance/THREE_BRANCH_CONSOLIDATION_PLAN.md).
 
 ## Agent session files

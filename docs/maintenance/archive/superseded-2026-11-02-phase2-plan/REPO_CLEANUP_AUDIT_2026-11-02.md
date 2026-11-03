@@ -9,7 +9,7 @@
 | `tools/qa/maintenance/branch_audit.py` | Read-only generator; re-run it with `--compare` before Phase 2 to detect drift |
 | `tools/qa/maintenance/render_branch_manifest.py` | Renders the manifest from the JSON |
 
-This audit builds on [GITHUB_CLEANUP_20261015.md](../archive/sessions/GITHUB_CLEANUP_20261015.md), [THREE_BRANCH_CONSOLIDATION_PLAN.md](THREE_BRANCH_CONSOLIDATION_PLAN.md) and the October 31 ledger `docs/MAIN_CONSOLIDATION_20261031.md` on `main`. That ledger has 316 refs; there are 8 more (net) since then, including `audit/gen12-independent-20261013`, which appeared during this audit. NRO preservation follows `docs/hardware/NRO_ARCHIVE.md` and `.github/workflows/archive-candidate-nro.yml`.
+This audit builds on [GITHUB_CLEANUP_20261015.md](../../../archive/sessions/GITHUB_CLEANUP_20261015.md), [THREE_BRANCH_CONSOLIDATION_PLAN.md](../../THREE_BRANCH_CONSOLIDATION_PLAN.md) and the October 31 ledger `docs/MAIN_CONSOLIDATION_20261031.md` on `main`. That ledger has 316 refs; there are 8 more (net) since then, including `audit/gen12-independent-20261013`, which appeared during this audit. NRO preservation follows `docs/hardware/NRO_ARCHIVE.md` and `.github/workflows/archive-candidate-nro.yml`.
 
 ## 1. Snapshot
 

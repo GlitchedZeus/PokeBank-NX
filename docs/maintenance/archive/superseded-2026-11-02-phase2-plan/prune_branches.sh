@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# SUPERSEDED (2026-11-03): this script and its plan were built from the November 2 snapshot of 324
+# branches. The owner completed the branch cleanup separately (331 -> 88, 15 unique-history tips
+# restored; docs/maintenance/BRANCH_CLEANUP_STATE_2026-11-02.md). Running this plan now would act on a
+# stale inventory, so it refuses to run. Kept only as a historical record.
+echo "prune_branches.sh is SUPERSEDED and must not be run: see docs/maintenance/BRANCH_CLEANUP_STATE_2026-11-02.md" >&2
+exit 2
 # prune_branches.sh - owner-run remote branch prune for PokeBank-NX (repository cleanup, Phase 2).
 #
 # The owner runs this locally with their own git credentials. Claude sessions cannot delete remote

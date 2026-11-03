@@ -7,8 +7,8 @@
 | Area | Status |
 |---|---|
 | **Gen I–V application** (Game Boy, Game Boy Color, GBA and DS games played through emulators on the Switch) | The product. Active alpha, repaired round by round against the owner's hardware tests. Not yet accepted across all 20 releases. |
-| **Current candidate** | Round 13, `PokeBank-NX-Gen1-5-Candidate-9c301c48.nro`, SHA-256 `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d`, build run [41392463888](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/41392463888). Owner hardware test Nov 2, 2026: **15 PASS / 12 FAIL / 0 NOT TESTED** (27 checks), **not accepted** ([results](hardware/round13/OWNER_RESULTS_9c301c48.json)). Built from `fix/round12-gen15-repairs` (draft PR #333, stacked on #332); not on `main` yet. |
-| **Last owner hardware result** | Round 12 `066e1db9`: 20 PASS / 4 FAIL on the owner's 24-item checklist (Gen V move/review controls, Clone/Move pop-ups and carry cursor, Gen II/III Met Location lists, Bag Top Up). Round 13 targets those findings. |
+| **Current candidate** | Round 15, built from `fix/round15-gen15-repairs` (Round 14 repairs + PR #338 + the save-assignment / profile fixes). Its exact NRO, SHA-256 and checklist are recorded in [RELEASES.md](RELEASES.md) and on issue [#313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313). **NOT DEVICE TESTED.** |
+| **Last owner hardware results** | Round 14 `d160aa42` (`nro/d160aa42`, SHA-256 `8ee2a4d3a6a69f864dff8c2a9cc93fb513fde9155107932529811c9a8e85cb3c`): quick check 7 PASS / 11 FAIL / 139 unmarked, **not accepted**. P0 blockers: no Forget/Unassign source, Profile B inherits Profile A's assignments, Black 2 Items dock misroute, White 2 opening without a matching save ([#313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313)). Round 13 `9c301c48`: 15 PASS / 12 FAIL ([results](hardware/round13/OWNER_RESULTS_9c301c48.json)). |
 | **Gen VI–IX** | **Paused** on `development/gen6-plus`. Not feature complete. The first experimental hardware candidate (`5895e6b9`) **failed** owner testing. |
 | **Legality engine** | **Paused** at PR #314 (lanes #327 and #328). Read-only research engine, **not integrated into the app**. |
 | **Master Vault and v1.0 storage features** | **Not implemented.** Required for v1.0. |
@@ -71,6 +71,6 @@ Then: one exact NRO must pass the full Gen I–V hardware gate across all 20 rel
 - Round 13 checklist (on `fix/round12-gen15-repairs`): [RETEST_9c301c48.md](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/hardware/RETEST_9c301c48.md).
 - Master hardware acceptance ledger, 276 tracked issues (on `fix/round12-gen15-repairs`): [MASTER_HARDWARE_ACCEPTANCE_LEDGER.md](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/qa/MASTER_HARDWARE_ACCEPTANCE_LEDGER.md).
 - v1.0 feature gaps (on `fix/round12-gen15-repairs`): [V1_RELEASE_FEATURE_GAPS.md](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/qa/V1_RELEASE_FEATURE_GAPS.md).
-- Repository cleanup audit: [maintenance/REPO_CLEANUP_AUDIT_2026-11-02.md](maintenance/REPO_CLEANUP_AUDIT_2026-11-02.md).
+- Branch cleanup record (331 → 88): [maintenance/BRANCH_CLEANUP_STATE_2026-11-02.md](maintenance/BRANCH_CLEANUP_STATE_2026-11-02.md).
 
 When those branch files merge to `main`, these links can point to `main`.

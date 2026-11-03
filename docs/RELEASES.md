@@ -23,6 +23,8 @@ real Switch. A passing CI run, a newer commit or an earlier accepted build never
 |---|---|---|
 | Round 13, `PokeBank-NX-Gen1-5-Candidate-9c301c48.nro` (commit `9c301c483af97acf60058546c9b35bfec45c7b0e`, build run [41392463888](https://github.com/GlitchedZeus/PokeBank-NX/actions/runs/41392463888), 177,118,897 bytes) | **Partial**: owner-tested Nov 2, 2026, 15 PASS / 12 FAIL / 0 NOT TESTED ([results](hardware/round13/OWNER_RESULTS_9c301c48.json)); not accepted | `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d` |
 
+Round 14 `d160aa42` (SHA-256 `8ee2a4d3a6a69f864dff8c2a9cc93fb513fde9155107932529811c9a8e85cb3c`, run 41508608360, pre-release [`nro/d160aa42`](https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/nro%2Fd160aa42)): owner quick check 7 PASS / 11 FAIL / 139 unmarked, **Partial, not accepted** (#313).
+
 Round 13 is built from `fix/round12-gen15-repairs` (draft PR #333, stacked on #332) and is not on `main`.
 Checklist: [`RETEST_9c301c48.md`](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/hardware/RETEST_9c301c48.md).
 Pre-release archive: [`nro/9c301c48`](https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/nro%2F9c301c48).

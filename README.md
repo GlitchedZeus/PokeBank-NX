@@ -23,7 +23,7 @@
 
 <p align="center">
   <a href="https://github.com/GlitchedZeus/PokeBank-NX/actions/workflows/host-tests.yml"><img alt="Host Tests" src="https://img.shields.io/badge/Host%20Tests-active-2ea44f?style=flat-square&logo=githubactions&logoColor=white"></a>
-  <a href="docs/hardware/round13/OWNER_RESULTS_9c301c48.json"><img alt="Round 13 hardware: 15 PASS, 12 FAIL" src="https://img.shields.io/badge/Round%2013-15%20PASS%20%2F%2012%20FAIL-d97706?style=flat-square&logo=githubactions&logoColor=white"></a>
+  <a href="docs/STATUS.md"><img alt="Gen I-V: alpha, not hardware accepted" src="https://img.shields.io/badge/Gen%20I--V-alpha%2C%20not%20hardware%20accepted-d97706?style=flat-square&logo=githubactions&logoColor=white"></a>
   <a href="docs/STATUS.md"><img alt="Gen VI-IX and legality engine: paused" src="https://img.shields.io/badge/Gen%20VI--IX%20%2B%20legality-paused-6b7280?style=flat-square"></a>
 </p>
 
@@ -43,8 +43,10 @@
 
 > [!IMPORTANT]
 > **Alpha software, no stable release, not hardware accepted.** The latest owner-tested Gen I–V build is the
-> Round 13 candidate (`9c301c48`): **15 PASS / 12 FAIL / 0 NOT TESTED** across 27 checks
-> ([owner results](docs/hardware/round13/OWNER_RESULTS_9c301c48.json)). Your original saves are never written:
+> Round 14 candidate (`d160aa42`), which was **not accepted**: the owner's quick check recorded 7 PASS and 11 FAIL,
+> including save-assignment and profile-isolation blockers tracked in
+> [#313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313). Round 15 repairs (PR #338 and the
+> `fix/round15-gen15-repairs` branch) target those blockers. Your original saves are never written:
 > edits are exported as a separate, verified copy. Keep your own backups anyway.
 > Current state: [docs/STATUS.md](docs/STATUS.md).
 
@@ -69,8 +71,8 @@ part is not built yet.
 | Area | Status |
 |---|---|
 | Gen I–V application | **Alpha.** Usable for browsing and staged editing; repaired round by round against owner hardware tests. Not yet accepted across all 20 games. |
-| Current candidate | **Round 13** `PokeBank-NX-Gen1-5-Candidate-9c301c48.nro`, SHA-256 `0ecf8655bcbef6490e73e2367801d972a8a9339396e73e16a4afe8f6ca76367d`. Owner hardware test on Nov 2, 2026: **15 PASS / 12 FAIL / 0 NOT TESTED** (27 checks), **not accepted** ([results](docs/hardware/round13/OWNER_RESULTS_9c301c48.json)). On `fix/round12-gen15-repairs` (draft PR #333); not on `main` yet. Its failures are being repaired for the next candidate. |
-| Last hardware result | Round 12 `066e1db9`: 20 PASS / 4 FAIL on the owner's checklist. Round 13 fixes those findings. |
+| Current candidate | The latest build and its exact SHA-256 are always listed in [docs/STATUS.md](docs/STATUS.md) and [docs/RELEASES.md](docs/RELEASES.md). Every candidate is **NOT DEVICE TESTED** until the owner tests that exact file. |
+| Last hardware results | Round 14 `d160aa42` (Nov 2): quick check 7 PASS / 11 FAIL, **not accepted** (save assignment, profile isolation, Black 2 Items route; see [#313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313)). Round 13 `9c301c48`: 15 PASS / 12 FAIL ([results](docs/hardware/round13/OWNER_RESULTS_9c301c48.json)). |
 | Master Vault, cross-game storage and transfer | **Not implemented.** Required for v1.0. |
 | Gen VI–IX (3DS and Switch-native games) | **Paused** on `development/gen6-plus`. Not feature complete; its first hardware candidate (`5895e6b9`) failed owner testing. |
 | Legality engine | **Paused** at [PR #314](https://github.com/GlitchedZeus/PokeBank-NX/pull/314). Not part of the app. |
@@ -104,7 +106,7 @@ Nintendo Switch Online FireRed / LeafGreen (recognised by title ID; installed-ga
 - Review of every staged change, then **Export Copy** to a new verified file.
 - Save Backups history and a Recovery files view.
 
-**Experimental or still being repaired** (see the [Round 13 checklist](https://github.com/GlitchedZeus/PokeBank-NX/blob/fix/round12-gen15-repairs/docs/hardware/RETEST_9c301c48.md)):
+**Experimental or still being repaired** (see [docs/STATUS.md](docs/STATUS.md) and issue [#313](https://github.com/GlitchedZeus/PokeBank-NX/issues/313)):
 
 - Single-Pokémon import and export (`.pk1`–`.pk5`, `.ek3`–`.ek5`).
 - Met Location and origin choices: the lists are being replaced with source-backed encounter data.
@@ -119,10 +121,9 @@ renaming boxes inside a save. These are v1.0 requirements.
 You need a Nintendo Switch running custom firmware with the Homebrew Menu (for example Atmosphère with hbmenu),
 and your games set up in an emulator on the Switch. PokeBank NX does not provide games, ROMs, keys or firmware.
 
-1. Download the candidate `.nro` from its pre-release archive
-   ([`nro/9c301c48`](https://github.com/GlitchedZeus/PokeBank-NX/releases/tag/nro%2F9c301c48)) and check its
-   SHA-256 against the value above. It is a test build that has not been hardware tested yet; earlier builds
-   and their results are in [docs/RELEASES.md](docs/RELEASES.md).
+1. Download the latest candidate `.nro` from the pre-release named in [docs/STATUS.md](docs/STATUS.md) and check its
+   SHA-256 against the value listed there. Every candidate is a test build; earlier builds and their results are
+   in [docs/RELEASES.md](docs/RELEASES.md).
 2. Back up your saves.
 3. Create `sdmc:/switch/PokeBank-NX/` on the SD card and copy the `.nro` into it.
 4. Launch **PokeBank NX** from the Homebrew Menu.
@@ -182,7 +183,7 @@ Tracking: [v1.0 feature gaps](https://github.com/GlitchedZeus/PokeBank-NX/blob/f
 ## Screenshots
 
 Actual Nintendo Switch screenshots captured by the project owner on November 2, 2026. This is an alpha UI preview,
-not evidence of release acceptance. Round 13: **15 PASS / 12 FAIL**.
+not evidence of release acceptance. The latest hardware results are in [docs/STATUS.md](docs/STATUS.md).
 
 | Pokémon Blue dashboard | Pokémon Ruby dashboard |
 | --- | --- |
