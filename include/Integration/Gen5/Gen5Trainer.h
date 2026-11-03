@@ -3,6 +3,9 @@
 
 #include "Integration/Gen5/Gen5ReadOnlySave.h"
 #include "Integration/Gen5/Gen5SaveBlockLayout.h"
+#include "Integration/Gen5/Gen5TrainerName.h"
+#include "Text/TextFieldCapability.h"
+#include "Utils/StringHelpers.h"
 
 #include <array>
 #include <cstddef>
@@ -164,6 +167,26 @@ struct TrainerChange5 {
     for (const char16_t c : raw) out.push_back(c >= 0x20 && c <= 0x7E ? static_cast<char>(c) : '?');
     return out;
 }
+// Round 15: the trainer name's rule, the same Text::Gen5NameField as a Pokemon's names (any
+// character the Gen V fonts draw, in the save's language), capped at the 7 characters of the block.
+[[nodiscard]] inline PokeBank::Text::Gen5NameField trainerNameField5(uint8_t language) {
+    return PokeBank::Text::Gen5NameField(PokeBank::Text::FieldKind::TrainerName, language,
+                                         TrainerLayout5::MaxNameChars, TrainerLayout5::MaxNameChars + 1);
+}
+// The stored trainer name as editable UTF-8 (the prompt's seed), or empty when a unit is outside
+// that rule: such a name is replaced, never re-encoded.
+[[nodiscard]] inline std::string editableTrainerName5(const std::u16string& raw, uint8_t language) {
+    const auto field = trainerNameField5(language);
+    const std::u16string text = PokeBank::Text::Gen5NameField::readBack(raw);
+    if (!field.check16(text).ok() || field.nativeUnits(text) != raw) return {};
+    return Utils::utf16ToUtf8(text);
+}
+// Review text: the name as the game shows it (half-width gender signs as ♂ / ♀); a name with a
+// unit no font draws keeps the conservative ASCII rendering.
+[[nodiscard]] inline std::string trainerNameText5(const std::u16string& raw) {
+    if (const auto shown = displayTrainerName(raw)) return *shown;
+    return asciiTrainerName5(raw);
+}
 [[nodiscard]] inline std::string playTime5(uint16_t h, uint8_t m, uint8_t s) {
     const auto two = [](unsigned v) { return std::string(v < 10 ? "0" : "") + std::to_string(v); };
     return std::to_string(h) + ":" + two(m) + ":" + two(s);
@@ -200,16 +223,21 @@ public:
 
     [[nodiscard]] bool setName(std::string_view name, std::string* error = nullptr) {
         using namespace TrainerLayout5;
-        if (!trainerNameAccepted5(name))
-            return fail(error, "Gen V trainer name must be 1-7 printable ASCII characters");
+        // Round 15: any character the Gen V fonts draw (trainerNameField5, the save's language),
+        // not only ASCII. Leading / trailing spaces stay refused, as before.
+        std::u16string text;
+        if (!PokeBank::Text::strictUtf16(name, text) || !trainerNameField5(current().language).check16(text).ok() ||
+            text.front() == u' ' || text.back() == u' ' || text.front() == u'\u3000' || text.back() == u'\u3000')
+            return fail(error, "Gen V trainer name must be 1-7 characters this game can store");
+        const std::u16string units = trainerNameField5(current().language).nativeUnits(text);
         auto next = player_;
         std::fill_n(next.begin() + NameOffset, NameBytes, uint8_t{0}); // ClearZero
-        for (size_t i = 0; i < name.size(); ++i) {
-            next[NameOffset + i * 2] = static_cast<uint8_t>(name[i]);
-            next[NameOffset + i * 2 + 1] = 0;
+        for (size_t i = 0; i < units.size(); ++i) {
+            next[NameOffset + i * 2] = static_cast<uint8_t>(units[i]);
+            next[NameOffset + i * 2 + 1] = static_cast<uint8_t>(units[i] >> 8);
         }
-        next[NameOffset + name.size() * 2] = 0xFF;
-        next[NameOffset + name.size() * 2 + 1] = 0xFF;
+        next[NameOffset + units.size() * 2] = 0xFF;
+        next[NameOffset + units.size() * 2 + 1] = 0xFF;
         return commitPlayer(std::move(next), NameOffset, NameBytes, error);
     }
     [[nodiscard]] bool setMoney(uint32_t money, std::string* error = nullptr) {
@@ -247,8 +275,8 @@ public:
         std::vector<TrainerChange5> out;
         const auto a = baseline(), b = current();
         if (a.rawName != b.rawName)
-            out.push_back({TrainerChange5::Field::Name, asciiTrainerName5(a.rawName),
-                           asciiTrainerName5(b.rawName)});
+            out.push_back({TrainerChange5::Field::Name, trainerNameText5(a.rawName),
+                           trainerNameText5(b.rawName)});
         if (a.money != b.money)
             out.push_back({TrainerChange5::Field::Money, std::to_string(a.money), std::to_string(b.money)});
         if (a.hours != b.hours || a.minutes != b.minutes || a.seconds != b.seconds)

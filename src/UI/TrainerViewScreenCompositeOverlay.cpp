@@ -4,6 +4,7 @@
 #include "UI/Gen1PokemonEditorOverlay.h"
 #include "UI/ClassicDefaultNickname.h"
 #include "UI/ClassicJapaneseNames.h"
+#include "Text/NameFields.h"   // Round 15: every name prompt takes its field (Utils::promptName)
 #include "UI/PokemonFileDialog.h"   // Feature A: Import from file / Export to file (every Gen I-V sheet)
 #include "UI/PokemonFileMenus.h"
 #include "UI/EditFeedback.h"   // Round 11 H22: the Gen I-V routine-edit toast rule

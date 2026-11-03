@@ -209,8 +209,8 @@ bool stagePokemonFieldEdit(TrainerViewScreen& screen, int row) {
             break;
         }
         case 1: {
-            const auto r = Utils::promptText("Gen II Nickname", "1-10 Gen II characters",
-                                             pokemon->nickname, 10);
+            const auto r = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId,
+                PokeBank::Text::FieldKind::Nickname, "Gen II Nickname", pokemon->nickname);
             if (!r.accepted) return false;
             edit.nickname = r.text;
             break;
@@ -283,9 +283,8 @@ bool stagePokemonFieldEdit(TrainerViewScreen& screen, int row) {
             break;
         }
         case 22: {
-            const auto r = Utils::promptText("Gen II OT Name", "1-7 Gen II characters",
-                                             pokemon->originalTrainer,
-                                             static_cast<int>(PokeVault::Integration::Gen2::kInternationalTrainerNameMax));
+            const auto r = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId,
+                PokeBank::Text::FieldKind::OriginalTrainer, "Gen II OT Name", pokemon->originalTrainer);
             if (!r.accepted) return false;
             edit.otName = r.text;
             break;
@@ -333,8 +332,11 @@ bool stageAddPokemon(TrainerViewScreen& screen, int box) {
     if (!species.accepted) return false;
     const auto level = Utils::promptNumber("Add Gen II Pokemon - Level", 5, 1, 100);
     if (!level.accepted) return false;
-    const auto nickname = Utils::promptText("Add Gen II Pokemon - Nickname",
-                                            "Blank uses the species name; max 10 Gen II characters", "", 10);
+    // Blank still uses the species name, so this one field allows an empty answer.
+    PokeBank::Text::FieldContext nicknameContext{PokeBank::Text::Format::Gen2, PokeBank::Text::FieldKind::Nickname, 2,
+        UI::ClassicJapaneseNames::japaneseSave(screen.trainer, screen.sourceGameId), true};
+    const auto nicknameField = PokeBank::Text::makeNameField(nicknameContext);
+    const auto nickname = Utils::promptName(*nicknameField, "Add Gen II Pokemon - Nickname", "");
     if (!nickname.accepted) return false;
     const auto held = Utils::promptNumber("Add Gen II Pokemon - Held Item ID", 0, 0, 255);
     if (!held.accepted) return false;
@@ -652,9 +654,8 @@ void handleStagedEditorInput(TrainerViewScreen& screen, u64 down, const TouchInp
     std::string error;
     switch (state.selectedRow) {
         case 0: {
-            const auto result = Utils::promptText(
-                "Generation II Trainer Name", "1-7 supported Gen II characters",
-                editor->trainerName(), static_cast<int>(PokeVault::Integration::Gen2::kInternationalTrainerNameMax));
+            const auto result = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId,
+                PokeBank::Text::FieldKind::TrainerName, "Generation II Trainer Name", editor->trainerName());
             if (result.accepted && !editor->stageTrainerName(result.text, error))
                 screen.postStatus(error);
             else if (result.accepted)

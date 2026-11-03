@@ -29,6 +29,12 @@ inline constexpr std::size_t kInternationalPokemonNameMax = 10;
 // Japanese Gold / Silver / Crystal: trainer, OT and Pokemon names hold 5 kana (6-byte fields).
 inline constexpr std::size_t kJapaneseNameMax = 5;
 inline constexpr uint16_t kMaxGen2Species = 251;
+// The name encoder every Gen II writer uses, for a name of at most `maxChars` characters
+// (international: Latin, the font's punctuation, ♂ ♀ and the accents shared by every European
+// release; Japanese: Utils::Gen12Kana, 5 characters). Text/NameFields.h's Gen12NameField asks it,
+// so the keyboard and the writer cannot disagree. All-or-nothing; `error` says why on refusal.
+bool encodeGen2Name(RegionLayout region, std::size_t maxChars, std::string_view name,
+                    std::vector<uint8_t>& encoded, std::string& error);
 inline constexpr uint16_t kMaxGen2Move = 251;
 
 struct StagedChange {

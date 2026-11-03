@@ -555,3 +555,54 @@ silent drop) ↔ **H07, H08**.
 
 **Top 10, revised:** P0-8, P0-1, P0-9, P0-2, P0-3, P0-5, P1-1 + P1-2 (shared keyboard), P1-9
 (met location), P1-5, P2-6 (bag footers).
+
+---
+
+## 10. Round 15 keyboard lane (branch `r15/keyboard`): status Fixed in Code — Awaiting Hardware
+
+The R14 FAIL ("no keyboard changes or anything") is **not** closed until the owner retests on a
+Switch. This lane implements P1-1 (Gen I–V part), P1-2, P1-3, P1-5 (Gen I–V), P1-7 (keyboard cap
+only) and lifts §7.8 for Gen V.
+
+**One prompt.** `Utils::promptName(field, header, initial)` (`include/Utils/Keyboard.h`) is the
+only name prompt. The field comes from `PokeBank::Text::makeNameField` (`include/Text/NameFields.h`,
+`src/Text/NameFields.cpp`): `Gen12NameField` (wraps `Gen1 StagedPokemonEditor::encodeRegionName` /
+`Gen2 encodeGen2Name`), `Gen3NameField`, `Gen4NameField`, `Gen5NameField`. `KeyboardDialog` takes
+its pages from `field->keyboard()`, disables every key `glyphsAllowed()` refuses (a disabled key
+types nothing and names the character), re-checks the whole text after every edit (shown in the
+field while typing; OK greys and refuses while the check fails) and checks the System keyboard's
+answer. `promptJapaneseName` / `promptKoreanName` and the `japaneseKana` / `koreanHangul` flags
+remain only for requests without a field; no app code calls them
+(`tests/test_shared_name_prompt_contract.py`).
+
+| Format / field | Language | Pages (start first) | Cap | Live keys |
+|---|---|---|---|---|
+| Gen I nickname / OT / trainer | intl | ABC, ?123, àé | 10 / 7 / 7 | Gen I encoder (`' , ♂ ♀ × ( ) : ; /` disabled until P1-6) |
+| Gen I / II any name | JP (gate closed) | あ, ま…, ア, マ…, １２３ (no ABC) | 5 | Gen12Kana table |
+| Gen II nickname / OT / trainer | intl | ABC, ?123, àé | 10 / 7 / 7 | Gen II encoder (release-dependent accents disabled) |
+| Gen III nickname / OT / trainer | EN FR IT DE ES | ABC, ?123, àé | 10 / 7 / 7 | GEN3_EN (`×` `…` `~` etc. disabled) |
+| Gen III nickname / OT | JP record (Egg OT: save charset) | kana pages, then full-width ＡＢＣ / １２３ | 5 | GEN3_JP |
+| Gen IV nickname / OT | EN FR IT DE ES | ABC, ?123, àé | 10 / 7 | Gen 4 code page |
+| Gen IV nickname / OT | JP | kana pages, full-width ＡＢＣ / １２３ | 5 | Gen 4 code page |
+| Gen IV nickname / OT | KO | 한 (jamo composed, checked after every jamo), ABC, ?123, àé | 5 | Gen 4 code page incl. 2,406 Hangul |
+| Gen IV trainer | Western only (JP/KO read-only, §7.6) | ABC, ?123, àé | 7 | Gen 4 code page |
+| Gen V nickname / OT / trainer | EN FR IT DE ES | ABC, ?123, àé | 10 / 7 / 7 | Gen 4 code page as Unicode (no longer ASCII-only) |
+| Gen V nickname / OT / trainer | JP | kana pages, full-width ＡＢＣ / １２３ | 5 | same |
+| Gen V nickname / OT / trainer | KO | 한, ABC, ?123, àé | 5 | same |
+
+**Gen V repertoire (§7.8 lifted).** Gen V stores UTF-16; the verified glyph source used is the Gen 4
+code page (PKHeX `StringConverter4Util`), because every Gen IV name reaches Gen V through Poké
+Transfer as that Unicode, so the Gen V fonts draw it. ♂/♀ are stored half width (U+246D/U+246E)
+unless the name is full width (PKHeX `StringConverter5.SetString`). ASCII names write the same
+bytes as before. Not hardware-verified: the owner's Gen V retest is the acceptance.
+
+**Remaining gaps (requirements, not done here).** Search still uses its own A–Z/0–9 grid
+(`SharedSearchInput.h`, shared by every species / held-item chooser; correct for the English UI,
+since `searchKey` folds to `[A-Z0-9]`); move / met-location / ability / bag-add / Vault search do not
+exist; kana/Hangul search needs localized name tables (§7.12) — P2-1. Gen V Create (and species
+change, which rebuilds through Create) still copies only ASCII Western names. Kana pages have no ヴ
+(the shared kana layout is the Gen I/II one). Gen IV writer caps are still 10/7 for JP/KO records
+(the keyboard caps at 5). Legacy Switch-title prompts, bank box and backup names keep `promptText`
+(listed in the contract test). Gen VI–IX (`development/gen6-plus`): the forked older
+`KeyboardDialog` and the five ASCII `allowedName` validators must be replaced by this keyboard and
+`Utf16NameField` per family before any non-ASCII entry there (P1-8, §7.9).

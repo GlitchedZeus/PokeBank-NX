@@ -77,6 +77,23 @@ namespace Utils {
     };
     NumberResult promptNumber(const std::string& header, int initial, int minValue, int maxValue);
 
+    /**
+     * THE name prompt (SHARED_UX_REQUIREMENTS.md P1-5): every save-native name (nickname, OT,
+     * trainer name) in every generation opens through here with the capability of the field it
+     * edits (Text/NameFields.h makeNameField). The keyboard takes from `field`:
+     *   - its pages: the script(s) of the record's / save's language (kana + full-width ABC for a
+     *     Japanese record, Hangul for a Korean one, Latin + accents otherwise);
+     *   - which keys are live: a key whose character the field cannot store is drawn disabled and
+     *     refuses with the reason, so it never types;
+     *   - the cap, in the game's own characters, and a live verdict after every edit (too long /
+     *     not storable / would not read back) shown in the field while typing;
+     *   - OK: refused while check() refuses; the System keyboard's answer passes the same check.
+     * The returned text therefore always passes field.check(). The caller's writer still checks
+     * again (it holds the same rule), so the two cannot disagree. A cancel is "no change".
+     */
+    KeyboardResult promptName(const PokeBank::Text::TextFieldCapability& field, const std::string& header,
+                              const std::string& initial);
+
     /// A Japanese Gen I / II name prompt: the in-app keyboard on its kana pages. The caller still
     /// encodes the answer with Utils::Gen12Kana::encode, which is the rule; the keyboard only offers
     /// keys that encoder accepts. Falls back to the console keyboard when no presenter is registered.

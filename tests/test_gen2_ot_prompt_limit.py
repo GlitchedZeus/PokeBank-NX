@@ -15,10 +15,13 @@ FILES = [
     "src/UI/Gen2PokemonEditorFoundation.inc",
     "src/UI/TrainerViewScreenGSCOverlay.inc",
 ]
-# Owner Oct 28: the prompt may go through UI::ClassicJapaneseNames::prompt(screen.trainer, ...), which
-# opens the kana keyboard on Japanese saves and is the ordinary promptText otherwise; same limit rule.
-PROMPT = re.compile(r'(?:promptText\(|ClassicJapaneseNames::prompt\(\s*screen\.trainer\s*,\s*screen\.sourceGameId\s*,)'
-                    r'\s*"(?:Gen II )?OT Name"\s*,\s*"([^"]*)"\s*,\s*[^,]+,\s*([^;]+?)\)\s*;', re.S)
+# Round 15 (shared keyboard, owner: "Never truncate ... one shared keyboard"): every Gen II OT prompt
+# is UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId,
+# PokeBank::Text::FieldKind::OriginalTrainer, ...), whose cap comes from the field capability
+# (Text/NameFields.cpp nameMaxCharacters: Gen I / II international OT = 7, Japanese 5), checked
+# numerically by tests/test_text_field_capability_matrix.cpp. This test pins that wiring and rule.
+PROMPT = re.compile(r'ClassicJapaneseNames::promptName\(\s*screen\.trainer\s*,\s*screen\.sourceGameId\s*,'
+                    r'\s*PokeBank::Text::FieldKind::(\w+)\s*,\s*"(?:Gen II )?OT Name"', re.S)
 
 
 def main() -> int:
@@ -29,15 +32,17 @@ def main() -> int:
     if "kInternationalTrainerNameMax" not in (ROOT / "src/Integration/Gen2/Gen2StagedEditor.cpp").read_text().split(
             "bool StagedEditor::encodeOTName", 1)[1].split("}", 1)[0]:
         failures.append("encodeOTName no longer uses kInternationalTrainerNameMax")
+    rule = (ROOT / "src/Text/NameFields.cpp").read_text()
+    gen12 = rule.split("case Format::Gen1:", 1)[1].split("case Format::Gen3:", 1)[0]
+    if "if (c.japaneseLayout) return 5;" not in gen12 or "return pokemonName ? 10 : 7;" not in gen12:
+        failures.append("NameFields.cpp no longer caps Gen I / II OT names at 7 (Japanese 5)")
     seen = 0
     for name in FILES:
         text = (ROOT / name).read_text()
-        for guide, limit in PROMPT.findall(text):
+        for kind in PROMPT.findall(text):
             seen += 1
-            if "kInternationalTrainerNameMax" not in limit:
-                failures.append(f"{name}: OT prompt limit is {limit.strip()!r}")
-            if "1-7" not in guide:
-                failures.append(f"{name}: OT prompt guide says {guide!r}")
+            if kind != "OriginalTrainer":
+                failures.append(f"{name}: OT prompt uses field kind {kind!r}")
     if seen != 3:
         failures.append(f"expected 3 Gen II OT prompts, found {seen}")
     if failures:

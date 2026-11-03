@@ -66,9 +66,11 @@ public:
             return false;
         };
         auto decoded=Crypto::decrypt(staged_);
+        // Round 15: the record's own language picks the rule (Text::Gen5NameField): any character
+        // the Gen V fonts draw, never only ASCII; an ASCII name writes the very bytes it always did.
         if(!Crypto::recordSizeValid(decoded.size()) ||
-           !encodeAsciiName5(decoded,nickname,name))
-            return fail("Gen V text must be 1..10 nickname / 1..7 OT ASCII characters");
+           !encodeName5(decoded,nickname,name,Pokemon5ReadOnly(staged_).language()))
+            return fail("Gen V text must be 1..10 nickname / 1..7 OT characters this game can store");
         const auto encrypted=Crypto::encryptCandidate(decoded);
         const Pokemon5ReadOnly checked(encrypted);
         if(!checked.valid() || checked.empty())

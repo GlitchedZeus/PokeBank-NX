@@ -10,6 +10,8 @@
 #include "Utils/FileUtilities.h"
 #include "Utils/HelperUtilities.h"
 #include "Utils/Keyboard.h"
+#include "Text/TextFieldCapability.h"
+#include "UI/Dialogs/KeyboardDialog.h"
 
 namespace UI {
 PKSEFramebuffer::PKSEFramebuffer() : width(1280), height(720) {}
@@ -101,6 +103,35 @@ KeyboardResult promptSystemText(const std::string&, const std::string&, const st
     return HostUi::nextText();
 }
 NumberResult promptNumber(const std::string&, int, int, int) { return HostUi::nextNumber(); }
+KeyboardResult promptName(const PokeBank::Text::TextFieldCapability& field, const std::string& header,
+                          const std::string& initial) {
+    HostUi::NamePrompt record;
+    record.header = header;
+    record.initial = initial;
+    record.maxChars = field.maxCharacters();
+    KeyboardRequest request;
+    request.header = header;
+    request.initialText = initial;
+    request.maxChars = field.maxCharacters();
+    request.field = &field;
+    UI::Dialogs::KeyboardState keyboard;
+    keyboard.open(request, 1280, 720);
+    record.startPage = static_cast<int>(keyboard.page);
+    for (const auto page : keyboard.pageCycle()) record.pages.push_back(static_cast<int>(page));
+    for (const auto& key : keyboard.keys) {
+        if (key.action != UI::Dialogs::KeyboardKeyAction::Type) continue;
+        (key.lowerEnabled ? record.enabledKeys : record.disabledKeys).push_back(key.lowerLabel);
+    }
+    KeyboardResult answer = HostUi::nextText();
+    // The real keyboard cannot return text its field refuses (keys are disabled, OK is refused, the
+    // System keyboard's answer is checked), so a scripted answer that fails is a cancel.
+    if (answer.accepted && !field.check(answer.text).ok()) {
+        record.answerPassedField = false;
+        answer = KeyboardResult{};
+    }
+    HostUi::namePrompts.push_back(std::move(record));
+    return answer;
+}
 KeyboardResult promptJapaneseName(const std::string&, const std::string&, int maxChars) {
     ++HostUi::japanesePromptCount;
     HostUi::lastJapaneseMaxChars = maxChars;

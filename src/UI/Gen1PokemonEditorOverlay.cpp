@@ -20,6 +20,8 @@
 #include "UI/ExportMessages.h"   // Round 14 R08: the one Gen I-V export-result wording
 #include "Utils/FileUtilities.h"
 #include "Utils/Keyboard.h"
+#include "UI/ClassicJapaneseNames.h"   // Round 15: the one shared name prompt
+#include "Text/NameFields.h"
 #include "Utils/PokeBankPaths.h"
 
 #include <algorithm>
@@ -335,8 +337,8 @@ bool editField(TrainerViewScreen& screen) {
                     openSpeciesPicker(state, pokemon->species, false);
                     return true;
                 case 1: {
-                    const auto result = Utils::promptText("Generation I Nickname",
-                        "1-10 supported Gen I characters", pokemon->nickname, 10);
+                    const auto result = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId,
+                        PokeBank::Text::FieldKind::Nickname, "Generation I Nickname", pokemon->nickname);
                     if (!result.accepted) return false;
                     edit.nickname = result.text;
                     break;
@@ -406,8 +408,8 @@ bool editField(TrainerViewScreen& screen) {
         }
         case EditSection::Trainer:
             if (state.row == 0) {
-                const auto result = Utils::promptText("Generation I OT",
-                    "1-7 supported Gen I characters", pokemon->originalTrainer, 7);
+                const auto result = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId,
+                    PokeBank::Text::FieldKind::OriginalTrainer, "Generation I OT", pokemon->originalTrainer);
                 if (!result.accepted) return false;
                 edit.otName = result.text;
             } else {
@@ -442,8 +444,11 @@ bool editDraftField(TrainerViewScreen& screen) {
             return true;
         }
         case 2: {
-            const auto result = Utils::promptText("Add Gen I Pokemon - Nickname",
-                "Blank uses the species name; max 10", state.draft.nickname, 10);
+            // Blank uses the species name, so this field allows an empty answer.
+            const auto field = PokeBank::Text::makeNameField({PokeBank::Text::Format::Gen1,
+                PokeBank::Text::FieldKind::Nickname, 2,
+                UI::ClassicJapaneseNames::japaneseSave(screen.trainer, screen.sourceGameId), true});
+            const auto result = Utils::promptName(*field, "Add Gen I Pokemon - Nickname", state.draft.nickname);
             if (!result.accepted) return false;
             state.draft.nickname = result.text;
             return true;
@@ -467,8 +472,11 @@ bool editDraftField(TrainerViewScreen& screen) {
         case 6:
             if (state.row == 0) {
                 const std::string initial = state.draft.otName.empty() ? screen.trainer.trainerName : state.draft.otName;
-                const auto result = Utils::promptText("Add Gen I Pokemon - OT",
-                    "Blank uses source trainer; max 7", initial, 7);
+                // Blank uses the source trainer, so this field allows an empty answer.
+                const auto field = PokeBank::Text::makeNameField({PokeBank::Text::Format::Gen1,
+                    PokeBank::Text::FieldKind::OriginalTrainer, 2,
+                    UI::ClassicJapaneseNames::japaneseSave(screen.trainer, screen.sourceGameId), true});
+                const auto result = Utils::promptName(*field, "Add Gen I Pokemon - OT", initial);
                 if (!result.accepted) return false;
                 state.draft.otName = result.text;
             } else {

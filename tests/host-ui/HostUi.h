@@ -100,6 +100,20 @@ inline int lastJapaneseMaxChars = 0;                   // the cap the last kana 
 inline int koreanPromptCount = 0;                      // of which Hangul name prompts (promptKoreanName)
 inline int lastKoreanMaxChars = 0;                     // the cap the last Hangul name prompt was opened with
 
+// One Utils::promptName call (the shared name prompt), as the REAL in-app keyboard would show it:
+// the stub opens UI::Dialogs::KeyboardState with the same request and records what it offers.
+struct NamePrompt {
+    std::string header;
+    std::string initial;
+    int maxChars = 0;
+    int startPage = -1;                     // UI::Dialogs::KeyboardPage the card opened on
+    std::vector<int> pages;                 // every page ZL / ZR reaches, in order
+    std::vector<std::string> enabledKeys;   // Type keys (lower label) live on the start page
+    std::vector<std::string> disabledKeys;  // Type keys drawn disabled on the start page
+    bool answerPassedField = true;          // the scripted answer passed field.check()
+};
+inline std::vector<NamePrompt> namePrompts;
+
 inline Utils::NumberResult nextNumber() {
     ++promptCount;
     if (numbers.empty()) return {};

@@ -116,13 +116,21 @@ namespace UI
             }
 
             /// The text pages share their bottom row: the two OTHER pages, the console keyboard,
-            /// space and OK. Twenty-two halves, the width of every row above it.
+            /// space and OK. Twenty-two halves, the width of every row above it. A prompt whose field
+            /// offers no second other page gives Space its width.
             void addTextBottomRow(std::vector<KeyPlan> &plans, KeyboardKeyAction firstPage,
                                   const std::string &firstPageLabel, KeyboardKeyAction secondPage,
                                   const std::string &secondPageLabel)
             {
                 constexpr int bottomRow = KEY_ROW_COUNT - 1;
                 addKey(plans, bottomRow, firstPage, firstPageLabel, 3);
+                if (secondPageLabel.empty())
+                {
+                    addKey(plans, bottomRow, KeyboardKeyAction::SystemKeyboard, "System", 3);
+                    addKey(plans, bottomRow, KeyboardKeyAction::Space, "Space", 11);
+                    addKey(plans, bottomRow, KeyboardKeyAction::Accept, "OK", 5);
+                    return;
+                }
                 addKey(plans, bottomRow, secondPage, secondPageLabel, 3);
                 // Hiragana, kanji and hangul: the scripts this keyboard has no keys for, and the
                 // reason the console's own keyboard is one press away.
@@ -165,7 +173,7 @@ namespace UI
 
             /// Japanese Gen I / II name pages: three rows of up to ten keys from Gen12KanaText.h (every
             /// one encodable), Backspace on the first, then mode / other half / System / Space / OK.
-            void planKanaPage(std::vector<KeyPlan> &plans, KeyboardPage page)
+            void planKanaPage(std::vector<KeyPlan> &plans, KeyboardPage page, bool latinPages)
             {
                 namespace Kana = Utils::Gen12Kana;
                 const auto rows = Kana::pageRows(kanaPage(page));
@@ -185,7 +193,12 @@ namespace UI
                 }
                 constexpr int bottomRow = KEY_ROW_COUNT - 1;
                 const auto current = kanaPage(page);
-                addKey(plans, bottomRow, KeyboardKeyAction::KanaNextMode, std::string(Kana::nextModeLabel(current)), 3);
+                // A field that also stores Latin (Gen III / IV / V Japanese) continues あ -> ア -> １２３
+                // -> ABC; the Gen I / II Japanese font has no Latin, so there it returns to あ.
+                const std::string modeLabel = current == Kana::Page::Symbols && latinPages
+                                                  ? std::string("ABC")
+                                                  : std::string(Kana::nextModeLabel(current));
+                addKey(plans, bottomRow, KeyboardKeyAction::KanaNextMode, modeLabel, 3);
                 if (Kana::hasOtherHalf(current))
                     addKey(plans, bottomRow, KeyboardKeyAction::KanaOtherHalf, std::string(Kana::otherHalfLabel(current)), 3);
                 addKey(plans, bottomRow, KeyboardKeyAction::SystemKeyboard, "System", 3);
@@ -207,7 +220,8 @@ namespace UI
                                  "?123");
             }
 
-            std::vector<KeyPlan> planPage(KeyboardPage page, bool allowNegative, bool koreanHangul)
+            std::vector<KeyPlan> planPage(KeyboardPage page, bool allowNegative,
+                                          const PokeBank::Text::KeyboardProfile &profile)
             {
                 std::vector<KeyPlan> plans;
                 if (page == KeyboardPage::Hangul)
@@ -215,14 +229,18 @@ namespace UI
                     planHangulPage(plans);
                     return plans;
                 }
-                // A Korean name's Letters and Symbols pages lead back to Hangul in place of Accents,
-                // which stay one ZL / ZR press away.
-                const KeyboardKeyAction otherPage = koreanHangul ? KeyboardKeyAction::ShowHangul
-                                                                 : KeyboardKeyAction::ShowAccents;
-                const std::string otherPageLabel = koreanHangul ? "한" : "àé";
+                // A Korean name's Letters and Symbols pages lead back to Hangul, a Japanese one's to
+                // the kana pages, in place of Accents (still one ZL / ZR press away when offered).
+                const KeyboardKeyAction otherPage = profile.hangul ? KeyboardKeyAction::ShowHangul
+                                                    : profile.kana ? KeyboardKeyAction::ShowKana
+                                                                   : KeyboardKeyAction::ShowAccents;
+                const std::string otherPageLabel = profile.hangul    ? "한"
+                                                   : profile.kana    ? "あ"
+                                                   : profile.accents ? "àé"
+                                                                     : "";
                 if (isKanaPage(page))
                 {
-                    planKanaPage(plans, page);
+                    planKanaPage(plans, page, profile.latin);
                     return plans;
                 }
                 switch (page)
@@ -269,6 +287,19 @@ namespace UI
                     break;
                 }
                 return plans;
+            }
+
+            /// The full-width form of a one-character ASCII label (A -> Ａ, 1 -> １), else the label.
+            std::string fullWidthLabel(const std::string &label)
+            {
+                if (label.size() != 1 || label[0] < 0x21 || label[0] > 0x7E)
+                    return label;
+                const char32_t c = static_cast<char32_t>(label[0]) + 0xFEE0;
+                std::string out;
+                out.push_back(static_cast<char>(0xE0 | (c >> 12)));
+                out.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
+                out.push_back(static_cast<char>(0x80 | (c & 0x3F)));
+                return out;
             }
 
             bool isInside(int pointX, int pointY, int rectX, int rectY, int rectWidth, int rectHeight)
@@ -323,10 +354,75 @@ namespace UI
             keys.clear();
             selectedKeyIndex = 0;
             hangulComposing = false;
-            buildPage(request.digitsOnly     ? KeyboardPage::Digits
-                      : request.japaneseKana ? KeyboardPage::HiraganaA
-                      : request.koreanHangul ? KeyboardPage::Hangul
-                                             : KeyboardPage::Letters);
+            // The field decides the pages; the two legacy flags are kept only for a request that
+            // names no field (a Japanese Gen I / II kana prompt, a Korean Gen IV prompt).
+            namespace T = PokeBank::Text;
+            if (request.field)
+            {
+                profile = request.field->keyboard();
+                const int fieldMax = request.field->maxCharacters();
+                if (this->request.maxChars <= 0 || this->request.maxChars > fieldMax)
+                    this->request.maxChars = fieldMax;
+            }
+            else if (request.japaneseKana)
+                profile = T::japaneseProfile(false);
+            else if (request.koreanHangul)
+                profile = T::koreanProfile();
+            else
+                profile = T::latinProfile();
+            using Start = T::KeyboardProfile::Start;
+            buildPage(request.digitsOnly                 ? KeyboardPage::Digits
+                      : profile.start == Start::Kana   ? KeyboardPage::HiraganaA
+                      : profile.start == Start::Hangul ? KeyboardPage::Hangul
+                                                       : KeyboardPage::Letters);
+            refreshVerdict();
+        }
+
+        std::vector<KeyboardPage> KeyboardState::pageCycle() const
+        {
+            if (request.digitsOnly)
+                return {KeyboardPage::Digits};
+            std::vector<KeyboardPage> pages;
+            const auto addKana = [&] {
+                if (!profile.kana)
+                    return;
+                for (const KeyboardPage kanaPage : {KeyboardPage::HiraganaA, KeyboardPage::HiraganaB,
+                                                    KeyboardPage::KatakanaA, KeyboardPage::KatakanaB,
+                                                    KeyboardPage::KanaSymbols})
+                    pages.push_back(kanaPage);
+            };
+            const auto addHangul = [&] {
+                if (profile.hangul)
+                    pages.push_back(KeyboardPage::Hangul);
+            };
+            const auto addLatin = [&] {
+                if (profile.latin)
+                    pages.push_back(KeyboardPage::Letters);
+                if (profile.symbols)
+                    pages.push_back(KeyboardPage::Symbols);
+                if (profile.accents)
+                    pages.push_back(KeyboardPage::Accents);
+            };
+            using Start = PokeBank::Text::KeyboardProfile::Start;
+            if (profile.start == Start::Kana)
+            {
+                addKana();
+                addHangul();
+                addLatin();
+            }
+            else if (profile.start == Start::Hangul)
+            {
+                addHangul();
+                addLatin();
+                addKana();
+            }
+            else
+            {
+                addLatin();
+                addKana();
+                addHangul();
+            }
+            return pages;
         }
 
         void KeyboardState::buildPage(KeyboardPage newPage)
@@ -339,7 +435,7 @@ namespace UI
                 keepSelection ? keys[selectedKeyIndex].keyX + keys[selectedKeyIndex].keyWidth / 2 : 0;
 
             page = newPage;
-            const std::vector<KeyPlan> plans = planPage(newPage, request.allowNegative, request.koreanHangul);
+            const std::vector<KeyPlan> plans = planPage(newPage, request.allowNegative, profile);
 
             // Rows start at the widest row's left edge rather than each being centred, so a short row
             // -- the number pad's third, without a sign key -- keeps its columns under the ones above.
@@ -385,6 +481,22 @@ namespace UI
                 key.keyY = keyRowsTop + plan.rowIndex * (KEY_HEIGHT + KEY_GAP);
                 key.keyWidth = plan.widthInHalfKeys * HALF_KEY_PITCH - KEY_GAP;
                 key.keyHeight = KEY_HEIGHT;
+                if (key.action == KeyboardKeyAction::Type)
+                {
+                    // A Japanese record's ABC / ?123 keys type what its game stores: full width.
+                    if (profile.fullWidthLatin && (newPage == KeyboardPage::Letters || newPage == KeyboardPage::Symbols))
+                    {
+                        key.lowerLabel = fullWidthLabel(key.lowerLabel);
+                        key.upperLabel = fullWidthLabel(key.upperLabel);
+                    }
+                    // Every key the field cannot store is disabled. Hangul keys are jamo that only
+                    // become storable once composed, so that page is checked live instead.
+                    if (request.field && newPage != KeyboardPage::Hangul)
+                    {
+                        key.lowerEnabled = request.field->glyphsAllowed(key.lowerLabel);
+                        key.upperEnabled = request.field->glyphsAllowed(key.upperLabel);
+                    }
+                }
                 keys.push_back(std::move(key));
                 rowCursorX += plan.widthInHalfKeys * HALF_KEY_PITCH;
             }
@@ -541,43 +653,25 @@ namespace UI
             if (page != KeyboardPage::Digits)
             {
                 if (buttonsDown & HidNpadButton_Y)
-                    insertText(request.japaneseKana ? "\u3000" : " ");
+                    typeSpace();
                 if ((buttonsDown & HidNpadButton_X) && page != KeyboardPage::Symbols && !isKanaPage(page))
                     shift = (shift == ShiftMode::Off) ? ShiftMode::Once : ShiftMode::Off;
-                if ((buttonsDown & (HidNpadButton_ZL | HidNpadButton_ZR)) && request.japaneseKana)
+                if (buttonsDown & (HidNpadButton_ZL | HidNpadButton_ZR))
                 {
-                    // Japanese names: ZL / ZR walk the five kana pages in order.
-                    constexpr KeyboardPage kanaPages[] = {KeyboardPage::HiraganaA, KeyboardPage::HiraganaB,
-                                                          KeyboardPage::KatakanaA, KeyboardPage::KatakanaB,
-                                                          KeyboardPage::KanaSymbols};
-                    constexpr int kanaPageCount = 5;
-                    int current = 0;
-                    for (int i = 0; i < kanaPageCount; ++i)
-                        if (kanaPages[i] == page)
-                            current = i;
-                    const int pageStep = (buttonsDown & HidNpadButton_ZR) ? 1 : kanaPageCount - 1;
-                    buildPage(kanaPages[(current + pageStep) % kanaPageCount]);
-                }
-                else if ((buttonsDown & (HidNpadButton_ZL | HidNpadButton_ZR)) && request.koreanHangul)
-                {
-                    // Korean names: ZL / ZR walk Hangul -> Letters -> Symbols -> Accents.
-                    constexpr KeyboardPage koreanPages[] = {KeyboardPage::Hangul, KeyboardPage::Letters,
-                                                            KeyboardPage::Symbols, KeyboardPage::Accents};
-                    constexpr int koreanPageCount = 4;
-                    int current = 0;
-                    for (int i = 0; i < koreanPageCount; ++i)
-                        if (koreanPages[i] == page)
-                            current = i;
-                    const int pageStep = (buttonsDown & HidNpadButton_ZR) ? 1 : koreanPageCount - 1;
-                    buildPage(koreanPages[(current + pageStep) % koreanPageCount]);
-                }
-                else if (buttonsDown & (HidNpadButton_ZL | HidNpadButton_ZR))
-                {
-                    constexpr KeyboardPage textPages[] = {KeyboardPage::Letters, KeyboardPage::Symbols,
-                                                          KeyboardPage::Accents};
-                    constexpr int textPageCount = 3;
-                    const int pageStep = (buttonsDown & HidNpadButton_ZR) ? 1 : textPageCount - 1;
-                    buildPage(textPages[(static_cast<int>(page) + pageStep) % textPageCount]);
+                    // ZL / ZR walk exactly the pages this field offers (pageCycle): the five kana
+                    // pages then ABC for a Japanese record, Hangul -> Letters -> Symbols -> Accents for
+                    // a Korean one, Letters -> Symbols -> Accents otherwise.
+                    const std::vector<KeyboardPage> pages = pageCycle();
+                    if (!pages.empty())
+                    {
+                        int current = 0;
+                        for (int i = 0; i < static_cast<int>(pages.size()); ++i)
+                            if (pages[static_cast<size_t>(i)] == page)
+                                current = i;
+                        const int count = static_cast<int>(pages.size());
+                        const int pageStep = (buttonsDown & HidNpadButton_ZR) ? 1 : count - 1;
+                        buildPage(pages[static_cast<size_t>((current + pageStep) % count)]);
+                    }
                 }
             }
             if (buttonsActing & HidNpadButton_L)
@@ -603,6 +697,11 @@ namespace UI
             switch (key.action)
             {
             case KeyboardKeyAction::Type:
+                if (!(shift != ShiftMode::Off ? key.upperEnabled : key.lowerEnabled))
+                {
+                    refuseGlyph(shift != ShiftMode::Off ? key.upperLabel : key.lowerLabel);
+                    break;
+                }
                 if (page == KeyboardPage::Hangul)
                 {
                     typeHangul(shift != ShiftMode::Off ? key.upperLabel : key.lowerLabel);
@@ -622,8 +721,7 @@ namespace UI
                                                    : ShiftMode::Off;
                 break;
             case KeyboardKeyAction::Space:
-                // The Japanese Gen I / II font has only the full-width space (byte 0x7F).
-                insertText(request.japaneseKana ? "\u3000" : " ");
+                typeSpace();
                 break;
             case KeyboardKeyAction::Accept:
                 tryAccept();
@@ -634,7 +732,10 @@ namespace UI
                 applyKanaModifier(key.action);
                 break;
             case KeyboardKeyAction::KanaNextMode:
-                buildPage(dialogPage(Utils::Gen12Kana::nextMode(kanaPage(page))));
+                if (page == KeyboardPage::KanaSymbols && profile.latin)
+                    buildPage(KeyboardPage::Letters);
+                else
+                    buildPage(dialogPage(Utils::Gen12Kana::nextMode(kanaPage(page))));
                 break;
             case KeyboardKeyAction::KanaOtherHalf:
                 buildPage(dialogPage(Utils::Gen12Kana::otherHalf(kanaPage(page))));
@@ -663,6 +764,9 @@ namespace UI
                 break;
             case KeyboardKeyAction::ShowHangul:
                 buildPage(KeyboardPage::Hangul);
+                break;
+            case KeyboardKeyAction::ShowKana:
+                buildPage(KeyboardPage::HiraganaA);
                 break;
             case KeyboardKeyAction::SystemKeyboard:
                 handOffToSystemKeyboard();
@@ -776,8 +880,66 @@ namespace UI
         void KeyboardState::textEdited()
         {
             caretBlinkFrames = 0;
+            refreshVerdict();
             if (request.textChanged)
                 request.textChanged(text);
+        }
+
+        void KeyboardState::refreshVerdict()
+        {
+            namespace T = PokeBank::Text;
+            fieldOk = true;
+            fieldReason.clear();
+            if (!request.field)
+                return;
+            const T::TextVerdict verdict = request.field->check(text);
+            if (verdict.ok())
+                return;
+            fieldOk = false;
+            // An empty field is where every prompt starts; OK still refuses it, with the reason.
+            if (verdict.refusal == T::Refusal::Empty)
+                return;
+            if (verdict.refusal == T::Refusal::UnsupportedGlyph && verdict.firstBad != 0)
+            {
+                std::u16string bad;
+                if (verdict.firstBad > 0xFFFF)
+                {
+                    const char32_t v = verdict.firstBad - 0x10000;
+                    bad.push_back(static_cast<char16_t>(0xD800 + (v >> 10)));
+                    bad.push_back(static_cast<char16_t>(0xDC00 + (v & 0x3FF)));
+                }
+                else
+                {
+                    bad.push_back(static_cast<char16_t>(verdict.firstBad));
+                }
+                fieldReason = "This game cannot store " + Utils::utf16ToUtf8(bad) + ".";
+                return;
+            }
+            if (verdict.refusal == T::Refusal::TooLong)
+            {
+                fieldReason = "Too long: at most " + std::to_string(request.field->maxCharacters()) + " characters.";
+                return;
+            }
+            fieldReason = T::reason(verdict.refusal);
+        }
+
+        void KeyboardState::refuseGlyph(const std::string &label)
+        {
+            refusedFrames = REFUSED_REASON_FRAMES;
+            refusalReason = "This game cannot store " + label + ".";
+        }
+
+        void KeyboardState::typeSpace()
+        {
+            // A Japanese name's space is the full-width one its font has (Gen I / II byte 0x7F, Gen III
+            // 0x00, the Gen 4 code page's 0x001).
+            const std::string space = profile.fullWidthSpace ? "\u3000" : " ";
+            if (request.field && !request.field->glyphsAllowed(space))
+            {
+                refuseGlyph("a space");
+                return;
+            }
+            insertText(space);
         }
 
         void KeyboardState::toggleSign()
@@ -849,6 +1011,11 @@ namespace UI
                 refusalReason.clear();
                 return;
             }
+            if (request.field && !request.field->glyphsAllowed(std::string(replacement)))
+            {
+                refuseGlyph(std::string(replacement));
+                return;
+            }
             text.replace(characterStart, caretOffset - characterStart, replacement);
             caretOffset = characterStart + replacement.size();
             textEdited();
@@ -906,7 +1073,7 @@ namespace UI
                     return false;
                 }
             }
-            if (request.japaneseKana && !candidate.empty())
+            if (request.japaneseKana && !request.field && !candidate.empty())
             {
                 std::vector<uint8_t> encoded;
                 if (Utils::Gen12Kana::encode(candidate, static_cast<std::size_t>(std::max(request.maxChars, 0)),
@@ -996,8 +1163,12 @@ namespace UI
 
                 // Right-aligned: how full the field is -- or, for a number, the range it must fall in,
                 // since a count of digits says nothing useful there.
+                // Live: a refusal just made, else what the field says about the text as it stands
+                // (too long, a character this game cannot store), else how full the field is.
+                const bool liveProblem = keyboard.request.field && !keyboard.fieldOk && !keyboard.fieldReason.empty();
                 const std::string tally = keyboard.refusedFrames > 0 && !keyboard.refusalReason.empty()
                                               ? keyboard.refusalReason
+                                          : liveProblem ? keyboard.fieldReason
                                           : keyboard.request.digitsOnly
                                               ? keyboard.request.guide
                                               : std::to_string(characterCount(keyboard.text)) + " / " +
@@ -1006,7 +1177,7 @@ namespace UI
                 framebuffer.measureText(tally, tallyWidth, tallyHeight, TextStyle::Caption);
                 const int tallyX = keyboard.fieldX + keyboard.fieldWidth - FIELD_INSET - tallyWidth;
                 framebuffer.drawText(tallyX, framebuffer.textYCenteredOn(fieldCenterY, TextStyle::Caption), tally,
-                                     keyboard.refusedFrames > 0 ? Colors::ShinyStar : Colors::TextDim,
+                                     keyboard.refusedFrames > 0 || liveProblem ? Colors::ShinyStar : Colors::TextDim,
                                      TextStyle::Caption);
 
                 const int textLeft = dividerX + 14;
@@ -1091,6 +1262,12 @@ namespace UI
                 case KeyboardKeyAction::Type:
                     fillColor = Colors::PanelAlt;
                     labelStyle = TextStyle::Heading;
+                    // A key the field cannot store stays visible, dimmed on the darker surface.
+                    if (!(keyboard.shift != ShiftMode::Off ? key.upperEnabled : key.lowerEnabled))
+                    {
+                        fillColor = Colors::Background;
+                        labelColor = Colors::TextDim;
+                    }
                     break;
                 case KeyboardKeyAction::Space:
                     fillColor = Colors::PanelAlt;
@@ -1102,6 +1279,12 @@ namespace UI
                     labelColor = Colors::PrimaryText;
                     labelStyle = TextStyle::Heading;
                     fillShowsState = true;
+                    // OK greys out while the field refuses the text (pressing it says why).
+                    if (keyboard.request.field && !keyboard.fieldOk)
+                    {
+                        fillColor = Colors::PanelAlt;
+                        labelColor = Colors::TextDim;
+                    }
                     break;
                 case KeyboardKeyAction::Shift:
                     if (keyboard.shift == ShiftMode::Locked)

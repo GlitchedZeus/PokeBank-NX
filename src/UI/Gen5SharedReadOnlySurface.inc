@@ -437,14 +437,19 @@ struct Gen5Editor {
                 return true;
             case Nickname: case OriginalTrainer: {
                 const bool nickname = row == Nickname;
-                // The ASCII write gate seeds the prompt: a stored Japanese / Korean / accented name is
-                // never re-encoded. It can only be replaced, and the guide says so (Round 11 H27).
-                const auto current = PokeVault::Integration::Gen5::asciiName5(p.decodedBytes(), nickname);
-                const char* guide = current ? (nickname ? "1-10 ASCII characters" : "1-7 ASCII characters")
-                                            : (nickname ? "Native name: replace with 1-10 ASCII characters"
-                                                        : "Native name: replace with 1-7 ASCII characters");
-                const auto r = Utils::promptText(nickname ? "Nickname" : "Original Trainer", guide,
-                    current ? *current : std::string{}, nickname ? 10 : 7);
+                // Round 15 (shared keyboard): the record's own language picks the pages -- kana and
+                // full-width ABC for a Japanese record, Hangul for a Korean one, Latin + accents
+                // otherwise -- and Text::Gen5NameField is the rule the keyboard checks live and the
+                // writer (encodeName5) applies. A stored name the writer could not store byte-for-byte
+                // is not seeded (it is replaced, never re-encoded).
+                const auto current = PokeVault::Integration::Gen5::editableName5(p.decodedBytes(), nickname,
+                                                                                 p.language());
+                const auto field = PokeBank::Text::makeNameField(
+                    {PokeBank::Text::Format::Gen5,
+                     nickname ? PokeBank::Text::FieldKind::Nickname : PokeBank::Text::FieldKind::OriginalTrainer,
+                     p.language(), false});
+                const auto r = Utils::promptName(*field, nickname ? "Nickname" : "Original Trainer",
+                                                 current ? *current : std::string{});
                 if (r.accepted && !d.stageName(nickname ? Field::NicknameText : Field::OriginalTrainerText,
                                                r.text, error))
                     refused(error);
@@ -1402,9 +1407,11 @@ bool handleTrainerEditor(TrainerViewScreen& screen,u64 keys,int tap) {
     bool staged=false,accepted=false;
     switch(editor.selectedRow()) {
         case Row::Name: {
-            const auto r=Utils::promptText("Generation V Trainer Name",
-                "1-7 printable ASCII characters",
-                G::asciiTrainerName5(current->rawName),G::TrainerLayout5::MaxNameChars);
+            // Round 15: the shared name prompt, pages from the save's language (Gen5NameField).
+            const auto field=PokeBank::Text::makeNameField({PokeBank::Text::Format::Gen5,
+                PokeBank::Text::FieldKind::TrainerName,current->language,false});
+            const auto r=Utils::promptName(*field,"Generation V Trainer Name",
+                G::editableTrainerName5(current->rawName,current->language));
             if((accepted=r.accepted))staged=editor.applyName(ws,r.text,refresh,error);
             break;
         }

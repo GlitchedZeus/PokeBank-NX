@@ -8,6 +8,7 @@
 #include "Inventory/ClassicInventoryCatalog.h"
 #include "UI/SharedPokemonShell.h"
 #include "UI/ClassicTrainerSessionInput.h"
+#include "Pokemon/Pokemon3FRLG.h"
 #include "UI/ClassicReviewOrigin.h"
 #include "Pokemon/PersonalInfoTable.h"
 #include "Encryption/Encryption3FRLG.h"
@@ -850,6 +851,27 @@ void applyValuePicker(State& state) {
     state.previewValid = false;
 }
 
+// Round 15 (shared keyboard): a Gen III name field's capability. The nickname is in the record's
+// own language; the OT in Pokemon3FRLG::otTextLanguage (an Egg's OT is in the save's charset, its
+// record language being the Japanese placeholder). GEN3_JP opens kana + full-width ABC, GEN3_EN
+// Latin + accents; every key the table lacks is disabled (Text::Gen3NameField).
+std::unique_ptr<PokeBank::Text::TextFieldCapability> gen3NameField(TrainerViewScreen& screen,
+                                                                   const Gen3::StagedPokemonRecord& p,
+                                                                   PokeBank::Text::FieldKind kind) {
+    const auto* staged = editor(screen);
+    const uint8_t saveLanguage = staged ? staged->trainer().language : uint8_t{2};
+    uint8_t language = p.language;
+    if (kind == PokeBank::Text::FieldKind::OriginalTrainer) {
+        Pokemon::Pokemon3FRLG pokemon(std::span<const std::byte>(
+            reinterpret_cast<const std::byte*>(p.encryptedBytes.data()), p.encryptedBytes.size()));
+        pokemon.setSaveLanguage(saveLanguage);
+        language = pokemon.otTextLanguage();
+    } else if (language == 0) {
+        language = saveLanguage;   // a fresh Create draft: the save's charset
+    }
+    return PokeBank::Text::makeNameField({PokeBank::Text::Format::Gen3, kind, language, false});
+}
+
 void editDetail(TrainerViewScreen& screen, State& state, int row) {
     auto& p = state.session.working;
     if (!detailEditable(state, row)) {
@@ -865,8 +887,8 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         return;
     }
     if (row == 1) {
-        const auto r = Utils::promptText("Generation III Nickname", "1-10 Gen III characters",
-                                         p.nickname, 10);
+        const auto field = gen3NameField(screen, p, PokeBank::Text::FieldKind::Nickname);
+        const auto r = Utils::promptName(*field, "Generation III Nickname", p.nickname);
         if (r.accepted) p.nickname = r.text;
         return;
     }
@@ -885,8 +907,8 @@ void editDetail(TrainerViewScreen& screen, State& state, int row) {
         return;
     }
     if (row == 4) {
-        const auto r = Utils::promptText("Generation III OT", "1-7 Gen III characters",
-                                         p.otName, 7);
+        const auto field = gen3NameField(screen, p, PokeBank::Text::FieldKind::OriginalTrainer);
+        const auto r = Utils::promptName(*field, "Generation III OT", p.otName);
         if (r.accepted) p.otName = r.text;
         return;
     }
@@ -2703,9 +2725,11 @@ bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64
     UI::ClassicTrainerSession::Fields fields;
     fields.name = trainer->trainerName();
     fields.money = trainer->money();
-    fields.nameMax = Gen3::Gen3StagedTrainerEditor::kNameMax;
     fields.moneyMax = Gen3::Gen3StagedTrainerEditor::kMaxMoney;
-    fields.nameGuide = "1-7 characters the game can store";
+    // The save's charset (international; a Japanese save's name stays read-only, §7.4).
+    fields.nameField = PokeBank::Text::makeNameField(
+        {PokeBank::Text::Format::Gen3, PokeBank::Text::FieldKind::TrainerName,
+         editor(screen) ? editor(screen)->trainer().language : uint8_t{2}, false});
     fields.nameEditable = trainer->nameEditable();
     fields.nameReadOnlyReason = "Japanese Gen III trainer names are read-only here";
     // P3: native Play Time and Trainer Gender (SaveBlock2), applied to the verified export copy.

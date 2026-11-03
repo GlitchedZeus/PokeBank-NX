@@ -386,8 +386,10 @@ void gen5() {
                     const auto record = re ? re->partyPokemon(0) : std::nullopt;
                     expect(record.has_value(), "Gen V reparse");
                     if (record) {
-                        const auto name = G5::asciiName5(record->decodedBytes(), nickname);
-                        expect(name.has_value(), "Gen V reparsed name is native ASCII");
+                        // Round 15: Gen V names are no longer ASCII-only (Text::Gen5NameField); the
+                        // reparsed name is read through the same rule the writer used.
+                        const auto name = G5::editableName5(record->decodedBytes(), nickname, record->language());
+                        expect(name.has_value(), "Gen V reparsed name reads back through the Gen V rule");
                         if (name) c.readBack = *name;
                     }
                 }
@@ -404,7 +406,8 @@ void gen5() {
         c.accepted = trainer->setName(in.text, &error);
         c.error = error;
         c.unchanged = !trainer->dirty();
-        if (c.accepted) c.readBack = Utils::utf16ToUtf8(trainer->current().rawName);
+        // As the game shows it: the half-width gender signs read as ♂ / ♀ (Round 15 Gen V names).
+        if (c.accepted) c.readBack = G5::trainerNameText5(trainer->current().rawName);
         judge("Gen V", "trainer", in, c);
     }
 }

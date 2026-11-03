@@ -2,12 +2,14 @@
 #include "UI/ClassicTrainerEditability.h"
 #include "UI/TouchInput.h"
 #include "UI/TrainerViewScreen.h"
+#include "Text/TextFieldCapability.h"
 #include "Utils/Keyboard.h"
 
 #include "Integration/Common/NativePlayTime.h"
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -20,13 +22,13 @@ namespace UI::ClassicTrainerSession {
 struct Fields {
     std::string name;
     uint32_t money = 0;
-    int nameMax = 7;
     uint32_t moneyMax = 0;
-    const char* nameGuide = "";
     bool nameEditable = true;
     const char* nameReadOnlyReason = "";
-    // Japanese Gen I / II save: the name prompt opens the kana keyboard (5 characters).
-    bool nameJapanese = false;
+    // Round 15 (shared keyboard): the trainer-name field's capability (Text/NameFields.h). The
+    // Name row opens Utils::promptName with it: its pages (kana for a Japanese Gen I / II save),
+    // its disabled keys, its cap and its live check. Required for an editable name.
+    std::shared_ptr<const PokeBank::Text::TextFieldCapability> nameField;
     // P3 (Round 5): optional Play Time and Gender rows. Each is offered only when its stager is set,
     // i.e. when the generation has a source-backed native writer; accepted values are staged in the
     // same workspace as Name / Money (Review lists them, Discard restores them, Export writes them).
@@ -105,13 +107,11 @@ bool handle(TrainerViewScreen& screen, uint64_t down, uint64_t held, int stickX,
     uint32_t money = fields.money;
     bool accepted = false;
     if (screen.trainerSelectedRow == 0) {
-        if (!fields.nameEditable) {
+        if (!fields.nameEditable || !fields.nameField) {
             screen.postStatus(fields.nameReadOnlyReason, 300);
             return true;
         }
-        const auto result = fields.nameJapanese
-            ? Utils::promptJapaneseName("Trainer Name", name, std::min(fields.nameMax, 5))
-            : Utils::promptText("Trainer Name", fields.nameGuide, name, fields.nameMax);
+        const auto result = Utils::promptName(*fields.nameField, "Trainer Name", name);
         accepted = result.accepted && result.text != name;
         if (accepted) name = result.text;
     } else {

@@ -4,14 +4,14 @@
 # archive (Makefile.host.host-ui), so they exist only where that harness does (GCC).
 ifneq ($(HOST_UI_COMPILER_IS_CLANG),yes)
 TEXTSAFETY_TESTS := test_name_writers_all_or_nothing test_text_safety_matrix_gen15 \
-	test_ui_system_keyboard_validation_host
+	test_ui_system_keyboard_validation_host test_text_field_capability_matrix test_ui_name_prompts_by_language_host
 TEXTSAFETY_BINS := $(addprefix $(HOST_BUILD)/,$(TEXTSAFETY_TESTS))
 TEXTSAFETY_SANITIZE_BINS := $(addsuffix _sanitize,$(TEXTSAFETY_BINS))
 HOST_TESTS += $(TEXTSAFETY_BINS)
 HOST_SANITIZE_TESTS += $(TEXTSAFETY_SANITIZE_BINS)
 host-test: $(TEXTSAFETY_BINS)
 host-sanitize: $(TEXTSAFETY_SANITIZE_BINS)
-TEXTSAFETY_INPUTS := include/Text/TextFieldCapability.h include/UI/BackupNameRule.h tests/host-ui/HostUi.h \
+TEXTSAFETY_INPUTS := include/Text/TextFieldCapability.h include/Text/NameFields.h include/UI/BackupNameRule.h tests/host-ui/HostUi.h \
 	tests/fuzz_synthetic_saves.h tests/fixtures/gsc_pokemon_fixture.h $(HOST_UI_STUBS)
 $(TEXTSAFETY_BINS): $(HOST_BUILD)/%: tests/%.cpp $(TEXTSAFETY_INPUTS) $(HOST_UI_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)

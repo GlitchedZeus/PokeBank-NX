@@ -478,7 +478,7 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
             return false;
         }
         if (focus.row == 1) {
-            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Nickname", "1-10 Generation II characters", p.nickname, 10);
+            const auto result = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId, PokeBank::Text::FieldKind::Nickname, "Nickname", p.nickname);
             if (result.accepted) p.nickname = result.text;
             return true;
         }
@@ -516,9 +516,7 @@ bool activateUnifiedField(TrainerViewScreen& screen, State& state, const Unified
         }
         if (focus.row == 4) {
             // An OT is a player name: 7 international characters (the staged editor enforces it).
-            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "OT Name", "1-7 Generation II characters",
-                                                  p.originalTrainer,
-                                                  static_cast<int>(PokeVault::Integration::Gen2::kInternationalTrainerNameMax));
+            const auto result = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId, PokeBank::Text::FieldKind::OriginalTrainer, "OT Name", p.originalTrainer);
             if (result.accepted) p.originalTrainer = result.text;
             return true;
         }

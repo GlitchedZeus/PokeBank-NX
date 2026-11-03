@@ -144,7 +144,7 @@ public:
             return false;
         }
 
-        // Name changes use only exact-width native UTF-16 ASCII transactions.
+        // Name changes use only exact-width native UTF-16 transactions (encodeName5).
         // Keep replays through the workspace's field whitelist, then validates
         // the complete encrypted PK5 against the original local draft.
         const auto replayName=[&](bool nickname)->bool {
@@ -154,9 +154,9 @@ public:
                  0x80000000u);
             if(!nativeNameBytesDiffer5(oldBytes,newBytes,nickname) && !flagChange)
                 return true;
-            const auto value=asciiName5(newBytes,nickname);
+            const auto value=editableName5(newBytes,nickname,after.language());
             if(!value || value->empty()) {
-                error="Gen V modified name is not representable in native ASCII";
+                error="Gen V modified name is not representable in this game's text";
                 return false;
             }
             if(location_.region==Region::Party)

@@ -370,7 +370,7 @@ void ux3HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
             const std::string initial = add
                 ? (state.draft.nickname.empty() ? std::string(Names::getSpeciesName(state.draft.species)) : state.draft.nickname)
                 : pokemon->nickname;
-            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
+            const auto result = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId, PokeBank::Text::FieldKind::Nickname, "Generation I Nickname", initial);
             if (!result.accepted) break;
             if (add) state.draft.nickname = result.text;
             else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change staged; source .srm unchanged"); }
@@ -388,7 +388,7 @@ void ux3HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
             const std::string initial = add
                 ? (state.draft.otName.empty() ? e->view().trainer().name : state.draft.otName)
                 : pokemon->originalTrainer;
-            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I OT", "1-7 supported Gen I characters", initial, 7);
+            const auto result = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId, PokeBank::Text::FieldKind::OriginalTrainer, "Generation I OT", initial);
             if (!result.accepted) break;
             if (add) state.draft.otName = result.text;
             else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change staged; source .srm unchanged"); }

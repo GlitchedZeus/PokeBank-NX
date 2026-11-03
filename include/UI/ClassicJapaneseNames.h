@@ -1,16 +1,20 @@
 #pragma once
-// Japanese Gen I / II name prompts (owner Oct 28). On a Japanese save every Nickname / OT / Trainer
-// name prompt opens the kana keyboard (Utils::promptJapaneseName: あ / ア / １２３ pages, 5
-// characters); elsewhere it is the ordinary prompt, unchanged. The writers still validate every
-// name (Utils::Gen12Kana::encode). While Integration/Common/JapaneseEditingGate.h is closed no
-// Japanese Gen I / II editor exists, so these prompts are only reached once the owner opens it.
+// Gen I / II name prompts (owner Oct 28; Round 15 shared keyboard). Every Nickname / OT / Trainer
+// name prompt of a Gen I / II save goes through Utils::promptName with the field's capability
+// (Text/NameFields.h Gen12NameField): on a Japanese save the kana pages (あ / ア / １２３, 5
+// characters, Utils/Gen12KanaText.h), elsewhere Latin + the font's symbols + the European accents,
+// with every key the generation's own encoder refuses disabled. The writers still validate every
+// name. While Integration/Common/JapaneseEditingGate.h is closed no Japanese Gen I / II editor
+// exists, so the kana prompts are only reached once the owner opens it.
 
 #include "Legacy/GSCReadOnlyTrainer.h"
 #include "Legacy/RBYReadOnlyTrainer.h"
+#include "Text/NameFields.h"
 #include "Utils/Gen12KanaText.h"
 #include "Utils/Keyboard.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -32,16 +36,20 @@ namespace UI::ClassicJapaneseNames {
     return false;
 }
 
-// The guide a Japanese prompt shows instead of the Latin "1-10 ... characters" text.
-inline constexpr const char* kKanaGuide = "1-5 kana (あ / ア / １２３ pages)";
+// The capability of one Gen I / II name field of this save (Text/NameFields.h).
+[[nodiscard]] inline std::unique_ptr<PokeBank::Text::TextFieldCapability> field(
+    const Trainer::Trainer& trainer, std::string_view sourceGameId, PokeBank::Text::FieldKind kind) {
+    return PokeBank::Text::makeNameField({gen2Id(sourceGameId) ? PokeBank::Text::Format::Gen2
+                                                               : PokeBank::Text::Format::Gen1,
+                                          kind, 2, japaneseSave(trainer, sourceGameId)});
+}
 
-[[nodiscard]] inline Utils::KeyboardResult prompt(const Trainer::Trainer& trainer, std::string_view sourceGameId,
-                                                  const std::string& header,
-                                                  const std::string& guide, const std::string& initial,
-                                                  int maxChars) {
-    if (!japaneseSave(trainer, sourceGameId)) return Utils::promptText(header, guide, initial, maxChars);
-    return Utils::promptJapaneseName(header, initial,
-                                     std::min<int>(maxChars, static_cast<int>(Utils::Gen12Kana::kMaxNameChars)));
+// The one Gen I / II name prompt: Utils::promptName with that field.
+[[nodiscard]] inline Utils::KeyboardResult promptName(const Trainer::Trainer& trainer, std::string_view sourceGameId,
+                                                      PokeBank::Text::FieldKind kind, const std::string& header,
+                                                      const std::string& initial) {
+    const auto capability = field(trainer, sourceGameId, kind);
+    return Utils::promptName(*capability, header, initial);
 }
 
 }  // namespace UI::ClassicJapaneseNames

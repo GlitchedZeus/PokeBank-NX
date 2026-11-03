@@ -622,6 +622,13 @@ void putEditableDVs(PokemonRecord& p, const std::array<uint8_t, 4>& dvs) noexcep
 
 } // namespace
 
+bool encodeGen2Name(RegionLayout region, std::size_t maxChars, std::string_view name,
+                    std::vector<uint8_t>& encoded, std::string& error) {
+    if (region == RegionLayout::Japanese)
+        return encodeJapaneseKana(name, kJapaneseNameMax + 1, encoded, error, "Name");
+    return encodeInternationalASCII(name, maxChars, kInternationalPokemonNameMax + 1, encoded, error, "Name");
+}
+
 StagedEditor::StagedEditor(const ReadOnlySave& source)
     : metadata_(source.metadata()),
       sourceGame_(source.metadata().sourceGame),

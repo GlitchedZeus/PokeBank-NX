@@ -233,8 +233,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             break;
         case 1: {
             const uint16_t species = add ? state.draft.species : pokemon->species;
-            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I Nickname", "1-10 supported Gen I characters",
-                                                  foundationNickname(state, pokemon, add, species), 10);
+            const auto result = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId, PokeBank::Text::FieldKind::Nickname, "Generation I Nickname", foundationNickname(state, pokemon, add, species));
             if (!result.accepted) break;
             if (add) state.draft.nickname = result.text;
             else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change set in this edit draft; X Keep stages it"); }
@@ -273,8 +272,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             break;
         }
         case 4: {
-            const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I OT", "1-7 supported Gen I characters",
-                                                  foundationOT(state, *e, pokemon, add), 7);
+            const auto result = UI::ClassicJapaneseNames::promptName(screen.trainer, screen.sourceGameId, PokeBank::Text::FieldKind::OriginalTrainer, "Generation I OT", foundationOT(state, *e, pokemon, add));
             if (!result.accepted) break;
             if (add) state.draft.otName = result.text;
             else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change set in this edit draft; X Keep stages it"); }
@@ -775,10 +773,10 @@ bool handleGen1TrainerSession(TrainerViewScreen& screen, uint64_t down, uint64_t
     UI::ClassicTrainerSession::Fields fields;
     fields.name = editor->trainerName();
     fields.money = editor->money();
-    fields.nameMax = static_cast<int>(editor->nameMax());
     fields.moneyMax = PokeVault::Integration::Gen1::kGen1MaxMoney;
-    fields.nameJapanese = UI::ClassicJapaneseNames::japaneseSave(screen.trainer, screen.sourceGameId);
-    fields.nameGuide = fields.nameJapanese ? UI::ClassicJapaneseNames::kKanaGuide : "1-7 letters, digits, space - . ? !";
+    // The shared name prompt: kana pages on a Japanese save, Latin otherwise (Gen12NameField).
+    fields.nameField = UI::ClassicJapaneseNames::field(screen.trainer, screen.sourceGameId,
+                                                       PokeBank::Text::FieldKind::TrainerName);
     fields.nameEditable = editor->nameEditable();
     fields.nameReadOnlyReason = "This trainer name cannot be edited here";
     // Owner item 7: Gen I Play Time is now a native, staged edit (pret engine/play_time.asm).

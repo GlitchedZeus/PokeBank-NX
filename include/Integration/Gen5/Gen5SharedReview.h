@@ -202,7 +202,7 @@ struct VerifiedSlotReview {
              0x80000000u);
         if(!nativeNameBytesDiffer5(oldBytes,newBytes,nickname) && !flagChange)
             return true;
-        const auto name=asciiName5(newBytes,nickname);
+        const auto name=editableName5(newBytes,nickname,after.language());
         if(!name || name->empty() ||
            !candidate->stageName(nickname,*name,error))return false;
         result.fields.push_back({nickname?Field::NicknameText:

@@ -9,6 +9,7 @@
 
 #include <switch.h>
 
+#include "Text/TextFieldCapability.h"
 #include "Utils/Logger.h"
 
 namespace Utils
@@ -90,6 +91,38 @@ namespace Utils
         request.maxChars = maxChars;
         request.textChanged = textChanged;
         KeyboardResult result = g_keyboardPresenter(request);
+        if (!result.accepted)
+            result.text.clear();
+        return result;
+    }
+
+    KeyboardResult promptName(const PokeBank::Text::TextFieldCapability &field, const std::string &header,
+                              const std::string &initial)
+    {
+        if (!field.editable())
+            return KeyboardResult{};
+        const int maxChars = field.maxCharacters();
+        if (maxChars <= 0)
+            return KeyboardResult{};
+        const std::string guide = "1-" + std::to_string(maxChars) + " characters this game can store";
+        KeyboardResult result;
+        if (!g_keyboardPresenter)
+        {
+            // No in-app keyboard: the console's, whose answer passes the same rule or changes nothing.
+            result = promptSystemText(header, guide, initial, maxChars);
+            if (result.accepted && !field.check(result.text).ok())
+                result = KeyboardResult{};
+        }
+        else
+        {
+            KeyboardRequest request;
+            request.header = header;
+            request.guide = guide;
+            request.initialText = initial;
+            request.maxChars = maxChars;
+            request.field = &field;
+            result = g_keyboardPresenter(request);
+        }
         if (!result.accepted)
             result.text.clear();
         return result;

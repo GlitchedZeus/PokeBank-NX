@@ -604,7 +604,7 @@ require(native_screen,
         "surface_=Surface::ConfirmCreateBox")
 require(surface,
         "Utils::promptNumber(",
-        "Utils::promptText(",
+        "Utils::promptName(",
         "else if(state.surface()==Surface::ConfirmCreateBox &&",
         "!beginSharedCreate(screen,error)) {",
         "case Surface::ConfirmCreateBox:",
@@ -1001,7 +1001,7 @@ require(native_screen,
 require(surface,
 
 
-        "Utils::promptText(",
+        "Utils::promptName(",
 
 
 
@@ -1092,7 +1092,7 @@ require(native_text,"asciiName5(","encodeAsciiName5(",
         "nameCapacity5(","0x48","0x68","c>0x7E",
         "0x80000000u")
 require(native_stage,"stageName(bool nickname,std::string_view name",
-        "encodeAsciiName5(decoded,nickname,name)",
+        "encodeName5(decoded,nickname,name,",
         "Gen V native name failed strict PK5 validation")
 require(native_session,"stageName(Field field,std::string_view name",
         "stagePartyName(","stageBoxName(","replayName(true)")
@@ -1101,11 +1101,12 @@ require(native_review,"candidate->stageName(nickname,*name,error)",
 require(native_bridge,"stageSharedName(",
         "StagedPokemon5Record::Field::NicknameText",
         "StagedPokemon5Record::Field::OriginalTrainerText")
-require(surface,"Utils::promptText(",
+require(surface,"Utils::promptName(",
         )
 require(read("tests/test_gen5_pk5_readonly.cpp"),
         'stageName(true,"PIKA NX"', 'stageName(false,"ASH"',
-        'stageName(true,"Pikaché"')
+        # Round 15: an accented name is storable now; a glyph no Gen V font has stays refused.
+        'stageName(true,"Pika\\U0001F600"')
 view=read("include/Pokemon/Pokemon5ReadOnlyView.h")
 require(view,"const PokeVault::Integration::Gen5::Personal5* nativePersonal()",
         "sourceGroup_==Enums::GameVersion::B2W2",

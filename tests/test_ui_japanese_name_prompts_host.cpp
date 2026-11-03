@@ -1,7 +1,10 @@
 // Japanese Gen I / II name prompts (owner Oct 28): on a Japanese save the Nickname / OT / Trainer
-// name prompts open the kana keyboard (Utils::promptJapaneseName, capped at 5 characters); every
-// other save keeps the ordinary prompt. Linked against the host-UI archive; the prompts are the
-// recording stubs in tests/host-ui/HostUiStubs.cpp.
+// name prompts open the kana keyboard capped at 5 characters; every other save keeps the Latin
+// pages. Round 15 (owner: "audit EVERY text-entry surface ... one shared keyboard"; SHARED_UX P1-2 /
+// P1-5): the prompts now go through the ONE name prompt, Utils::promptName with the field's
+// capability, instead of the separate promptJapaneseName -- so this test checks the page the real
+// keyboard opens on (recorded by the promptName stub) rather than which helper was called.
+// Linked against the host-UI archive; the prompts are the recording stubs in HostUiStubs.cpp.
 #include "HostUi.h"
 #include "HostUiFixtures.h"
 #include "Integration/Gen1/Gen1ReadOnlySave.h"
@@ -9,6 +12,7 @@
 #include "Legacy/Gen5ReadOnlyTrainer.h"
 #include "Legacy/RBYReadOnlyTrainer.h"
 #include "UI/ClassicJapaneseNames.h"
+#include "UI/Dialogs/KeyboardDialog.h"
 
 #include <fstream>
 #include <iostream>
@@ -51,11 +55,13 @@ int main() {
     if (!rby) return 1;
     check(Names::japaneseSave(*rby, "red_gb"), "a Japanese Gen I save is recognised");
 
+    namespace D = UI::Dialogs;
+    namespace T = PokeBank::Text;
     HostUi::textAnswers.push_back({true, "ピカ"});
-    const auto kana = Names::prompt(*rby, "red_gb", "Generation I Nickname", "1-10 supported Gen I characters", "", 10);
-    check(HostUi::japanesePromptCount == 1 && HostUi::lastJapaneseMaxChars == 5,
-          "Japanese save: Nickname opens the kana prompt capped at 5 (cap " +
-              std::to_string(HostUi::lastJapaneseMaxChars) + ")");
+    const auto kana = Names::promptName(*rby, "red_gb", T::FieldKind::Nickname, "Generation I Nickname", "");
+    check(HostUi::namePrompts.size() == 1 && HostUi::namePrompts.back().maxChars == 5 &&
+              HostUi::namePrompts.back().startPage == static_cast<int>(D::KeyboardPage::HiraganaA),
+          "Japanese save: Nickname opens the kana keyboard capped at 5");
     check(kana.accepted && kana.text == "ピカ", "the kana answer comes back unchanged");
 
     // A non-Japanese save keeps the ordinary prompt.
@@ -66,15 +72,16 @@ int main() {
     check(black != nullptr, "Gen V fixture opens");
     if (black) {
         check(!Names::japaneseSave(*black, "black_nds"), "a non-Gen I/II save is not treated as Japanese Gen I/II");
-        const int before = HostUi::promptCount;
         HostUi::textAnswers.push_back({true, "ASH"});
-        const auto latin = Names::prompt(*black, "black_nds", "Nickname", "guide", "", 10);
-        check(HostUi::japanesePromptCount == 1 && HostUi::promptCount == before + 1 && latin.text == "ASH",
-              "other saves keep the ordinary prompt");
+        const auto latin = Names::promptName(*black, "black_nds", T::FieldKind::Nickname, "Nickname", "");
+        check(HostUi::namePrompts.size() == 2 &&
+                  HostUi::namePrompts.back().startPage == static_cast<int>(D::KeyboardPage::Letters) &&
+                  HostUi::namePrompts.back().maxChars == 10 && latin.text == "ASH",
+              "other saves keep the Latin pages");
     }
 
     // Wiring: every Gen I / II Nickname and OT prompt goes through the helper; the Trainer page
-    // switches on nameJapanese.
+    // takes the save's trainer-name field (kana on a Japanese save) and opens Utils::promptName.
     for (const char* file : {"src/UI/Gen1PokemonEditorOverlayFoundation.inc", "src/UI/Gen1PokemonEditorOverlayUX.inc",
                              "src/UI/Gen1PokemonEditorOverlayUXCleanup2.inc", "src/UI/Gen1PokemonEditorOverlayUXCleanup3.inc",
                              "src/UI/Gen2PokemonEditorFoundation.inc", "src/UI/Gen2UnifiedPokemonWorkspace.inc"}) {
@@ -85,11 +92,17 @@ int main() {
             check(src.find(old) == std::string::npos, std::string(file) + " still prompts directly: " + old);
     }
     const auto session = read("include/UI/ClassicTrainerSessionInput.h");
-    check(session.find("fields.nameJapanese\n            ? Utils::promptJapaneseName(\"Trainer Name\"") != std::string::npos,
-          "Trainer page name prompt switches to kana on Japanese saves");
-    check(read("src/UI/Gen1PokemonEditorOverlayFoundation.inc").find("fields.nameJapanese = UI::ClassicJapaneseNames::japaneseSave(screen.trainer, screen.sourceGameId);") != std::string::npos &&
-              read("src/UI/Gen2TrainerSessionOverlay.inc").find("fields.nameJapanese = UI::ClassicJapaneseNames::japaneseSave(screen.trainer, screen.sourceGameId);") != std::string::npos,
-          "Gen I and Gen II Trainer pages set nameJapanese from the save");
+    check(session.find("Utils::promptName(*fields.nameField, \"Trainer Name\", name)") != std::string::npos,
+          "Trainer page name prompt is the shared name prompt with the save's field");
+    const std::string trainerField =
+        "fields.nameField = UI::ClassicJapaneseNames::field(screen.trainer, screen.sourceGameId,";
+    check(read("src/UI/Gen1PokemonEditorOverlayFoundation.inc").find(trainerField) != std::string::npos &&
+              read("src/UI/Gen2TrainerSessionOverlay.inc").find(trainerField) != std::string::npos,
+          "Gen I and Gen II Trainer pages take the trainer-name field from the save");
+    // The Japanese trainer-name field is the kana one, 5 characters.
+    const auto trainerName = Names::field(*rby, "red_gb", T::FieldKind::TrainerName);
+    check(trainerName->maxCharacters() == 5 && trainerName->keyboard().kana && !trainerName->keyboard().latin,
+          "Japanese Gen I trainer name: kana pages, 5 characters, no Latin page");
 
     if (failures) { std::cerr << failures << " Japanese name prompt check(s) failed\n"; return 1; }
     std::cout << "Japanese Gen I/II name prompts: kana keyboard on Japanese saves, ordinary elsewhere PASS\n";

@@ -54,6 +54,50 @@ struct TextVerdict {
     [[nodiscard]] bool ok() const noexcept { return refusal == Refusal::None; }
 };
 
+/// Which keyboard pages a field offers (docs/architecture/SHARED_UX_REQUIREMENTS.md §2.1). The
+/// pages come from the record's (or save's) LANGUAGE -- the script that game's own name screen
+/// offers -- and the keyboard still disables every key glyphAllowed() refuses, so a page never
+/// offers a character the field cannot store.
+struct KeyboardProfile {
+    enum class Start : uint8_t { Latin, Kana, Hangul };
+    bool latin = true;            ///< ABC page (QWERTY)
+    bool symbols = true;          ///< ?123 page
+    bool accents = true;          ///< àé page
+    bool kana = false;            ///< あ / ア / １２３ pages (Utils/Gen12KanaText.h layout)
+    bool hangul = false;          ///< 한 page: two-set jamo composed into syllables
+    bool fullWidthLatin = false;  ///< ABC / ?123 keys type the full-width forms (Ａ, １)
+    bool fullWidthSpace = false;  ///< Space types U+3000
+    Start start = Start::Latin;
+};
+
+/// The pages of a Japanese, Korean or international record's name screen.
+[[nodiscard]] inline KeyboardProfile japaneseProfile(bool withLatin) noexcept {
+    KeyboardProfile p;
+    p.kana = true;
+    p.latin = withLatin;
+    p.symbols = withLatin;
+    p.accents = false;
+    p.fullWidthLatin = withLatin;
+    p.fullWidthSpace = true;
+    p.start = KeyboardProfile::Start::Kana;
+    return p;
+}
+[[nodiscard]] inline KeyboardProfile koreanProfile() noexcept {
+    KeyboardProfile p;
+    p.hangul = true;
+    p.start = KeyboardProfile::Start::Hangul;
+    return p;
+}
+[[nodiscard]] inline KeyboardProfile latinProfile(bool accents = true) noexcept {
+    KeyboardProfile p;
+    p.accents = accents;
+    return p;
+}
+
+/// Enums::LanguageID values the profiles key on.
+inline constexpr uint8_t kLanguageJapanese = 1;
+inline constexpr uint8_t kLanguageKorean = 8;
+
 /// One user-facing sentence per refusal. Callers may prefix the field name.
 [[nodiscard]] inline const char* reason(Refusal refusal) noexcept {
     switch (refusal) {
@@ -104,6 +148,21 @@ public:
     [[nodiscard]] virtual bool glyphAllowed(char32_t c) const noexcept = 0;
     /// Whole-string validation of UTF-16 text, no side effects.
     [[nodiscard]] virtual TextVerdict check16(const std::u16string& text) const = 0;
+    /// The keyboard pages for this field in this record's / save's language.
+    [[nodiscard]] virtual KeyboardProfile keyboard() const noexcept { return latinProfile(); }
+    /// True when every code point of `utf8` passes glyphAllowed() (an empty string passes).
+    /// Drives key greying: a key whose label this answers false for is drawn disabled.
+    [[nodiscard]] bool glyphsAllowed(std::string_view utf8) const {
+        std::u16string wide;
+        if (!strictUtf16(utf8, wide)) return false;
+        for (std::size_t i = 0; i < wide.size(); ++i) {
+            char32_t c = wide[i];
+            if (c >= 0xD800 && c <= 0xDBFF && i + 1 < wide.size())
+                c = 0x10000 + ((c - 0xD800) << 10) + (wide[++i] - 0xDC00);
+            if (!glyphAllowed(c)) return false;
+        }
+        return true;
+    }
     /// Whole-string validation of UTF-8 text (what the keyboard returns), no side effects.
     [[nodiscard]] TextVerdict check(std::string_view utf8) const {
         std::u16string wide;
@@ -139,6 +198,12 @@ public:
     [[nodiscard]] uint16_t maxCharacters() const noexcept override { return static_cast<uint16_t>(maxChars_); }
     [[nodiscard]] uint16_t maxNativeUnits() const noexcept override { return static_cast<uint16_t>(fieldBytes_); }
     [[nodiscard]] uint8_t textLanguage() const noexcept { return language_; }
+    /// GEN3_JP is a kana + FULL-WIDTH Latin table, so a Japanese record's name screen is kana and
+    /// full-width ABC (owner Round 13 decision 1); GEN3_EN is Latin with accents. Gen III has no
+    /// Korean game: never Hangul.
+    [[nodiscard]] KeyboardProfile keyboard() const noexcept override {
+        return Utils::gen3IsJapanese(language_) ? japaneseProfile(true) : latinProfile();
+    }
     [[nodiscard]] bool glyphAllowed(char32_t c) const noexcept override {
         return c != 0 && c <= 0xFFFF &&
                Utils::charToGen3(static_cast<char16_t>(c), language_) != Utils::GEN3_TERMINATOR;
@@ -218,6 +283,14 @@ public:
     [[nodiscard]] bool glyphAllowed(char32_t c) const noexcept override {
         return c != 0 && c <= 0xFFFF && Utils::gen4GlyphEncodable(static_cast<char16_t>(c));
     }
+    /// The Gen 4 code page holds hiragana, katakana, full- and half-width Latin and 2,406 Hangul
+    /// syllables for every language; the PAGES follow the record's language (a Japanese record
+    /// opens on kana, a Korean one on Hangul), and every key is still checked against the table.
+    [[nodiscard]] KeyboardProfile keyboard() const noexcept override {
+        if (language_ == kLanguageJapanese) return japaneseProfile(true);
+        if (language_ == kLanguageKorean) return koreanProfile();
+        return latinProfile();
+    }
     [[nodiscard]] TextVerdict check16(const std::u16string& text) const override {
         TextVerdict v;
         v.characters = static_cast<uint16_t>(codePoints(text));
@@ -228,6 +301,76 @@ public:
         const auto encoded = Utils::encodeGen4Field(text, slotCount_, maxChars_, language_);
         if (encoded.size() != slotCount_ * 2 || Utils::decodeGen4Field(encoded) != text)
             return refused(Refusal::RoundTripMismatch);
+        v.nativeUnits = static_cast<uint16_t>(text.size());
+        return v;
+    }
+
+private:
+    FieldKind kind_;
+    uint8_t language_;
+    std::size_t maxChars_;
+    std::size_t slotCount_;
+    bool allowEmpty_;
+};
+
+// ---------------------------------------------------------------------------------------------
+// Gen V (BW / B2W2): PK5 and the trainer block store UTF-16, one unit per character, 0xFFFF
+// terminator; text that is not full width (and all Korean text) stores ♂ / ♀ as the half-width
+// U+246D / U+246E (PKHeX 8e3eb3d4 StringConverter5.SetString + StringConverter4Util).
+//
+// THE REPERTOIRE: UTF-16 itself stores anything, but the games draw only their font's glyphs. The
+// verified source this project has for those glyphs is the Gen 4 code page (Utils/Gen4Text.h, the
+// PKHeX StringConverter4Util tables): every Gen IV name reaches Gen V through Poké Transfer as the
+// Unicode of that table (PKHeX PK4.ConvertToPK5 -> StringConverter4.GetString), so every glyph in it
+// is one the Gen V games draw. A character outside it is refused, never approximated. This widens
+// Gen V entry from printable ASCII to that table (hiragana, katakana, full-width Latin, accents,
+// symbols, Hangul) -- the owner's "no ASCII-only keyboard when the game supports more".
+// ---------------------------------------------------------------------------------------------
+class Gen5NameField final : public TextFieldCapability {
+public:
+    Gen5NameField(FieldKind kind, uint8_t language, std::size_t maxChars, std::size_t slotCount,
+                  bool allowEmpty = false) noexcept
+        : kind_(kind), language_(language),
+          maxChars_(slotCount == 0 ? 0 : (maxChars < slotCount - 1 ? maxChars : slotCount - 1)),
+          slotCount_(slotCount), allowEmpty_(allowEmpty) {}
+
+    [[nodiscard]] FieldKind kind() const noexcept override { return kind_; }
+    [[nodiscard]] uint16_t maxCharacters() const noexcept override { return static_cast<uint16_t>(maxChars_); }
+    [[nodiscard]] uint16_t maxNativeUnits() const noexcept override { return static_cast<uint16_t>(slotCount_); }
+    [[nodiscard]] uint8_t language() const noexcept { return language_; }
+    [[nodiscard]] bool glyphAllowed(char32_t c) const noexcept override {
+        return c != 0 && c <= 0xFFFF && c != 0xFFFF && Utils::gen4GlyphEncodable(static_cast<char16_t>(c));
+    }
+    [[nodiscard]] KeyboardProfile keyboard() const noexcept override {
+        if (language_ == kLanguageJapanese) return japaneseProfile(true);
+        if (language_ == kLanguageKorean) return koreanProfile();
+        return latinProfile();
+    }
+    /// The 16-bit units the game stores for `text` (gender signs remapped), without terminator.
+    [[nodiscard]] std::u16string nativeUnits(const std::u16string& text) const {
+        const bool halfWidth = language_ == kLanguageKorean || !Utils::gen4IsFullWidth(text);
+        std::u16string out = text;
+        if (halfWidth)
+            for (char16_t& c : out) c = Utils::unnormalizeGen4Gender(c);
+        return out;
+    }
+    /// What the game reads back from stored units (the half-width gender signs shown as ♂ / ♀).
+    [[nodiscard]] static std::u16string readBack(const std::u16string& units) {
+        std::u16string out = units;
+        for (char16_t& c : out) c = Utils::normalizeGen4Gender(c);
+        return out;
+    }
+    [[nodiscard]] TextVerdict check16(const std::u16string& text) const override {
+        TextVerdict v;
+        v.characters = static_cast<uint16_t>(codePoints(text));
+        if (text.empty()) {
+            if (!allowEmpty_) return refused(Refusal::Empty);
+            return v;
+        }
+        for (std::size_t i = 0; i < text.size(); ++i)
+            if (!glyphAllowed(text[i])) return refused(Refusal::UnsupportedGlyph, i, text[i]);
+        if (text.size() > maxChars_) return refused(Refusal::TooLong, maxChars_);
+        if (readBack(nativeUnits(text)) != text) return refused(Refusal::RoundTripMismatch);
         v.nativeUnits = static_cast<uint16_t>(text.size());
         return v;
     }

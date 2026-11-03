@@ -3,6 +3,8 @@
 
 #include "Encryption/Encryption5.h"
 #include "Integration/Gen5/Gen5TrainerName.h"
+#include "Text/TextFieldCapability.h"
+#include "Utils/StringHelpers.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -84,6 +86,59 @@ namespace PokeVault::Integration::Gen5 {
         Crypto::write16(plain,off+2*i,
             i<text.size()?static_cast<uint16_t>(
                 static_cast<unsigned char>(text[i])):uint16_t{0xFFFF});
+    if(nickname) {
+        const uint32_t iv=Crypto::read32(plain,0x38)|0x80000000u;
+        Crypto::write16(plain,0x38,static_cast<uint16_t>(iv));
+        Crypto::write16(plain,0x3A,static_cast<uint16_t>(iv>>16));
+    }
+    return true;
+}
+// ---- Gen V names beyond ASCII (Round 15 keyboard lane; owner: "No ASCII-only keyboard when the
+// underlying game supports more") ------------------------------------------------------------
+// The rule is Text::Gen5NameField (Text/TextFieldCapability.h): a character is accepted when the
+// Gen 4 code page holds it (every Gen IV name reaches Gen V through Poke Transfer as that Unicode,
+// so the Gen V fonts draw it), the cap is the field's, and ♂ / ♀ are stored half width unless the
+// name is full width (PKHeX StringConverter5.SetString). ASCII names produce exactly the bytes
+// encodeAsciiName5 writes. Anything else is refused whole; nothing is approximated.
+[[nodiscard]] inline PokeBank::Text::Gen5NameField nameField5(bool nickname, uint8_t language) {
+    return PokeBank::Text::Gen5NameField(
+        nickname ? PokeBank::Text::FieldKind::Nickname : PokeBank::Text::FieldKind::OriginalTrainer,
+        language, nameMaxLength5(nickname), nameCapacity5(nickname));
+}
+// The stored name as editable UTF-8, or nullopt when a unit is outside the Gen V repertoire above
+// (such a name is never seeded into an edit or replayed; it can only be replaced). Never empty.
+[[nodiscard]] inline std::optional<std::string> editableName5(
+    std::span<const uint8_t> plain,bool nickname,uint8_t language) {
+    const size_t off=nameOffset5(nickname),cap=nameCapacity5(nickname);
+    if(plain.size()<off+cap*2)return std::nullopt;
+    std::u16string units;
+    for(size_t i=0;i<cap;++i) {
+        const uint16_t code=Crypto::read16(plain,off+i*2);
+        if(code==0 || code==0xFFFF)break;
+        units.push_back(static_cast<char16_t>(code));
+    }
+    if(units.empty() || units.size()>nameMaxLength5(nickname))return std::nullopt;
+    const auto field=nameField5(nickname,language);
+    const std::u16string text=PokeBank::Text::Gen5NameField::readBack(units);
+    // Only a name this writer would store byte-for-byte is editable: the read-back must re-encode
+    // to the very units the record holds.
+    if(!field.check16(text).ok() || field.nativeUnits(text)!=units)return std::nullopt;
+    return Utils::utf16ToUtf8(text);
+}
+// Writes `utf8` as the record's nickname / OT name: the whole field (text, then 0xFFFF in every
+// remaining unit, the canonical form encodeAsciiName5 writes) and, for a nickname, the nickname
+// flag. All-or-nothing: false leaves `plain` untouched.
+[[nodiscard]] inline bool encodeName5(std::vector<uint8_t>& plain,bool nickname,
+                                      std::string_view utf8,uint8_t language) {
+    const size_t off=nameOffset5(nickname),cap=nameCapacity5(nickname);
+    if(plain.size()<off+cap*2)return false;
+    std::u16string text;
+    if(!PokeBank::Text::strictUtf16(utf8,text))return false;
+    const auto field=nameField5(nickname,language);
+    if(!field.check16(text).ok())return false;
+    const std::u16string units=field.nativeUnits(text);
+    for(size_t i=0;i<cap;++i)
+        Crypto::write16(plain,off+2*i,i<units.size()?static_cast<uint16_t>(units[i]):uint16_t{0xFFFF});
     if(nickname) {
         const uint32_t iv=Crypto::read32(plain,0x38)|0x80000000u;
         Crypto::write16(plain,0x38,static_cast<uint16_t>(iv));

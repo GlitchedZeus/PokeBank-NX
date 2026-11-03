@@ -825,15 +825,18 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
         openSpeciesPicker(screen, state);
         return true;
     }
-    // Round 11 H27: a Korean-language Pokemon's names open the keyboard on its Hangul page. The
-    // record's own language picks the script; setNickname / setOriginalTrainerName still round-trip
-    // through the Gen 4 character table and refuse what the game cannot store.
-    const bool korean = mon.language() == static_cast<uint8_t>(Enums::LanguageID::Korean);
+    // Round 11 H27 / Round 15 (shared keyboard): the record's own language picks the pages -- Hangul
+    // for a Korean Pokemon, kana and full-width ABC for a Japanese one, Latin + accents otherwise --
+    // and Text::Gen4NameField (the Gen 4 code page, Japanese / Korean names 5 characters) is the
+    // rule the keyboard checks live; setNickname / setOriginalTrainerName still round-trip through
+    // the same table and refuse what the game cannot store.
+    const auto nameField = [&](PokeBank::Text::FieldKind kind) {
+        return PokeBank::Text::makeNameField({PokeBank::Text::Format::Gen4, kind, mon.language(), false});
+    };
     if (row == 1) {
         const auto current = Utils::utf16ToUtf8(mon.nickname());
-        const auto result = korean
-            ? Utils::promptKoreanName("Nickname", "Pokemon nickname", current, 10)
-            : Utils::promptText("Nickname", "Pokemon nickname", current, 10);
+        const auto field = nameField(PokeBank::Text::FieldKind::Nickname);
+        const auto result = Utils::promptName(*field, "Nickname", current);
         if (result.accepted && !mon.setNickname(Utils::utf8ToUtf16(result.text)))
             screen.postStatus("That nickname cannot be represented by this Generation IV save", 300);
         return true;
@@ -855,9 +858,8 @@ bool editDetail(TrainerViewScreen& screen, State& state, int row,
     }
     if (row == 4) {
         const auto current = Utils::utf16ToUtf8(p.originalTrainerName());
-        const auto r = korean
-            ? Utils::promptKoreanName("Original Trainer", "1-7 Generation IV characters", current, 7)
-            : Utils::promptText("Original Trainer", "1-7 Generation IV characters", current, 7);
+        const auto field = nameField(PokeBank::Text::FieldKind::OriginalTrainer);
+        const auto r = Utils::promptName(*field, "Original Trainer", current);
         if (r.accepted &&
             !mon.setOriginalTrainerName(Utils::utf8ToUtf16(r.text)))
             screen.postStatus("That OT name cannot be represented by this Generation IV save", 300);
@@ -2345,9 +2347,11 @@ bool handleTrainerSession(TrainerViewScreen& screen, State& state, u64 down, u64
     UI::ClassicTrainerSession::Fields fields;
     fields.name = trainer.trainerName();
     fields.money = trainer.money();
-    fields.nameMax = Gen4::Gen4StagedTrainerEditor::kNameMax;
     fields.moneyMax = Gen4::Gen4StagedTrainerEditor::kMaxMoney;
-    fields.nameGuide = "1-7 characters the game can store";
+    // Only Western-language trainer names are editable (Gen4StagedPokemonEditor::trainerNameEditable;
+    // Japanese / Korean wait for SHARED_UX_REQUIREMENTS §7.6), so the pages are Latin.
+    fields.nameField = PokeBank::Text::makeNameField(
+        {PokeBank::Text::Format::Gen4, PokeBank::Text::FieldKind::TrainerName, 2, false});
     fields.nameEditable = trainer.nameEditable();
     fields.nameReadOnlyReason = "This save's trainer name language is read-only here";
     // P3: native Play Time (+0x22) and Trainer Gender (+0x18), staged in the same workspace.

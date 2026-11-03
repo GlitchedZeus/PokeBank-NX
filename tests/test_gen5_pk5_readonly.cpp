@@ -271,7 +271,11 @@ int main() {
         assert(!staged->stageName(true,"",&error));
         assert(!staged->stageName(true,"TOO MANY TEXT",&error));
         assert(!staged->stageName(false,"TOO LONG",&error));
-        assert(!staged->stageName(true,"Pikaché",&error));
+        // Round 15 (owner: "No ASCII-only keyboard when the underlying game supports more"): an
+        // accented name the Gen V font draws is now storable (tests/test_text_field_capability_
+        // matrix.cpp stores and reparses "Pikaché"); a character no Gen V font has is still refused.
+        assert(!staged->stageName(true,"Pika\U0001F600",&error));
+        assert(!staged->stageName(true,"Pika\u6F22",&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Level,0,0,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Level,0,101,&error));
         assert(!staged->stage(G5::StagedPokemon5Record::Field::Experience,0,1000001,&error));

@@ -20,6 +20,7 @@
 
 #include <switch.h>
 
+#include "Text/TextFieldCapability.h"
 #include "UI/NavigationRepeat.h"
 #include "Utils/Keyboard.h"
 
@@ -69,7 +70,8 @@ namespace UI
             KanaSmall,
             KanaNextMode,
             KanaOtherHalf,
-            ShowHangul
+            ShowHangul,
+            ShowKana // Letters / Symbols back to the kana pages (a Japanese record that also has ABC)
         };
 
         /// Shift is one-shot unless pressed twice: Once applies to the next letter only, Locked
@@ -89,6 +91,10 @@ namespace UI
             std::string upperLabel; // what a shifted key types; the same as lowerLabel for most keys
             int rowIndex = 0;
             int keyX = 0, keyY = 0, keyWidth = 0, keyHeight = 0;
+            /// False when the prompt's field cannot store what the key types (unshifted / shifted).
+            /// A disabled key is drawn dimmed and refuses with the reason instead of typing.
+            bool lowerEnabled = true;
+            bool upperEnabled = true;
         };
 
         struct KeyboardState
@@ -105,6 +111,13 @@ namespace UI
             bool textSelected = false;
 
             KeyboardPage page = KeyboardPage::Letters;
+            /// The pages this prompt offers (request.field->keyboard(), or the legacy kana / Hangul
+            /// flags when no field is given). ZL / ZR walk pageCycle(); page keys lead only there.
+            PokeBank::Text::KeyboardProfile profile;
+            /// The live verdict of request.field on the text as it stands, refreshed after every edit:
+            /// shown in the field while typing so nothing is first refused at OK.
+            bool fieldOk = true;
+            std::string fieldReason;
             /// The character before the caret was produced by a Hangul key in this run, so the next
             /// jamo may combine with it. Any other edit or caret move ends the run, so text that was
             /// already there (or typed on another page) is never recomposed.
@@ -124,6 +137,8 @@ namespace UI
 
             /// The controls, for whichever nav bar is on screen while the card owns input.
             std::string navHint() const;
+            /// Every page ZL / ZR reaches, in order, starting with the page the card opens on.
+            std::vector<KeyboardPage> pageCycle() const;
             /// The card's top edge. A list that must stay readable while the user types keeps its
             /// rows above this.
             int cardTop() const noexcept { return cardY; }
@@ -170,6 +185,11 @@ namespace UI
             void deleteBeforeCaret();
             void moveCaret(int characterStep);
             void textEdited();
+            void refreshVerdict();
+            /// Refuses a key the field cannot store: flashes the reason, types nothing.
+            void refuseGlyph(const std::string &label);
+            /// Space / Y: the full-width space for a Japanese name, refused where the field has none.
+            void typeSpace();
             void toggleSign();
             void handOffToSystemKeyboard();
             void applyKanaModifier(KeyboardKeyAction modifier);
