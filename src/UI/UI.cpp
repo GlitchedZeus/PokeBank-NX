@@ -738,6 +738,21 @@ namespace UI {
             error = "Emulator source has no stable game identity";
             return false;
         }
+        {
+            // Round 15 P0 (owner: "Hard exact-game save gate on all editor entry routes ... direct
+            // editor"): defense in depth behind Product Home. Only the save THIS profile assigned to
+            // THIS exact game opens; another profile's save or an unassigned one never does.
+            PokeVault::Source::SaveInstance assigned;
+            assigned.sourceIdentity = selected.sourceIdentity.empty()
+                ? (selected.canonicalPath.empty() ? selected.normalizedPath : selected.canonicalPath)
+                : selected.sourceIdentity;
+            assigned.sourceAliases = selected.sourceAliases;
+            assigned.gameId = gameId;
+            if (!legacySourceBindings.isPreferredGameSource(assigned, profileIdentity(userUid), gameId)) {
+                error = "This save is not assigned to this game on this profile; choose a save first";
+                return false;
+            }
+        }
 
         std::unique_ptr<Trainer::Trainer> trainer;
         if (selected.isGen1()) {

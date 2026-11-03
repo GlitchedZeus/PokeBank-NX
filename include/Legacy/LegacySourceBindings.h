@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 namespace PokeVault::Legacy {
     struct BindingFileOps {
@@ -68,6 +69,18 @@ namespace PokeVault::Legacy {
                                                     BindingRecord binding);
         [[nodiscard]] bool unassignGameAndSave(std::string_view profileIdentity,
                                                std::string_view gameIdentity);
+        // Round 15 P0 (owner: "Forget must not modify the source file"): the ONE Forget for every
+        // generation. Removes this profile's records for this exact game (Gen IV/V file binding,
+        // Gen I-III manual file or catalog preference) plus this profile's bare catalog claims on
+        // `releaseIdentities` (the Gen I-III saves of this game), so the save is no longer private to
+        // it. Never touches another profile's or another game's records, the source file or backups.
+        // Returns false (ENOENT) when nothing was remembered.
+        [[nodiscard]] bool forgetGameAndSave(std::string_view profileIdentity,
+                                             std::string_view gameIdentity,
+                                             const std::vector<std::string>& releaseIdentities = {});
+        // True when this profile remembers anything for this exact game (any generation).
+        [[nodiscard]] bool hasGameRecord(std::string_view profileIdentity,
+                                         std::string_view gameIdentity) const;
         // Rechecks only explicitly bound paths. Never scans or substitutes another save.
         [[nodiscard]] AssignedFile resolveFileForGame(std::string_view profileIdentity,
                                                        std::string_view gameIdentity) const;

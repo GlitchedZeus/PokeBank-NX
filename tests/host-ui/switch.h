@@ -61,6 +61,10 @@ namespace HostUi {
 struct ConsoleSaves {
     bool active = false;            // false: the default empty console
     u64 user[2] = {0, 0};           // the one scripted account's uid
+    // Round 15 (SAF-09): an optional SECOND scripted account (profile isolation tests).
+    u64 user2[2] = {0, 0};
+    int userCount = 1;              // 1 (default) or 2
+    int lastProfile = 0;            // which account accountGetProfile last opened (names it)
     bool allSpaceRefused = false;   // FsSaveDataSpaceId_All refused: discovery falls back to User/SdUser
     int opens = 0;                  // reader opens seen (diagnostic)
     int mountsRefused = 0;          // save mounts attempted (always refused on the host)
@@ -74,14 +78,26 @@ template <class Uid> inline Result accountListAllUsers(Uid* ids, s32 max, s32* c
     static_assert(sizeof(Uid) == sizeof(HostUi::consoleSaves.user), "AccountUid is 16 bytes");
     __builtin_memcpy(&ids[0], HostUi::consoleSaves.user, sizeof(Uid));
     *count = 1;
+    if (HostUi::consoleSaves.userCount >= 2 && max >= 2) {
+        __builtin_memcpy(&ids[1], HostUi::consoleSaves.user2, sizeof(Uid));
+        *count = 2;
+    }
     return 0;
 }
-template <class Uid> inline Result accountGetProfile(AccountProfile*, Uid) { return HostUi::consoleSaves.active ? 0 : 1; }
+template <class Uid> inline Result accountGetProfile(AccountProfile*, Uid uid) {
+    if (!HostUi::consoleSaves.active) return 1;
+    HostUi::consoleSaves.lastProfile =
+        __builtin_memcmp(&uid, HostUi::consoleSaves.user2, sizeof(uid)) == 0 &&
+        HostUi::consoleSaves.userCount >= 2 ? 1 : 0;
+    return 0;
+}
 inline Result accountProfileGet(AccountProfile*, AccountUserData*, AccountProfileBase* base) {
     if (!HostUi::consoleSaves.active || !base) return 1;
     *base = {};
     const char name[] = "QA Owner";
-    __builtin_memcpy(base->nickname, name, sizeof(name));
+    const char second[] = "QA Second";
+    if (HostUi::consoleSaves.lastProfile == 1) __builtin_memcpy(base->nickname, second, sizeof(second));
+    else __builtin_memcpy(base->nickname, name, sizeof(name));
     return 0;
 }
 inline void accountProfileClose(AccountProfile*) {}

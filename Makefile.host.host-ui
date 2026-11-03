@@ -332,4 +332,23 @@ $(HOST_UI_SAVE_INSTANCES_TEST): $(HOST_UI_SAVE_INSTANCES_INPUTS) $(HOST_UI_ARCHI
 $(HOST_UI_SAVE_INSTANCES_SANITIZE): $(HOST_UI_SAVE_INSTANCES_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE) $(GEN3_FIXTURE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_save_instances_gen15_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
+# Round 15 P0 (owner hardware results on d160aa42: SAF-01..05, SAF-09, HOME-07): one profile-scoped
+# source assignment for Gen I-V. Two scripted accounts x Red / Crystal / FireRed / Diamond / Black 2 /
+# White x {fresh, assign, change, forget, switch profile, stale} x {A, +, Items dock, Quick Games,
+# touch}, and the Black 2 Items dock repro, through the real SaveSelectScreen.
+HOST_UI_SOURCE_ASSIGN_TEST := $(HOST_BUILD)/test_ui_source_assignment_host
+HOST_UI_SOURCE_ASSIGN_SANITIZE := $(HOST_BUILD)/test_ui_source_assignment_host_sanitize
+HOST_UI_SOURCE_ASSIGN_INPUTS := tests/test_ui_source_assignment_host.cpp tests/host-ui/HostUi.h \
+	tests/fixtures/gsc_pokemon_fixture.h tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_STUBS)
+HOST_TESTS += $(HOST_UI_SOURCE_ASSIGN_TEST)
+HOST_SANITIZE_TESTS += $(HOST_UI_SOURCE_ASSIGN_SANITIZE)
+host-test: $(HOST_UI_SOURCE_ASSIGN_TEST)
+host-sanitize: $(HOST_UI_SOURCE_ASSIGN_SANITIZE)
+$(HOST_UI_SOURCE_ASSIGN_TEST): $(HOST_UI_SOURCE_ASSIGN_INPUTS) $(HOST_UI_ARCHIVE) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_source_assignment_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_UI_SOURCE_ASSIGN_SANITIZE): $(HOST_UI_SOURCE_ASSIGN_INPUTS) $(HOST_UI_SANITIZE_ARCHIVE) $(GEN3_FIXTURE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST tests/test_ui_source_assignment_host.cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif
+
