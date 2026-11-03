@@ -876,8 +876,10 @@ modals = source[source.index("        if (overlay != Overlay::None) beginTopTouc
 modals = modals[:modals.index("\n    }\n}")]
 branches = modals.split("} else if (overlay == Overlay::")
 # Owner item #10 added two Home modals (Recovery files and its confirmation): 18 -> 20.
-require(len(branches) == 20 and "if (overlay == Overlay::QuitConfirm) {" in branches[0],
-        "all 20 Home modals render in the layered overlay section")
+# Round 15 P0 (owner: "UI for Assign/Change/Forget for every generation") added the shared
+# Forget confirmation (SourceForgetConfirm): 20 -> 21.
+require(len(branches) == 21 and "if (overlay == Overlay::QuitConfirm) {" in branches[0],
+        "all 21 Home modals render in the layered overlay section")
 branches[0] = branches[0][branches[0].index("if (overlay == Overlay::QuitConfirm)") + len("if (overlay == Overlay::"):]
 for branch in branches:
     name = branch[:branch.index(")")].split(" ")[0]

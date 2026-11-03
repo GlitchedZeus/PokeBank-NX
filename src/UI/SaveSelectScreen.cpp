@@ -1002,6 +1002,13 @@ namespace UI {
                 ? PokeVault::Legacy::buildFRLGSourceCardsForProfile(
                     legacySources, *legacyBindings, profileIdentity(user.uid))
                 : std::vector<PokeVault::Legacy::FRLGSourceCard>{};
+            // Round 15 P0 (SAF-09): a card shows trainer / Pokédex facts only from the save THIS
+            // profile assigned to that exact game, never from a merely discovered save.
+            const auto assignedIn = [&](const std::vector<PokeVault::Legacy::FRLGSaveInstance>& instances,
+                                        std::string_view game) {
+                return preferredLegacySourceIndex(instances, legacyBindings,
+                                                  profileIdentity(user.uid), game);
+            };
 
             // An installed FireRed/LeafGreen HOME forwarder can have its own Switch savedata,
             // but that savedata belongs to the forwarder and is not the GBA cartridge save.
@@ -1020,8 +1027,8 @@ namespace UI {
                 installed.providerLabel = PokeVault::Source::cardProviderLabel(card->instances);
                 installed.locationLabel = std::to_string(card->instances.size()) +
                     (card->instances.size() == 1 ? " SAVE" : " SAVES");
-                if (card->instances.size() == 1)
-                    installed.trainerName = card->instances.front().trainerName;
+                if (const int assigned = assignedIn(card->instances, saveGameId); assigned >= 0)
+                    installed.trainerName = card->instances[static_cast<size_t>(assigned)].trainerName;
             }
 
             user.titles.reserve(user.titles.size() + cards.size());
@@ -1038,8 +1045,10 @@ namespace UI {
                 entry.artworkKey = card.artworkKey;
                 entry.legacyInstances = card.instances;
                 entry.sourceKind = SelectedSourceKind::RetroArchFRLG;
-                if (card.instances.size() == 1) {
-                    const auto& instance = card.instances.front();
+                const int assigned = assignedIn(card.instances, card.gameId);
+                if (assigned < 0) entry.sourceLabel = "CHOOSE SAVE";
+                if (assigned >= 0) {
+                    const auto& instance = card.instances[static_cast<size_t>(assigned)];
                     entry.trainerName = instance.trainerName;
                     const size_t handle = instance.sourceIndex;
                     if (handle < legacySources.sources.size()) {
@@ -1374,6 +1383,17 @@ namespace UI {
         return user ? profileIdentity(user->uid) : std::string{};
     }
 
+    // Round 15 P0: the Gen I-III save THIS profile assigned to this exact game card (a forwarder
+    // card uses its GBA save game). -1 none, -2 ambiguous metadata. Never guessed from the count
+    // of discovered saves: a single unassigned discovered save is NOT this profile's save (SAF-09).
+    int SaveSelectScreen::assignedLegacyIndex(const TitleEntry& title) const {
+        if (!legacyCatalog || !legacyBindings || title.legacyInstances.empty()) return -1;
+        const std::string_view forwarded = legacySaveGameIdForForwarder(title.gameId);
+        const std::string saveGame = forwarded.empty() ? title.gameId : std::string(forwarded);
+        return preferredLegacySourceIndex(title.legacyInstances, legacyBindings,
+                                          currentProfileIdentity(), saveGame);
+    }
+
     std::string SaveSelectScreen::currentSourceIdentity() const {
         const UserEntry* user = currentUser();
         if (!user || titleIndex < 0 || titleIndex >= static_cast<int>(user->titles.size()))
@@ -1441,7 +1461,10 @@ namespace UI {
         const auto& entry = unassignedLegacySources[static_cast<size_t>(legacyAssignmentIndex)];
         const std::string assignedGameId = entry.gameId;
         const std::string assignedLeaf = sourceLeafName(entry.instance.location);
-        if (!legacyBindings->claimInstanceAndSave(entry.instance, profile)) {
+        // Round 15 P0: the claim is followed by the profile + exact game assignment, so the card
+        // opens exactly this save for this profile (a bare claim alone no longer opens anything).
+        if (!legacyBindings->claimInstanceAndSave(entry.instance, profile) ||
+            !legacyBindings->preferGameSourceAndSave(entry.instance, profile, entry.gameId)) {
             logErrorToFile("Legacy binding assignment failed", legacyBindings->lastError().c_str());
             legacyNotice = "Assignment could not be saved; source remains unassigned.";
             return false;
@@ -1843,8 +1866,8 @@ namespace UI {
         std::string sourcePath;
         std::string bindingKey;
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-            if (title.legacyInstances.size() == 1) {
-                const auto& instance = title.legacyInstances.front();
+            if (const int assigned = assignedLegacyIndex(title); assigned >= 0) {
+                const auto& instance = title.legacyInstances[static_cast<size_t>(assigned)];
                 providerId = instance.providerId.empty()
                     ? PokeVault::Source::providerIdFor(instance.providerLabel)
                     : instance.providerId;
@@ -1900,11 +1923,12 @@ namespace UI {
 
         const std::string_view forwarderSaveGameId = legacySaveGameIdForForwarder(title.gameId);
         if (title.sourceKind == SelectedSourceKind::SwitchTitle && !forwarderSaveGameId.empty()) {
-            if (title.legacyInstances.size() != 1 || !legacyCatalog) {
+            const int assignedForwarder = assignedLegacyIndex(title);   // Round 15 P0: this profile's
+            if (assignedForwarder < 0 || !legacyCatalog) {
                 partyPreviewStatus = "Party preview unavailable.";
                 return;
             }
-            const auto& instance = title.legacyInstances.front();
+            const auto& instance = title.legacyInstances[static_cast<size_t>(assignedForwarder)];
             if (instance.sourceIndex >= legacyCatalog->sources.size()) {
                 partyPreviewStatus = "Party preview unavailable.";
                 return;
@@ -1989,7 +2013,8 @@ namespace UI {
         }
 
         if (title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-            if (title.legacyInstances.size() != 1) {
+            const int assignedPreview = assignedLegacyIndex(title);
+            if (assignedPreview < 0) {
                 partyPreviewStatus = title.legacyInstances.empty()
                     ? "Party preview unavailable."
                     : "Choose a Save Instance to view its party.";
@@ -2001,7 +2026,8 @@ namespace UI {
                 }
                 return;
             }
-            const size_t handle = title.legacyInstances.front().sourceIndex;
+            const size_t handle =
+                title.legacyInstances[static_cast<size_t>(assignedPreview)].sourceIndex;
             if (!legacyCatalog || handle >= legacyCatalog->sources.size()) {
                 partyPreviewStatus = "Party preview unavailable.";
                 return;
@@ -2836,6 +2862,65 @@ namespace UI {
         return true;
     }
 
+    void SaveSelectScreen::openForgetConfirm(const std::string& gameId, SelectedSourceKind kind,
+                                             Overlay back) {
+        forgetGameId = gameId;
+        forgetKind = kind;
+        forgetReturnOverlay = back;
+        overlay = Overlay::SourceForgetConfirm;
+    }
+
+    bool SaveSelectScreen::forgetCurrentAssignment() {
+        const std::string profile = currentProfileIdentity();
+        const auto* identity = PokeVault::Games::findGame(forgetGameId);
+        const std::string name = PokeBank::UIModel::SaveOpenGate::gameName(
+            identity ? std::string_view(identity->title) : std::string_view());
+        if (!legacyBindings || profile.empty() || forgetGameId.empty()) {
+            hubNotice = "Profile assignments unavailable; nothing was changed.";
+            overlay = Overlay::None;
+            return false;
+        }
+        // Gen I-III: also release this profile's bare claims on the saves of this exact game, so a
+        // forgotten save is an ordinary unassigned candidate again (never another game's claims).
+        std::vector<std::string> release;
+        if (forgetKind == SelectedSourceKind::RetroArchFRLG) {
+            if (const UserEntry* u = currentUser())
+                for (const auto& card : u->titles) {
+                    if (card.sourceKind != SelectedSourceKind::RetroArchFRLG || card.gameId != forgetGameId)
+                        continue;
+                    for (const auto& instance : card.legacyInstances) {
+                        if (instance.claimedProfile != profile) continue;
+                        release.push_back(instance.sourceIdentity);
+                        for (const auto& alias : instance.sourceAliases) release.push_back(alias);
+                    }
+                }
+        }
+        const bool remembered = legacyBindings->hasGameRecord(profile, forgetGameId) || !release.empty();
+        if (!remembered || !legacyBindings->forgetGameAndSave(profile, forgetGameId, release)) {
+            hubNotice = !remembered
+                ? "No save is assigned to " + name + " on this profile. Nothing was changed."
+                : "The assignment could not be forgotten safely. Nothing was changed.";
+            overlay = Overlay::None;
+            return false;
+        }
+        if (forgetKind == SelectedSourceKind::RetroArchFRLG && legacyCatalog) loadLegacySources(*legacyCatalog);
+        else if (forgetKind == SelectedSourceKind::Gen4AssignedFile) loadGen4Cards();
+        else if (forgetKind == SelectedSourceKind::Gen5AssignedFile) loadGen5Cards();
+        homeSnapshots = {};
+        if (const UserEntry* u = currentUser())
+            for (size_t i = 0; i < u->titles.size(); ++i)
+                if (u->titles[i].gameId == forgetGameId && u->titles[i].sourceKind == forgetKind) {
+                    titleIndex = static_cast<int>(i);
+                    gamesDrawerIndex = titleIndex;
+                    break;
+                }
+        scrollSelectionIntoView();
+        refreshHubPreview();
+        overlay = Overlay::None;
+        hubNotice = "Forgot the save for " + name + " on this profile. The save file was not changed.";
+        return true;
+    }
+
     // Round 14 (owner H01 / R02, P0): the ONE save gate (UI/SaveOpenGate.h). The generation's own
     // validator answers; Gen IV / V strictly re-validate the exact assigned bytes here.
     PokeBank::UIModel::SaveOpenGate::Decision SaveSelectScreen::saveGateForTitle(const TitleEntry& title) {
@@ -2849,12 +2934,33 @@ namespace UI {
         }
         if (title.sourceKind == SelectedSourceKind::SwitchTitle ||
             title.sourceKind == SelectedSourceKind::RetroArchFRLG) {
-            // A card lists only saves a strict parse found READY for this exact game and profile;
-            // the open re-checks that the bytes did not change.
+            // Round 15 P0 (owner SAF-02 / SAF-09: "One profile-scoped SourceAssignment ... Hard
+            // exact-game save gate"): a discovered save is only a CANDIDATE. The card opens only the
+            // save THIS profile assigned to THIS exact game (assignedLegacyIndex), and only while its
+            // bytes are still the strictly parsed snapshot. An unassigned, other-profile, missing or
+            // changed save never opens: the chooser does.
             in.source = Gate::Source::DiscoveredFile;
-            const bool any = legacyCatalog && !title.legacyInstances.empty();
-            in.assignment = any ? Gate::Assignment::Ready : Gate::Assignment::None;
-            in.validation = any ? Gate::Validation::Valid : Gate::Validation::NotChecked;
+            const int assigned = assignedLegacyIndex(title);
+            if (assigned == -2) {
+                in.assignment = Gate::Assignment::Ambiguous;
+                return Gate::decide(in);
+            }
+            if (assigned < 0) {
+                const std::string_view forwarded = legacySaveGameIdForForwarder(title.gameId);
+                const std::string saveGame = forwarded.empty() ? title.gameId : std::string(forwarded);
+                in.assignment = legacyBindings &&
+                        legacyBindings->hasGameRecord(currentProfileIdentity(), saveGame)
+                    ? Gate::Assignment::Missing : Gate::Assignment::None;
+                return Gate::decide(in);
+            }
+            in.assignment = Gate::Assignment::Ready;
+            const auto& shown = title.legacyInstances[static_cast<size_t>(assigned)];
+            const bool current = legacyCatalog && shown.sourceIndex < legacyCatalog->sources.size() &&
+                legacyCatalog->sources[shown.sourceIndex].ready() &&
+                legacyCatalog->sources[shown.sourceIndex].normalizedPath == shown.normalizedPath &&
+                legacyCatalog->sources[shown.sourceIndex].contentFingerprint == shown.contentFingerprint &&
+                legacySnapshotStillCurrent(shown);
+            in.validation = current ? Gate::Validation::Valid : Gate::Validation::Invalid;
             return Gate::decide(in);
         }
         in.source = Gate::Source::AssignedFile;
@@ -2917,6 +3023,25 @@ namespace UI {
         }
         const std::string_view forwarded = legacySaveGameIdForForwarder(title.gameId);
         const std::string saveGame = forwarded.empty() ? title.gameId : std::string(forwarded);
+        // Round 15 P0: this exact game's Save Instances (the saves visible to THIS profile only);
+        // choosing one assigns it to this profile + game and opens it. A forwarder card uses the
+        // Save Instances of its GBA game card.
+        if (const UserEntry* u = currentUser()) {
+            for (size_t i = 0; i < u->titles.size(); ++i) {
+                const auto& card = u->titles[i];
+                if (card.sourceKind != SelectedSourceKind::RetroArchFRLG || card.gameId != saveGame ||
+                    card.legacyInstances.empty()) continue;
+                titleIndex = static_cast<int>(i);
+                const int assigned = assignedLegacyIndex(card);
+                legacyInstanceIndex = assigned >= 0 ? assigned : 0;
+                legacyInstanceScroll = std::max(0, legacyInstanceIndex - 5);
+                legacyInstanceTouchScroll.stop();
+                legacyNotice = notice;
+                launchLegacyMode = false;
+                overlay = Overlay::LegacyInstances;
+                return;
+            }
+        }
         rebuildUnassignedLegacySources();
         unassignedLegacySources.erase(
             std::remove_if(unassignedLegacySources.begin(), unassignedLegacySources.end(),
@@ -3114,14 +3239,12 @@ namespace UI {
                 hubNotice = "Link the matching GBA save before opening this forwarder.";
                 return;
             }
-            int sourceIndex = 0;
-            if (selected.legacyInstances.size() > 1) {
-                sourceIndex = preferredLegacySourceIndex(
-                    selected.legacyInstances, legacyBindings, profile, forwarderSaveGameId);
-                if (sourceIndex < 0) {
-                    hubNotice = "Choose one preferred GBA save from the matching FireRed/LeafGreen game card first.";
-                    return;
-                }
+            // Round 15 P0: only THIS profile's assigned GBA save, even when one save was found.
+            const int sourceIndex = preferredLegacySourceIndex(
+                selected.legacyInstances, legacyBindings, profile, forwarderSaveGameId);
+            if (sourceIndex < 0) {
+                hubNotice = "Choose one preferred GBA save from the matching FireRed/LeafGreen game card first.";
+                return;
             }
             const auto shown = selected.legacyInstances[static_cast<size_t>(sourceIndex)];
             if (shown.sourceIndex >= legacyCatalog->sources.size()) {
@@ -3153,19 +3276,18 @@ namespace UI {
                 return;
             }
 
-            int sourceIndex = 0;
-            if (selected.legacyInstances.size() > 1) {
-                sourceIndex = preferredLegacySourceIndex(
-                    selected.legacyInstances, legacyBindings, profile, selectedGameId);
-                if (sourceIndex < 0) {
-                    legacyInstanceIndex = 0;
-                    legacyInstanceScroll = 0;
-                    legacyNotice = sourceIndex == -2
-                        ? "The remembered save choice is ambiguous. Choose the exact save again."
-                        : "Choose the exact validated save for " + selected.label + " once.";
-                    overlay = Overlay::LegacyInstances;
-                    return;
-                }
+            // Round 15 P0: only THIS profile's assigned save for this exact game opens (the gate
+            // above already refused otherwise); a single discovered save is never assumed.
+            const int sourceIndex = preferredLegacySourceIndex(
+                selected.legacyInstances, legacyBindings, profile, selectedGameId);
+            if (sourceIndex < 0) {
+                legacyInstanceIndex = 0;
+                legacyInstanceScroll = 0;
+                legacyNotice = sourceIndex == -2
+                    ? "The remembered save choice is ambiguous. Choose the exact save again."
+                    : "Choose the exact validated save for " + selected.label + " once.";
+                overlay = Overlay::LegacyInstances;
+                return;
             }
 
             const auto shown = selected.legacyInstances[static_cast<size_t>(sourceIndex)];
@@ -3292,7 +3414,9 @@ namespace UI {
                 *legacyBindings, currentProfileIdentity(), title.gameId);
             if (opened.status != PokeVault::Integration::Gen4::OpenStatus::Ready || !opened.save ||
                 !gen4SaveInitialized(*opened.save)) {
-                hubNotice = "The remembered save no longer validates. Re-link it from Source / Game File.";
+                // Round 15 P0: the same exact-game chooser as A (never a dead end). Previously:
+                // "The remembered save no longer validates. Re-link it from Source / Game File."
+                openSaveChooserForTitle(title, saveGateForTitle(title).message);
                 return;
             }
             selectedUserUid = user->uid;
@@ -3310,16 +3434,13 @@ namespace UI {
                 return;
             }
 
-            int sourceIndex = 0;
-            if (title.legacyInstances.size() > 1) {
-                sourceIndex = preferredLegacySourceIndex(
-                    title.legacyInstances, legacyBindings, currentProfileIdentity(), title.gameId);
-                if (sourceIndex < 0) {
-                    hubNotice = sourceIndex == -2
-                        ? "The remembered save choice is ambiguous. Re-select it from Source / Game File."
-                        : "Multiple saves exist. Open Source / Game File once to choose the exact save.";
-                    return;
-                }
+            const int sourceIndex = preferredLegacySourceIndex(
+                title.legacyInstances, legacyBindings, currentProfileIdentity(), title.gameId);
+            if (sourceIndex < 0) {
+                hubNotice = sourceIndex == -2
+                    ? "The remembered save choice is ambiguous. Re-select it from Source / Game File."
+                    : "Multiple saves exist. Open Source / Game File once to choose the exact save.";
+                return;
             }
 
             const auto shown = title.legacyInstances[static_cast<size_t>(sourceIndex)];
@@ -4334,6 +4455,12 @@ namespace UI {
             if (kDown & HidNpadButton_A) assignCurrentLegacySource();
             return;
         }
+        if (overlay == Overlay::SourceForgetConfirm) {
+            // A or a tap never forgets: only an explicit Y removes app-owned assignment metadata.
+            if (kDown & HidNpadButton_B) overlay = forgetReturnOverlay;
+            else if (kDown & HidNpadButton_Y) forgetCurrentAssignment();
+            return;
+        }
         if (overlay == Overlay::Gen5UnassignConfirm) {
             // A or a touch tap must never silently forget a profile binding.
             // Only an explicit Y confirmation removes app-owned assignment
@@ -4345,6 +4472,10 @@ namespace UI {
         if (overlay == Overlay::Gen5Setup) {
             if(kDown & HidNpadButton_B) {
                 closeGen5Setup();
+                return;
+            }
+            if(kDown & HidNpadButton_Minus) {
+                openForgetConfirm(gen5TargetGameId,SelectedSourceKind::Gen5AssignedFile,Overlay::Gen5Setup);
                 return;
             }
             if(kDown & HidNpadButton_Up)gen5SetupIndex=(gen5SetupIndex+4)%5;
@@ -4392,6 +4523,11 @@ namespace UI {
             if(kDown & HidNpadButton_X) {
                 gen5CandidateTouchScroll.stop();
                 discoverGen5Candidates();
+                return;
+            }
+            if(kDown & HidNpadButton_Minus) {
+                gen5CandidateTouchScroll.stop();
+                openForgetConfirm(gen5TargetGameId,SelectedSourceKind::Gen5AssignedFile,Overlay::Gen5Candidates);
                 return;
             }
             if((kDown & HidNpadButton_Plus) && gen5CandidateIndex>=0 &&
@@ -4446,6 +4582,10 @@ namespace UI {
                 gen4SetupFromClassicGames = false;
                 return;
             }
+            if (kDown & HidNpadButton_Minus) {
+                openForgetConfirm(gen4TargetGameId, SelectedSourceKind::Gen4AssignedFile, Overlay::Gen4Setup);
+                return;
+            }
             if (kDown & HidNpadButton_Up) gen4SetupIndex = (gen4SetupIndex + 3) % 4;
             if (kDown & HidNpadButton_Down) gen4SetupIndex = (gen4SetupIndex + 1) % 4;
             if (kDown & HidNpadButton_A) {
@@ -4453,7 +4593,9 @@ namespace UI {
                 else if (gen4SetupIndex == 1)
                     openSaveFilePicker(gen4TargetGameId, 4,
                         "Choose the save file. It is checked before it is remembered.");
-                else if (gen4SetupIndex == 2) unassignCurrentGen4Game();
+                else if (gen4SetupIndex == 2)
+                    // Round 15 P0: the shared confirmation (was an immediate unassignCurrentGen4Game()).
+                    openForgetConfirm(gen4TargetGameId, SelectedSourceKind::Gen4AssignedFile, Overlay::Gen4Setup);
                 else {
                     overlay = gen4SetupFromGamesDrawer ? Overlay::GamesDrawer : Overlay::None;
                     if (overlay == Overlay::GamesDrawer) {
@@ -4496,6 +4638,11 @@ namespace UI {
                 return;
             }
             if (kDown & HidNpadButton_X) { discoverGen4Candidates(); return; }
+            if (kDown & HidNpadButton_Minus) {
+                gen4CandidateTouchScroll.stop();
+                openForgetConfirm(gen4TargetGameId, SelectedSourceKind::Gen4AssignedFile, Overlay::Gen4Candidates);
+                return;
+            }
             if (kDown & HidNpadButton_Y) {
                 openGen4Setup(gen4TargetGameId,
                     "Add, repair, or forget a remembered source. Opening still happens from Save Instances.",
@@ -4710,6 +4857,13 @@ namespace UI {
                 if (legacyInstanceIndex >= 0 && legacyInstanceIndex < count)
                     preferred = instances[static_cast<size_t>(legacyInstanceIndex)].sourceIdentity;
                 refreshLegacySources(gameId, preferred, false);
+                return;
+            }
+            if (kDown & HidNpadButton_Minus) {
+                legacyInstanceTouchScroll.stop();
+                launchLegacyMode = false;
+                openForgetConfirm(u->titles[titleIndex].gameId, SelectedSourceKind::RetroArchFRLG,
+                                  Overlay::LegacyInstances);
                 return;
             }
             if (kDown & HidNpadButton_Y) {
@@ -6160,7 +6314,7 @@ namespace UI {
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"},
                             {"A", launchLegacyMode ? "Launch / Link" : "Open Read Only"},
                             {"Y", "Source Details"}, {"X", "Refresh Saves"}, {"+", "Choose File"},
-                            {"B", "Back"}});
+                            {"-", "Forget"}, {"B", "Back"}});
         } else if (overlay == Overlay::LegacyAssignment && u) {
             constexpr int w = 800, h = 530, rowH = 70, visibleRows = 5;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -6269,6 +6423,24 @@ namespace UI {
             if(!gen5Notice.empty())
                 drawGen5SourceNotice(fb,gen5Notice,x+28,y+h-44,w-56);
             SharedEditorChrome::drawPickerFooter(fb, {.browse = true, .page = false});
+        } else if (overlay == Overlay::SourceForgetConfirm && u) {
+            constexpr int w = 780, h = 290;
+            const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
+            drawModalSurface(fb, x, y, w, h);
+            const auto* game = PokeVault::Games::findGame(forgetGameId);
+            fb.drawText(x + 28, y + 22, "FORGET SAVE ASSIGNMENT?", Colors::TextPrimary, TextStyle::Heading);
+            fb.drawText(x + 28, y + 70,
+                        PokeBank::UIModel::SaveOpenGate::gameName(game ? std::string_view(game->title)
+                                                                       : std::string_view()) +
+                            " on " + u->name,
+                        Colors::TextSecondary, TextStyle::Body);
+            fb.drawText(x + 28, y + 108, "Only this profile's remembered link is removed.",
+                        Colors::TextSecondary, TextStyle::Body);
+            fb.drawText(x + 28, y + 146, "The save file and its backups are not changed.",
+                        Colors::Accent, TextStyle::Body);
+            drawGlyphSentence(fb, x + 28, y + 190, "Y: Forget     B: Keep assignment",
+                              Colors::TextPrimary, TextStyle::Body);
+            drawNavBar(fb, {{"Y", "Forget"}, {"B", "Keep Assignment"}});
         } else if (overlay == Overlay::Gen5UnassignConfirm && u) {
             constexpr int w=760,h=270;
             const int x=(fb.getWidth()-w)/2,y=(fb.getHeight()-h)/2;
@@ -6317,7 +6489,8 @@ namespace UI {
                 drawGen5SourceNotice(fb,gen5Notice,x+28,y+h-44,w-56);
             drawNavBar(fb,{{"D-pad/Stick","Choose Save"},
                            {"A",gen5AssignOnly?"Assign to Profile":"Open Editor"},
-                           {"Y","Source Setup"},{"X","Refresh"},{"+","Save Diagnostics"},{"B","Back"}});
+                           {"Y","Source Setup"},{"X","Refresh"},{"+","Save Diagnostics"},
+                           {"-","Forget"},{"B","Back"}});
         } else if (overlay == Overlay::Gen4Setup && u) {
             constexpr int w = 760, h = 430, rowH = 64;
             const int x = (fb.getWidth() - w) / 2, y = (fb.getHeight() - h) / 2;
@@ -6380,7 +6553,8 @@ namespace UI {
             if (!gen4Notice.empty())
                 fb.drawText(x + 28, y + h - 34, gen4Notice, Colors::TextMuted, TextStyle::Caption);
             drawNavBar(fb, {{"D-pad/Stick", "Choose Save"}, {"A", "Open Read Only"},
-                            {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"B", "Back"}});
+                            {"Y", "Source Setup"}, {"X", "Refresh Saves"}, {"-", "Forget"},
+                            {"B", "Back"}});
         } else if (overlay == Overlay::Help) {
             if (helpReturnOverlay == Overlay::RecoveryFiles) {
                 // Round 11 H12: Recovery files Help (B / - return with the selection kept).

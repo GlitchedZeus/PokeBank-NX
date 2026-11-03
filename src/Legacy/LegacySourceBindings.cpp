@@ -529,11 +529,19 @@ namespace PokeVault::Legacy {
         const auto before = owners_;
         // Clear only the prior catalog preference. Keep its profile claim so choosing save B never
         // makes save A suddenly visible to another profile.
-        for (auto& [identity, binding] : owners_) {
-            (void)identity;
-            if (binding.profileIdentity == profileIdentity &&
-                binding.gameIdentity == gameIdentity && binding.sourcePath.empty())
-                binding.gameIdentity.clear();
+        for (auto it = owners_.begin(); it != owners_.end();) {
+            auto& binding = it->second;
+            if (binding.profileIdentity == profileIdentity && binding.gameIdentity == gameIdentity) {
+                if (binding.sourcePath.empty()) {
+                    binding.gameIdentity.clear();
+                } else if (std::find(identities.begin(), identities.end(), it->first) == identities.end()) {
+                    // Round 15 P0 (Change): a manually assigned file for this exact profile/game is
+                    // replaced by the newly chosen save, never left as a second "preferred" record.
+                    it = owners_.erase(it);
+                    continue;
+                }
+            }
+            ++it;
         }
 
         auto& primary = owners_[instance.sourceIdentity];
@@ -591,6 +599,48 @@ namespace PokeVault::Legacy {
         if (save()) return true;
         owners_ = before;
         return false;
+    }
+
+    bool LegacySourceBindings::forgetGameAndSave(
+        std::string_view profileIdentity, std::string_view gameIdentity,
+        const std::vector<std::string>& releaseIdentities) {
+        lastError_.clear();
+        if (profileIdentity.empty() || gameIdentity.empty()) {
+            errno = EINVAL;
+            return fail("forget-game");
+        }
+        const auto before = owners_;
+        size_t removed = 0;
+        for (auto it = owners_.begin(); it != owners_.end();) {
+            const bool exactGame = it->second.profileIdentity == profileIdentity &&
+                it->second.gameIdentity == gameIdentity;
+            const bool bareClaim = it->second.profileIdentity == profileIdentity &&
+                it->second.gameIdentity.empty() && it->second.sourcePath.empty() &&
+                std::find(releaseIdentities.begin(), releaseIdentities.end(), it->first) !=
+                    releaseIdentities.end();
+            if (exactGame || bareClaim) {
+                it = owners_.erase(it);
+                ++removed;
+            } else {
+                ++it;
+            }
+        }
+        if (removed == 0) {
+            errno = ENOENT;
+            return fail("forget-game");
+        }
+        if (save()) return true;
+        owners_ = before;
+        return false;
+    }
+
+    bool LegacySourceBindings::hasGameRecord(std::string_view profileIdentity,
+                                             std::string_view gameIdentity) const {
+        if (profileIdentity.empty() || gameIdentity.empty()) return false;
+        return std::any_of(owners_.begin(), owners_.end(), [&](const auto& entry) {
+            return entry.second.profileIdentity == profileIdentity &&
+                   entry.second.gameIdentity == gameIdentity;
+        });
     }
 
     AssignedFile LegacySourceBindings::resolveFileForGame(std::string_view profile,
