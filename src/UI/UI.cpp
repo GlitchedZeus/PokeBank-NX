@@ -205,9 +205,14 @@ namespace UI {
             PokeBank::Diagnostics::InputTrace::installTerminateRecorder();
             logInfoToFile("Input trace enabled", "logs/input-trace.log");
         }
+        // Round 16 P0: a damaged or unwritable assignment database must never lock a profile out
+        // of its saves. Validated choices are kept for the session when storing them fails; a torn
+        // committed file is quarantined byte-for-byte (see LegacySourceBindings.h).
+        legacySourceBindings.enableSessionRecovery();
         if (!legacySourceBindings.load())
             logErrorToFile("Legacy source bindings could not load",
                            legacySourceBindings.lastError().c_str());
+        logInfoToFile("Assignment storage", legacySourceBindings.storageDiagnostics().c_str());
 
         // Discover only explicitly bounded emulator battery-save roots. RetroArch keeps its
         // configured/conventional root; mGBA is additive only when /mGBA/config.ini explicitly

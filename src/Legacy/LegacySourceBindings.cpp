@@ -6,6 +6,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <initializer_list>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <utility>
@@ -73,6 +74,37 @@ namespace PokeVault::Legacy {
     }
 
     namespace {
+        bool parseRow(std::string_view row, std::string& key, BindingRecord& binding) {
+            std::vector<std::string> fields;
+            size_t start = 0;
+            do {
+                const size_t tab = row.find('\t', start);
+                std::string field;
+                if (!hexDecode(row.substr(start, tab == std::string_view::npos
+                    ? row.size() - start : tab - start), field) ||
+                    field.find('\0') != std::string::npos) return false;
+                fields.push_back(std::move(field));
+                if (tab == std::string_view::npos) break;
+                start = tab + 1;
+            } while (fields.size() <= 9);
+            if (fields.size() != 2 && fields.size() != 3 && fields.size() != 6 &&
+                fields.size() != 7 && fields.size() != 8 && fields.size() != 9) return false;
+            binding = {};
+            binding.profileIdentity = fields[1];
+            if (fields.size() >= 3) binding.gameIdentity = fields[2];
+            if (fields.size() >= 6) {
+                binding.sourcePath = fields[3];
+                binding.sourceType = fields[4];
+                binding.expectedRawFamily = fields[5];
+            }
+            if (fields.size() >= 7) binding.sourceVariant = fields[6];
+            if (fields.size() >= 8) binding.physicalIdentity = fields[7];
+            if (fields.size() == 9) binding.contentFingerprint = fields[8];
+            if (!validSourceExtension(binding)) return false;
+            key = std::move(fields[0]);
+            return true;
+        }
+
         // Bounded, strict read: never expose a partially parsed ownership database.
         ReadStatus readDatabase(const std::string& path, Owners& owners, std::string& bytes) {
             owners.clear();
@@ -98,43 +130,46 @@ namespace PokeVault::Legacy {
             while (offset < bytes.size()) {
                 const size_t end = bytes.find('\n', offset);
                 const std::string_view row(bytes.data() + offset, end - offset);
-                std::vector<std::string> fields;
-                size_t start = 0;
-                bool decoded = true;
-                do {
-                    const size_t tab = row.find('\t', start);
-                    std::string field;
-                    if (!hexDecode(row.substr(start, tab == std::string_view::npos
-                        ? row.size() - start : tab - start), field) ||
-                        field.find('\0') != std::string::npos) { decoded = false; break; }
-                    fields.push_back(std::move(field));
-                    if (tab == std::string_view::npos) break;
-                    start = tab + 1;
-                } while (fields.size() <= 9);
-                if (!decoded || (fields.size() != 2 && fields.size() != 3 &&
-                                 fields.size() != 6 && fields.size() != 7 && fields.size() != 8 && fields.size() != 9)) {
-                    owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
-                }
+                std::string key;
                 BindingRecord binding;
-                binding.profileIdentity = fields[1];
-                if (fields.size() >= 3) binding.gameIdentity = fields[2];
-                if (fields.size() >= 6) {
-                    binding.sourcePath = fields[3];
-                    binding.sourceType = fields[4];
-                    binding.expectedRawFamily = fields[5];
-                }
-                if (fields.size() >= 7) binding.sourceVariant = fields[6];
-                if (fields.size() >= 8) binding.physicalIdentity = fields[7];
-                if (fields.size() == 9) binding.contentFingerprint = fields[8];
-                if (!validSourceExtension(binding)) {
-                    owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
-                }
-                if (!owners.emplace(fields[0], std::move(binding)).second) {
+                if (!parseRow(row, key, binding) || !owners.emplace(std::move(key), std::move(binding)).second) {
                     owners.clear(); errno = EILSEQ; return ReadStatus::Invalid;
                 }
                 offset = end + 1;
             }
             return ReadStatus::Valid;
+        }
+
+        // Session recovery only: rows of an unreadable committed database that still parse,
+        // used in memory to keep enforcing other profiles' claims. Never written back by itself.
+        Owners salvageRows(const std::string& path) {
+            Owners owners;
+            FILE* file = std::fopen(path.c_str(), "rb");
+            if (!file) return owners;
+            std::string bytes;
+            char buffer[4096];
+            size_t count;
+            while (bytes.size() <= 1024 * 1024 && (count = std::fread(buffer, 1, sizeof(buffer), file)) != 0)
+                bytes.append(buffer, count);
+            std::fclose(file);
+            size_t offset = 0;
+            while (offset < bytes.size()) {
+                size_t end = bytes.find('\n', offset);
+                if (end == std::string::npos) break; // a torn final row is never trusted
+                const std::string_view row(bytes.data() + offset, end - offset);
+                std::string key;
+                BindingRecord binding;
+                if (!row.empty() && row.front() != '#' && parseRow(row, key, binding) &&
+                    owners.find(key) == owners.end())
+                    owners.emplace(std::move(key), std::move(binding));
+                offset = end + 1;
+            }
+            return owners;
+        }
+
+        long fileSize(const std::string& path) {
+            struct stat info{};
+            return ::stat(path.c_str(), &info) == 0 ? static_cast<long>(info.st_size) : -1;
         }
 
         std::string serialize(const Owners& owners) {
@@ -185,6 +220,56 @@ namespace PokeVault::Legacy {
             "%s: errno=%d (%s)", stage, error, std::strerror(error));
 #endif
         lastError_ = diagnostic;
+        const std::string_view s(stage);
+        const auto is = [&](std::initializer_list<std::string_view> names) {
+            return std::find(names.begin(), names.end(), s) != names.end();
+        };
+        if (s.find("conflict") != std::string_view::npos)
+            lastResult_ = BindingResult::BelongsToAnotherProfile;
+        else if (s == "ensure-config-root" || (s == "open-temp" && (error == ENOENT || error == ENOTDIR)))
+            lastResult_ = BindingResult::MetadataDirUnavailable;
+        else if (is({"validate-temp", "validate-target"}))
+            lastResult_ = BindingResult::MetadataValidationFailed;
+        else if (is({"read-existing", "read-recovery-backup", "load-database"}))
+            lastResult_ = BindingResult::ExistingMetadataCorrupt;
+        else if (is({"open-temp", "write-temp", "flush-temp", "sync-temp", "close-temp", "retire-backup",
+                     "old-to-backup", "temp-to-target", "recover-backup", "rollback", "quarantine-corrupt"}))
+            lastResult_ = BindingResult::MetadataWriteFailed;
+        else
+            lastResult_ = BindingResult::ValidationFailed;
+        return false;
+    }
+
+    const char* bindingResultText(BindingResult result) noexcept {
+        switch (result) {
+            case BindingResult::Succeeded: return "Assigned";
+            case BindingResult::ValidationFailed: return "The assignment request was not valid";
+            case BindingResult::BelongsToAnotherProfile: return "That save is already linked to another profile or game";
+            case BindingResult::MetadataDirUnavailable: return "The PokeBank NX config folder is unavailable";
+            case BindingResult::MetadataWriteFailed: return "The assignment file could not be written";
+            case BindingResult::MetadataValidationFailed: return "The written assignment file did not read back correctly";
+            case BindingResult::ExistingMetadataCorrupt: return "The existing assignment file is damaged (kept unchanged)";
+            case BindingResult::SourceChanged: return "That save changed since it was listed";
+            case BindingResult::UnsupportedSave: return "That file is not a save for this game";
+            case BindingResult::KeptForSession: return "Opened for this session; the choice could not be stored";
+        }
+        return "Unknown assignment result";
+    }
+
+    bool LegacySourceBindings::commit(Owners&& before) {
+        if (save()) { unsaved_ = false; return true; }
+        const bool persistence = lastResult_ == BindingResult::MetadataDirUnavailable ||
+            lastResult_ == BindingResult::MetadataWriteFailed ||
+            lastResult_ == BindingResult::MetadataValidationFailed ||
+            lastResult_ == BindingResult::ExistingMetadataCorrupt;
+        if (sessionRecovery_ && persistence) {
+            // The on-disk generation is untouched (save() keeps/rolls back to it). The validated
+            // choice stays in memory so every route agrees for this session.
+            unsaved_ = true;
+            lastResult_ = BindingResult::KeptForSession;
+            return true;
+        }
+        owners_ = std::move(before);
         return false;
     }
 
@@ -199,25 +284,42 @@ namespace PokeVault::Legacy {
         if (storagePath_.empty()) { errno = EINVAL; return fail("load-path"); }
         Owners candidate;
         std::string bytes;
+        lastResult_ = BindingResult::Succeeded;
         const auto primary = readDatabase(storagePath_, candidate, bytes);
-        if (primary == ReadStatus::Valid) { owners_ = std::move(candidate); return true; }
+        if (primary == ReadStatus::Valid) {
+            owners_ = std::move(candidate); trusted_ = true; loadState_ = "primary";
+            return true;
+        }
         const int primaryError = errno;
         const auto backup = readDatabase(storagePath_ + ".bak", candidate, bytes);
         if (backup == ReadStatus::Valid) {
             owners_ = std::move(candidate);
+            trusted_ = true;
+            loadState_ = primary == ReadStatus::Missing ? "backup (primary missing)" : "backup (primary damaged)";
             lastError_ = "Recovered bindings from .bak; primary missing or invalid";
             return true;
         }
         if (primary == ReadStatus::Missing && backup == ReadStatus::Missing) {
             owners_.clear(); // A .tmp alone is uncommitted, never automatically promoted.
+            trusted_ = true; loadState_ = "new (no database yet)";
             return true;
         }
         errno = primary == ReadStatus::Invalid ? primaryError : errno;
-        return fail("load-database"); // Preserve previous in-memory state on failure.
+        const bool keptPrevious = trusted_;
+        fail("load-database"); // Preserve previous in-memory state on failure.
+        if (sessionRecovery_ && !keptPrevious && owners_.empty()) {
+            // Keep enforcing whatever claims are still legible; the damaged file stays untouched.
+            owners_ = salvageRows(primary == ReadStatus::Invalid ? storagePath_ : storagePath_ + ".bak");
+            loadState_ = "damaged; " + std::to_string(owners_.size()) + " legible row(s) used for this session";
+        } else {
+            loadState_ = "damaged";
+        }
+        return false;
     }
 
     bool LegacySourceBindings::save() const {
         lastError_.clear();
+        lastResult_ = BindingResult::Succeeded;
         if (storagePath_.empty()) { errno = EINVAL; return fail("save-path"); }
         // On an SD card with no prior PokeBank NX settings, nothing guarantees /config
         // exists. Both discovered Save Instances and the manual SD picker hit this
@@ -235,6 +337,22 @@ namespace PokeVault::Legacy {
         Owners previous, checked;
         std::string priorBytes, checkedBytes;
         auto primary = readDatabase(storagePath_, previous, priorBytes);
+        if (primary == ReadStatus::Invalid && sessionRecovery_ && trusted_ && errno == EILSEQ) {
+            // Round 16 P0 (hardware): a committed primary torn by a crash/power loss used to block
+            // every later assignment forever. With a trusted generation in memory, move the damaged
+            // bytes aside unchanged (never deleted, never overwritten) and continue from .bak.
+            std::string target;
+            for (int n = 1; n <= 99 && target.empty(); ++n) {
+                const std::string candidate = storagePath_ + ".corrupt-" + std::to_string(n);
+                struct stat info{};
+                if (::stat(candidate.c_str(), &info) != 0 && errno == ENOENT) target = candidate;
+            }
+            if (target.empty()) { errno = EEXIST; return fail("quarantine-corrupt"); }
+            if (!checkpoint("quarantine-corrupt")) return false;
+            if (renameFile(storagePath_.c_str(), target.c_str()) != 0) return fail("quarantine-corrupt");
+            quarantined_ = target;
+            primary = ReadStatus::Missing;
+        }
         if (primary == ReadStatus::Invalid) return fail("read-existing");
         if (primary == ReadStatus::Missing) {
             const auto backup = readDatabase(bak, previous, priorBytes);
@@ -297,20 +415,16 @@ namespace PokeVault::Legacy {
     }
 
     bool LegacySourceBindings::assignAndSave(std::string_view source, std::string_view profile) {
-        const auto before = owners_;
+        auto before = owners_;
         if (!assign(source, profile)) { errno = EINVAL; return fail("assign"); }
-        if (save()) return true;
-        owners_ = before;
-        return false;
+        return commit(std::move(before));
     }
 
     bool LegacySourceBindings::assignAndSave(std::string_view source, std::string_view profile,
                                              std::string_view game) {
-        const auto before = owners_;
+        auto before = owners_;
         if (!assign(source, profile, game)) { errno = EINVAL; return fail("assign"); }
-        if (save()) return true;
-        owners_ = before;
-        return false;
+        return commit(std::move(before));
     }
 
     bool LegacySourceBindings::assign(std::string_view sourceIdentity,
@@ -355,11 +469,9 @@ namespace PokeVault::Legacy {
                 errno = EINVAL; return fail("assignment-aliases-metadata");
             }
         }
-        const auto before = owners_;
+        auto before = owners_;
         owners_[std::string(source)] = std::move(binding);
-        if (save()) return true;
-        owners_ = before;
-        return false;
+        return commit(std::move(before));
     }
 
     bool LegacySourceBindings::replaceFileAssignmentAndSave(
@@ -420,7 +532,7 @@ namespace PokeVault::Legacy {
             }
         }
 
-        const auto before = owners_;
+        auto before = owners_;
         for (auto it = owners_.begin(); it != owners_.end();) {
             if (it->second.profileIdentity == binding.profileIdentity &&
                 it->second.gameIdentity == binding.gameIdentity) {
@@ -438,9 +550,7 @@ namespace PokeVault::Legacy {
             }
         }
         owners_[std::string(sourceIdentity)] = std::move(binding);
-        if (save()) return true;
-        owners_ = before;
-        return false;
+        return commit(std::move(before));
     }
 
     void LegacySourceBindings::applyClaims(Source::SaveInstance& instance) const {
@@ -489,14 +599,12 @@ namespace PokeVault::Legacy {
         if (profile.empty() || !instance.ready() || !Source::visibleToProfile(checked, profile)) {
             errno = EEXIST; return fail("claim-source-conflict");
         }
-        const auto before = owners_;
+        auto before = owners_;
         if (!assign(instance.sourceIdentity, profile)) { errno = EINVAL; return fail("claim-source"); }
         for (const auto& alias : instance.sourceAliases) {
             if (!assign(alias, profile)) { owners_ = before; errno = EINVAL; return fail("claim-alias"); }
         }
-        if (save()) return true;
-        owners_ = before;
-        return false;
+        return commit(std::move(before));
     }
 
     bool LegacySourceBindings::preferGameSourceAndSave(
@@ -530,14 +638,17 @@ namespace PokeVault::Legacy {
         for (const auto& identity : identities) {
             const auto found = owners_.find(identity);
             if (found == owners_.end()) continue;
+            // Round 16 P0: the same physical save already assigned to THIS profile and THIS game
+            // through the SD picker (a file row) is the same choice, not a conflict. A file row for
+            // another game, or any row of another profile, is still refused.
             if (found->second.profileIdentity != profileIdentity ||
-                !found->second.sourcePath.empty()) {
+                (!found->second.sourcePath.empty() && found->second.gameIdentity != gameIdentity)) {
                 errno = EEXIST;
                 return fail("prefer-game-source-conflict");
             }
         }
 
-        const auto before = owners_;
+        auto before = owners_;
         // Clear only the prior catalog preference. Keep its profile claim so choosing save B never
         // makes save A suddenly visible to another profile.
         for (auto it = owners_.begin(); it != owners_.end();) {
@@ -566,9 +677,7 @@ namespace PokeVault::Legacy {
             alias.gameIdentity.clear();
         }
 
-        if (save()) return true;
-        owners_ = before;
-        return false;
+        return commit(std::move(before));
     }
 
     bool LegacySourceBindings::isPreferredGameSource(
@@ -592,7 +701,7 @@ namespace PokeVault::Legacy {
             errno = EINVAL;
             return fail("unassign-game");
         }
-        const auto before = owners_;
+        auto before = owners_;
         size_t removed = 0;
         for (auto it = owners_.begin(); it != owners_.end();) {
             if (it->second.profileIdentity == profileIdentity &&
@@ -607,9 +716,7 @@ namespace PokeVault::Legacy {
             errno = ENOENT;
             return fail("unassign-game");
         }
-        if (save()) return true;
-        owners_ = before;
-        return false;
+        return commit(std::move(before));
     }
 
     bool LegacySourceBindings::forgetGameAndSave(
@@ -620,7 +727,7 @@ namespace PokeVault::Legacy {
             errno = EINVAL;
             return fail("forget-game");
         }
-        const auto before = owners_;
+        auto before = owners_;
         size_t removed = 0;
         for (auto it = owners_.begin(); it != owners_.end();) {
             const bool exactGame = it->second.profileIdentity == profileIdentity &&
@@ -640,9 +747,7 @@ namespace PokeVault::Legacy {
             errno = ENOENT;
             return fail("forget-game");
         }
-        if (save()) return true;
-        owners_ = before;
-        return false;
+        return commit(std::move(before));
     }
 
     bool LegacySourceBindings::hasGameRecord(std::string_view profileIdentity,
@@ -683,11 +788,9 @@ namespace PokeVault::Legacy {
     }
 
     bool LegacySourceBindings::unassignAndSave(std::string_view sourceIdentity) {
-        const auto before = owners_;
+        auto before = owners_;
         if (!unassign(sourceIdentity)) { errno = EINVAL; return fail("unassign"); }
-        if (save()) return true;
-        owners_ = before;
-        return false;
+        return commit(std::move(before));
     }
 
     bool LegacySourceBindings::isAssigned(std::string_view sourceIdentity) const {
@@ -708,5 +811,41 @@ namespace PokeVault::Legacy {
     std::string LegacySourceBindings::assignedGame(std::string_view sourceIdentity) const {
         const auto found = owners_.find(std::string(sourceIdentity));
         return found == owners_.end() ? std::string{} : found->second.gameIdentity;
+    }
+
+    std::string LegacySourceBindings::storageDiagnostics() const {
+        std::string out = "bindings db=" + storagePath_ + " load=" + loadState_ +
+            " rows=" + std::to_string(owners_.size()) +
+            " size(cfg/bak/tmp)=" + std::to_string(fileSize(storagePath_)) + "/" +
+            std::to_string(fileSize(storagePath_ + ".bak")) + "/" + std::to_string(fileSize(storagePath_ + ".tmp"));
+        const size_t slash = storagePath_.rfind('/');
+        if (slash == std::string::npos) return out + " probe=skipped(no directory)";
+        const std::string probe = storagePath_.substr(0, slash) + "/.write-probe";
+        const std::string probeTmp = probe + ".tmp";
+        const auto step = [&]() -> std::string {
+            std::remove(probe.c_str());
+            std::remove(probeTmp.c_str());
+            errno = 0;
+            FILE* file = std::fopen(probeTmp.c_str(), "wb");
+            if (!file) return "open errno=" + std::to_string(errno);
+            const char text[] = "probe\n";
+            bool ok = std::fwrite(text, 1, sizeof(text) - 1, file) == sizeof(text) - 1 && std::fflush(file) == 0;
+            int err = errno;
+            if (ok && ::fsync(::fileno(file)) != 0) { ok = false; err = errno; }
+            if (std::fclose(file) != 0 && ok) { ok = false; err = errno; }
+            if (!ok) return "write/sync errno=" + std::to_string(err);
+            if (std::rename(probeTmp.c_str(), probe.c_str()) != 0) return "rename errno=" + std::to_string(errno);
+            FILE* back = std::fopen(probe.c_str(), "rb");
+            if (!back) return "reopen errno=" + std::to_string(errno);
+            char read[16] = {};
+            const size_t got = std::fread(read, 1, sizeof(read), back);
+            std::fclose(back);
+            if (got != sizeof(text) - 1 || std::memcmp(read, text, got) != 0) return "readback mismatch";
+            return "ok";
+        };
+        const std::string result = step();
+        std::remove(probe.c_str());
+        std::remove(probeTmp.c_str());
+        return out + " probe=" + result;
     }
 }

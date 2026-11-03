@@ -407,6 +407,7 @@ namespace UI {
         void rebuildUnassignedLegacySources();
         bool assignCurrentLegacySource();
         [[nodiscard]] std::string currentProfileIdentity() const;
+        [[nodiscard]] std::string assignmentOutcome(const char* route) const;
         [[nodiscard]] std::string currentSourceIdentity() const;
         [[nodiscard]] const PokeVault::Legacy::FRLGSaveInstance* currentLegacyInstance() const;
         bool refreshLegacySources(const std::string& gameId,

@@ -33,6 +33,21 @@ namespace PokeVault::Legacy {
         std::string contentFingerprint = {};
     };
     enum class AssignedFileStatus { Unassigned, Ambiguous, Missing, Unreadable, Ready };
+    // Round 16 P0: one structured outcome for every assignment write (discovered Save Instances,
+    // manual SD picker, Gen IV/V files, Forget). The UI shows bindingResultText() plus lastError().
+    enum class BindingResult {
+        Succeeded,
+        ValidationFailed,          // empty/unsafe fields, nothing remembered, alias of metadata
+        BelongsToAnotherProfile,   // owned by another profile or another game card
+        MetadataDirUnavailable,    // config directory missing/uncreatable
+        MetadataWriteFailed,       // open/write/flush/sync/close/rename of the database failed
+        MetadataValidationFailed,  // read-back of the written database did not match
+        ExistingMetadataCorrupt,   // committed database unreadable; preserved, never reset
+        SourceChanged,             // save changed since discovery (set by callers)
+        UnsupportedSave,           // wrong game / not a save for this card (set by callers)
+        KeptForSession,            // choice applied in memory; storing it failed (session recovery)
+    };
+    [[nodiscard]] const char* bindingResultText(BindingResult result) noexcept;
     struct AssignedFile {
         AssignedFileStatus status = AssignedFileStatus::Unassigned;
         std::string sourceIdentity;
@@ -95,6 +110,19 @@ namespace PokeVault::Legacy {
                                                  std::string_view profileIdentity,
                                                  std::string_view gameIdentity) const;
         [[nodiscard]] const std::string& lastError() const noexcept { return lastError_; }
+        [[nodiscard]] BindingResult lastResult() const noexcept { return lastResult_; }
+        // Production (UIManager) only. When storing a validated choice fails for a filesystem /
+        // metadata reason, keep it in memory for this session (the game still opens; the next
+        // successful write persists it) instead of locking the profile out of its saves. A corrupt
+        // committed primary is quarantined byte-for-byte as <db>.corrupt-N when a trusted
+        // generation (.bak or the loaded state) exists; it is never deleted or reset to empty.
+        // Ownership/validation refusals are NEVER kept. Off by default (tests keep strict mode).
+        void enableSessionRecovery(bool enabled = true) noexcept { sessionRecovery_ = enabled; }
+        [[nodiscard]] bool hasUnsavedSessionChanges() const noexcept { return unsaved_; }
+        [[nodiscard]] const std::string& quarantinedPath() const noexcept { return quarantined_; }
+        // One log line: database/.bak/.tmp sizes, load state, and a write/fsync/rename/read-back
+        // probe in the config directory (a separate probe file; never the database itself).
+        [[nodiscard]] std::string storageDiagnostics() const;
         [[nodiscard]] bool unassign(std::string_view sourceIdentity);
         [[nodiscard]] bool unassignAndSave(std::string_view sourceIdentity);
         [[nodiscard]] bool isAssigned(std::string_view sourceIdentity) const;
@@ -109,6 +137,13 @@ namespace PokeVault::Legacy {
         std::string storagePath_;
         BindingFileOps ops_;
         mutable std::string lastError_;
+        mutable BindingResult lastResult_ = BindingResult::Succeeded;
+        bool sessionRecovery_ = false;
+        bool trusted_ = false;   // owners_ came from a valid committed generation (or none existed)
+        bool unsaved_ = false;
+        mutable std::string quarantined_;
+        std::string loadState_ = "not loaded";
+        bool commit(std::unordered_map<std::string, BindingRecord>&& before);
         bool checkpoint(const char* stage) const;
         bool fail(const char* stage) const;
         bool replaceFileAssignment(std::string_view sourceIdentity, BindingRecord binding,

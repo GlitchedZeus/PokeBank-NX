@@ -142,6 +142,8 @@ HOST_TESTS += $(HOST_BUILD)/test_legacy_frlg_browse
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legacy_frlg_browse_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_legacy_source_bindings
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_legacy_source_bindings_sanitize
+HOST_TESTS += $(HOST_BUILD)/test_assignment_recovery
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_assignment_recovery_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_rse_gen3_adapter $(HOST_BUILD)/test_rse_gen3_native_slice
 HOST_SANITIZE_TESTS += $(HOST_BUILD)/test_rse_gen3_adapter_sanitize $(HOST_BUILD)/test_rse_gen3_native_slice_sanitize
 HOST_TESTS += $(HOST_BUILD)/test_rby_gen1_adapter $(HOST_BUILD)/test_rby_inventory \
@@ -420,6 +422,16 @@ $(HOST_BUILD)/test_legacy_source_bindings: tests/test_legacy_source_bindings.cpp
 	$(CXX) $(CXXFLAGS) -Iinclude $(filter %.cpp,$^) -o $@
 
 $(HOST_BUILD)/test_legacy_source_bindings_sanitize: tests/test_legacy_source_bindings.cpp src/Legacy/LegacySourceBindings.cpp include/Legacy/LegacySourceBindings.h include/Integration/Gen5/Gen5SourcePathIdentity.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(filter %.cpp,$^) -o $@
+
+# Round 16 P0: production-path assignment recovery (fresh SD, older formats, torn/damaged DB,
+# failed writes, profiles, Forget, Gen IV/V retention) with Switch fsdev rename semantics.
+$(HOST_BUILD)/test_assignment_recovery: tests/test_assignment_recovery.cpp src/Legacy/LegacySourceBindings.cpp include/Legacy/LegacySourceBindings.h include/Utils/PokeBankPaths.h
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) -Iinclude $(filter %.cpp,$^) -o $@
+
+$(HOST_BUILD)/test_assignment_recovery_sanitize: tests/test_assignment_recovery.cpp src/Legacy/LegacySourceBindings.cpp include/Legacy/LegacySourceBindings.h include/Utils/PokeBankPaths.h
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) -Iinclude $(filter %.cpp,$^) -o $@
 

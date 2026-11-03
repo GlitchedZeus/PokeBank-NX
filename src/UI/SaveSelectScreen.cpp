@@ -1378,6 +1378,21 @@ namespace UI {
                 static_cast<int>(unassignedLegacySources.size()) - 1);
     }
 
+    // Round 16 P0: one wording for every assignment outcome (Save Instances, SD picker, Gen IV/V,
+    // Forget). Logs the native diagnostic; returns the sentence the user sees.
+    std::string SaveSelectScreen::assignmentOutcome(const char* route) const {
+        if (!legacyBindings) return "Profile assignments are unavailable. Nothing was opened.";
+        const auto result = legacyBindings->lastResult();
+        const std::string& diagnostic = legacyBindings->lastError();
+        std::string text = PokeVault::Legacy::bindingResultText(result);
+        if (result == PokeVault::Legacy::BindingResult::Succeeded) return {};
+        logErrorToFile((std::string("Assignment (") + route + "): " + text).c_str(), diagnostic.c_str());
+        if (!diagnostic.empty()) text += " [" + diagnostic + "]";
+        if (result == PokeVault::Legacy::BindingResult::KeptForSession)
+            return text + ". It lasts until PokeBank NX closes; the save file is unchanged.";
+        return text + ". Nothing was opened; the save file is unchanged.";
+    }
+
     std::string SaveSelectScreen::currentProfileIdentity() const {
         const UserEntry* user = currentUser();
         return user ? profileIdentity(user->uid) : std::string{};
@@ -1465,12 +1480,12 @@ namespace UI {
         // opens exactly this save for this profile (a bare claim alone no longer opens anything).
         if (!legacyBindings->claimInstanceAndSave(entry.instance, profile) ||
             !legacyBindings->preferGameSourceAndSave(entry.instance, profile, entry.gameId)) {
-            const std::string diagnostic = legacyBindings->lastError();
-            logErrorToFile("Legacy binding assignment failed", diagnostic.c_str());
-            legacyNotice = "Assignment failed: " + diagnostic;
+            legacyNotice = assignmentOutcome("discovered save");
             return false;
         }
+        const std::string sessionNote = assignmentOutcome("discovered save");
         loadLegacySources(*legacyCatalog);
+        if (!sessionNote.empty()) hubNotice = sessionNote;
         const UserEntry* user = currentUser();
         if (user) {
             const auto found = std::find_if(user->titles.begin(), user->titles.end(),
@@ -2489,12 +2504,13 @@ namespace UI {
         binding.sourceType = candidate.sourceType;
         binding.expectedRawFamily = candidate.expectedRawFamily;
         if (!legacyBindings->replaceFileAssignmentAndSave(candidate.sourceIdentity, std::move(binding))) {
-            gen4Notice = legacyBindings->lastError().find("conflict") != std::string::npos
+            gen4Notice = legacyBindings->lastResult() == PokeVault::Legacy::BindingResult::BelongsToAnotherProfile
                 ? "That physical save is already remembered by another profile or game. Forget it there first."
-                : "The save assignment could not be stored safely.";
+                : assignmentOutcome("Gen IV file");
             overlay = Overlay::Gen4Setup;
             return false;
         }
+        if (const std::string note = assignmentOutcome("Gen IV file"); !note.empty()) hubNotice = note;
 
         loadGen4Cards();
         gen4Notice.clear();
@@ -2900,7 +2916,7 @@ namespace UI {
         if (!remembered || !legacyBindings->forgetGameAndSave(profile, forgetGameId, release)) {
             hubNotice = !remembered
                 ? "No save is assigned to " + name + " on this profile. Nothing was changed."
-                : "The assignment could not be forgotten safely. Nothing was changed.";
+                : "Forget failed: " + assignmentOutcome("Forget");
             overlay = Overlay::None;
             return false;
         }
@@ -3134,13 +3150,10 @@ namespace UI {
         binding.expectedRawFamily = identity->dataGeneration == 1 ? "GB"
                                   : identity->dataGeneration == 2 ? "GBC" : "GBA";
         if (!legacyBindings->assignClassicFileAndSave(source.sourceIdentity, binding)) {
-            const std::string diagnostic = legacyBindings->lastError();
-            logErrorToFile("Classic manual assignment refused", diagnostic.c_str());
-            failure = diagnostic.find("conflict") != std::string::npos
-                ? "That save is already linked to another profile or game (" + diagnostic + ")."
-                : "Save assignment failed: " + diagnostic;
+            failure = assignmentOutcome("SD picker");
             return false;
         }
+        const std::string sessionNote = assignmentOutcome("SD picker");
         const auto physical = [](const PokeVault::Legacy::FRLGSource& s) -> const std::string& {
             return s.canonicalPath.empty() ? s.normalizedPath : s.canonicalPath;
         };
@@ -3162,7 +3175,9 @@ namespace UI {
         refreshHubPreview();
         launchFilePurpose = FilePickerPurpose::GameFile;
         overlay = Overlay::None;
-        hubNotice = "Save assigned to Pokémon " + std::string(identity->title) + ". Source unchanged.";
+        hubNotice = sessionNote.empty()
+            ? "Save assigned to Pokémon " + std::string(identity->title) + ". Source unchanged."
+            : sessionNote;
         selectCurrentTitle();   // opened by A: open it now through the same gate
         return true;
     }
@@ -3176,7 +3191,7 @@ namespace UI {
             return false;
         }
         if (!assignGen4Candidate(candidate)) {
-            failure = gen4Notice.empty() ? "The save assignment could not be stored safely." : gen4Notice;
+            failure = gen4Notice.empty() ? assignmentOutcome("Gen IV file") : gen4Notice;
             return false;
         }
         return true;
@@ -3207,7 +3222,7 @@ namespace UI {
             return false;
         }
         if (!assignGen5Candidate(catalog.rows.front())) {
-            failure = gen5Notice.empty() ? "That save could not be assigned." : gen5Notice;
+            failure = gen5Notice.empty() ? assignmentOutcome("Gen V file") : gen5Notice;
             return false;
         }
         return true;
@@ -3503,13 +3518,11 @@ namespace UI {
         }
         if (!legacyBindings || !legacyBindings->preferGameSourceAndSave(
                 shownInstance, currentProfileIdentity(), title.gameId)) {
-            const std::string diagnostic = legacyBindings
-                ? legacyBindings->lastError() : "assignment service unavailable";
-            logErrorToFile("Classic Save Instance assignment refused", diagnostic.c_str());
-            legacyNotice = "Couldn't save assignment: " + diagnostic;
+            legacyNotice = assignmentOutcome("Save Instances");
             overlay = Overlay::LegacyInstances;
             return;
         }
+        if (const std::string note = assignmentOutcome("Save Instances"); !note.empty()) hubNotice = note;
         selectedUserUid = u->uid;
         selectedTitleId = 0;
         selectedTitleName = title.name;
