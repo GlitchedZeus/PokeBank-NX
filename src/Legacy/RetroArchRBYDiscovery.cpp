@@ -376,6 +376,22 @@ RBYSource inspectRBYSaveFile(const std::string& path, std::string_view exactGame
                                                    : "the file could not be opened";
         return source;
     }
+    // Round 17 (R17-03): Red and Blue saves are byte-identical formats, so the card is the only
+    // identity for a neutrally named file. A file whose own name identifies ANOTHER release is that
+    // release's save (discovery lists it under that card); the picker refuses it here instead of
+    // letting a sibling's save open under this card.
+    const IdentityHint named = identityHint(path);
+    if ((named == IdentityHint::Red || named == IdentityHint::Blue || named == IdentityHint::Yellow) && named != hint) {
+        RBYSource source;
+        source.path = path;
+        source.normalizedPath = normalizedPath(path);
+        source.sourceIdentity = sourceIdentity(path);
+        source.status = RBYSourceStatus::InvalidSave;
+        source.detail = std::string("the file is named as a Pokemon ") +
+            (named == IdentityHint::Red ? "Red" : named == IdentityHint::Blue ? "Blue" : "Yellow") +
+            " save; choose it from that game's card";
+        return source;
+    }
     RBYSource source = inspectFile(path, metadata, hint);
     source.canonicalPath = filesystemIdentity(path);
     return source;

@@ -277,6 +277,7 @@ namespace UI {
         std::string emuBackupProvider; // provider display name of the card the Backups list belongs to
         std::string emuBackupGameId;   // exact game of the card (names the backup folder)
         void openEmulatorBackups(const std::string& notice = {});
+        [[nodiscard]] bool sourceOwnedByAnotherProfile(const std::string& path, const std::string& gameId) const;
         void createEmulatorBackup(int listing);
         void browseEmulatorSource(const std::string& source);
         // Owner item #10: Backups -> X "Recovery files". Review older copies and DurableFile

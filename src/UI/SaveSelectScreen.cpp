@@ -3662,7 +3662,14 @@ namespace UI {
         // Round 7 (7E G1): the current profile's Gen V export records (exports/gen5/account-<p>/)
         // are part of this game's history; another profile's are never read here.
         const std::string profile=currentProfileIdentity();
-        const auto historical=SB::historicalSources(PokeBank::Paths::exportsRoot(),manualRoot,title.gameId,profile);
+        auto historical=SB::historicalSources(PokeBank::Paths::exportsRoot(),manualRoot,title.gameId,profile);
+        // Round 17 (R17-04): backups and Gen I-IV export records are stored per game. The history
+        // of a save that ANOTHER profile currently owns is that profile's: it is not listed (and so
+        // cannot be opened) here. Nothing is deleted; the owner still sees every record, and the
+        // history of a save nobody owns (forgotten, or never assigned) stays reachable for recovery.
+        historical.erase(std::remove_if(historical.begin(),historical.end(),[&](const std::string& path) {
+            return sourceOwnedByAnotherProfile(path,title.gameId);
+        }),historical.end());
         sources.insert(sources.end(),historical.begin(),historical.end());
         std::sort(sources.begin(),sources.end());
         sources.erase(std::unique(sources.begin(),sources.end()),sources.end());
@@ -3699,6 +3706,25 @@ namespace UI {
         emuBackupIndex = std::clamp(emuBackupIndex, 0, std::max(0, static_cast<int>(emuBackupRows.size()) - 1));
         emuBackupScroll = std::clamp(emuBackupScroll, 0, std::max(0, emuBackupIndex));
         overlay = Overlay::EmulatorBackups;
+    }
+
+    // True when the assignment records say this exact save file belongs to a profile other than
+    // the current one (a file assignment naming the path, or a claim on the discovered save's
+    // identity). A conflicting claim also counts: ownership that cannot be resolved fails closed.
+    bool SaveSelectScreen::sourceOwnedByAnotherProfile(const std::string& path,const std::string& gameId) const {
+        if (!legacyBindings || path.empty()) return false;
+        PokeVault::Source::SaveInstance instance;
+        instance.sourcePath = path;
+        instance.gameId = gameId;
+        if (legacyCatalog)
+            for (const auto& source : legacyCatalog->sources)
+                if (source.path == path) {
+                    instance.sourceIdentity = source.sourceIdentity;
+                    instance.sourceAliases = source.sourceAliases;
+                    break;
+                }
+        legacyBindings->applyClaims(instance);
+        return !PokeVault::Source::visibleToProfile(instance, currentProfileIdentity());
     }
 
     void SaveSelectScreen::browseEmulatorSource(const std::string& source) {
@@ -3744,6 +3770,15 @@ namespace UI {
             }
         }
         recoveryListing = RM::Fs::enumerate(recoveryRequest);
+        // Round 17 (R17-04): protection is still computed over every source above, but copies of a
+        // save that ANOTHER profile currently owns are that profile's to list and remove, not this
+        // one's. They are dropped from this profile's view only (nothing on the card changes).
+        for (size_t i = recoveryListing.items.size(); i-- > 0;) {
+            if (!sourceOwnedByAnotherProfile(recoveryListing.items[i].source, {})) continue;
+            recoveryListing.items.erase(recoveryListing.items.begin() + static_cast<std::ptrdiff_t>(i));
+            if (i < recoveryListing.verdicts.size())
+                recoveryListing.verdicts.erase(recoveryListing.verdicts.begin() + static_cast<std::ptrdiff_t>(i));
+        }
         recoverySelection = RM::emptySelection(recoveryListing.items.size());
         recoveryPlan = {};
         recoveryNotice = notice;

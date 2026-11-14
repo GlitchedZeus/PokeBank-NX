@@ -15,6 +15,7 @@
 
 #include "Utils/NXTypes.h"
 #include "Games20.h"
+#include "Legacy/RetroArchFRLGDiscovery.h"
 #include "UI/PKSEFramebuffer.h"
 #include "UI/PokemonFileDialogModel.h"
 #include "UI/TouchInput.h"
@@ -180,6 +181,53 @@ void browserWithoutRoot() {
     check(out.command == Model::Command::Close, "file browser with no listable folder: B's command is Close");
 }
 
+// R17-03 (found by the Product Home monkey, seed 7005: the Red card opened "Pokemon - Blue
+// Version.srm"): the SD picker accepted a file explicitly named for the sibling release wherever the
+// save bytes cannot tell the two apart (Red/Blue, Gold/Silver, Ruby/Sapphire, FireRed/LeafGreen),
+// although discovery files that same name under the other card. Now refused with the reason; a
+// neutral name and the card's own name stay assignable. Releases the bytes identify were already
+// refused (pinned here too).
+void siblingNamedFiles(const fsx::path& fixtures, const fsx::path& root) {
+    struct Case { const char* card; const char* bytesOf; const char* name; bool accepted; const char* reason; };
+    const Case cases[] = {
+        {"red_gb", "blue_gb", "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).srm", false, "named as a Pokemon Blue save"},
+        {"blue_gb", "red_gb", "Pokemon - Red Version (USA, Europe) (SGB Enhanced).srm", false, "named as a Pokemon Red save"},
+        {"red_gb", "yellow_gb", "Pokemon - Yellow Version (USA, Europe).srm", false, ""},
+        {"gold_gbc", "silver_gbc", "Pokemon - Silver Version (USA, Europe).srm", false, "named as a Pokemon Silver save"},
+        {"silver_gbc", "gold_gbc", "Pokemon - Gold Version (USA, Europe).srm", false, "named as a Pokemon Gold save"},
+        {"gold_gbc", "crystal_gbc", "Pokemon - Crystal Version (USA, Europe).srm", false, ""},
+        {"ruby_gba", "sapphire_gba", "Pokemon - Sapphire Version (USA, Europe).srm", false, "named as a Pokemon Sapphire save"},
+        {"sapphire_gba", "ruby_gba", "Pokemon - Ruby Version (USA, Europe).srm", false, "named as a Pokemon Ruby save"},
+        {"firered_gba", "leafgreen_gba", "Pokemon - LeafGreen Version (USA, Europe).srm", false, "named as a Pokemon LeafGreen save"},
+        {"leafgreen_gba", "firered_gba", "Pokemon - FireRed Version (USA, Europe).srm", false, "named as a Pokemon FireRed save"},
+        {"ruby_gba", "emerald_gba", "Pokemon - Emerald Version (USA, Europe).srm", false, ""},
+        // The card's own name, and neutral names, are the user's explicit choice: accepted.
+        {"red_gb", "red_gb", "Pokemon - Red Version (USA, Europe).srm", true, ""},
+        {"blue_gb", "blue_gb", "Pokemon - Blue Version (USA, Europe).srm", true, ""},
+        {"red_gb", "red_gb", "slot1.srm", true, ""},
+        {"blue_gb", "red_gb", "my save.sav", true, ""},
+        {"gold_gbc", "gold_gbc", "Pokemon - Gold Version (USA, Europe).srm", true, ""},
+        {"silver_gbc", "gold_gbc", "battery.srm", true, ""},
+        {"ruby_gba", "ruby_gba", "Pokemon - Ruby Version (USA, Europe).srm", true, ""},
+        {"sapphire_gba", "ruby_gba", "save1.srm", true, ""},
+        {"leafgreen_gba", "leafgreen_gba", "Pokemon - LeafGreen Version (USA, Europe).srm", true, ""},
+        {"firered_gba", "leafgreen_gba", "gba.sav", true, ""},
+    };
+    int n = 0;
+    for (const auto& c : cases) {
+        const auto bytes = Games20::readAll(fixtures / (std::string(c.bytesOf) + ".sav"));
+        const fsx::path dir = root / "sibling" / std::to_string(++n);
+        fsx::create_directories(dir);
+        const fsx::path file = dir / c.name;
+        { std::ofstream out(file, std::ios::binary); out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size())); }
+        const auto source = PokeVault::Legacy::inspectLegacySaveFile(file.string(), c.card, "Manual");
+        const std::string what = std::string(c.card) + " <- \"" + c.name + "\"";
+        check(source.ready() == c.accepted, what + (c.accepted ? ": accepted" : ": refused") + " (" + source.detail + ")");
+        if (*c.reason) check(source.detail.find(c.reason) != std::string::npos, what + ": the reason names the other release (" + source.detail + ")");
+        check(Games20::readAll(file) == bytes, what + ": the file is byte-identical");
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -204,12 +252,14 @@ int main(int argc, char** argv) {
     }
     if (only.empty()) check(games == 20, "all 20 Gen I-V releases ran");
     browserWithoutRoot();
+    if (only.empty()) siblingNamedFiles(fixtures, root);
 
     fsx::current_path(home);
     std::error_code ignored;
     fsx::remove_all(root, ignored);
     if (failures) { std::cerr << failures << " of " << checks << " check(s) failed\n"; return EXIT_FAILURE; }
-    std::cout << "Games-20 regressions (R17-01 bank question answerable on the save pane, R17-02 browser B; "
+    std::cout << "Games-20 regressions (R17-01 bank question answerable on the save pane, R17-02 browser B, "
+                 "R17-03 sibling-named files refused; "
               << games << " releases, " << checks << " checks): PASS\n";
     return EXIT_SUCCESS;
 }

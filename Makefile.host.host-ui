@@ -405,4 +405,19 @@ $$(HOST_BUILD)/$(1)_sanitize: tests/$(1).cpp $$(HOST_GAMES20_INPUTS) $$(HOST_UI_
 endef
 $(eval $(call HOST_GAMES20_TEST,test_ui_games20_monkey_host))
 $(eval $(call HOST_GAMES20_TEST,test_ui_games20_regressions_host))
+#   test_ui_games20_home_monkey_host  Product Home (real SaveSelectScreen): real discovery of all 20
+#                                     releases on a production-layout card, two profiles; directed
+#                                     assign / restart / other-profile, backups stay with their profile,
+#                                     then random walks (HOME_MONKEY_SEEDS / HOME_MONKEY_STEPS)
+HOST_GAMES20_HOME := test_ui_games20_home_monkey_host
+HOST_TESTS += $(HOST_BUILD)/$(HOST_GAMES20_HOME)
+HOST_SANITIZE_TESTS += $(HOST_BUILD)/$(HOST_GAMES20_HOME)_sanitize
+host-test: $(HOST_BUILD)/$(HOST_GAMES20_HOME)
+host-sanitize: $(HOST_BUILD)/$(HOST_GAMES20_HOME)_sanitize
+$(HOST_BUILD)/$(HOST_GAMES20_HOME): tests/$(HOST_GAMES20_HOME).cpp $(HOST_GAMES20_INPUTS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(HOST_GAMES20_FLAGS) tests/$(HOST_GAMES20_HOME).cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_ARCHIVE) -o $@
+$(HOST_BUILD)/$(HOST_GAMES20_HOME)_sanitize: tests/$(HOST_GAMES20_HOME).cpp $(HOST_GAMES20_INPUTS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $(HOST_BUILD)
+	$(CXX) $(CXXFLAGS) $(SANITIZE_FLAGS) $(HOST_GAMES20_FLAGS) tests/$(HOST_GAMES20_HOME).cpp $(HOST_UI_STUBS) tests/host-ui/HostUiProductHomeStubs.cpp $(HOST_UI_SANITIZE_ARCHIVE) -o $@
 endif
