@@ -244,7 +244,7 @@ bool storageEntrySurface(const TrainerViewScreen& screen) noexcept {
         screen.stSaveSlot >= 0 && screen.stSaveSlot < static_cast<int>(screen.trainer.getSlotsPerBox()) &&
         !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
         !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
-        !screen.carrying() && !screen.currentlySelecting;
+        !screen.carrying() && !screen.currentlySelecting && !screen.storageQuestionOpen();
 }
 
 bool selectedRecord(TrainerViewScreen& screen, Gen3::StagedPokemonRecord& record,

@@ -1107,4 +1107,15 @@ void runGen3(Matrix& m) {
     for (const auto& spec : specs) runVersion(m, spec);
 }
 
+int dumpFixturesGen3(const std::string& dir) {
+    int n = 0;
+    const auto put = [&](const char* game, const Bytes& b) { n += writeFixture(dir, game, b.data(), b.size()); };
+    put("ruby_gba", rse::makeFixture(rse::Family::RS));
+    put("sapphire_gba", rse::makeFixture(rse::Family::RS));
+    put("emerald_gba", rse::makeFixture(rse::Family::Emerald));
+    put("firered_gba", frlgSave());
+    put("leafgreen_gba", frlgSave());
+    return n;
+}
+
 } // namespace qamatrix

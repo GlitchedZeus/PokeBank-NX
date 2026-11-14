@@ -180,7 +180,7 @@ bool entrySurface(const TrainerViewScreen& screen) noexcept {
         screen.selectedItemIndex >= 0;
     const bool storageSave = screen.selectedMode == TrainerViewScreen::ViewMode::Storage &&
         screen.storageFocusPane == 0 && screen.stSaveBox >= 0 && screen.stSaveSlot >= 0 &&
-        !screen.carrying() && !screen.currentlySelecting;
+        !screen.carrying() && !screen.currentlySelecting && !screen.storageQuestionOpen();
     return screen.detailViewActive && (box || storageSave) &&
         !screen.helpOverlayActive && !screen.details.active &&
         !screen.actionSheet.isOpen() && !screen.saveConfirmActive && !screen.pickerActive &&

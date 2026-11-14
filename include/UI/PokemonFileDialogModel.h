@@ -121,6 +121,9 @@ inline void move(int& cursor, int count, int delta, bool wrap) noexcept {
 // press() cannot disagree.
 [[nodiscard]] inline bool bCloses(const State& s) {
     if (s.mode == Mode::Favorites) return false;
+    // Round 17 (R17-02): with nothing listed at all (no folder could be opened) there is nowhere
+    // to go up to; B closes instead of doing nothing.
+    if (s.listing.folder.empty()) return true;
     return !Browser::parentOf(s.listing.folder) || Prefs::sameFolder(s.listing.folder, s.startFolder);
 }
 

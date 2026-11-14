@@ -205,7 +205,8 @@ bool handleFinalGen2SurfaceInput(TrainerViewScreen& screen, uint64_t down, uint6
         slot < static_cast<int>(editor->metadata().boxCapacity);
     const bool blocked = editorOverlayState(screen).active || screen.helpOverlayActive ||
         screen.details.active || screen.actionSheet.isOpen() || screen.saveConfirmActive ||
-        screen.pickerActive || screen.itemEditDialogActive || screen.carrying() || screen.currentlySelecting;
+        screen.pickerActive || screen.itemEditDialogActive || screen.carrying() || screen.currentlySelecting ||
+        screen.storageQuestionOpen();   // R17-01: a base Storage question owns input until answered
     if (caps.canEditStagedCopy && surface == Access::Surface::Trainer && screen.detailViewActive && !blocked &&
         (down & HidNpadButton_Y)) {
         auto& legacy = editorOverlayState(screen);

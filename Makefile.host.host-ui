@@ -375,4 +375,34 @@ host-test: $(HOST_UI_TYPE_CONSISTENCY_TEST)
 $(HOST_UI_TYPE_CONSISTENCY_TEST): tests/test_gen15_type_consistency.cpp include/Integration/Gen5/Gen5PersonalTypes.h include/UI/ClassicGameContext.h include/UI/SharedSpeciesPicker.h $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE)
 	@mkdir -p $(HOST_BUILD)
 	$(CXX) $(CXXFLAGS) -Wno-unused-parameter $(HOST_UI_INCLUDES) tests/test_gen15_type_consistency.cpp $(HOST_UI_STUBS) $(HOST_UI_ARCHIVE) -o $@
+
+# Round 17 autonomous QA: UI-level suites over all 20 Gen I-V releases, on the exact per-version
+# saves the QA matrix builds (test_qa_matrix --dump-fixtures; one source of truth for fixtures).
+#   test_ui_games20_monkey_host       seeded random controller / touch / prompt walks through the real
+#                                     TrainerViewScreen: no crash, source byte-identical, B always exits
+#                                     (MONKEY_SEEDS / MONKEY_STEPS scale it; MONKEY_GAME / MONKEY_SEED replay)
+#   test_ui_games20_regressions_host  the defects the monkey found, replayed deterministically
+HOST_GAMES20_DIR := $(HOST_BUILD)/games20
+HOST_GAMES20_STAMP := $(HOST_GAMES20_DIR)/.stamp
+$(HOST_GAMES20_STAMP): $(QA_BUILD)/plain/test_qa_matrix $(QA_GEN3_FIXTURE)
+	@mkdir -p $(HOST_GAMES20_DIR)
+	$(QA_BUILD)/plain/test_qa_matrix --dump-fixtures $(HOST_GAMES20_DIR)
+	@touch $@
+HOST_GAMES20_FLAGS := -Wno-unused-parameter $(HOST_UI_INCLUDES) -Itests -DPOKEBANK_GEN3_SELECTIVE_PORT_TEST \
+	-DGAMES20_FIXTURE_DIR=\"$(HOST_GAMES20_DIR)\"
+HOST_GAMES20_INPUTS := tests/host-ui/Games20.h tests/host-ui/HostUi.h $(HOST_UI_STUBS) $(HOST_GAMES20_STAMP)
+define HOST_GAMES20_TEST
+HOST_TESTS += $$(HOST_BUILD)/$(1)
+HOST_SANITIZE_TESTS += $$(HOST_BUILD)/$(1)_sanitize
+host-test: $$(HOST_BUILD)/$(1)
+host-sanitize: $$(HOST_BUILD)/$(1)_sanitize
+$$(HOST_BUILD)/$(1): tests/$(1).cpp $$(HOST_GAMES20_INPUTS) $$(HOST_UI_ARCHIVE)
+	@mkdir -p $$(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(HOST_GAMES20_FLAGS) tests/$(1).cpp $$(HOST_UI_STUBS) $$(HOST_UI_ARCHIVE) -o $$@
+$$(HOST_BUILD)/$(1)_sanitize: tests/$(1).cpp $$(HOST_GAMES20_INPUTS) $$(HOST_UI_SANITIZE_ARCHIVE)
+	@mkdir -p $$(HOST_BUILD)
+	$$(CXX) $$(CXXFLAGS) $$(SANITIZE_FLAGS) $$(HOST_GAMES20_FLAGS) tests/$(1).cpp $$(HOST_UI_STUBS) $$(HOST_UI_SANITIZE_ARCHIVE) -o $$@
+endef
+$(eval $(call HOST_GAMES20_TEST,test_ui_games20_monkey_host))
+$(eval $(call HOST_GAMES20_TEST,test_ui_games20_regressions_host))
 endif

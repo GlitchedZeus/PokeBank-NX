@@ -403,8 +403,8 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
     const bool stagedStorageSave = detailViewActive && selectedMode == ViewMode::Storage &&
         !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
         !saveConfirmActive && !pickerActive && !itemEditDialogActive &&
-        !carrying() && !currentlySelecting && !swapActive && !releaseConfirmActive &&
-        !groupMenuActive && !editorOverlayState(*this).active &&
+        !carrying() && !currentlySelecting && !swapActive && !storageQuestionOpen() &&
+        !editorOverlayState(*this).active &&
         !Gen3SharedEditorSurface::ownsFrame(*this) &&
         !Gen4SharedEditorSurface::ownsFrame(*this) &&
         !Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this) &&
