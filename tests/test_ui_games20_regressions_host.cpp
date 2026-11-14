@@ -228,6 +228,44 @@ void siblingNamedFiles(const fsx::path& fixtures, const fsx::path& root) {
     }
 }
 
+// R17-05 (Gen I, found by the monkey: a Yellow Create draft showed an emoji as its OT): a Create
+// draft kept whatever was typed until Add refused it. The name is now checked when entered.
+void gen1DraftNames(const Games20::GameSpec& game, const fsx::path& source) {
+    if (game.generation != 1) return;
+    const std::string id = game.id;
+    auto opened = Games20::open(game, source);
+    if (!opened) return;
+    Driver d{*opened.screen, {}, {}};
+    d.frame();
+    d.screen.detailViewActive = true;
+    d.screen.selectedMode = View::Boxes;
+    d.screen.selectedBoxIndex = 5;      // an empty box in the matrix save
+    d.screen.selectedItemIndex = 0;
+    d.frame();
+    d.frame();
+    d.press(HidNpadButton_A);           // Empty Slot menu
+    check(d.drawn("Add Pokemon"), id + ": A on an empty box slot offers Add Pokemon");
+    d.press(HidNpadButton_A);           // Add Pokemon -> Create draft
+    d.dump(id + " draft");
+    check(d.drawn("DRAFT"), id + ": the Create draft opens");
+    struct Try { const char* row; const char* text; bool accepted; };
+    const Try tries[] = {{"OT", "\xF0\x9F\x98\x80", false}, {"OT", "A\xC3\x97" "B", false}, {"OT", "\xE3\x83\x94\xE3\x82\xAB", false},
+                         {"OT", "QA", true}, {"Nickname", "\xE2\x99\x82\xE2\x99\x80", false}, {"Nickname", "SPARK", true}};
+    for (const auto& t : tries) {
+        HostUi::textAnswers.clear();
+        HostUi::textAnswers.push_back({true, t.text});
+        const int prompts = HostUi::promptCount;
+        check(d.tapText(t.row), id + ": the " + t.row + " row is on the draft");
+        HostUi::textAnswers.clear();
+        d.frame();
+        const std::string what = id + " draft " + t.row + " \"" + t.text + "\"";
+        check(HostUi::promptCount > prompts, what + ": the name prompt opened");
+        check(d.drawn(t.text) == t.accepted, what + (t.accepted ? ": shown on the draft" : ": never shown on the draft"));
+        if (!t.accepted) check(d.drawn("Name not changed"), what + ": refused with the reason");
+    }
+    d.dump(id + " draft after names");
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -248,6 +286,7 @@ int main(int argc, char** argv) {
         if (source.empty()) { check(false, std::string(game.id) + ": fixture missing in " + fixtures.string()); continue; }
         ++games;
         bankQuestion(game, source);
+        gen1DraftNames(game, source);
         check(Games20::readAll(source) == bytes, std::string(game.id) + ": the source save is byte-identical");
     }
     if (only.empty()) check(games == 20, "all 20 Gen I-V releases ran");
@@ -259,7 +298,7 @@ int main(int argc, char** argv) {
     fsx::remove_all(root, ignored);
     if (failures) { std::cerr << failures << " of " << checks << " check(s) failed\n"; return EXIT_FAILURE; }
     std::cout << "Games-20 regressions (R17-01 bank question answerable on the save pane, R17-02 browser B, "
-                 "R17-03 sibling-named files refused; "
+                 "R17-03 sibling-named files refused, R17-05 Gen I draft names checked at entry; "
               << games << " releases, " << checks << " checks): PASS\n";
     return EXIT_SUCCESS;
 }

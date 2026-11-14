@@ -372,7 +372,7 @@ void ux3HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
                 : pokemon->nickname;
             const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
             if (!result.accepted) break;
-            if (add) state.draft.nickname = result.text;
+            if (add) { if (draftNameAccepted(screen, result.text, 10)) state.draft.nickname = result.text; }
             else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change staged; source .srm unchanged"); }
             break;
         }
@@ -390,7 +390,7 @@ void ux3HandleMainEditor(TrainerViewScreen& screen, uint64_t down) {
                 : pokemon->originalTrainer;
             const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I OT", "1-7 supported Gen I characters", initial, 7);
             if (!result.accepted) break;
-            if (add) state.draft.otName = result.text;
+            if (add) { if (draftNameAccepted(screen, result.text, 7)) state.draft.otName = result.text; }
             else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change staged; source .srm unchanged"); }
             break;
         }
