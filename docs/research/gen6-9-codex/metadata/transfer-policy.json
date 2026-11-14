@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "as_of": "2026-10-18",
+  "history_required": true,
+  "cross_game_move_enabled": false,
+  "missing_history_verdict": "Unknown/Incomplete",
+  "edges": [
+    {"from":"Bank","to":"HOME","condition":"one-way; eligible entity and service availability","source":"https://home.pokemon.com/en-ca/move/"},
+    {"from":"LGPE","to":"HOME","condition":"eligible entity; partner restrictions","source":"https://home.pokemon.com/en-ca/move/"},
+    {"from":"HOME","to":"LGPE","condition":"LGPE-compatible entity has never visited a non-LGPE game","source":"https://home.pokemon.com/en-ca/move/"},
+    {"from":"SWSH","to":"HOME","condition":"eligible entity","source":"https://home.pokemon.com/en-ca/move/"},
+    {"from":"HOME","to":"SWSH","condition":"present in destination and has never visited ZA","source":"https://legends.pokemon.com/en-us/news/pokemon-home"},
+    {"from":"BDSP","to":"HOME","condition":"eligible entity","source":"https://home.pokemon.com/en-ca/move/"},
+    {"from":"HOME","to":"BDSP","condition":"present in destination and has never visited ZA; additional title restrictions require rules","source":"https://legends.pokemon.com/en-us/news/pokemon-home"},
+    {"from":"PLA","to":"HOME","condition":"eligible entity","source":"https://home.pokemon.com/en-ca/move/"},
+    {"from":"HOME","to":"PLA","condition":"present in destination and has never visited ZA","source":"https://legends.pokemon.com/en-us/news/pokemon-home"},
+    {"from":"SV","to":"HOME","condition":"eligible entity","source":"https://home.pokemon.com/en-ca/move/"},
+    {"from":"HOME","to":"SV","condition":"present in destination and has never visited ZA","source":"https://legends.pokemon.com/en-us/news/pokemon-home"},
+    {"from":"ZA","to":"HOME","condition":"eligible entity; no subsequent older-game destination","source":"https://legends.pokemon.com/en-us/news/pokemon-home"},
+    {"from":"HOME","to":"ZA","condition":"present in destination; irreversible older-game restriction","source":"https://legends.pokemon.com/en-us/news/pokemon-home"}
+  ],
+  "warning":"Research graph is conditional, incomplete, and never a production transfer authorization. Historical Bank/Transporter details require per-route evidence."
+}
