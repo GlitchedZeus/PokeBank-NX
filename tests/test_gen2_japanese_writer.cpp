@@ -489,7 +489,7 @@ void realSave(const std::filesystem::path& root, const Real& r, const Bytes& urs
         size_t j = i;
         while (j < raw.size() && raw[j] != out[j]) ++j;
         changed += j - i;
-        char buf[32];
+        char buf[48];   // two size_t in hex (up to 16 digits each) plus " 0x" "-0x" and the terminator
         std::snprintf(buf, sizeof buf, " 0x%04zX-0x%04zX", i, j - 1);
         spans += buf;
         i = j;

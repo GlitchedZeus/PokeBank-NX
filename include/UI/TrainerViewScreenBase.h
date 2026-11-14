@@ -286,6 +286,13 @@ namespace UI {
         std::string moveRecoveryNotice;
 
         bool carrying() const { return !moveMon.empty(); }
+        // Round 17 (R17-01): a base Legacy Storage question ("Save bank changes?", Release, the
+        // carried-group menu) owns input until it is answered. Every generation's Storage entry
+        // (A / tap -> Pokemon Actions on the game-save pane) must yield to it; before, A opened the
+        // generation's menu under the question, which could then never be answered from that pane.
+        bool storageQuestionOpen() const noexcept {
+            return storageExitConfirmActive || releaseConfirmActive || groupMenuActive;
+        }
         int carriedCount() const;                // non-null cells in moveMon
         const Pokemon::Pokemon* firstCarried() const;   // first non-null cell, or nullptr
 

@@ -404,7 +404,7 @@ void TrainerViewScreen::update(const PadState& pad, const TouchInput& touch) {
         !helpOverlayActive && !details.active && !actionSheet.isOpen() &&
         !saveConfirmActive && !pickerActive && !itemEditDialogActive &&
         !carrying() && !currentlySelecting && !swapActive && !releaseConfirmActive &&
-        !groupMenuActive && !editorOverlayState(*this).active &&
+        !groupMenuActive && !storageExitConfirmActive && !editorOverlayState(*this).active &&
         !Gen3SharedEditorSurface::ownsFrame(*this) &&
         !Gen4SharedEditorSurface::ownsFrame(*this) &&
         !Gen2PokemonEditor::finalGen2SurfaceOwnsFrame(*this) &&

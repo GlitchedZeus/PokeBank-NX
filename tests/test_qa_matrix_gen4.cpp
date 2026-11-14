@@ -1095,4 +1095,13 @@ void runGen4(Matrix& m) {
     for (const auto& v : versions()) runVersion(m, v);
 }
 
+int dumpFixturesGen4(const std::string& dir) {
+    int n = 0;
+    for (const auto& v : versions()) {
+        const Bytes b = buildSave(v);
+        n += writeFixture(dir, v.gameId, b.data(), b.size());
+    }
+    return n;
+}
+
 } // namespace qamatrix

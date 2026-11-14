@@ -42,8 +42,14 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--markdown" && i + 1 < argc) markdownPath = argv[++i];
-        else {
-            std::cerr << "usage: test_qa_matrix [--markdown <path>]\n";
+        else if (arg == "--dump-fixtures" && i + 1 < argc) {
+            const std::string dir = argv[++i];
+            const int written = qamatrix::dumpFixturesGen12(dir) + qamatrix::dumpFixturesGen3(dir) +
+                                qamatrix::dumpFixturesGen4(dir) + qamatrix::dumpFixturesGen5(dir);
+            std::cout << "wrote " << written << " of 20 synthetic Gen I-V saves to " << dir << "\n";
+            return written == 20 ? 0 : 1;
+        } else {
+            std::cerr << "usage: test_qa_matrix [--markdown <path>] [--dump-fixtures <dir>]\n";
             return 2;
         }
     }

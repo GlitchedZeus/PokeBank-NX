@@ -1345,4 +1345,14 @@ void runGen5(Matrix& m) {
     for (const auto& spec : specs) runVersion(m, spec);
 }
 
+int dumpFixturesGen5(const std::string& dir) {
+    int n = 0;
+    const auto put = [&](const char* game, const Bytes& b) { n += writeFixture(dir, game, b.data(), b.size()); };
+    put("black_nds", buildSave(Family::BlackWhite, 21));
+    put("white_nds", buildSave(Family::BlackWhite, 20));
+    put("black2_nds", buildSave(Family::Black2White2, 23));
+    put("white2_nds", buildSave(Family::Black2White2, 22));
+    return n;
+}
+
 } // namespace qamatrix

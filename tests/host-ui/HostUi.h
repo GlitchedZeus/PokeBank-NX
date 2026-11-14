@@ -95,6 +95,10 @@ inline void occlude(int x, int y, int w, int h, unsigned alpha) {
 inline std::deque<Utils::NumberResult> numbers;         // answers for promptNumber, in order
 inline std::deque<Utils::KeyboardResult> textAnswers;  // answers for promptText / promptSystemText
 inline int promptCount = 0;                            // prompts shown so far
+// Round 17 QA (random-input suites): the device prompt clamps an accepted number to the caller's
+// [min, max] (src/Utils/Keyboard.cpp promptNumber). Off by default so scripted tests keep feeding
+// exact values; on, the stub clamps like the device, so a random answer is one the device could give.
+inline bool clampNumbersLikeDevice = false;
 inline int japanesePromptCount = 0;                    // of which kana name prompts (promptJapaneseName)
 inline int lastJapaneseMaxChars = 0;                   // the cap the last kana name prompt was opened with
 inline int koreanPromptCount = 0;                      // of which Hangul name prompts (promptKoreanName)

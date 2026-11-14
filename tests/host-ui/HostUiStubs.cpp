@@ -100,7 +100,14 @@ KeyboardResult promptText(const std::string&, const std::string&, const std::str
 KeyboardResult promptSystemText(const std::string&, const std::string&, const std::string&, int) {
     return HostUi::nextText();
 }
-NumberResult promptNumber(const std::string&, int, int, int) { return HostUi::nextNumber(); }
+NumberResult promptNumber(const std::string&, int, int minValue, int maxValue) {
+    auto answer = HostUi::nextNumber();
+    if (HostUi::clampNumbersLikeDevice) {
+        if (minValue > maxValue) return {};
+        if (answer.accepted) answer.value = std::clamp(answer.value, minValue, maxValue);
+    }
+    return answer;
+}
 KeyboardResult promptJapaneseName(const std::string&, const std::string&, int maxChars) {
     ++HostUi::japanesePromptCount;
     HostUi::lastJapaneseMaxChars = maxChars;

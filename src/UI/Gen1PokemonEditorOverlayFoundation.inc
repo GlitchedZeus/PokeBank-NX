@@ -236,7 +236,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I Nickname", "1-10 supported Gen I characters",
                                                   foundationNickname(state, pokemon, add, species), 10);
             if (!result.accepted) break;
-            if (add) state.draft.nickname = result.text;
+            if (add) { if (draftNameAccepted(screen, result.text, 10)) state.draft.nickname = result.text; }
             else { BoxPokemonEdit edit; edit.nickname = result.text; ux2CommitEdit(screen, edit, "Nickname change set in this edit draft; X Keep stages it"); }
             break;
         }
@@ -276,7 +276,7 @@ void foundationEditIdentity(TrainerViewScreen& screen, uint8_t row, bool add, co
             const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I OT", "1-7 supported Gen I characters",
                                                   foundationOT(state, *e, pokemon, add), 7);
             if (!result.accepted) break;
-            if (add) state.draft.otName = result.text;
+            if (add) { if (draftNameAccepted(screen, result.text, 7)) state.draft.otName = result.text; }
             else { BoxPokemonEdit edit; edit.otName = result.text; ux2CommitEdit(screen, edit, "OT change set in this edit draft; X Keep stages it"); }
             break;
         }

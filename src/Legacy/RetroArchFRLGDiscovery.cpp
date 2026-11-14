@@ -717,6 +717,19 @@ namespace PokeVault::Legacy {
                                                         : LegacySourceStatus::ReadError;
                 out.detail = hint == IdentityHint::None ? "not a Generation I-III game card"
                                                         : "the file could not be opened";
+            } else if (const IdentityHint named = identityHint(path);
+                       named != IdentityHint::None && named != IdentityHint::Ambiguous && named != hint) {
+                // Round 17 (R17-03): Ruby / Sapphire and FireRed / LeafGreen saves are byte-identical
+                // formats. A file whose own name identifies ANOTHER release is refused here
+                // (discovery lists it under that card).
+                out.path = path;
+                out.normalizedPath = normalizedPath(path);
+                out.sourceIdentity = sourceIdentity(path);
+                out.status = LegacySourceStatus::InvalidSave;
+                out.detail = std::string("the file is named as a Pokemon ") +
+                    (named == IdentityHint::Ruby ? "Ruby" : named == IdentityHint::Sapphire ? "Sapphire"
+                     : named == IdentityHint::Emerald ? "Emerald" : named == IdentityHint::FireRed ? "FireRed" : "LeafGreen") +
+                    " save; choose it from that game's card";
             } else {
                 out = inspectFile(path, metadata, hint);
                 out.canonicalPath = filesystemIdentity(path);

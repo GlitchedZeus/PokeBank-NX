@@ -1772,4 +1772,16 @@ void runGen12(Matrix& m) {
     runGen2Version(m, gen2("crystal", G2::SourceGame::Crystal, "slot3.srm", "Pokemon Gold.srm", true));
 }
 
+int dumpFixturesGen12(const std::string& dir) {
+    int n = 0;
+    const auto put = [&](const char* game, const Bytes& b) { n += writeFixture(dir, game, b.data(), b.size()); };
+    put("red_gb", g1::save(false, 15));
+    put("blue_gb", g1::save(false, 15));
+    put("yellow_gb", g1::save(true, 15));
+    put("gold_gbc", g2::save(::GS, 15));
+    put("silver_gbc", g2::save(::GS, 15));
+    put("crystal_gbc", g2::save(::C, 15));
+    return n;
+}
+
 } // namespace qamatrix

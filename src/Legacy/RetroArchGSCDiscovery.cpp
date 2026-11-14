@@ -52,6 +52,13 @@ GSCSource inspectGSCSaveFile(const std::string&p,std::string_view exactGameId){
     if(h==Hint::None||!statFile(p,&m)){GSCSource s;s.path=p;s.normalizedPath=norm(p);s.sourceIdentity=sid(p);
         s.status=h==Hint::None?GSCSourceStatus::InvalidSave:GSCSourceStatus::ReadError;
         s.detail=h==Hint::None?"not a Gold / Silver / Crystal game card":"the file could not be opened";return s;}
+    // Round 17 (R17-03): Gold and Silver share one save format. A file whose own name identifies
+    // ANOTHER release is refused here (discovery lists it under that card).
+    const Hint named=hint(p);
+    if((named==Hint::Gold||named==Hint::Silver||named==Hint::Crystal)&&named!=h){GSCSource s;s.path=p;s.normalizedPath=norm(p);
+        s.sourceIdentity=sid(p);s.status=GSCSourceStatus::InvalidSave;
+        s.detail=std::string("the file is named as a Pokemon ")+(named==Hint::Gold?"Gold":named==Hint::Silver?"Silver":"Crystal")+
+            " save; choose it from that game's card";return s;}
     auto s=inspect(p,m,h);s.canonicalPath=fsid(p);return s;
 }
 } // namespace PokeVault::Legacy

@@ -14,6 +14,9 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstddef>
 #include <initializer_list>
 #include <map>
 #include <string>
@@ -150,5 +153,19 @@ void runGen12(Matrix& m);
 void runGen3(Matrix& m);
 void runGen4(Matrix& m);
 void runGen5(Matrix& m);
+// Round 17 QA: the exact per-version synthetic saves the matrix runs on, written as <dir>/<game id>.sav
+// (test_qa_matrix --dump-fixtures <dir>), so UI-level suites (tests/test_ui_games20_*.cpp) drive
+// the same 20 inputs instead of a second set of fixtures. Returns the number of files written.
+int dumpFixturesGen12(const std::string& dir);
+int dumpFixturesGen3(const std::string& dir);
+int dumpFixturesGen4(const std::string& dir);
+int dumpFixturesGen5(const std::string& dir);
+inline bool writeFixture(const std::string& dir, const std::string& gameId, const uint8_t* data, size_t size) {
+    if (size == 0) return false;
+    std::FILE* f = std::fopen((dir + "/" + gameId + ".sav").c_str(), "wb");
+    if (!f) return false;
+    const bool ok = std::fwrite(data, 1, size, f) == size;
+    return std::fclose(f) == 0 && ok;
+}
 
 } // namespace qamatrix

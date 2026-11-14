@@ -196,7 +196,7 @@ bool storageEntrySurface(const TrainerViewScreen& screen) noexcept {
         screen.stSaveSlot >= 0 && screen.stSaveSlot < 30 &&
         !screen.helpOverlayActive && !screen.details.active && !screen.actionSheet.isOpen() &&
         !screen.saveConfirmActive && !screen.pickerActive && !screen.itemEditDialogActive &&
-        !screen.carrying() && !screen.currentlySelecting;
+        !screen.carrying() && !screen.currentlySelecting && !screen.storageQuestionOpen();
 }
 
 bool partyEntrySurface(const TrainerViewScreen& screen) noexcept {

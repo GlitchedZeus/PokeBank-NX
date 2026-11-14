@@ -137,6 +137,20 @@ Editor* editor(TrainerViewScreen& screen) noexcept {
     return real;
 }
 
+// Round 17 (R17-05, found by the Games-20 monkey: "OT | \xF0\x9F\x98\x80" in a Yellow Create draft): a
+// Create draft kept and displayed whatever was typed until Add refused it. A name is now checked
+// when it is entered, with the same encoder Add and Edit use; a refused name changes nothing.
+bool draftNameAccepted(TrainerViewScreen& screen, const std::string& text, size_t maximum) {
+    auto* e = editor(screen);
+    if (!e) return false;
+    std::array<uint8_t, 11> encoded{};
+    std::string error;
+    if (Editor::encodeRegionName(e->metadata().region, text, maximum, encoded, error)) return true;
+    screen.postStatus((error.empty() ? std::string("That name cannot be stored in this save") : error) +
+                      ". Name not changed.", 360);
+    return false;
+}
+
 const Editor* editor(const TrainerViewScreen& screen) noexcept {
     auto* trainer = rbyTrainer(screen);
     const Editor* real = trainer ? trainer->stagedPokemon() : nullptr;
@@ -180,7 +194,7 @@ bool entrySurface(const TrainerViewScreen& screen) noexcept {
         screen.selectedItemIndex >= 0;
     const bool storageSave = screen.selectedMode == TrainerViewScreen::ViewMode::Storage &&
         screen.storageFocusPane == 0 && screen.stSaveBox >= 0 && screen.stSaveSlot >= 0 &&
-        !screen.carrying() && !screen.currentlySelecting;
+        !screen.carrying() && !screen.currentlySelecting && !screen.storageQuestionOpen();
     return screen.detailViewActive && (box || storageSave) &&
         !screen.helpOverlayActive && !screen.details.active &&
         !screen.actionSheet.isOpen() && !screen.saveConfirmActive && !screen.pickerActive &&
@@ -475,7 +489,7 @@ bool editDraftField(TrainerViewScreen& screen) {
             ? PokeBank::UIModel::classicDefaultNickname(state.draft.species) : state.draft.nickname;
         const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I Nickname", "1-10 supported Gen I characters", initial, 10);
         if (!result.accepted) return false;
-        state.draft.nickname = result.text;
+        if (draftNameAccepted(screen, result.text, 10)) state.draft.nickname = result.text;
         return true;
     }
     if (row == 2) {
@@ -532,7 +546,7 @@ bool editDraftField(TrainerViewScreen& screen) {
         const std::string initial = state.draft.otName.empty() ? e->view().trainer().name : state.draft.otName;
         const auto result = UI::ClassicJapaneseNames::prompt(screen.trainer, screen.sourceGameId, "Generation I OT", "1-7 supported Gen I characters", initial, 7);
         if (!result.accepted) return false;
-        state.draft.otName = result.text;
+        if (draftNameAccepted(screen, result.text, 7)) state.draft.otName = result.text;
         return true;
     }
     if (row == 27) {
